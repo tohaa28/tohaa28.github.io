@@ -1216,6 +1216,7 @@
         id="settingsButton"
         type="button"
         hidden
+        style="display:none"
         title="Настройки"
     >
         ⚙️
@@ -1269,6 +1270,7 @@
         id="settingsModal"
         class="modal-overlay"
         hidden
+        style="display:none"
     >
 
         <div class="modal">
@@ -2294,6 +2296,7 @@
                 document.getElementById("settingsModal");
 
             settingsModal.hidden = false;
+            settingsModal.style.display = "flex";
 
             settingsModal.classList.add(
                 "active"
@@ -2315,6 +2318,7 @@
             );
 
             settingsModal.hidden = true;
+            settingsModal.style.display = "none";
 
 
             draftConfig =
@@ -3107,7 +3111,7 @@
              * Собираем новый HTML.
              */
 
-            const updatedHtml =
+            let updatedHtml =
 
                 currentHtml.substring(
                     0,
@@ -3123,6 +3127,41 @@
                 currentHtml.substring(
                     closingStart
                 );
+
+
+            /*
+             * Очень важно:
+             * сохранённый HTML всегда должен начинаться
+             * с закрытым окном настроек и скрытой кнопкой.
+             */
+            updatedHtml = updatedHtml.replace(
+                /(<div\\s+[^>]*id=["']settingsModal["'][^>]*)(>)/i,
+                function (match, start, end) {
+                    start = start
+                        .replace(/\\sclass=["'][^"']*active[^"']*["']/i, "")
+                        .replace(/\\sstyle=["'][^"']*["']/i, "")
+                        .replace(/\\shidden(?:=["'][^"']*["'])?/i, "");
+
+                    return start +
+                        ' class="modal-overlay" hidden style="display:none"' +
+                        end;
+                }
+            );
+
+
+            updatedHtml = updatedHtml.replace(
+                /(<button\\s+[^>]*id=["']settingsButton["'][^>]*)(>)/i,
+                function (match, start, end) {
+                    start = start
+                        .replace(/\\sclass=["'][^"']*visible[^"']*["']/i, "")
+                        .replace(/\\sstyle=["'][^"']*["']/i, "")
+                        .replace(/\\shidden(?:=["'][^"']*["'])?/i, "");
+
+                    return start +
+                        ' hidden style="display:none"' +
+                        end;
+                }
+            );
 
 
             return updatedHtml;
@@ -3362,16 +3401,20 @@
 
 
                     if (settingsVisible) {
+                        button.hidden = false;
+                        button.style.display = "flex";
 
                         button.classList.add(
                             "visible"
                         );
 
                     } else {
-
                         button.classList.remove(
                             "visible"
                         );
+
+                        button.hidden = true;
+                        button.style.display = "none";
 
                         closeSettings();
                     }
