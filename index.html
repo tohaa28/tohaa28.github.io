@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru"><head>
+<html lang="ru" style="--ui-bg-1: #0a0d18; --ui-bg-2: #101426; --ui-card-bg: #202638; --ui-card-border: #343b50; --ui-text: #ffffff; --ui-text-muted: #9298a8; --ui-accent: #7c8cff; --ui-modal-bg: #151a2b; --ui-link-bg: #202536; --ui-page-max: 1200px; --ui-page-pad-top: 70px; --ui-grid-gap: 28px; --ui-card-min-h: 250px; --ui-card-pad: 34px; --ui-card-radius: 28px; --ui-icon-size: 76px; --ui-title-size: 54px; --ui-subtitle-size: 18px; --ui-card-title-size: 27px; --ui-modal-width: 760px; --ui-header-align: center; --ui-columns: repeat(auto-fit, minmax(300px, 1fr)); --ui-page-image: none; --ui-page-image-size: cover; --ui-page-image-repeat: no-repeat; --ui-page-image-position: center; --ui-page-image-attachment: scroll; --ui-card-image: none; --ui-card-image-size: cover; --ui-card-image-repeat: no-repeat; --ui-card-image-position: center; --ui-modal-image: none; --ui-modal-image-size: cover; --ui-modal-image-repeat: no-repeat; --ui-modal-image-position: center; --ui-link-image: none; --ui-link-image-size: cover; --ui-link-image-repeat: no-repeat; --ui-link-image-position: center;"><head>
 
     <meta charset="UTF-8">
 
@@ -1091,6 +1091,166 @@
             }
         }
 
+    
+
+        /* =====================================================
+           НАСТРАИВАЕМОЕ ОФОРМЛЕНИЕ
+           Значения задаются JavaScript через CSS-переменные.
+           ===================================================== */
+        :root {
+            --ui-bg-1: #0a0d18;
+            --ui-bg-2: #101426;
+            --ui-card-bg: rgba(255,255,255,.075);
+            --ui-card-border: rgba(255,255,255,.10);
+            --ui-text: #ffffff;
+            --ui-text-muted: rgba(255,255,255,.58);
+            --ui-accent: #7c8cff;
+            --ui-modal-bg: #151a2b;
+            --ui-link-bg: rgba(255,255,255,.055);
+            --ui-page-max: 1200px;
+            --ui-page-pad-top: 70px;
+            --ui-grid-gap: 28px;
+            --ui-card-min-h: 250px;
+            --ui-card-pad: 34px;
+            --ui-card-radius: 28px;
+            --ui-icon-size: 76px;
+            --ui-title-size: 54px;
+            --ui-subtitle-size: 18px;
+            --ui-card-title-size: 27px;
+            --ui-modal-width: 760px;
+            --ui-columns: repeat(auto-fit, minmax(300px, 1fr));
+            --ui-header-align: center;
+        }
+
+        body {
+            color: var(--ui-text);
+            background:
+                radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--ui-accent) 28%, transparent), transparent 32%),
+                linear-gradient(135deg, var(--ui-bg-1) 0%, var(--ui-bg-2) 100%);
+        }
+        .page { max-width: var(--ui-page-max); padding-top: var(--ui-page-pad-top); }
+        .header { text-align: var(--ui-header-align); }
+        .header h1 { font-size: var(--ui-title-size); color: var(--ui-text); background: none; -webkit-text-fill-color: currentColor; }
+        .header p { font-size: var(--ui-subtitle-size); color: var(--ui-text-muted); }
+        .folders { grid-template-columns: var(--ui-columns); gap: var(--ui-grid-gap); }
+        .folder {
+            min-height: var(--ui-card-min-h);
+            padding: var(--ui-card-pad);
+            border-radius: var(--ui-card-radius);
+            border-color: var(--ui-card-border);
+            background: var(--ui-card-bg);
+        }
+        .folder-icon { width: var(--ui-icon-size); height: var(--ui-icon-size); color: var(--ui-text); }
+        .folder h2 { font-size: var(--ui-card-title-size); color: var(--ui-text); }
+        .folder p { color: var(--ui-text-muted); }
+        .modal { width: min(var(--ui-modal-width), 100%); background: var(--ui-modal-bg); color: var(--ui-text); }
+        .link-item { color: var(--ui-text); background: var(--ui-link-bg); }
+        .link-description, .empty-links { color: var(--ui-text-muted); }
+        .settings-section-title { color: var(--ui-text); }
+
+        .appearance-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px 16px;
+        }
+        .appearance-grid .field { margin: 0; }
+        .color-control {
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-control input[type="color"] {
+            width: 56px;
+            height: 42px;
+            padding: 3px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .color-control input[type="text"] { min-width: 0; }
+        .setting-hint { margin-top: 5px; font-size: 12px; color: rgba(255,255,255,.42); }
+        @media (max-width: 680px) { .appearance-grid { grid-template-columns: 1fr; } }
+
+        .background-images-grid {
+            display: grid;
+            gap: 16px;
+            margin-top: 18px;
+        }
+        .background-image-editor {
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 16px;
+            background: rgba(255,255,255,.035);
+        }
+        .background-image-editor-title {
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .background-image-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 150px;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .background-image-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .background-image-actions input[type="file"] {
+            max-width: 310px;
+        }
+        .image-clear-button {
+            padding: 9px 12px;
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 10px;
+            background: rgba(255,255,255,.06);
+            color: inherit;
+            cursor: pointer;
+        }
+        .image-source-status {
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(255,255,255,.48);
+            word-break: break-all;
+        }
+        @media (max-width: 680px) {
+            .background-image-row { grid-template-columns: 1fr; }
+        }
+
+        /* Настраиваемые фоновые изображения */
+        body {
+            background-color: var(--ui-bg-1);
+            background-image: var(--ui-page-image), linear-gradient(135deg, var(--ui-bg-1), var(--ui-bg-2));
+            background-size: var(--ui-page-image-size), cover;
+            background-position: var(--ui-page-image-position), center;
+            background-repeat: var(--ui-page-image-repeat), no-repeat;
+            background-attachment: var(--ui-page-image-attachment), fixed;
+        }
+        .folder {
+            background-color: var(--ui-card-bg);
+            background-image: var(--ui-card-image);
+            background-size: var(--ui-card-image-size);
+            background-position: var(--ui-card-image-position);
+            background-repeat: var(--ui-card-image-repeat);
+        }
+        .modal {
+            background-color: var(--ui-modal-bg);
+            background-image: var(--ui-modal-image);
+            background-size: var(--ui-modal-image-size);
+            background-position: var(--ui-modal-image-position);
+            background-repeat: var(--ui-modal-image-repeat);
+        }
+        .link-item {
+            background-color: var(--ui-link-bg);
+            background-image: var(--ui-link-image);
+            background-size: var(--ui-link-image-size);
+            background-position: var(--ui-link-image-position);
+            background-repeat: var(--ui-link-image-repeat);
+        }
+
     </style>
 
 </head>
@@ -1130,6 +1290,41 @@
     "page": {
         "title": "Составить заявку для",
         "subtitle": "Выберите  папку службы"
+    },
+    "auth": {
+        "passwordHash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+    },
+    "appearance": {
+        "background1": "#0a0d18",
+        "background2": "#101426",
+        "cardColor": "#202638",
+        "borderColor": "#343b50",
+        "textColor": "#ffffff",
+        "mutedColor": "#9298a8",
+        "accentColor": "#7c8cff",
+        "modalColor": "#151a2b",
+        "linkColor": "#202536",
+        "columns": "auto",
+        "headerAlign": "center",
+        "maxWidth": 1200,
+        "pageTop": 70,
+        "gap": 28,
+        "cardHeight": 250,
+        "cardPadding": 34,
+        "cardRadius": 28,
+        "iconSize": 76,
+        "titleSize": 54,
+        "subtitleSize": 18,
+        "cardTitleSize": 27,
+        "modalWidth": 760,
+        "pageImage": "",
+        "pageImageMode": "cover",
+        "cardImage": "",
+        "cardImageMode": "cover",
+        "modalImage": "",
+        "modalImageMode": "cover",
+        "linkImage": "",
+        "linkImageMode": "cover"
     },
     "folders": [
         {
@@ -1204,6 +1399,32 @@
 
 
     <!-- =====================================================
+         ОКНО ВВОДА ПАРОЛЯ
+         ===================================================== -->
+
+    <div id="passwordModal" class="modal-overlay" hidden style="display:none;">
+        <div class="modal" style="max-width:460px;">
+            <div class="modal-header">
+                <h2>Доступ к настройкам</h2>
+                <button id="passwordModalClose" class="close-button" type="button">×</button>
+            </div>
+            <div class="settings-section">
+                <div class="field">
+                    <label for="passwordInput">Пароль</label>
+                    <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Введите пароль">
+                </div>
+                <div id="passwordError" style="display:none;color:#ff7b7b;margin-top:10px;">Неверный пароль</div>
+                <div class="settings-actions" style="margin-top:18px;">
+                    <div style="flex:1;"></div>
+                    <button id="passwordCancelButton" class="button button-secondary" type="button">Отмена</button>
+                    <button id="passwordSubmitButton" class="button button-primary" type="button">Открыть настройки</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- =====================================================
          МОДАЛЬНОЕ ОКНО НАСТРОЕК
          ===================================================== -->
 
@@ -1271,6 +1492,69 @@
 
                 </div>
 
+            </div>
+
+
+            <!-- =================================================
+                 ОФОРМЛЕНИЕ И РАЗМЕТКА
+                 ================================================= -->
+            <div class="settings-section">
+                <div class="settings-section-title">Оформление и разметка</div>
+
+                <div class="appearance-grid">
+                    <div class="field"><label>Фон — цвет 1</label><div class="color-control"><input id="bgColor1Picker" type="color"><input id="bgColor1Input" type="text"></div></div>
+                    <div class="field"><label>Фон — цвет 2</label><div class="color-control"><input id="bgColor2Picker" type="color"><input id="bgColor2Input" type="text"></div></div>
+                    <div class="field"><label>Карточка папки</label><div class="color-control"><input id="cardColorPicker" type="color"><input id="cardColorInput" type="text"></div></div>
+                    <div class="field"><label>Граница карточки</label><div class="color-control"><input id="borderColorPicker" type="color"><input id="borderColorInput" type="text"></div></div>
+                    <div class="field"><label>Основной текст</label><div class="color-control"><input id="textColorPicker" type="color"><input id="textColorInput" type="text"></div></div>
+                    <div class="field"><label>Вторичный текст</label><div class="color-control"><input id="mutedColorPicker" type="color"><input id="mutedColorInput" type="text"></div></div>
+                    <div class="field"><label>Акцент</label><div class="color-control"><input id="accentColorPicker" type="color"><input id="accentColorInput" type="text"></div></div>
+                    <div class="field"><label>Фон модального окна</label><div class="color-control"><input id="modalColorPicker" type="color"><input id="modalColorInput" type="text"></div></div>
+                    <div class="field"><label>Фон ссылки</label><div class="color-control"><input id="linkColorPicker" type="color"><input id="linkColorInput" type="text"></div></div>
+
+                    <div class="field"><label for="columnsInput">Колонки</label><select id="columnsInput"><option value="auto">Автоматически</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+                    <div class="field"><label for="headerAlignInput">Заголовок</label><select id="headerAlignInput"><option value="center">По центру</option><option value="left">Слева</option><option value="right">Справа</option></select></div>
+                    <div class="field"><label for="maxWidthInput">Ширина страницы, px</label><input id="maxWidthInput" type="number" min="500" max="2400" step="10"></div>
+                    <div class="field"><label for="pageTopInput">Отступ сверху, px</label><input id="pageTopInput" type="number" min="0" max="300" step="1"></div>
+                    <div class="field"><label for="gapInput">Расстояние между папками, px</label><input id="gapInput" type="number" min="0" max="100" step="1"></div>
+                    <div class="field"><label for="cardHeightInput">Мин. высота карточки, px</label><input id="cardHeightInput" type="number" min="100" max="700" step="5"></div>
+                    <div class="field"><label for="cardPaddingInput">Отступ внутри карточки, px</label><input id="cardPaddingInput" type="number" min="8" max="100" step="1"></div>
+                    <div class="field"><label for="cardRadiusInput">Скругление карточки, px</label><input id="cardRadiusInput" type="number" min="0" max="80" step="1"></div>
+                    <div class="field"><label for="iconSizeInput">Размер иконки, px</label><input id="iconSizeInput" type="number" min="30" max="160" step="1"></div>
+                    <div class="field"><label for="titleSizeInput">Заголовок страницы, px</label><input id="titleSizeInput" type="number" min="20" max="120" step="1"></div>
+                    <div class="field"><label for="subtitleSizeInput">Подзаголовок, px</label><input id="subtitleSizeInput" type="number" min="10" max="50" step="1"></div>
+                    <div class="field"><label for="cardTitleSizeInput">Название папки, px</label><input id="cardTitleSizeInput" type="number" min="12" max="60" step="1"></div>
+                    <div class="field"><label for="modalWidthInput">Ширина окна папки, px</label><input id="modalWidthInput" type="number" min="320" max="1600" step="10"></div>
+                </div>
+                <div class="setting-hint">Цветовые поля принимают HEX, например #151a2b. Изменения показываются сразу.</div>
+            </div>
+
+            <!-- =================================================
+                 ФОНОВЫЕ ИЗОБРАЖЕНИЯ
+                 ================================================= -->
+            <div class="settings-section">
+                <div class="settings-section-title">Фоновые изображения</div>
+                <div class="setting-hint">Можно указать URL или выбрать файл с компьютера. Выбранный файл встраивается внутрь HTML и сохраняется вместе со страницей.</div>
+                <div id="backgroundImagesEditor" class="background-images-grid"><div class="background-image-editor"><div class="background-image-editor-title">Фон всей страницы</div><div class="background-image-row"><input id="pageImageUrl" type="text" placeholder="URL изображения или встроенные данные"><select id="pageImageMode"><option value="cover" selected="">Заполнить (cover)</option><option value="contain">Вместить (contain)</option><option value="stretch">Растянуть</option><option value="repeat">Повторять плиткой</option><option value="center">По центру без масштаба</option></select></div><div class="background-image-actions"><input id="pageImageFile" type="file" accept="image/*"><button id="pageImageClear" class="image-clear-button" type="button">Очистить изображение</button></div><div id="pageImageStatus" class="image-source-status">Изображение не установлено</div></div><div class="background-image-editor"><div class="background-image-editor-title">Карточки папок</div><div class="background-image-row"><input id="cardImageUrl" type="text" placeholder="URL изображения или встроенные данные"><select id="cardImageMode"><option value="cover" selected="">Заполнить (cover)</option><option value="contain">Вместить (contain)</option><option value="stretch">Растянуть</option><option value="repeat">Повторять плиткой</option><option value="center">По центру без масштаба</option></select></div><div class="background-image-actions"><input id="cardImageFile" type="file" accept="image/*"><button id="cardImageClear" class="image-clear-button" type="button">Очистить изображение</button></div><div id="cardImageStatus" class="image-source-status">Изображение не установлено</div></div><div class="background-image-editor"><div class="background-image-editor-title">Модальные окна</div><div class="background-image-row"><input id="modalImageUrl" type="text" placeholder="URL изображения или встроенные данные"><select id="modalImageMode"><option value="cover" selected="">Заполнить (cover)</option><option value="contain">Вместить (contain)</option><option value="stretch">Растянуть</option><option value="repeat">Повторять плиткой</option><option value="center">По центру без масштаба</option></select></div><div class="background-image-actions"><input id="modalImageFile" type="file" accept="image/*"><button id="modalImageClear" class="image-clear-button" type="button">Очистить изображение</button></div><div id="modalImageStatus" class="image-source-status">Изображение не установлено</div></div><div class="background-image-editor"><div class="background-image-editor-title">Элементы ссылок</div><div class="background-image-row"><input id="linkImageUrl" type="text" placeholder="URL изображения или встроенные данные"><select id="linkImageMode"><option value="cover" selected="">Заполнить (cover)</option><option value="contain">Вместить (contain)</option><option value="stretch">Растянуть</option><option value="repeat">Повторять плиткой</option><option value="center">По центру без масштаба</option></select></div><div class="background-image-actions"><input id="linkImageFile" type="file" accept="image/*"><button id="linkImageClear" class="image-clear-button" type="button">Очистить изображение</button></div><div id="linkImageStatus" class="image-source-status">Изображение не установлено</div></div></div>
+            </div>
+
+            <!-- =================================================
+                 БЕЗОПАСНОСТЬ
+                 ================================================= -->
+
+            <div class="settings-section">
+                <div class="settings-section-title">Доступ к настройкам</div>
+                <div class="save-info" style="margin-bottom:14px;">
+                    Оставьте поля пустыми, если пароль менять не нужно.
+                </div>
+                <div class="field">
+                    <label for="newPasswordInput">Новый пароль</label>
+                    <input id="newPasswordInput" type="password" autocomplete="new-password" placeholder="Новый пароль">
+                </div>
+                <div class="field">
+                    <label for="confirmPasswordInput">Повторите новый пароль</label>
+                    <input id="confirmPasswordInput" type="password" autocomplete="new-password" placeholder="Повторите пароль">
+                </div>
             </div>
 
 
@@ -1356,6 +1640,43 @@
 
                 subtitle:
                     "Выберите нужную папку"
+            },
+
+            auth: {
+                passwordHash: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+            },
+
+            appearance: {
+                background1: "#0a0d18",
+                background2: "#101426",
+                cardColor: "#202638",
+                borderColor: "#343b50",
+                textColor: "#ffffff",
+                mutedColor: "#9298a8",
+                accentColor: "#7c8cff",
+                modalColor: "#151a2b",
+                linkColor: "#202536",
+                columns: "auto",
+                headerAlign: "center",
+                maxWidth: 1200,
+                pageTop: 70,
+                gap: 28,
+                cardHeight: 250,
+                cardPadding: 34,
+                cardRadius: 28,
+                iconSize: 76,
+                titleSize: 54,
+                subtitleSize: 18,
+                cardTitleSize: 27,
+                modalWidth: 760,
+                pageImage: "",
+                pageImageMode: "cover",
+                cardImage: "",
+                cardImageMode: "cover",
+                modalImage: "",
+                modalImageMode: "cover",
+                linkImage: "",
+                linkImageMode: "cover"
             },
 
 
@@ -1614,6 +1935,120 @@
            НОРМАЛИЗАЦИЯ
            ===================================================== */
 
+        function clampNumber(value, fallback, min, max) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return fallback;
+            return Math.min(max, Math.max(min, n));
+        }
+
+        function normalizeColor(value, fallback) {
+            const text = String(value == null ? "" : value).trim();
+            return /^#[0-9a-fA-F]{6}$/.test(text) ? text : fallback;
+        }
+
+        function normalizeImageMode(value, fallback) {
+            const allowed = ["cover", "contain", "stretch", "repeat", "center"];
+            return allowed.indexOf(value) >= 0 ? value : fallback;
+        }
+
+        function cssImageUrl(value) {
+            if (!value) return "none";
+            const safe = String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]/g, "");
+            return 'url("' + safe + '")';
+        }
+
+        function imageModeCss(mode) {
+            switch (mode) {
+                case "contain": return { size: "contain", repeat: "no-repeat", position: "center", attachment: "scroll" };
+                case "stretch": return { size: "100% 100%", repeat: "no-repeat", position: "center", attachment: "scroll" };
+                case "repeat": return { size: "auto", repeat: "repeat", position: "center", attachment: "scroll" };
+                case "center": return { size: "auto", repeat: "no-repeat", position: "center", attachment: "scroll" };
+                default: return { size: "cover", repeat: "no-repeat", position: "center", attachment: "scroll" };
+            }
+        }
+
+        function normalizeAppearance(value) {
+            const d = DEFAULT_CONFIG.appearance;
+            const v = value || {};
+            const columns = ["auto","1","2","3","4","5","6"].includes(String(v.columns)) ? String(v.columns) : d.columns;
+            const align = ["left","center","right"].includes(String(v.headerAlign)) ? String(v.headerAlign) : d.headerAlign;
+            return {
+                background1: normalizeColor(v.background1, d.background1),
+                background2: normalizeColor(v.background2, d.background2),
+                cardColor: normalizeColor(v.cardColor, d.cardColor),
+                borderColor: normalizeColor(v.borderColor, d.borderColor),
+                textColor: normalizeColor(v.textColor, d.textColor),
+                mutedColor: normalizeColor(v.mutedColor, d.mutedColor),
+                accentColor: normalizeColor(v.accentColor, d.accentColor),
+                modalColor: normalizeColor(v.modalColor, d.modalColor),
+                linkColor: normalizeColor(v.linkColor, d.linkColor),
+                columns: columns,
+                headerAlign: align,
+                maxWidth: clampNumber(v.maxWidth, d.maxWidth, 500, 2400),
+                pageTop: clampNumber(v.pageTop, d.pageTop, 0, 300),
+                gap: clampNumber(v.gap, d.gap, 0, 100),
+                cardHeight: clampNumber(v.cardHeight, d.cardHeight, 100, 700),
+                cardPadding: clampNumber(v.cardPadding, d.cardPadding, 8, 100),
+                cardRadius: clampNumber(v.cardRadius, d.cardRadius, 0, 80),
+                iconSize: clampNumber(v.iconSize, d.iconSize, 30, 160),
+                titleSize: clampNumber(v.titleSize, d.titleSize, 20, 120),
+                subtitleSize: clampNumber(v.subtitleSize, d.subtitleSize, 10, 50),
+                cardTitleSize: clampNumber(v.cardTitleSize, d.cardTitleSize, 12, 60),
+                modalWidth: clampNumber(v.modalWidth, d.modalWidth, 320, 1600),
+                pageImage: typeof v.pageImage === "string" ? v.pageImage : d.pageImage,
+                pageImageMode: normalizeImageMode(v.pageImageMode, d.pageImageMode),
+                cardImage: typeof v.cardImage === "string" ? v.cardImage : d.cardImage,
+                cardImageMode: normalizeImageMode(v.cardImageMode, d.cardImageMode),
+                modalImage: typeof v.modalImage === "string" ? v.modalImage : d.modalImage,
+                modalImageMode: normalizeImageMode(v.modalImageMode, d.modalImageMode),
+                linkImage: typeof v.linkImage === "string" ? v.linkImage : d.linkImage,
+                linkImageMode: normalizeImageMode(v.linkImageMode, d.linkImageMode)
+            };
+        }
+
+        function applyAppearance(sourceConfig) {
+            if (!sourceConfig) return;
+            const a = normalizeAppearance(sourceConfig.appearance);
+            const root = document.documentElement.style;
+            root.setProperty("--ui-bg-1", a.background1);
+            root.setProperty("--ui-bg-2", a.background2);
+            root.setProperty("--ui-card-bg", a.cardColor);
+            root.setProperty("--ui-card-border", a.borderColor);
+            root.setProperty("--ui-text", a.textColor);
+            root.setProperty("--ui-text-muted", a.mutedColor);
+            root.setProperty("--ui-accent", a.accentColor);
+            root.setProperty("--ui-modal-bg", a.modalColor);
+            root.setProperty("--ui-link-bg", a.linkColor);
+            root.setProperty("--ui-page-max", a.maxWidth + "px");
+            root.setProperty("--ui-page-pad-top", a.pageTop + "px");
+            root.setProperty("--ui-grid-gap", a.gap + "px");
+            root.setProperty("--ui-card-min-h", a.cardHeight + "px");
+            root.setProperty("--ui-card-pad", a.cardPadding + "px");
+            root.setProperty("--ui-card-radius", a.cardRadius + "px");
+            root.setProperty("--ui-icon-size", a.iconSize + "px");
+            root.setProperty("--ui-title-size", a.titleSize + "px");
+            root.setProperty("--ui-subtitle-size", a.subtitleSize + "px");
+            root.setProperty("--ui-card-title-size", a.cardTitleSize + "px");
+            root.setProperty("--ui-modal-width", a.modalWidth + "px");
+            root.setProperty("--ui-header-align", a.headerAlign);
+            root.setProperty("--ui-columns", a.columns === "auto" ? "repeat(auto-fit, minmax(300px, 1fr))" : "repeat(" + a.columns + ", minmax(0, 1fr))");
+
+            [
+                ["page", a.pageImage, a.pageImageMode],
+                ["card", a.cardImage, a.cardImageMode],
+                ["modal", a.modalImage, a.modalImageMode],
+                ["link", a.linkImage, a.linkImageMode]
+            ].forEach(function(item) {
+                const prefix = item[0];
+                const mode = imageModeCss(item[2]);
+                root.setProperty("--ui-" + prefix + "-image", cssImageUrl(item[1]));
+                root.setProperty("--ui-" + prefix + "-image-size", mode.size);
+                root.setProperty("--ui-" + prefix + "-image-repeat", mode.repeat);
+                root.setProperty("--ui-" + prefix + "-image-position", mode.position);
+                if (prefix === "page") root.setProperty("--ui-page-image-attachment", mode.attachment);
+            });
+        }
+
         function normalizeConfig(value) {
 
             const result = {
@@ -1646,6 +2081,14 @@
                             : DEFAULT_CONFIG.page.subtitle
                 },
 
+                auth: {
+                    passwordHash:
+                        value && value.auth && /^[0-9a-f]{64}$/i.test(String(value.auth.passwordHash || ""))
+                            ? String(value.auth.passwordHash).toLowerCase()
+                            : DEFAULT_CONFIG.auth.passwordHash
+                },
+
+                appearance: normalizeAppearance(value && value.appearance),
 
                 folders: []
             };
@@ -1841,6 +2284,8 @@
            ===================================================== */
 
         function renderPage() {
+
+            applyAppearance(config);
 
             document.title =
                 config.page.title ||
@@ -2140,6 +2585,17 @@
         }
 
 
+        document.getElementById("passwordSubmitButton").addEventListener("click", submitPassword);
+        document.getElementById("passwordCancelButton").addEventListener("click", closePasswordModal);
+        document.getElementById("passwordModalClose").addEventListener("click", closePasswordModal);
+        document.getElementById("passwordInput").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                submitPassword();
+            }
+        });
+
+
         /* =====================================================
            ЗАКРЫТИЕ ПАПКИ
            ===================================================== */
@@ -2158,6 +2614,233 @@
            ОТКРЫТИЕ НАСТРОЕК
            ===================================================== */
 
+        const APPEARANCE_FIELDS = {
+            background1: ["bgColor1Input", "bgColor1Picker"],
+            background2: ["bgColor2Input", "bgColor2Picker"],
+            cardColor: ["cardColorInput", "cardColorPicker"],
+            borderColor: ["borderColorInput", "borderColorPicker"],
+            textColor: ["textColorInput", "textColorPicker"],
+            mutedColor: ["mutedColorInput", "mutedColorPicker"],
+            accentColor: ["accentColorInput", "accentColorPicker"],
+            modalColor: ["modalColorInput", "modalColorPicker"],
+            linkColor: ["linkColorInput", "linkColorPicker"]
+        };
+
+        const BACKGROUND_IMAGE_TARGETS = [
+            { key: "page", imageKey: "pageImage", modeKey: "pageImageMode", title: "Фон всей страницы" },
+            { key: "card", imageKey: "cardImage", modeKey: "cardImageMode", title: "Карточки папок" },
+            { key: "modal", imageKey: "modalImage", modeKey: "modalImageMode", title: "Модальные окна" },
+            { key: "link", imageKey: "linkImage", modeKey: "linkImageMode", title: "Элементы ссылок" }
+        ];
+
+        function imageModeOptions(selected) {
+            return [
+                ["cover", "Заполнить (cover)"],
+                ["contain", "Вместить (contain)"],
+                ["stretch", "Растянуть"],
+                ["repeat", "Повторять плиткой"],
+                ["center", "По центру без масштаба"]
+            ].map(function(item) {
+                return '<option value="' + item[0] + '"' + (item[0] === selected ? ' selected' : '') + '>' + item[1] + '</option>';
+            }).join("");
+        }
+
+        function renderBackgroundImagesEditor() {
+            if (!draftConfig) return;
+            const container = document.getElementById("backgroundImagesEditor");
+            const a = draftConfig.appearance;
+            container.innerHTML = "";
+
+            BACKGROUND_IMAGE_TARGETS.forEach(function(target) {
+                const box = document.createElement("div");
+                box.className = "background-image-editor";
+                box.innerHTML =
+                    '<div class="background-image-editor-title">' + target.title + '</div>' +
+                    '<div class="background-image-row">' +
+                        '<input id="' + target.key + 'ImageUrl" type="text" placeholder="URL изображения или встроенные данные">' +
+                        '<select id="' + target.key + 'ImageMode">' + imageModeOptions(a[target.modeKey]) + '</select>' +
+                    '</div>' +
+                    '<div class="background-image-actions">' +
+                        '<input id="' + target.key + 'ImageFile" type="file" accept="image/*">' +
+                        '<button id="' + target.key + 'ImageClear" class="image-clear-button" type="button">Очистить изображение</button>' +
+                    '</div>' +
+                    '<div id="' + target.key + 'ImageStatus" class="image-source-status"></div>';
+                container.appendChild(box);
+
+                const urlInput = document.getElementById(target.key + "ImageUrl");
+                const modeInput = document.getElementById(target.key + "ImageMode");
+                const fileInput = document.getElementById(target.key + "ImageFile");
+                const clearButton = document.getElementById(target.key + "ImageClear");
+                const status = document.getElementById(target.key + "ImageStatus");
+
+                urlInput.value = a[target.imageKey] || "";
+                status.textContent = a[target.imageKey] ? (a[target.imageKey].startsWith("data:") ? "Изображение встроено в HTML" : "Источник: " + a[target.imageKey]) : "Изображение не установлено";
+
+                urlInput.addEventListener("input", function() {
+                    a[target.imageKey] = urlInput.value.trim();
+                    status.textContent = a[target.imageKey] ? "Источник: " + a[target.imageKey] : "Изображение не установлено";
+                    applyAppearance(draftConfig);
+                });
+                modeInput.addEventListener("change", function() {
+                    a[target.modeKey] = modeInput.value;
+                    applyAppearance(draftConfig);
+                });
+                fileInput.addEventListener("change", function() {
+                    const file = fileInput.files && fileInput.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        a[target.imageKey] = String(reader.result || "");
+                        urlInput.value = a[target.imageKey];
+                        status.textContent = "Встроено: " + file.name + " (" + Math.round(file.size / 1024) + " КБ)";
+                        applyAppearance(draftConfig);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                clearButton.addEventListener("click", function() {
+                    a[target.imageKey] = "";
+                    urlInput.value = "";
+                    fileInput.value = "";
+                    status.textContent = "Изображение не установлено";
+                    applyAppearance(draftConfig);
+                });
+            });
+        }
+
+        function fillAppearanceEditor() {
+            if (!draftConfig) return;
+            draftConfig.appearance = normalizeAppearance(draftConfig.appearance);
+            const a = draftConfig.appearance;
+            Object.keys(APPEARANCE_FIELDS).forEach(function(key) {
+                const ids = APPEARANCE_FIELDS[key];
+                document.getElementById(ids[0]).value = a[key];
+                document.getElementById(ids[1]).value = a[key];
+            });
+            document.getElementById("columnsInput").value = a.columns;
+            document.getElementById("headerAlignInput").value = a.headerAlign;
+            ["maxWidth","pageTop","gap","cardHeight","cardPadding","cardRadius","iconSize","titleSize","subtitleSize","cardTitleSize","modalWidth"].forEach(function(key) {
+                document.getElementById(key + "Input").value = a[key];
+            });
+            renderBackgroundImagesEditor();
+        }
+
+        function collectAppearanceSettings() {
+            if (!draftConfig) return;
+            const a = draftConfig.appearance || {};
+            Object.keys(APPEARANCE_FIELDS).forEach(function(key) {
+                a[key] = document.getElementById(APPEARANCE_FIELDS[key][0]).value;
+            });
+            a.columns = document.getElementById("columnsInput").value;
+            a.headerAlign = document.getElementById("headerAlignInput").value;
+            ["maxWidth","pageTop","gap","cardHeight","cardPadding","cardRadius","iconSize","titleSize","subtitleSize","cardTitleSize","modalWidth"].forEach(function(key) {
+                a[key] = Number(document.getElementById(key + "Input").value);
+            });
+            draftConfig.appearance = normalizeAppearance(a);
+        }
+
+        function previewAppearance() {
+            collectAppearanceSettings();
+            applyAppearance(draftConfig);
+        }
+
+        function bindAppearanceEditor() {
+            Object.keys(APPEARANCE_FIELDS).forEach(function(key) {
+                const text = document.getElementById(APPEARANCE_FIELDS[key][0]);
+                const picker = document.getElementById(APPEARANCE_FIELDS[key][1]);
+                picker.addEventListener("input", function() { text.value = picker.value; previewAppearance(); });
+                text.addEventListener("input", function() {
+                    if (/^#[0-9a-fA-F]{6}$/.test(text.value.trim())) picker.value = text.value.trim();
+                    previewAppearance();
+                });
+            });
+            ["columnsInput","headerAlignInput","maxWidthInput","pageTopInput","gapInput","cardHeightInput","cardPaddingInput","cardRadiusInput","iconSizeInput","titleSizeInput","subtitleSizeInput","cardTitleSizeInput","modalWidthInput"].forEach(function(id) {
+                document.getElementById(id).addEventListener("input", previewAppearance);
+                document.getElementById(id).addEventListener("change", previewAppearance);
+            });
+        }
+
+        function sha256(text) {
+            function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
+            const maxWord = Math.pow(2, 32);
+            let result = "";
+            const words = [];
+            const ascii = unescape(encodeURIComponent(String(text)));
+            const asciiBitLength = ascii.length * 8;
+            let hash = sha256.h = sha256.h || [];
+            let k = sha256.k = sha256.k || [];
+            let primeCounter = k.length;
+            const isComposite = {};
+            for (let candidate = 2; primeCounter < 64; candidate++) {
+                if (!isComposite[candidate]) {
+                    for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+                    hash[primeCounter] = (Math.pow(candidate, .5) * maxWord) | 0;
+                    k[primeCounter++] = (Math.pow(candidate, 1 / 3) * maxWord) | 0;
+                }
+            }
+            let data = ascii + "\x80";
+            while (data.length % 64 - 56) data += "\x00";
+            for (let i = 0; i < data.length; i++) {
+                const j = data.charCodeAt(i);
+                words[i >> 2] |= j << ((3 - i) % 4) * 8;
+            }
+            words[words.length] = (asciiBitLength / maxWord) | 0;
+            words[words.length] = asciiBitLength;
+            for (let j = 0; j < words.length;) {
+                const w = words.slice(j, j += 16);
+                const oldHash = hash.slice(0);
+                hash = hash.slice(0, 8);
+                for (let i = 0; i < 64; i++) {
+                    const w15 = w[i - 15], w2 = w[i - 2];
+                    const a = hash[0], e = hash[4];
+                    const temp1 = hash[7] + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i] + (w[i] = i < 16 ? w[i] : (w[i - 16] + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0);
+                    const temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+                    hash = [(temp1 + temp2) | 0].concat(hash);
+                    hash[4] = (hash[4] + temp1) | 0;
+                    hash.pop();
+                }
+                for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+            }
+            for (let i = 0; i < 8; i++) {
+                for (let j = 3; j + 1; j--) {
+                    const b = (hash[i] >> (j * 8)) & 255;
+                    result += (b < 16 ? "0" : "") + b.toString(16);
+                }
+            }
+            return result;
+        }
+
+        function openPasswordModal() {
+            const modal = document.getElementById("passwordModal");
+            const input = document.getElementById("passwordInput");
+            const error = document.getElementById("passwordError");
+            error.style.display = "none";
+            input.value = "";
+            modal.hidden = false;
+            modal.style.display = "flex";
+            modal.classList.add("active");
+            setTimeout(function() { input.focus(); }, 0);
+        }
+
+        function closePasswordModal() {
+            const modal = document.getElementById("passwordModal");
+            modal.classList.remove("active");
+            modal.hidden = true;
+            modal.style.display = "none";
+            document.getElementById("passwordInput").value = "";
+            document.getElementById("passwordError").style.display = "none";
+        }
+
+        function submitPassword() {
+            const input = document.getElementById("passwordInput");
+            if (sha256(input.value) === config.auth.passwordHash) {
+                closePasswordModal();
+                openSettings();
+            } else {
+                document.getElementById("passwordError").style.display = "block";
+                input.select();
+            }
+        }
+
         function openSettings() {
 
             const settingsModal = document.getElementById("settingsModal");
@@ -2170,12 +2853,17 @@
 
             draftConfig = deepClone(config);
 
+            document.getElementById("newPasswordInput").value = "";
+            document.getElementById("confirmPasswordInput").value = "";
+
             document.getElementById("pageTitleInput").value =
                 draftConfig.page.title;
 
             document.getElementById("pageSubtitleInput").value =
                 draftConfig.page.subtitle;
 
+            fillAppearanceEditor();
+            applyAppearance(draftConfig);
             renderFoldersEditor();
 
             settingsModal.hidden = false;
@@ -2198,6 +2886,7 @@
             }
 
             draftConfig = null;
+            applyAppearance(config);
         }
 
         function forceHideSettings() {
@@ -2902,6 +3591,8 @@
                 document.getElementById(
                     "pageSubtitleInput"
                 ).value;
+
+            collectAppearanceSettings();
         }
 
 
@@ -3039,6 +3730,19 @@
             );
 
             updatedHtml = updatedHtml.replace(
+                /(<div\s+[^>]*id=["']passwordModal["'][^>]*)(>)/i,
+                function (match, start, end) {
+                    start = start
+                        .replace(/\sclass=["'][^"']*["']/i, "")
+                        .replace(/\sstyle=["'][^"']*["']/i, "")
+                        .replace(/\shidden(?:=["'][^"']*["'])?/i, "");
+                    return start +
+                        ' class="modal-overlay" hidden style="display:none;"' +
+                        end;
+                }
+            );
+
+            updatedHtml = updatedHtml.replace(
                 /(<button\s+[^>]*id=["']settingsButton["'][^>]*)(>)/i,
                 function (match, start, end) {
                     start = start
@@ -3138,6 +3842,20 @@
 
             collectPageSettings();
 
+            const newPassword = document.getElementById("newPasswordInput").value;
+            const confirmPassword = document.getElementById("confirmPasswordInput").value;
+            if (newPassword || confirmPassword) {
+                if (newPassword.length < 4) {
+                    alert("Новый пароль должен содержать минимум 4 символа.");
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
+                    alert("Новый пароль и подтверждение не совпадают.");
+                    return;
+                }
+                draftConfig.auth.passwordHash = sha256(newPassword);
+            }
+
 
             const newConfig =
 
@@ -3231,10 +3949,12 @@
             }
 
 
+            const preservedAuth = deepClone(config.auth);
             draftConfig =
                 deepClone(
                     DEFAULT_CONFIG
                 );
+            draftConfig.auth = preservedAuth;
 
 
             document.getElementById(
@@ -3248,6 +3968,8 @@
             ).value =
                 draftConfig.page.subtitle;
 
+            fillAppearanceEditor();
+            applyAppearance(draftConfig);
 
             renderFoldersEditor();
         }
@@ -3257,61 +3979,30 @@
            ALT + N
            ===================================================== */
 
-        document.addEventListener(
+        document.addEventListener("keydown", function (event) {
+            if (event.altKey && event.key.toLowerCase() === "n") {
+                event.preventDefault();
+                const settingsModal = document.getElementById("settingsModal");
+                const passwordModal = document.getElementById("passwordModal");
+                const settingsOpen = settingsModal && !settingsModal.hidden;
+                const passwordOpen = passwordModal && !passwordModal.hidden;
 
-            "keydown",
-
-            function (event) {
-
-                if (
-
-                    event.altKey &&
-
-                    event.key.toLowerCase() === "n"
-
-                ) {
-
-                    event.preventDefault();
-
-
-                    settingsVisible =
-                        !settingsVisible;
-
-
-                    const button =
-                        document.getElementById(
-                            "settingsButton"
-                        );
-
-
-                    if (settingsVisible) {
-
-                        button.hidden = false;
-                        button.style.display = "flex";
-                        button.classList.add("visible");
-
-                    } else {
-
-                        button.classList.remove("visible");
-                        button.hidden = true;
-                        button.style.display = "none";
-
-                        closeSettings();
-                    }
-                }
-
-
-                if (
-                    event.key === "Escape"
-                ) {
-
-                    closeFolderModal();
-
+                if (settingsOpen || passwordOpen) {
                     closeSettings();
+                    closePasswordModal();
+                    forceHideSettings();
+                } else {
+                    openPasswordModal();
                 }
-
             }
-        );
+
+            if (event.key === "Escape") {
+                closeFolderModal();
+                closePasswordModal();
+                closeSettings();
+                forceHideSettings();
+            }
+        });
 
 
         /* =====================================================
@@ -3324,7 +4015,7 @@
 
             "click",
 
-            openSettings
+            openPasswordModal
         );
 
 
@@ -3455,6 +4146,11 @@
         /* =====================================================
            ЗАПУСК
            ===================================================== */
+
+        /*
+         * Подключаем элементы редактора оформления.
+         */
+        bindAppearanceEditor();
 
         /*
          * При каждом открытии страницы настройки
