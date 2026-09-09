@@ -1,27 +1,17 @@
 <!DOCTYPE html>
-<html lang="ru">
-
-<head>
+<html lang="ru"><head>
 
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Мои файлы</title>
+    <title>Составить заявку для</title>
 
 
     <style>
 
         * {
             box-sizing: border-box;
-        }
-
-        /* Абсолютно скрытые элементы не участвуют в отображении. */
-        [hidden] {
-            display: none !important;
         }
 
 
@@ -403,6 +393,10 @@
         .modal-overlay.active {
 
             display: flex;
+        }
+
+        [hidden] {
+            display: none !important;
         }
 
 
@@ -1113,21 +1107,14 @@
 
         <header class="header">
 
-            <h1 id="pageTitle">
-                Мои файлы
-            </h1>
+            <h1 id="pageTitle">Составить заявку для</h1>
 
-            <p id="pageSubtitle">
-                Выберите нужную папку
-            </p>
+            <p id="pageSubtitle">Выберите  папку службы</p>
 
         </header>
 
 
-        <main
-            id="foldersContainer"
-            class="folders">
-        </main>
+        <main id="foldersContainer" class="folders"><div class="folder" data-index="0"><div class="folder-icon">📁</div><h2>Служба ИТ</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="1"><div class="folder-icon">📁</div><h2>Служба 1С</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="2"><div class="folder-icon">📁</div><h2>Техническая служба</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="3"><div class="folder-icon">📁</div><h2>ЦОП (Отдел качества)</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="4"><div class="folder-icon">📁</div><h2>Служба логистики</h2><p>Описание папки</p><div class="folder-arrow">→</div></div></main>
 
     </div>
 
@@ -1138,71 +1125,100 @@
          Этот блок изменяется при сохранении.
          ===================================================== -->
 
-    <script
-        id="embeddedConfig"
-        type="application/json"
-    >
+    <script id="embeddedConfig" type="application/json">
 {
     "page": {
-        "title": "Мои файлы",
-        "subtitle": "Выберите нужную папку"
+        "title": "Составить заявку для",
+        "subtitle": "Выберите  папку службы"
     },
     "folders": [
         {
-            "id": "documents",
-            "title": "Документы",
+            "id": "folder_mtso322g_3bz65y",
+            "title": "Служба ИТ",
             "icon": "📁",
-            "description": "Рабочие документы и файлы",
+            "description": "Описание папки",
             "links": [
                 {
-                    "title": "Google",
-                    "url": "https://www.google.com/",
-                    "description": "Поиск Google",
-                    "icon": "🔎"
-                },
-                {
-                    "title": "YouTube",
-                    "url": "https://www.youtube.com/",
-                    "description": "Видео и музыка",
-                    "icon": "▶️"
-                },
-                {
-                    "title": "GitHub",
-                    "url": "https://github.com/",
-                    "description": "Репозитории и проекты",
-                    "icon": "💻"
+                    "title": "Проблема с компьютером",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=301&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
                 }
             ]
         },
         {
-            "id": "useful",
-            "title": "Полезные ссылки",
-            "icon": "🚀",
-            "description": "Сервисы, сайты и инструменты",
+            "id": "folder_mttq3qwz_lfdqys",
+            "title": "Служба 1С",
+            "icon": "📁",
+            "description": "Описание папки",
             "links": [
                 {
-                    "title": "ChatGPT",
-                    "url": "https://chatgpt.com/",
-                    "description": "AI-помощник",
-                    "icon": "🤖"
-                },
+                    "title": "Проблема с 1С",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=301&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttq99ce_xyzcet",
+            "title": "Техническая служба",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
                 {
-                    "title": "Wikipedia",
-                    "url": "https://www.wikipedia.org/",
-                    "description": "Энциклопедия",
-                    "icon": "📚"
-                },
+                    "title": "Проблема с туалетом",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttqae71_ebnoss",
+            "title": "ЦОП (Отдел качества)",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
                 {
-                    "title": "Stack Overflow",
-                    "url": "https://stackoverflow.com/",
-                    "description": "Вопросы и ответы для разработчиков",
-                    "icon": "🧑‍💻"
+                    "title": "Проблема с заказом",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttqbz7y_omq43b",
+            "title": "Служба логистики",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Вопрос по доставке",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttqdlqn_j3c37u",
+            "title": "Служба Print-help",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Вопрос по нанесению",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
                 }
             ]
         }
     ]
 }
-    </script>
+</script>
 
 
     <!-- =====================================================
@@ -1212,13 +1228,7 @@
          Появляется только после Alt + N.
          ===================================================== -->
 
-    <button
-        id="settingsButton"
-        type="button"
-        hidden
-        style="display:none"
-        title="Настройки"
-    >
+    <button id="settingsButton" type="button" title="Настройки" hidden style="display:none;">
         ⚙️
     </button>
 
@@ -1227,35 +1237,22 @@
          МОДАЛЬНОЕ ОКНО ПАПКИ
          ===================================================== -->
 
-    <div
-        id="folderModal"
-        class="modal-overlay"
-    >
+    <div id="folderModal" class="modal-overlay">
 
         <div class="modal">
 
             <div class="modal-header">
 
-                <h2 id="folderModalTitle">
-                    Папка
-                </h2>
+                <h2 id="folderModalTitle">📁 Служба ИТ</h2>
 
-                <button
-                    id="folderModalClose"
-                    class="close-button"
-                    type="button"
-                >
+                <button id="folderModalClose" class="close-button" type="button">
                     ×
                 </button>
 
             </div>
 
 
-            <div
-                id="linksContainer"
-                class="links"
-            >
-            </div>
+            <div id="linksContainer" class="links"><a class="link-item" href="https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&amp;from=Templates&amp;module=incident&amp;reqTemplate=301&amp;requestServiceId=-1" target="_blank" rel="noopener noreferrer"><div class="link-icon">🔗</div><div class="link-info"><div class="link-title">Проблема с компьютером</div><div class="link-description"></div></div><div class="link-external">↗</div></a></div>
 
         </div>
 
@@ -1266,12 +1263,7 @@
          МОДАЛЬНОЕ ОКНО НАСТРОЕК
          ===================================================== -->
 
-    <div
-        id="settingsModal"
-        class="modal-overlay"
-        hidden
-        style="display:none"
-    >
+    <div id="settingsModal" class="modal-overlay" hidden style="display:none;">
 
         <div class="modal">
 
@@ -1281,11 +1273,7 @@
                     Настройки
                 </h2>
 
-                <button
-                    id="settingsModalClose"
-                    class="close-button"
-                    type="button"
-                >
+                <button id="settingsModalClose" class="close-button" type="button">
                     ×
                 </button>
 
@@ -1324,10 +1312,7 @@
                         Заголовок страницы
                     </label>
 
-                    <input
-                        id="pageTitleInput"
-                        type="text"
-                    >
+                    <input id="pageTitleInput" type="text">
 
                 </div>
 
@@ -1338,10 +1323,7 @@
                         Подзаголовок
                     </label>
 
-                    <input
-                        id="pageSubtitleInput"
-                        type="text"
-                    >
+                    <input id="pageSubtitleInput" type="text">
 
                 </div>
 
@@ -1359,8 +1341,7 @@
                 </div>
 
 
-                <div id="foldersEditor">
-                </div>
+                <div id="foldersEditor"><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 1</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 2</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 3</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 4</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 5</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 6</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div></div>
 
             </div>
 
@@ -1371,20 +1352,12 @@
 
             <div class="settings-actions">
 
-                <button
-                    id="addFolderButton"
-                    class="button button-secondary"
-                    type="button"
-                >
+                <button id="addFolderButton" class="button button-secondary" type="button">
                     + Добавить папку
                 </button>
 
 
-                <button
-                    id="resetButton"
-                    class="button button-danger"
-                    type="button"
-                >
+                <button id="resetButton" class="button button-danger" type="button">
                     Сбросить
                 </button>
 
@@ -1393,20 +1366,12 @@
                 </div>
 
 
-                <button
-                    id="cancelSettingsButton"
-                    class="button button-secondary"
-                    type="button"
-                >
+                <button id="cancelSettingsButton" class="button button-secondary" type="button">
                     Отмена
                 </button>
 
 
-                <button
-                    id="saveButton"
-                    class="button button-primary"
-                    type="button"
-                >
+                <button id="saveButton" class="button button-primary" type="button">
                     💾 Сохранить HTML
                 </button>
 
@@ -1604,26 +1569,6 @@
         let settingsVisible =
             false;
 
-		function forceHideSettings() {
-
-			const settingsModal =
-				document.getElementById("settingsModal");
-
-			const settingsButton =
-				document.getElementById("settingsButton");
-
-			if (settingsModal) {
-				settingsModal.classList.remove("active");
-			}
-
-			if (settingsButton) {
-				settingsButton.classList.remove("visible");
-			}
-
-			settingsVisible = false;
-
-			draftConfig = null;
-			}
 
         /* =====================================================
            ГЛУБОКОЕ КОПИРОВАНИЕ
@@ -2271,38 +2216,28 @@
 
         function openSettings() {
 
-            draftConfig =
-                deepClone(
-                    config
-                );
+            const settingsModal = document.getElementById("settingsModal");
+            const settingsButton = document.getElementById("settingsButton");
 
+            settingsVisible = true;
+            settingsButton.hidden = false;
+            settingsButton.style.display = "flex";
+            settingsButton.classList.add("visible");
 
-            document.getElementById(
-                "pageTitleInput"
-            ).value =
+            draftConfig = deepClone(config);
+
+            document.getElementById("pageTitleInput").value =
                 draftConfig.page.title;
 
-
-            document.getElementById(
-                "pageSubtitleInput"
-            ).value =
+            document.getElementById("pageSubtitleInput").value =
                 draftConfig.page.subtitle;
-
 
             renderFoldersEditor();
 
-
-            const settingsModal =
-                document.getElementById("settingsModal");
-
             settingsModal.hidden = false;
             settingsModal.style.display = "flex";
-
-            settingsModal.classList.add(
-                "active"
-            );
+            settingsModal.classList.add("active");
         }
-
 
         /* =====================================================
            ЗАКРЫТИЕ НАСТРОЕК
@@ -2310,21 +2245,37 @@
 
         function closeSettings() {
 
-            const settingsModal =
-                document.getElementById("settingsModal");
+            const settingsModal = document.getElementById("settingsModal");
 
-            settingsModal.classList.remove(
-                "active"
-            );
+            if (settingsModal) {
+                settingsModal.classList.remove("active");
+                settingsModal.hidden = true;
+                settingsModal.style.display = "none";
+            }
 
-            settingsModal.hidden = true;
-            settingsModal.style.display = "none";
-
-
-            draftConfig =
-                null;
+            draftConfig = null;
         }
 
+        function forceHideSettings() {
+
+            const settingsModal = document.getElementById("settingsModal");
+            const settingsButton = document.getElementById("settingsButton");
+
+            if (settingsModal) {
+                settingsModal.classList.remove("active");
+                settingsModal.hidden = true;
+                settingsModal.style.display = "none";
+            }
+
+            if (settingsButton) {
+                settingsButton.classList.remove("visible");
+                settingsButton.hidden = true;
+                settingsButton.style.display = "none";
+            }
+
+            settingsVisible = false;
+            draftConfig = null;
+        }
 
         /* =====================================================
            СОЗДАНИЕ ПОЛЯ
@@ -3111,7 +3062,7 @@
              * Собираем новый HTML.
              */
 
-            let updatedHtml =
+            const updatedHtml =
 
                 currentHtml.substring(
                     0,
@@ -3129,40 +3080,32 @@
                 );
 
 
-            /*
-             * Очень важно:
-             * сохранённый HTML всегда должен начинаться
-             * с закрытым окном настроек и скрытой кнопкой.
-             */
+            /* При сохранении всегда записываем настройки закрытыми. */
             updatedHtml = updatedHtml.replace(
-                /(<div\\s+[^>]*id=["']settingsModal["'][^>]*)(>)/i,
+                /(<div\s+[^>]*id=["']settingsModal["'][^>]*)(>)/i,
                 function (match, start, end) {
                     start = start
-                        .replace(/\\sclass=["'][^"']*active[^"']*["']/i, "")
-                        .replace(/\\sstyle=["'][^"']*["']/i, "")
-                        .replace(/\\shidden(?:=["'][^"']*["'])?/i, "");
-
+                        .replace(/\sclass=["'][^"']*["']/i, "")
+                        .replace(/\sstyle=["'][^"']*["']/i, "")
+                        .replace(/\shidden(?:=["'][^"']*["'])?/i, "");
                     return start +
-                        ' class="modal-overlay" hidden style="display:none"' +
+                        ' class="modal-overlay" hidden style="display:none;"' +
                         end;
                 }
             );
 
-
             updatedHtml = updatedHtml.replace(
-                /(<button\\s+[^>]*id=["']settingsButton["'][^>]*)(>)/i,
+                /(<button\s+[^>]*id=["']settingsButton["'][^>]*)(>)/i,
                 function (match, start, end) {
                     start = start
-                        .replace(/\\sclass=["'][^"']*visible[^"']*["']/i, "")
-                        .replace(/\\sstyle=["'][^"']*["']/i, "")
-                        .replace(/\\shidden(?:=["'][^"']*["'])?/i, "");
-
+                        .replace(/\sclass=["'][^"']*["']/i, "")
+                        .replace(/\sstyle=["'][^"']*["']/i, "")
+                        .replace(/\shidden(?:=["'][^"']*["'])?/i, "");
                     return start +
-                        ' hidden style="display:none"' +
+                        ' hidden style="display:none;"' +
                         end;
                 }
             );
-
 
             return updatedHtml;
         }
@@ -3293,14 +3236,11 @@
                     false;
 
 
-                const settingsButton =
-                    document.getElementById("settingsButton");
-
-                settingsButton.classList.remove(
+                document.getElementById(
+                    "settingsButton"
+                ).classList.remove(
                     "visible"
                 );
-
-                settingsButton.hidden = true;
 
 
                 alert(
@@ -3401,18 +3341,14 @@
 
 
                     if (settingsVisible) {
+
                         button.hidden = false;
                         button.style.display = "flex";
-
-                        button.classList.add(
-                            "visible"
-                        );
+                        button.classList.add("visible");
 
                     } else {
-                        button.classList.remove(
-                            "visible"
-                        );
 
+                        button.classList.remove("visible");
                         button.hidden = true;
                         button.style.display = "none";
 
@@ -3580,34 +3516,25 @@
          * При каждом открытии страницы настройки
          * принудительно скрываются.
          */
-
-        settingsVisible =
-            false;
-
-
-        document.getElementById(
-            "settingsButton"
-        ).classList.remove(
-            "visible"
-        );
-
+        forceHideSettings();
 
         /*
          * Загружаем встроенный JSON.
          */
-
-        config =
-            loadEmbeddedConfig();
-
+        config = loadEmbeddedConfig();
 
         /*
          * Рисуем страницу.
          */
-		forceHideSettings();
         renderPage();
+
+        /*
+         * Дополнительная страховка после отрисовки.
+         */
+        forceHideSettings();
 
     </script>
 
-</body>
 
-</html>
+
+</body></html>
