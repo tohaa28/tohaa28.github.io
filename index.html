@@ -1,0 +1,3504 @@
+<!DOCTYPE html>
+<html lang="ru"><head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Составить заявку для</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+        }
+
+
+        body {
+
+            min-height: 100vh;
+
+            font-family:
+                Inter,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
+
+            color: #ffffff;
+
+            background:
+
+                radial-gradient(
+                    circle at 20% 20%,
+                    rgba(88, 101, 242, 0.28),
+                    transparent 32%
+                ),
+
+                radial-gradient(
+                    circle at 80% 80%,
+                    rgba(0, 210, 255, 0.20),
+                    transparent 32%
+                ),
+
+                linear-gradient(
+                    135deg,
+                    #0a0d18 0%,
+                    #101426 50%,
+                    #080b13 100%
+                );
+
+            overflow-x: hidden;
+        }
+
+
+        body::before {
+
+            content: "";
+
+            position: fixed;
+
+            inset: 0;
+
+            pointer-events: none;
+
+            background:
+
+                linear-gradient(
+                    rgba(255, 255, 255, 0.018) 1px,
+                    transparent 1px
+                ),
+
+                linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0.018) 1px,
+                    transparent 1px
+                );
+
+            background-size: 40px 40px;
+
+            mask-image:
+                linear-gradient(
+                    to bottom,
+                    black,
+                    transparent 90%
+                );
+
+            -webkit-mask-image:
+                linear-gradient(
+                    to bottom,
+                    black,
+                    transparent 90%
+                );
+        }
+
+
+        /* =====================================================
+           ОСНОВНАЯ СТРАНИЦА
+           ===================================================== */
+
+        .page {
+
+            width: 100%;
+
+            max-width: 1200px;
+
+            margin: 0 auto;
+
+            padding:
+                70px 30px 50px;
+        }
+
+
+        .header {
+
+            text-align: center;
+
+            margin-bottom: 55px;
+        }
+
+
+        .header h1 {
+
+            margin: 0;
+
+            font-size:
+                clamp(36px, 5vw, 62px);
+
+            font-weight: 800;
+
+            letter-spacing: -2px;
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    #ffffff,
+                    #aeb8ff
+                );
+
+            -webkit-background-clip: text;
+
+            background-clip: text;
+
+            color: transparent;
+
+            text-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.35);
+        }
+
+
+        .header p {
+
+            margin:
+                16px 0 0;
+
+            font-size: 18px;
+
+            color:
+                rgba(255, 255, 255, 0.58);
+
+            letter-spacing: 0.2px;
+        }
+
+
+        /* =====================================================
+           ПАПКИ
+           ===================================================== */
+
+        .folders {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(300px, 1fr)
+                );
+
+            gap: 28px;
+        }
+
+
+        .folder {
+
+            position: relative;
+
+            min-height: 250px;
+
+            padding: 34px;
+
+            border-radius: 28px;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.09);
+
+            background:
+
+                linear-gradient(
+                    145deg,
+                    rgba(255, 255, 255, 0.10),
+                    rgba(255, 255, 255, 0.035)
+                );
+
+            backdrop-filter: blur(20px);
+
+            -webkit-backdrop-filter: blur(20px);
+
+            box-shadow:
+
+                0 30px 80px
+                rgba(0, 0, 0, 0.35),
+
+                inset 0 1px 0
+                rgba(255, 255, 255, 0.08);
+
+            cursor: pointer;
+
+            transition:
+
+                transform 0.25s ease,
+                border-color 0.25s ease,
+                box-shadow 0.25s ease;
+        }
+
+
+        .folder:hover {
+
+            transform:
+                translateY(-8px);
+
+            border-color:
+                rgba(255, 255, 255, 0.18);
+
+            box-shadow:
+
+                0 40px 100px
+                rgba(0, 0, 0, 0.45),
+
+                inset 0 1px 0
+                rgba(255, 255, 255, 0.12);
+        }
+
+
+        .folder:active {
+
+            transform:
+                translateY(-4px);
+        }
+
+
+        .folder-icon {
+
+            width: 76px;
+
+            height: 76px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-size: 42px;
+
+            border-radius: 22px;
+
+            background:
+                rgba(255, 255, 255, 0.08);
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.10);
+
+            box-shadow:
+
+                inset 0 1px 0
+                rgba(255, 255, 255, 0.08);
+        }
+
+
+        .folder h2 {
+
+            margin:
+                25px 0 9px;
+
+            font-size: 27px;
+
+            font-weight: 700;
+
+            letter-spacing: -0.5px;
+        }
+
+
+        .folder p {
+
+            margin: 0;
+
+            line-height: 1.55;
+
+            font-size: 15px;
+
+            color:
+                rgba(255, 255, 255, 0.53);
+        }
+
+
+        .folder-arrow {
+
+            position: absolute;
+
+            right: 28px;
+
+            bottom: 28px;
+
+            width: 38px;
+
+            height: 38px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border-radius: 50%;
+
+            background:
+                rgba(255, 255, 255, 0.07);
+
+            color:
+                rgba(255, 255, 255, 0.65);
+
+            font-size: 18px;
+
+            transition:
+
+                transform 0.25s ease,
+                background 0.25s ease;
+        }
+
+
+        .folder:hover .folder-arrow {
+
+            transform:
+                translateX(4px);
+
+            background:
+                rgba(255, 255, 255, 0.13);
+        }
+
+
+        /* =====================================================
+           МОДАЛЬНЫЕ ОКНА
+           ===================================================== */
+
+        .modal-overlay {
+
+            position: fixed;
+
+            inset: 0;
+
+            display: none;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 20px;
+
+            background:
+                rgba(0, 0, 0, 0.68);
+
+            backdrop-filter: blur(10px);
+
+            -webkit-backdrop-filter: blur(10px);
+
+            z-index: 1000;
+        }
+
+
+        .modal-overlay.active {
+
+            display: flex;
+        }
+
+
+        .modal {
+
+            width:
+                min(760px, 100%);
+
+            max-height: 90vh;
+
+            overflow-y: auto;
+
+            padding: 30px;
+
+            border-radius: 28px;
+
+            background:
+
+                linear-gradient(
+                    145deg,
+                    rgba(25, 30, 50, 0.97),
+                    rgba(12, 15, 27, 0.98)
+                );
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.12);
+
+            box-shadow:
+                0 40px 120px
+                rgba(0, 0, 0, 0.65);
+
+            animation:
+                modalIn 0.22s ease;
+        }
+
+
+        @keyframes modalIn {
+
+            from {
+
+                opacity: 0;
+
+                transform:
+                    translateY(15px)
+                    scale(0.98);
+            }
+
+
+            to {
+
+                opacity: 1;
+
+                transform:
+                    translateY(0)
+                    scale(1);
+            }
+        }
+
+
+        .modal-header {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 20px;
+
+            margin-bottom: 25px;
+        }
+
+
+        .modal-header h2 {
+
+            margin: 0;
+
+            font-size: 27px;
+        }
+
+
+        .close-button {
+
+            width: 40px;
+
+            height: 40px;
+
+            border: 0;
+
+            border-radius: 50%;
+
+            background:
+                rgba(255, 255, 255, 0.07);
+
+            color: #ffffff;
+
+            font-size: 23px;
+
+            cursor: pointer;
+
+            transition:
+
+                background 0.2s ease,
+                transform 0.2s ease;
+        }
+
+
+        .close-button:hover {
+
+            background:
+                rgba(255, 255, 255, 0.13);
+
+            transform:
+                rotate(5deg);
+        }
+
+
+        /* =====================================================
+           ССЫЛКИ
+           ===================================================== */
+
+        .links {
+
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 12px;
+        }
+
+
+        .link-item {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 16px;
+
+            padding:
+                17px 18px;
+
+            border-radius: 17px;
+
+            text-decoration: none;
+
+            color: #ffffff;
+
+            background:
+                rgba(255, 255, 255, 0.055);
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.07);
+
+            transition:
+
+                background 0.2s ease,
+                transform 0.2s ease,
+                border-color 0.2s ease;
+        }
+
+
+        .link-item:hover {
+
+            transform:
+                translateX(4px);
+
+            background:
+                rgba(255, 255, 255, 0.10);
+
+            border-color:
+                rgba(255, 255, 255, 0.13);
+        }
+
+
+        .link-icon {
+
+            width: 48px;
+
+            height: 48px;
+
+            flex-shrink: 0;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border-radius: 14px;
+
+            background:
+                rgba(255, 255, 255, 0.08);
+
+            font-size: 25px;
+        }
+
+
+        .link-info {
+
+            min-width: 0;
+
+            flex: 1;
+        }
+
+
+        .link-title {
+
+            font-size: 17px;
+
+            font-weight: 650;
+
+            margin-bottom: 5px;
+        }
+
+
+        .link-description {
+
+            font-size: 13px;
+
+            color:
+                rgba(255, 255, 255, 0.47);
+
+            white-space: nowrap;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+        }
+
+
+        .link-external {
+
+            color:
+                rgba(255, 255, 255, 0.35);
+
+            font-size: 18px;
+        }
+
+
+        .empty-links {
+
+            padding: 30px;
+
+            text-align: center;
+
+            color:
+                rgba(255, 255, 255, 0.35);
+
+            font-size: 14px;
+        }
+
+
+        /* =====================================================
+           КНОПКА НАСТРОЕК
+
+           ВАЖНО:
+           по умолчанию display:none.
+           ===================================================== */
+
+        #settingsButton {
+
+            position: fixed;
+
+            right: 22px;
+
+            bottom: 22px;
+
+            width: 52px;
+
+            height: 52px;
+
+            display: none;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.12);
+
+            border-radius: 17px;
+
+            background:
+                rgba(20, 24, 40, 0.88);
+
+            color: #ffffff;
+
+            font-size: 24px;
+
+            cursor: pointer;
+
+            backdrop-filter: blur(15px);
+
+            -webkit-backdrop-filter: blur(15px);
+
+            box-shadow:
+                0 15px 40px
+                rgba(0, 0, 0, 0.4);
+
+            z-index: 900;
+
+            transition:
+
+                transform 0.2s ease,
+                background 0.2s ease;
+        }
+
+
+        #settingsButton.visible {
+
+            display: flex;
+        }
+
+
+        #settingsButton:hover {
+
+            transform:
+                rotate(25deg);
+
+            background:
+                rgba(35, 42, 68, 0.95);
+        }
+
+
+        /* =====================================================
+           НАСТРОЙКИ
+           ===================================================== */
+
+        .settings-section {
+
+            margin-bottom: 30px;
+        }
+
+
+        .settings-section-title {
+
+            margin-bottom: 15px;
+
+            font-size: 17px;
+
+            font-weight: 700;
+
+            color:
+                rgba(255, 255, 255, 0.85);
+        }
+
+
+        .field {
+
+            margin-bottom: 14px;
+        }
+
+
+        .field label {
+
+            display: block;
+
+            margin-bottom: 7px;
+
+            font-size: 13px;
+
+            color:
+                rgba(255, 255, 255, 0.50);
+        }
+
+
+        .field input,
+        .field textarea {
+
+            width: 100%;
+
+            padding:
+                12px 14px;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.10);
+
+            border-radius: 12px;
+
+            outline: none;
+
+            background:
+                rgba(0, 0, 0, 0.25);
+
+            color: #ffffff;
+
+            font-family: inherit;
+
+            font-size: 14px;
+
+            transition:
+
+                border-color 0.2s ease,
+                background 0.2s ease;
+        }
+
+
+        .field textarea {
+
+            min-height: 75px;
+
+            resize: vertical;
+        }
+
+
+        .field input:focus,
+        .field textarea:focus {
+
+            border-color:
+                rgba(140, 155, 255, 0.55);
+
+            background:
+                rgba(0, 0, 0, 0.35);
+        }
+
+
+        .folder-editor {
+
+            margin-bottom: 22px;
+
+            padding: 20px;
+
+            border-radius: 20px;
+
+            background:
+                rgba(255, 255, 255, 0.045);
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.07);
+        }
+
+
+        .folder-editor-header {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 15px;
+
+            margin-bottom: 17px;
+        }
+
+
+        .folder-editor-title {
+
+            font-size: 18px;
+
+            font-weight: 700;
+        }
+
+
+        .link-editor {
+
+            position: relative;
+
+            padding: 16px;
+
+            margin-top: 12px;
+
+            border-radius: 15px;
+
+            background:
+                rgba(0, 0, 0, 0.18);
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.06);
+        }
+
+
+        .link-editor-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                80px 1fr;
+
+            gap: 12px;
+        }
+
+
+        .link-editor-grid
+        .field:last-child {
+
+            grid-column:
+                1 / -1;
+        }
+
+
+        .link-editor-icon {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-size: 36px;
+
+            min-height: 90px;
+
+            border-radius: 14px;
+
+            background:
+                rgba(255, 255, 255, 0.05);
+        }
+
+
+        /* =====================================================
+           КНОПКИ
+           ===================================================== */
+
+        .button {
+
+            border: 0;
+
+            border-radius: 12px;
+
+            padding:
+                11px 16px;
+
+            font-family: inherit;
+
+            font-size: 14px;
+
+            font-weight: 650;
+
+            cursor: pointer;
+
+            transition:
+                transform 0.2s ease,
+                background 0.2s ease;
+        }
+
+
+        .button:hover {
+
+            transform:
+                translateY(-1px);
+        }
+
+
+        .button-primary {
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    #6875f5,
+                    #5965d9
+                );
+
+            color: #ffffff;
+
+            box-shadow:
+                0 10px 25px
+                rgba(92, 105, 225, 0.25);
+        }
+
+
+        .button-secondary {
+
+            background:
+                rgba(255, 255, 255, 0.08);
+
+            color: #ffffff;
+        }
+
+
+        .button-danger {
+
+            background:
+                rgba(255, 80, 100, 0.12);
+
+            color:
+                #ff9ca9;
+        }
+
+
+        .button-small {
+
+            padding:
+                8px 11px;
+
+            font-size: 12px;
+        }
+
+
+        .settings-actions {
+
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+            padding-top: 10px;
+
+            border-top:
+                1px solid
+                rgba(255, 255, 255, 0.07);
+        }
+
+
+        .save-info {
+
+            margin-bottom: 20px;
+
+            padding:
+                14px 16px;
+
+            border-radius: 13px;
+
+            background:
+                rgba(100, 120, 255, 0.09);
+
+            border:
+                1px solid
+                rgba(100, 120, 255, 0.13);
+
+            color:
+                rgba(255, 255, 255, 0.65);
+
+            font-size: 13px;
+
+            line-height: 1.5;
+        }
+
+
+        /* =====================================================
+           АДАПТИВНОСТЬ
+           ===================================================== */
+
+        @media (max-width: 650px) {
+
+            .page {
+
+                padding:
+                    40px 16px 35px;
+            }
+
+
+            .header {
+
+                margin-bottom: 30px;
+            }
+
+
+            .folder {
+
+                min-height: 220px;
+
+                padding: 25px;
+            }
+
+
+            .modal {
+
+                padding: 20px;
+
+                border-radius: 20px;
+            }
+
+
+            .link-editor-grid {
+
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .link-editor-grid
+            .field:last-child {
+
+                grid-column:
+                    auto;
+            }
+
+
+            .link-editor-icon {
+
+                min-height: 65px;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =====================================================
+         ОСНОВНАЯ СТРАНИЦА
+         ===================================================== -->
+
+    <div class="page">
+
+        <header class="header">
+
+            <h1 id="pageTitle">Составить заявку для</h1>
+
+            <p id="pageSubtitle">Выберите  папку службы</p>
+
+        </header>
+
+
+        <main id="foldersContainer" class="folders"><div class="folder" data-index="0"><div class="folder-icon">📁</div><h2>Служба ИТ</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="1"><div class="folder-icon">📁</div><h2>Служба 1С</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="2"><div class="folder-icon">📁</div><h2>Техническая служба</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="3"><div class="folder-icon">📁</div><h2>ЦОП (Отдел качества)</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="4"><div class="folder-icon">📁</div><h2>Служба логистики</h2><p>Описание папки</p><div class="folder-arrow">→</div></div></main>
+
+    </div>
+
+
+    <!-- =====================================================
+         ВСТРОЕННЫЙ JSON
+
+         Этот блок изменяется при сохранении.
+         ===================================================== -->
+
+    <script id="embeddedConfig" type="application/json">
+{
+    "page": {
+        "title": "Составить заявку для",
+        "subtitle": "Выберите  папку службы"
+    },
+    "folders": [
+        {
+            "id": "folder_mtso322g_3bz65y",
+            "title": "Служба ИТ",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Проблема с компьютером",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=301&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttq3qwz_lfdqys",
+            "title": "Служба 1С",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Проблема с 1С",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=301&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttq99ce_xyzcet",
+            "title": "Техническая служба",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Проблема с туалетом",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttqae71_ebnoss",
+            "title": "ЦОП (Отдел качества)",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Проблема с заказом",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttqbz7y_omq43b",
+            "title": "Служба логистики",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Вопрос по доставке",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        },
+        {
+            "id": "folder_mttqdlqn_j3c37u",
+            "title": "Служба Print-help",
+            "icon": "📁",
+            "description": "Описание папки",
+            "links": [
+                {
+                    "title": "Вопрос по нанесению",
+                    "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=312&requestServiceId=-1",
+                    "description": "",
+                    "icon": "🔗"
+                }
+            ]
+        }
+    ]
+}
+</script>
+
+
+    <!-- =====================================================
+         КНОПКА НАСТРОЕК
+
+         Изначально полностью скрыта.
+         Появляется только после Alt + N.
+         ===================================================== -->
+
+    <button id="settingsButton" type="button" title="Настройки" class="visible">
+        ⚙️
+    </button>
+
+
+    <!-- =====================================================
+         МОДАЛЬНОЕ ОКНО ПАПКИ
+         ===================================================== -->
+
+    <div id="folderModal" class="modal-overlay">
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <h2 id="folderModalTitle">📁 Служба ИТ</h2>
+
+                <button id="folderModalClose" class="close-button" type="button">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div id="linksContainer" class="links"><a class="link-item" href="https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&amp;from=Templates&amp;module=incident&amp;reqTemplate=301&amp;requestServiceId=-1" target="_blank" rel="noopener noreferrer"><div class="link-icon">🔗</div><div class="link-info"><div class="link-title">Проблема с компьютером</div><div class="link-description"></div></div><div class="link-external">↗</div></a></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         МОДАЛЬНОЕ ОКНО НАСТРОЕК
+         ===================================================== -->
+
+    <div id="settingsModal" class="modal-overlay active">
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <h2>
+                    Настройки
+                </h2>
+
+                <button id="settingsModalClose" class="close-button" type="button">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="save-info">
+
+                Изменения сохраняются непосредственно
+                в HTML-файл.
+
+                После нажатия
+                <b>«Сохранить HTML»</b>
+                браузер скачает новый
+                <b>index.html</b>.
+
+                Замените им старый файл.
+
+            </div>
+
+
+            <!-- =================================================
+                 ОСНОВНЫЕ НАСТРОЙКИ
+                 ================================================= -->
+
+            <div class="settings-section">
+
+                <div class="settings-section-title">
+                    Основные настройки
+                </div>
+
+
+                <div class="field">
+
+                    <label for="pageTitleInput">
+                        Заголовок страницы
+                    </label>
+
+                    <input id="pageTitleInput" type="text">
+
+                </div>
+
+
+                <div class="field">
+
+                    <label for="pageSubtitleInput">
+                        Подзаголовок
+                    </label>
+
+                    <input id="pageSubtitleInput" type="text">
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 ПАПКИ
+                 ================================================= -->
+
+            <div class="settings-section">
+
+                <div class="settings-section-title">
+                    Папки
+                </div>
+
+
+                <div id="foldersEditor"><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 1</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 2</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 3</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 4</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 5</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div><div class="folder-editor"><div class="folder-editor-header"><div class="folder-editor-title">Папка 6</div><button type="button" class="button button-danger button-small">Удалить папку</button></div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div><div style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; font-weight: 700;">Ссылки</div><div class="link-editor"><div class="link-editor-grid"><div class="link-editor-icon">🔗</div><div class="field"><label>Название</label><input type="text"></div><div class="field"><label>Иконка</label><input type="text"></div><div class="field"><label>URL</label><input type="text"></div><div class="field"><label>Описание</label><textarea></textarea></div></div><button type="button" class="button button-danger button-small" style="margin-top: 10px;">Удалить ссылку</button></div><button type="button" class="button button-secondary button-small" style="margin-top: 12px;">+ Добавить ссылку</button></div></div>
+
+            </div>
+
+
+            <!-- =================================================
+                 КНОПКИ
+                 ================================================= -->
+
+            <div class="settings-actions">
+
+                <button id="addFolderButton" class="button button-secondary" type="button">
+                    + Добавить папку
+                </button>
+
+
+                <button id="resetButton" class="button button-danger" type="button">
+                    Сбросить
+                </button>
+
+
+                <div style="flex: 1;">
+                </div>
+
+
+                <button id="cancelSettingsButton" class="button button-secondary" type="button">
+                    Отмена
+                </button>
+
+
+                <button id="saveButton" class="button button-primary" type="button">
+                    💾 Сохранить HTML
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         JAVASCRIPT
+         ===================================================== -->
+
+    <script>
+
+        "use strict";
+
+
+        /* =====================================================
+           КОНСТАНТЫ
+           ===================================================== */
+
+        const CONFIG_ELEMENT_ID =
+            "embeddedConfig";
+
+
+        /* =====================================================
+           КОНФИГУРАЦИЯ ПО УМОЛЧАНИЮ
+           ===================================================== */
+
+        const DEFAULT_CONFIG = {
+
+            page: {
+
+                title:
+                    "Мои файлы",
+
+                subtitle:
+                    "Выберите нужную папку"
+            },
+
+
+            folders: [
+
+                {
+
+                    id:
+                        "documents",
+
+                    title:
+                        "Документы",
+
+                    icon:
+                        "📁",
+
+                    description:
+                        "Рабочие документы и файлы",
+
+                    links: [
+
+                        {
+
+                            title:
+                                "Google",
+
+                            url:
+                                "https://www.google.com/",
+
+                            description:
+                                "Поиск Google",
+
+                            icon:
+                                "🔎"
+                        },
+
+
+                        {
+
+                            title:
+                                "YouTube",
+
+                            url:
+                                "https://www.youtube.com/",
+
+                            description:
+                                "Видео и музыка",
+
+                            icon:
+                                "▶️"
+                        },
+
+
+                        {
+
+                            title:
+                                "GitHub",
+
+                            url:
+                                "https://github.com/",
+
+                            description:
+                                "Репозитории и проекты",
+
+                            icon:
+                                "💻"
+                        }
+
+                    ]
+                },
+
+
+                {
+
+                    id:
+                        "useful",
+
+                    title:
+                        "Полезные ссылки",
+
+                    icon:
+                        "🚀",
+
+                    description:
+                        "Сервисы, сайты и инструменты",
+
+                    links: [
+
+                        {
+
+                            title:
+                                "ChatGPT",
+
+                            url:
+                                "https://chatgpt.com/",
+
+                            description:
+                                "AI-помощник",
+
+                            icon:
+                                "🤖"
+                        },
+
+
+                        {
+
+                            title:
+                                "Wikipedia",
+
+                            url:
+                                "https://www.wikipedia.org/",
+
+                            description:
+                                "Энциклопедия",
+
+                            icon:
+                                "📚"
+                        },
+
+
+                        {
+
+                            title:
+                                "Stack Overflow",
+
+                            url:
+                                "https://stackoverflow.com/",
+
+                            description:
+                                "Вопросы и ответы для разработчиков",
+
+                            icon:
+                                "🧑‍💻"
+                        }
+
+                    ]
+                }
+
+            ]
+        };
+
+
+        /* =====================================================
+           ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+           ===================================================== */
+
+        let config =
+            null;
+
+
+        let draftConfig =
+            null;
+
+
+        let settingsVisible =
+            false;
+
+
+        /* =====================================================
+           ГЛУБОКОЕ КОПИРОВАНИЕ
+           ===================================================== */
+
+        function deepClone(object) {
+
+            return JSON.parse(
+                JSON.stringify(object)
+            );
+        }
+
+
+        /* =====================================================
+           СОЗДАНИЕ ID
+           ===================================================== */
+
+        function createId(prefix) {
+
+            return (
+
+                prefix +
+
+                "_" +
+
+                Date.now().toString(36) +
+
+                "_" +
+
+                Math.random()
+                    .toString(36)
+                    .substring(2, 8)
+            );
+        }
+
+
+        /* =====================================================
+           ЗАГРУЗКА JSON
+           ===================================================== */
+
+        function loadEmbeddedConfig() {
+
+            const element =
+                document.getElementById(
+                    CONFIG_ELEMENT_ID
+                );
+
+
+            if (!element) {
+
+                console.warn(
+                    "Блок конфигурации не найден."
+                );
+
+                return deepClone(
+                    DEFAULT_CONFIG
+                );
+            }
+
+
+            try {
+
+                const text =
+                    element.textContent.trim();
+
+
+                if (!text) {
+
+                    throw new Error(
+                        "JSON пустой."
+                    );
+                }
+
+
+                const parsed =
+                    JSON.parse(text);
+
+
+                return normalizeConfig(
+                    parsed
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Ошибка чтения JSON:",
+                    error
+                );
+
+
+                return deepClone(
+                    DEFAULT_CONFIG
+                );
+            }
+        }
+
+
+        /* =====================================================
+           НОРМАЛИЗАЦИЯ
+           ===================================================== */
+
+        function normalizeConfig(value) {
+
+            const result = {
+
+                page: {
+
+                    title:
+
+                        value &&
+                        value.page &&
+                        value.page.title != null
+
+                            ? String(
+                                value.page.title
+                            )
+
+                            : DEFAULT_CONFIG.page.title,
+
+
+                    subtitle:
+
+                        value &&
+                        value.page &&
+                        value.page.subtitle != null
+
+                            ? String(
+                                value.page.subtitle
+                            )
+
+                            : DEFAULT_CONFIG.page.subtitle
+                },
+
+
+                folders: []
+            };
+
+
+            if (
+
+                !value ||
+
+                !Array.isArray(
+                    value.folders
+                )
+
+            ) {
+
+                return result;
+            }
+
+
+            value.folders.forEach(
+
+                function (
+                    folder,
+                    folderIndex
+                ) {
+
+                    const newFolder = {
+
+                        id:
+
+                            folder.id ||
+
+                            createId(
+                                "folder"
+                            ),
+
+
+                        title:
+
+                            folder.title != null
+
+                                ? String(
+                                    folder.title
+                                )
+
+                                : "Папка " +
+                                  (
+                                      folderIndex + 1
+                                  ),
+
+
+                        icon:
+
+                            folder.icon != null
+
+                                ? String(
+                                    folder.icon
+                                )
+
+                                : "📁",
+
+
+                        description:
+
+                            folder.description != null
+
+                                ? String(
+                                    folder.description
+                                )
+
+                                : "",
+
+
+                        links: []
+                    };
+
+
+                    if (
+                        Array.isArray(
+                            folder.links
+                        )
+                    ) {
+
+                        folder.links.forEach(
+
+                            function (link) {
+
+                                newFolder.links.push({
+
+                                    title:
+
+                                        link.title != null
+
+                                            ? String(
+                                                link.title
+                                            )
+
+                                            : "Ссылка",
+
+
+                                    url:
+
+                                        link.url != null
+
+                                            ? String(
+                                                link.url
+                                            )
+
+                                            : "#",
+
+
+                                    description:
+
+                                        link.description != null
+
+                                            ? String(
+                                                link.description
+                                            )
+
+                                            : "",
+
+
+                                    icon:
+
+                                        link.icon != null
+
+                                            ? String(
+                                                link.icon
+                                            )
+
+                                            : "🔗"
+
+                                });
+
+                            }
+                        );
+                    }
+
+
+                    result.folders.push(
+                        newFolder
+                    );
+
+                }
+            );
+
+
+            return result;
+        }
+
+
+        /* =====================================================
+           ЭКРАНИРОВАНИЕ HTML
+           ===================================================== */
+
+        function escapeHtml(value) {
+
+            return String(
+                value == null
+                    ? ""
+                    : value
+            )
+
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
+        }
+
+
+        /* =====================================================
+           ОТРИСОВКА СТРАНИЦЫ
+           ===================================================== */
+
+        function renderPage() {
+
+            document.title =
+                config.page.title ||
+                "Мои файлы";
+
+
+            document.getElementById(
+                "pageTitle"
+            ).textContent =
+                config.page.title;
+
+
+            document.getElementById(
+                "pageSubtitle"
+            ).textContent =
+                config.page.subtitle;
+
+
+            const container =
+                document.getElementById(
+                    "foldersContainer"
+                );
+
+
+            container.innerHTML =
+                "";
+
+
+            if (
+
+                !config.folders ||
+
+                config.folders.length === 0
+
+            ) {
+
+                const empty =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                empty.style.gridColumn =
+                    "1 / -1";
+
+
+                empty.style.textAlign =
+                    "center";
+
+
+                empty.style.padding =
+                    "60px 20px";
+
+
+                empty.style.color =
+                    "rgba(255,255,255,.4)";
+
+
+                empty.textContent =
+                    "Папок пока нет";
+
+
+                container.appendChild(
+                    empty
+                );
+
+
+                return;
+            }
+
+
+            config.folders.forEach(
+
+                function (
+                    folder,
+                    index
+                ) {
+
+                    const element =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    element.className =
+                        "folder";
+
+
+                    element.dataset.index =
+                        String(index);
+
+
+                    element.innerHTML =
+
+                        '<div class="folder-icon">' +
+
+                            escapeHtml(
+                                folder.icon
+                            ) +
+
+                        '</div>' +
+
+                        '<h2>' +
+
+                            escapeHtml(
+                                folder.title
+                            ) +
+
+                        '</h2>' +
+
+                        '<p>' +
+
+                            escapeHtml(
+                                folder.description
+                            ) +
+
+                        '</p>' +
+
+                        '<div class="folder-arrow">' +
+
+                            '→' +
+
+                        '</div>';
+
+
+                    element.addEventListener(
+
+                        "click",
+
+                        function () {
+
+                            openFolder(
+                                index
+                            );
+                        }
+                    );
+
+
+                    container.appendChild(
+                        element
+                    );
+
+                }
+            );
+        }
+
+
+        /* =====================================================
+           ОТКРЫТИЕ ПАПКИ
+           ===================================================== */
+
+        function openFolder(index) {
+
+            const folder =
+                config.folders[index];
+
+
+            if (!folder) {
+
+                return;
+            }
+
+
+            document.getElementById(
+                "folderModalTitle"
+            ).textContent =
+
+                (
+                    folder.icon || ""
+                ) +
+
+                " " +
+
+                (
+                    folder.title || ""
+                );
+
+
+            const container =
+                document.getElementById(
+                    "linksContainer"
+                );
+
+
+            container.innerHTML =
+                "";
+
+
+            if (
+
+                !Array.isArray(
+                    folder.links
+                ) ||
+
+                folder.links.length === 0
+
+            ) {
+
+                const empty =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                empty.className =
+                    "empty-links";
+
+
+                empty.textContent =
+                    "В этой папке пока нет ссылок.";
+
+
+                container.appendChild(
+                    empty
+                );
+
+            } else {
+
+                folder.links.forEach(
+
+                    function (link) {
+
+                        const a =
+                            document.createElement(
+                                "a"
+                            );
+
+
+                        a.className =
+                            "link-item";
+
+
+                        a.href =
+                            link.url ||
+                            "#";
+
+
+                        a.target =
+                            "_blank";
+
+
+                        a.rel =
+                            "noopener noreferrer";
+
+
+                        a.innerHTML =
+
+                            '<div class="link-icon">' +
+
+                                escapeHtml(
+                                    link.icon
+                                ) +
+
+                            '</div>' +
+
+                            '<div class="link-info">' +
+
+                                '<div class="link-title">' +
+
+                                    escapeHtml(
+                                        link.title
+                                    ) +
+
+                                '</div>' +
+
+                                '<div class="link-description">' +
+
+                                    escapeHtml(
+                                        link.description
+                                    ) +
+
+                                '</div>' +
+
+                            '</div>' +
+
+                            '<div class="link-external">' +
+
+                                '↗' +
+
+                            '</div>';
+
+
+                        container.appendChild(
+                            a
+                        );
+
+                    }
+                );
+            }
+
+
+            document.getElementById(
+                "folderModal"
+            ).classList.add(
+                "active"
+            );
+        }
+
+
+        /* =====================================================
+           ЗАКРЫТИЕ ПАПКИ
+           ===================================================== */
+
+        function closeFolderModal() {
+
+            document.getElementById(
+                "folderModal"
+            ).classList.remove(
+                "active"
+            );
+        }
+
+
+        /* =====================================================
+           ОТКРЫТИЕ НАСТРОЕК
+           ===================================================== */
+
+        function openSettings() {
+
+            draftConfig =
+                deepClone(
+                    config
+                );
+
+
+            document.getElementById(
+                "pageTitleInput"
+            ).value =
+                draftConfig.page.title;
+
+
+            document.getElementById(
+                "pageSubtitleInput"
+            ).value =
+                draftConfig.page.subtitle;
+
+
+            renderFoldersEditor();
+
+
+            document.getElementById(
+                "settingsModal"
+            ).classList.add(
+                "active"
+            );
+        }
+
+
+        /* =====================================================
+           ЗАКРЫТИЕ НАСТРОЕК
+           ===================================================== */
+
+        function closeSettings() {
+
+            document.getElementById(
+                "settingsModal"
+            ).classList.remove(
+                "active"
+            );
+
+
+            draftConfig =
+                null;
+        }
+
+
+        /* =====================================================
+           СОЗДАНИЕ ПОЛЯ
+           ===================================================== */
+
+        function createField(
+            labelText,
+            value,
+            onChange,
+            textarea
+        ) {
+
+            const wrapper =
+                document.createElement(
+                    "div"
+                );
+
+
+            wrapper.className =
+                "field";
+
+
+            const label =
+                document.createElement(
+                    "label"
+                );
+
+
+            label.textContent =
+                labelText;
+
+
+            let input;
+
+
+            if (textarea) {
+
+                input =
+                    document.createElement(
+                        "textarea"
+                    );
+
+            } else {
+
+                input =
+                    document.createElement(
+                        "input"
+                    );
+
+
+                input.type =
+                    "text";
+            }
+
+
+            input.value =
+                value == null
+                    ? ""
+                    : value;
+
+
+            input.addEventListener(
+
+                "input",
+
+                function () {
+
+                    onChange(
+                        input.value
+                    );
+                }
+            );
+
+
+            wrapper.appendChild(
+                label
+            );
+
+
+            wrapper.appendChild(
+                input
+            );
+
+
+            return wrapper;
+        }
+
+
+        /* =====================================================
+           РЕДАКТОР ССЫЛКИ
+           ===================================================== */
+
+        function createLinkEditor(
+            folder,
+            link,
+            linkIndex
+        ) {
+
+            const wrapper =
+                document.createElement(
+                    "div"
+                );
+
+
+            wrapper.className =
+                "link-editor";
+
+
+            const grid =
+                document.createElement(
+                    "div"
+                );
+
+
+            grid.className =
+                "link-editor-grid";
+
+
+            const iconPreview =
+                document.createElement(
+                    "div"
+                );
+
+
+            iconPreview.className =
+                "link-editor-icon";
+
+
+            iconPreview.textContent =
+                link.icon ||
+                "🔗";
+
+
+            const titleField =
+                createField(
+
+                    "Название",
+
+                    link.title,
+
+                    function (value) {
+
+                        link.title =
+                            value;
+                    }
+                );
+
+
+            const iconField =
+                createField(
+
+                    "Иконка",
+
+                    link.icon,
+
+                    function (value) {
+
+                        link.icon =
+                            value;
+
+
+                        iconPreview.textContent =
+                            value ||
+                            "🔗";
+                    }
+                );
+
+
+            const urlField =
+                createField(
+
+                    "URL",
+
+                    link.url,
+
+                    function (value) {
+
+                        link.url =
+                            value;
+                    }
+                );
+
+
+            const descriptionField =
+                createField(
+
+                    "Описание",
+
+                    link.description,
+
+                    function (value) {
+
+                        link.description =
+                            value;
+                    },
+
+                    true
+                );
+
+
+            const deleteButton =
+                document.createElement(
+                    "button"
+                );
+
+
+            deleteButton.type =
+                "button";
+
+
+            deleteButton.className =
+                "button button-danger button-small";
+
+
+            deleteButton.style.marginTop =
+                "10px";
+
+
+            deleteButton.textContent =
+                "Удалить ссылку";
+
+
+            deleteButton.addEventListener(
+
+                "click",
+
+                function () {
+
+                    folder.links.splice(
+                        linkIndex,
+                        1
+                    );
+
+
+                    renderFoldersEditor();
+                }
+            );
+
+
+            grid.appendChild(
+                iconPreview
+            );
+
+
+            grid.appendChild(
+                titleField
+            );
+
+
+            grid.appendChild(
+                iconField
+            );
+
+
+            grid.appendChild(
+                urlField
+            );
+
+
+            grid.appendChild(
+                descriptionField
+            );
+
+
+            wrapper.appendChild(
+                grid
+            );
+
+
+            wrapper.appendChild(
+                deleteButton
+            );
+
+
+            return wrapper;
+        }
+
+
+        /* =====================================================
+           РЕДАКТОР ПАПОК
+           ===================================================== */
+
+        function renderFoldersEditor() {
+
+            const container =
+                document.getElementById(
+                    "foldersEditor"
+                );
+
+
+            container.innerHTML =
+                "";
+
+
+            if (
+
+                !draftConfig ||
+
+                !Array.isArray(
+                    draftConfig.folders
+                )
+
+            ) {
+
+                return;
+            }
+
+
+            draftConfig.folders.forEach(
+
+                function (
+                    folder,
+                    folderIndex
+                ) {
+
+                    const editor =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    editor.className =
+                        "folder-editor";
+
+
+                    /* HEADER */
+
+                    const header =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    header.className =
+                        "folder-editor-header";
+
+
+                    const folderTitle =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    folderTitle.className =
+                        "folder-editor-title";
+
+
+                    folderTitle.textContent =
+                        "Папка " +
+                        (
+                            folderIndex + 1
+                        );
+
+
+                    const deleteFolderButton =
+                        document.createElement(
+                            "button"
+                        );
+
+
+                    deleteFolderButton.type =
+                        "button";
+
+
+                    deleteFolderButton.className =
+                        "button button-danger button-small";
+
+
+                    deleteFolderButton.textContent =
+                        "Удалить папку";
+
+
+                    deleteFolderButton.addEventListener(
+
+                        "click",
+
+                        function () {
+
+                            if (
+                                !confirm(
+                                    "Удалить эту папку?"
+                                )
+                            ) {
+
+                                return;
+                            }
+
+
+                            draftConfig.folders.splice(
+                                folderIndex,
+                                1
+                            );
+
+
+                            renderFoldersEditor();
+                        }
+                    );
+
+
+                    header.appendChild(
+                        folderTitle
+                    );
+
+
+                    header.appendChild(
+                        deleteFolderButton
+                    );
+
+
+                    editor.appendChild(
+                        header
+                    );
+
+
+                    /* НАЗВАНИЕ */
+
+                    editor.appendChild(
+
+                        createField(
+
+                            "Название",
+
+                            folder.title,
+
+                            function (value) {
+
+                                folder.title =
+                                    value;
+                            }
+                        )
+                    );
+
+
+                    /* ИКОНКА */
+
+                    editor.appendChild(
+
+                        createField(
+
+                            "Иконка",
+
+                            folder.icon,
+
+                            function (value) {
+
+                                folder.icon =
+                                    value;
+                            }
+                        )
+                    );
+
+
+                    /* ОПИСАНИЕ */
+
+                    editor.appendChild(
+
+                        createField(
+
+                            "Описание",
+
+                            folder.description,
+
+                            function (value) {
+
+                                folder.description =
+                                    value;
+                            },
+
+                            true
+                        )
+                    );
+
+
+                    /* ЗАГОЛОВОК ССЫЛОК */
+
+                    const linksTitle =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    linksTitle.style.marginTop =
+                        "20px";
+
+
+                    linksTitle.style.marginBottom =
+                        "10px";
+
+
+                    linksTitle.style.fontSize =
+                        "14px";
+
+
+                    linksTitle.style.fontWeight =
+                        "700";
+
+
+                    linksTitle.textContent =
+                        "Ссылки";
+
+
+                    editor.appendChild(
+                        linksTitle
+                    );
+
+
+                    if (
+                        !Array.isArray(
+                            folder.links
+                        )
+                    ) {
+
+                        folder.links = [];
+                    }
+
+
+                    /* ССЫЛКИ */
+
+                    folder.links.forEach(
+
+                        function (
+                            link,
+                            linkIndex
+                        ) {
+
+                            editor.appendChild(
+
+                                createLinkEditor(
+
+                                    folder,
+
+                                    link,
+
+                                    linkIndex
+                                )
+                            );
+                        }
+                    );
+
+
+                    /* ДОБАВИТЬ ССЫЛКУ */
+
+                    const addLinkButton =
+                        document.createElement(
+                            "button"
+                        );
+
+
+                    addLinkButton.type =
+                        "button";
+
+
+                    addLinkButton.className =
+                        "button button-secondary button-small";
+
+
+                    addLinkButton.style.marginTop =
+                        "12px";
+
+
+                    addLinkButton.textContent =
+                        "+ Добавить ссылку";
+
+
+                    addLinkButton.addEventListener(
+
+                        "click",
+
+                        function () {
+
+                            folder.links.push({
+
+                                title:
+                                    "Новая ссылка",
+
+                                url:
+                                    "https://",
+
+                                description:
+                                    "",
+
+                                icon:
+                                    "🔗"
+                            });
+
+
+                            renderFoldersEditor();
+                        }
+                    );
+
+
+                    editor.appendChild(
+                        addLinkButton
+                    );
+
+
+                    container.appendChild(
+                        editor
+                    );
+
+                }
+            );
+        }
+
+
+        /* =====================================================
+           ДОБАВИТЬ ПАПКУ
+           ===================================================== */
+
+        function addFolder() {
+
+            if (!draftConfig) {
+
+                return;
+            }
+
+
+            draftConfig.folders.push({
+
+                id:
+                    createId(
+                        "folder"
+                    ),
+
+                title:
+                    "Новая папка",
+
+                icon:
+                    "📁",
+
+                description:
+                    "Описание папки",
+
+                links: [
+
+                    {
+
+                        title:
+                            "Новая ссылка",
+
+                        url:
+                            "https://",
+
+                        description:
+                            "",
+
+                        icon:
+                            "🔗"
+                    }
+
+                ]
+            });
+
+
+            renderFoldersEditor();
+        }
+
+
+        /* =====================================================
+           ОСНОВНЫЕ НАСТРОЙКИ
+           ===================================================== */
+
+        function collectPageSettings() {
+
+            if (!draftConfig) {
+
+                return;
+            }
+
+
+            draftConfig.page.title =
+
+                document.getElementById(
+                    "pageTitleInput"
+                ).value;
+
+
+            draftConfig.page.subtitle =
+
+                document.getElementById(
+                    "pageSubtitleInput"
+                ).value;
+        }
+
+
+        /* =====================================================
+           ПОСТРОЕНИЕ НОВОГО HTML
+           ===================================================== */
+
+        function buildUpdatedHtml(
+            newConfig
+        ) {
+
+            const currentHtml =
+
+                "<!DOCTYPE html>\n" +
+
+                document.documentElement.outerHTML;
+
+
+            /*
+             * Кодируем символ < внутри JSON.
+             *
+             * Это защищает встроенный JSON от случайного
+             * влияния на структуру HTML.
+             */
+
+            const safeJson =
+
+                JSON.stringify(
+                    newConfig,
+                    null,
+                    4
+                ).replace(
+                    /</g,
+                    "\\u003C"
+                );
+
+
+            /*
+             * Ищем открывающий элемент
+             * встроенной конфигурации.
+             */
+
+            const openingPattern =
+
+                /<script\b[^>]*id=["']embeddedConfig["'][^>]*>/i;
+
+
+            const openingMatch =
+
+                openingPattern.exec(
+                    currentHtml
+                );
+
+
+            if (!openingMatch) {
+
+                throw new Error(
+                    "Не найден блок embeddedConfig."
+                );
+            }
+
+
+            const openingStart =
+                openingMatch.index;
+
+
+            const openingEnd =
+
+                openingStart +
+
+                openingMatch[0].length;
+
+
+            /*
+             * Формируем строку закрывающего элемента
+             * динамически.
+             */
+
+            const closingScriptTag =
+
+                "<" +
+                "/script>";
+
+
+            const closingStart =
+
+                currentHtml.indexOf(
+                    closingScriptTag,
+                    openingEnd
+                );
+
+
+            if (closingStart === -1) {
+
+                throw new Error(
+                    "Не найден конец блока embeddedConfig."
+                );
+            }
+
+
+            /*
+             * Собираем новый HTML.
+             */
+
+            const updatedHtml =
+
+                currentHtml.substring(
+                    0,
+                    openingEnd
+                ) +
+
+                "\n" +
+
+                safeJson +
+
+                "\n" +
+
+                currentHtml.substring(
+                    closingStart
+                );
+
+
+            return updatedHtml;
+        }
+
+
+        /* =====================================================
+           СКАЧИВАНИЕ HTML
+           ===================================================== */
+
+        function downloadHtml(
+            html
+        ) {
+
+            const blob =
+
+                new Blob(
+
+                    [html],
+
+                    {
+                        type:
+                            "text/html;charset=utf-8"
+                    }
+                );
+
+
+            const url =
+
+                URL.createObjectURL(
+                    blob
+                );
+
+
+            const link =
+
+                document.createElement(
+                    "a"
+                );
+
+
+            link.href =
+                url;
+
+
+            link.download =
+                "index.html";
+
+
+            document.body.appendChild(
+                link
+            );
+
+
+            link.click();
+
+
+            link.remove();
+
+
+            setTimeout(
+
+                function () {
+
+                    URL.revokeObjectURL(
+                        url
+                    );
+
+                },
+
+                1000
+            );
+        }
+
+
+        /* =====================================================
+           СОХРАНЕНИЕ
+           ===================================================== */
+
+        function saveSettings() {
+
+            if (!draftConfig) {
+
+                return;
+            }
+
+
+            collectPageSettings();
+
+
+            const newConfig =
+
+                normalizeConfig(
+                    draftConfig
+                );
+
+
+            try {
+
+                const updatedHtml =
+
+                    buildUpdatedHtml(
+                        newConfig
+                    );
+
+
+                downloadHtml(
+                    updatedHtml
+                );
+
+
+                config =
+                    deepClone(
+                        newConfig
+                    );
+
+
+                renderPage();
+
+
+                closeSettings();
+
+
+                /*
+                 * После сохранения кнопку тоже скрываем.
+                 */
+
+                settingsVisible =
+                    false;
+
+
+                document.getElementById(
+                    "settingsButton"
+                ).classList.remove(
+                    "visible"
+                );
+
+
+                alert(
+
+                    "Готово!\n\n" +
+
+                    "Новый index.html скачан.\n\n" +
+
+                    "Замените старый index.html новым файлом."
+                );
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+
+                alert(
+
+                    "Ошибка сохранения HTML:\n\n" +
+
+                    error.message
+                );
+            }
+        }
+
+
+        /* =====================================================
+           СБРОС
+           ===================================================== */
+
+        function resetSettings() {
+
+            if (
+
+                !confirm(
+                    "Сбросить все настройки к исходным?"
+                )
+
+            ) {
+
+                return;
+            }
+
+
+            draftConfig =
+                deepClone(
+                    DEFAULT_CONFIG
+                );
+
+
+            document.getElementById(
+                "pageTitleInput"
+            ).value =
+                draftConfig.page.title;
+
+
+            document.getElementById(
+                "pageSubtitleInput"
+            ).value =
+                draftConfig.page.subtitle;
+
+
+            renderFoldersEditor();
+        }
+
+
+        /* =====================================================
+           ALT + N
+           ===================================================== */
+
+        document.addEventListener(
+
+            "keydown",
+
+            function (event) {
+
+                if (
+
+                    event.altKey &&
+
+                    event.key.toLowerCase() === "n"
+
+                ) {
+
+                    event.preventDefault();
+
+
+                    settingsVisible =
+                        !settingsVisible;
+
+
+                    const button =
+                        document.getElementById(
+                            "settingsButton"
+                        );
+
+
+                    if (settingsVisible) {
+
+                        button.classList.add(
+                            "visible"
+                        );
+
+                    } else {
+
+                        button.classList.remove(
+                            "visible"
+                        );
+
+                        closeSettings();
+                    }
+                }
+
+
+                if (
+                    event.key === "Escape"
+                ) {
+
+                    closeFolderModal();
+
+                    closeSettings();
+                }
+
+            }
+        );
+
+
+        /* =====================================================
+           КНОПКА НАСТРОЕК
+           ===================================================== */
+
+        document.getElementById(
+            "settingsButton"
+        ).addEventListener(
+
+            "click",
+
+            openSettings
+        );
+
+
+        /* =====================================================
+           ЗАКРЫТИЕ ПАПКИ
+           ===================================================== */
+
+        document.getElementById(
+            "folderModalClose"
+        ).addEventListener(
+
+            "click",
+
+            closeFolderModal
+        );
+
+
+        /* =====================================================
+           ЗАКРЫТИЕ НАСТРОЕК
+           ===================================================== */
+
+        document.getElementById(
+            "settingsModalClose"
+        ).addEventListener(
+
+            "click",
+
+            closeSettings
+        );
+
+
+        document.getElementById(
+            "cancelSettingsButton"
+        ).addEventListener(
+
+            "click",
+
+            closeSettings
+        );
+
+
+        /* =====================================================
+           СОХРАНЕНИЕ
+           ===================================================== */
+
+        document.getElementById(
+            "saveButton"
+        ).addEventListener(
+
+            "click",
+
+            saveSettings
+        );
+
+
+        /* =====================================================
+           СБРОС
+           ===================================================== */
+
+        document.getElementById(
+            "resetButton"
+        ).addEventListener(
+
+            "click",
+
+            resetSettings
+        );
+
+
+        /* =====================================================
+           ДОБАВЛЕНИЕ ПАПКИ
+           ===================================================== */
+
+        document.getElementById(
+            "addFolderButton"
+        ).addEventListener(
+
+            "click",
+
+            addFolder
+        );
+
+
+        /* =====================================================
+           КЛИК ПО ФОНУ ПАПКИ
+           ===================================================== */
+
+        document.getElementById(
+            "folderModal"
+        ).addEventListener(
+
+            "click",
+
+            function (event) {
+
+                if (
+                    event.target === this
+                ) {
+
+                    closeFolderModal();
+                }
+            }
+        );
+
+
+        /* =====================================================
+           КЛИК ПО ФОНУ НАСТРОЕК
+           ===================================================== */
+
+        document.getElementById(
+            "settingsModal"
+        ).addEventListener(
+
+            "click",
+
+            function (event) {
+
+                if (
+                    event.target === this
+                ) {
+
+                    closeSettings();
+                }
+            }
+        );
+
+
+        /* =====================================================
+           ЗАПУСК
+           ===================================================== */
+
+        /*
+         * При каждом открытии страницы настройки
+         * принудительно скрываются.
+         */
+
+        settingsVisible =
+            false;
+
+
+        document.getElementById(
+            "settingsButton"
+        ).classList.remove(
+            "visible"
+        );
+
+
+        /*
+         * Загружаем встроенный JSON.
+         */
+
+        config =
+            loadEmbeddedConfig();
+
+
+        /*
+         * Рисуем страницу.
+         */
+
+        renderPage();
+
+    </script>
+
+
+
+</body></html>
