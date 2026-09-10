@@ -1274,7 +1274,7 @@
         </header>
 
 
-        <main id="foldersContainer" class="folders"><div class="folder" data-index="0"><div class="folder-icon">📁</div><h2>Служба ИТ</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="1"><div class="folder-icon">📁</div><h2>Служба 1С</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="2"><div class="folder-icon">📁</div><h2>Техническая служба</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="3"><div class="folder-icon">📁</div><h2>ЦОП (Отдел качества)</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="4"><div class="folder-icon">📁</div><h2>Служба логистики</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="5"><div class="folder-icon">📁</div><h2>Служба Print-help</h2><p>Описание папки</p><div class="folder-arrow">→</div></div></main>
+        <main id="foldersContainer" class="folders"><div class="folder" data-index="0"><div class="folder-icon">📁</div><h2>Служба ИТ</h2><p>Описание папки</p><div class="folder-arrow">→</div></div><div class="folder" data-index="1"><div class="folder-icon">📁</div><h2>Служба 1С</h2><p>Описание папки</p><div class="folder-arrow">→</div></div></main>
 
     </div>
 
@@ -1288,8 +1288,8 @@
     <script id="embeddedConfig" type="application/json">
 {
     "page": {
-        "title": "Составить заявку для",
-        "subtitle": "Выберите  папку службы"
+        "title": "Обратиться за помощью",
+        "subtitle": "Выберите группу, помощь которой требуется"
     },
     "auth": {
         "passwordHash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
@@ -1329,12 +1329,12 @@
     "folders": [
         {
             "id": "folder_mtso322g_3bz65y",
-            "title": "Служба ИТ",
+            "title": "Группа ИТ",
             "icon": "📁",
-            "description": "Описание папки",
+            "description": "Все вопросы, связанные с ИТ",
             "links": [
                 {
-                    "title": "Проблема с компьютером",
+                    "title": "Создать заявку",
                     "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=302&requestServiceId=-1",
                     "description": "",
                     "icon": "🔗"
@@ -1343,12 +1343,12 @@
         },
         {
             "id": "folder_mttq3qwz_lfdqys",
-            "title": "Служба 1С",
+            "title": "Группа 1С",
             "icon": "📁",
-            "description": "Описание папки",
+            "description": "Вопросы, связанные с 1С",
             "links": [
                 {
-                    "title": "Проблема с 1С",
+                    "title": "Создать заявку",
                     "url": "https://help-test.gifts.ru:8080/WorkOrder.do?woMode=newWO&from=Templates&module=incident&reqTemplate=301&requestServiceId=-1",
                     "description": "",
                     "icon": "🔗"
@@ -1413,7 +1413,7 @@
                     <label for="passwordInput">Пароль</label>
                     <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Введите пароль">
                 </div>
-                <div id="passwordError" style="display:none;color:#ff7b7b;margin-top:10px;">Неверный пароль</div>
+                <div id="passwordError" style="display: none; color: rgb(255, 123, 123); margin-top: 10px;">Неверный пароль</div>
                 <div class="settings-actions" style="margin-top:18px;">
                     <div style="flex:1;"></div>
                     <button id="passwordCancelButton" class="button button-secondary" type="button">Отмена</button>
