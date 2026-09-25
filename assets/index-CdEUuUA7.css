@@ -338,18 +338,8 @@ html[data-static-mode="true"] #orderIntro{
 .article-card .template-options{
   position:relative;
   gap:7px;
-  padding:38px 7px 8px;
+  padding:8px 7px;
   background:#fbfcf9
-}
-.article-card .template-options:before{
-  content:"Нажмите на нужный артикул";
-  position:absolute;
-  left:12px;
-  top:10px;
-  font-size:13px;
-  line-height:18px;
-  font-weight:750;
-  color:#5b8010
 }
 .article-card .article-choice{
   position:relative;
