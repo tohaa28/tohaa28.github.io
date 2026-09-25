@@ -1,0 +1,52 @@
+name: Test direct Workbench on gifts.ru
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - gifts-layout-workbench-source
+    paths:
+      - "direct-mode.js"
+      - "editor.html"
+      - "tools/build-launcher.mjs"
+      - ".github/workflows/test-direct-workbench.yml"
+
+jobs:
+  browser-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gifts-layout-workbench-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/build-launcher.mjs
+      - run: npm init -y
+      - run: npm install playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Launch Workbench on gifts.ru
+        run: |
+          node --input-type=module - <<'NODE'
+          import fs from "node:fs";
+          import { chromium } from "playwright";
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage();
+          const errors = [];
+          page.on("pageerror", e => errors.push("pageerror: "+e.message));
+          page.on("console", m => { if (m.type()==="error") errors.push("console: "+m.text()); });
+          await page.goto("https://gifts.ru/", {waitUntil:"domcontentloaded", timeout:60000});
+          const launcher = fs.readFileSync("launcher.js","utf8");
+          await page.addScriptTag({content:launcher});
+          await page.waitForSelector("#gifts-layout-workbench-host iframe", {timeout:30000});
+          const frame = page.frames().find(f => f.parentFrame() === page.mainFrame());
+          if (!frame) throw new Error("Workbench iframe not created");
+          await frame.waitForSelector(".app", {timeout:30000});
+          const title = await frame.locator(".brand").innerText();
+          const login = await frame.locator("#loginForm").count();
+          if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
+          if (!login) throw new Error("Login UI missing");
+          console.log("Workbench loaded:", title.replace(/\s+/g," "));
+          if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
+          await browser.close();
+          NODE
