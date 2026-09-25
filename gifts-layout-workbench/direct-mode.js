@@ -303,6 +303,13 @@
   async function apiBasket() {
     const found = new Map();
 
+    try {
+      await getHtml("/private");
+    } catch (error) {
+      if (error?.code === "AUTH") return json({ error: error.message }, 401);
+      return json({ error: error?.message || "Не удалось проверить сеанс gifts.ru." }, 502);
+    }
+
     const host = hostDocument();
     if (host) {
       for (const order of parseBasketOrders(host.documentElement?.outerHTML || "")) {
@@ -316,9 +323,7 @@
       try {
         const { html } = await getHtml(path);
         for (const order of parseBasketOrders(html)) found.set(order.number, order);
-      } catch (error) {
-        if (error?.code === "AUTH") return json({ error: error.message }, 401);
-      }
+      } catch {}
       if (found.size >= 30) break;
     }
 
