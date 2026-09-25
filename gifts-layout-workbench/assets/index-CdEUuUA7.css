@@ -81,3 +81,20 @@ html[data-static-mode="true"].simple-mode #orderBrowser>#staticTransfer{
 html[data-static-mode="true"] #orderIntro{
   margin-bottom:10px
 }
+/* Header actions: equal visual height */
+.account-button,.mode-toggle{
+  min-height:30px!important;
+  height:30px!important;
+  padding:4px 9px!important;
+  font-size:12px!important;
+  line-height:20px!important
+}
+@media(max-width:480px){
+  .account-button,.mode-toggle{
+    min-height:30px!important;
+    height:30px!important;
+    padding:4px 6px!important;
+    font-size:11px!important;
+    line-height:20px!important
+  }
+}
