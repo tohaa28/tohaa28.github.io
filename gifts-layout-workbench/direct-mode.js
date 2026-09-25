@@ -377,10 +377,34 @@
       }
     }
 
+    const rawOrders = [...found.values()].slice(0, 30);
+    const verified = [];
+    let cursor = 0;
+
+    async function verifyNext() {
+      while (cursor < rawOrders.length) {
+        const candidate = rawOrders[cursor++];
+        try {
+          const parsed = await getOrder(String(candidate.number));
+          if (Array.isArray(parsed.items) && parsed.items.length) {
+            verified.push(candidate);
+          }
+        } catch {}
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(3, rawOrders.length) }, () => verifyNext())
+    );
+
+    verified.sort((a, b) => rawOrders.findIndex(x => x.number === a.number) - rawOrders.findIndex(x => x.number === b.number));
+
     return json({
-      orders: [...found.values()].slice(0, 30),
+      orders: verified,
       direct: true,
-      scanned: candidates
+      scanned: candidates,
+      candidates: rawOrders.length,
+      verified: verified.length
     });
   }
 
