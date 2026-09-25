@@ -86,10 +86,14 @@ jobs:
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];
             const missing = ids.filter(id => !document.getElementById(id));
             const stage = document.getElementById("stage");
-            const insideStage = ids.every(id => id === "fieldLogoTools" || stage?.contains(document.getElementById(id)));
-            const toolsEl = document.getElementById("fieldLogoTools"); const singleRow = getComputedStyle(toolsEl).flexWrap === "nowrap"; return {missing, insideStage, hiddenInitially: toolsEl?.hidden === true, singleRow};
+            const workspace = document.querySelector(".workspace");
+            const toolsEl = document.getElementById("fieldLogoTools");
+            const outsideStage = !stage?.contains(toolsEl);
+            const insideWorkspace = workspace?.contains(toolsEl) === true;
+            const singleRow = getComputedStyle(toolsEl).flexWrap === "nowrap";
+            return {missing, outsideStage, insideWorkspace, hiddenInitially: toolsEl?.hidden === true, singleRow};
           });
-          if (toolState.missing.length || !toolState.insideStage || !toolState.hiddenInitially || !toolState.singleRow) {
+          if (toolState.missing.length || !toolState.outsideStage || !toolState.insideWorkspace || !toolState.hiddenInitially || !toolState.singleRow) {
             throw new Error("In-template tools are invalid: "+JSON.stringify(toolState));
           }
           console.log("In-template tools:", JSON.stringify(toolState));
