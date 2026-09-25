@@ -223,6 +223,18 @@
     });
   }
 
+  function imageMatchesArticle(url, article) {
+    try {
+      const name = decodeURIComponent(new URL(url).pathname.split("/").pop() || "").toLowerCase();
+      const full = clean(article).toLowerCase();
+      const base = full.split(".")[0];
+      return !!full && (name.startsWith(full + "_") || name.startsWith(full + ".") ||
+        name.startsWith(base + "_") || name.startsWith(base + "."));
+    } catch {
+      return false;
+    }
+  }
+
   function productUrlFromItem(root) {
     const selectors = [
       ".cart-tbl-name a[href]",
@@ -243,7 +255,7 @@
 
   function imageFromProductHtml(html, article) {
     const doc = new DOMParser().parseFromString(html, "text/html");
-    return imageUrlCandidates(doc, article)[0] || "";
+    const candidates = imageUrlCandidates(doc, article); return candidates.find(url => imageMatchesArticle(url, article)) || candidates[0] || "";
   }
 
   async function resolveItemImage(item) {
@@ -339,7 +351,7 @@
       if (!/^\d+$/.test(itemId) || !article || !method ||
           !Number.isSafeInteger(quantity) || quantity < 1) continue;
 
-      const imageUrl = imageUrlCandidates(root, article)[0] || "";
+      const imageUrl = imageUrlCandidates(root, article).find(url => imageMatchesArticle(url, article)) || "";
       const productUrl = productUrlFromItem(root);
 
       items.push({
