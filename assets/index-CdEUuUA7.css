@@ -458,3 +458,102 @@ html[data-static-mode="true"] #orderIntro{
     margin-top:2px
   }
 }
+/* Article choices: image, item data, application and place in one card */
+.article-card .selected-article-body{
+  display:none!important
+}
+.article-card .article-choice-content{
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr);
+  gap:11px;
+  align-items:start;
+  width:100%;
+  min-width:0
+}
+.article-card .article-choice-info{
+  min-width:0
+}
+.article-card .article-thumb-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:92px;
+  height:92px;
+  min-width:92px;
+  overflow:hidden;
+  border:1px solid #d8e0d3;
+  border-radius:5px;
+  background:#fff
+}
+.article-card .article-thumb{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain
+}
+.article-card .article-thumb-placeholder{
+  padding:6px;
+  color:#849094;
+  font-size:11px;
+  line-height:1.25;
+  font-weight:600;
+  text-align:center
+}
+.article-card .article-thumb-placeholder[hidden]{
+  display:none!important
+}
+.article-card #orderTemplateSummaryText{
+  width:100%;
+  min-width:0
+}
+.article-card #orderTemplateSummaryText .article-choice-content{
+  grid-template-columns:82px minmax(0,1fr);
+  gap:10px
+}
+.article-card #orderTemplateSummaryText .article-thumb-wrap{
+  width:82px;
+  height:82px;
+  min-width:82px
+}
+.article-card .article-choice .article-row,
+.article-card #orderTemplateSummaryText .article-row{
+  grid-template-columns:minmax(0,82px) minmax(0,1fr);
+  gap:3px 8px;
+  padding:2px 0
+}
+.article-card .article-choice .article-row .detail-value,
+.article-card #orderTemplateSummaryText .article-row .detail-value{
+  overflow-wrap:anywhere
+}
+.article-card .article-choice.selected .article-choice-info{
+  padding-right:78px
+}
+@media(max-width:480px){
+  .article-card .article-choice-content{
+    grid-template-columns:72px minmax(0,1fr);
+    gap:8px
+  }
+  .article-card .article-thumb-wrap{
+    width:72px;
+    height:72px;
+    min-width:72px
+  }
+  .article-card #orderTemplateSummaryText .article-choice-content{
+    grid-template-columns:68px minmax(0,1fr);
+    gap:7px
+  }
+  .article-card #orderTemplateSummaryText .article-thumb-wrap{
+    width:68px;
+    height:68px;
+    min-width:68px
+  }
+  .article-card .article-choice .article-row,
+  .article-card #orderTemplateSummaryText .article-row{
+    grid-template-columns:minmax(0,70px) minmax(0,1fr)
+  }
+  .article-card .article-choice.selected .article-choice-info{
+    padding-right:0;
+    padding-top:22px
+  }
+}
