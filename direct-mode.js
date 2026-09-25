@@ -1,7 +1,14 @@
 (() => {
-  if (location.origin !== "https://gifts.ru") return;
+  const GIFTS_ORIGIN = "https://gifts.ru";
+  let inGiftsContext = location.origin === GIFTS_ORIGIN;
+  if (!inGiftsContext) {
+    try { inGiftsContext = parent !== window && parent.location.origin === GIFTS_ORIGIN; }
+    catch {}
+  }
+  if (!inGiftsContext) return;
 
   const nativeFetch = window.fetch.bind(window);
+  const giftsUrl = path => new URL(path, GIFTS_ORIGIN + "/").toString();
   const orderCache = new Map();
 
   const clean = value => String(value || "").replace(/\s+/g, " ").trim();
@@ -23,7 +30,7 @@
   }
 
   async function getHtml(path) {
-    const res = await nativeFetch(path, {
+    const res = await nativeFetch(giftsUrl(path), {
       method: "GET",
       credentials: "include",
       redirect: "follow",
@@ -154,7 +161,7 @@
       return json({ error: "Введите логин и пароль gifts.ru." }, 400);
     }
 
-    await nativeFetch("/auth", {
+    await nativeFetch(giftsUrl("/auth"), {
       method: "GET",
       credentials: "include",
       cache: "no-store"
@@ -168,7 +175,7 @@
       orderconf: ""
     });
 
-    const res = await nativeFetch("/auth", {
+    const res = await nativeFetch(giftsUrl("/auth"), {
       method: "POST",
       credentials: "include",
       redirect: "follow",
@@ -228,7 +235,7 @@
       }
 
       const res = await nativeFetch(
-        "/drawing?action=getOrderItemPdf&orderitemid=" + encodeURIComponent(itemId),
+        giftsUrl("/drawing?action=getOrderItemPdf&orderitemid=" + encodeURIComponent(itemId)),
         {
           method: "GET",
           credentials: "include",
@@ -289,10 +296,10 @@
         : input instanceof Request
           ? input.url
           : String(input);
-      const url = new URL(raw, location.href);
+      const url = new URL(raw, document.baseURI || (GIFTS_ORIGIN + "/"));
       const method = String(init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
 
-      if (url.origin === location.origin && url.pathname.startsWith("/api/")) {
+      if (url.origin === GIFTS_ORIGIN && url.pathname.startsWith("/api/")) {
         if (url.pathname === "/api/session" && method === "GET") return apiSession();
         if (url.pathname === "/api/login") return apiLogin({ ...init, method });
         if (url.pathname === "/api/basket" && method === "GET") return apiBasket();
