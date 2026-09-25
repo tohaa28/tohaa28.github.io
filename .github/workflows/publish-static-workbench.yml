@@ -9,6 +9,7 @@ on:
       - "static-mode.js"
       - "assets/**"
       - "vendor/**"
+      - "extension/**"
       - ".github/workflows/publish-static-workbench.yml"
   workflow_dispatch:
 
@@ -26,7 +27,7 @@ jobs:
           path: source
           fetch-depth: 0
 
-      - name: Validate backend-free build
+      - name: Validate static build and local bridge
         shell: bash
         run: |
           set -euo pipefail
@@ -37,10 +38,16 @@ jobs:
           test -f source/vendor/pdf-lib.min.js
           test ! -d source/api
           test ! -f source/vercel.json
+          test -f source/extension/manifest.json
+          test -f source/extension/background.js
+          test -f source/extension/bridge-content.js
+          node --check source/static-mode.js
+          node --check source/extension/background.js
+          node --check source/extension/bridge-content.js
           grep -q 'src="./static-mode.js"' source/index.html
           grep -q 'src="./assets/index-BpU9kvz8.js"' source/index.html
           grep -q 'location.origin+location.pathname' source/assets/index-BpU9kvz8.js
-          grep -q 'Backend-free GitHub Pages mode' source/assets/index-CdEUuUA7.css
+          grep -q 'gifts-workbench-page' source/static-mode.js
 
       - name: Checkout GitHub Pages branch
         uses: actions/checkout@v4
@@ -59,6 +66,7 @@ jobs:
           cp source/static-mode.js site/gifts-layout-workbench/static-mode.js
           cp -R source/assets site/gifts-layout-workbench/assets
           cp -R source/vendor site/gifts-layout-workbench/vendor
+          cp -R source/extension site/gifts-layout-workbench/extension
 
       - name: Publish to main
         shell: bash
@@ -71,6 +79,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No static Workbench changes"
           else
-            git commit -m "Publish backend-free Gifts Workbench"
+            git commit -m "Publish static Gifts Workbench with local browser bridge"
             git push origin main
           fi
