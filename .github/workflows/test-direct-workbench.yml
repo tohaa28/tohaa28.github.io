@@ -46,7 +46,14 @@ jobs:
           const login = await frame.locator("#loginForm").count();
           if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
           if (!login) throw new Error("Login UI missing");
-          console.log("Workbench loaded:", title.replace(/\s+/g," "));
+          const session = await frame.evaluate(async () => {
+            const r = await fetch("/api/session", {cache:"no-store"});
+            return await r.json();
+          });
+          if (session.direct !== true || typeof session.active !== "boolean") {
+            throw new Error("Direct gifts.ru session adapter is not active: "+JSON.stringify(session));
+          }
+          console.log("Workbench loaded:", title.replace(/\s+/g," "), "session:", JSON.stringify(session));
           if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
           await browser.close();
           NODE
