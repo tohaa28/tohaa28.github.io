@@ -14,15 +14,15 @@
 <body>
   <h1>Локальный мост Макетной</h1>
   <p>Мост нужен только для того, чтобы статическая Макетная на GitHub Pages могла использовать вашу уже авторизованную сессию gifts.ru и читать корзину/заказы без backend.</p>
-  <p><a class="button" href="../gifts-workbench-bridge.zip">Скачать gifts-workbench-bridge.zip</a></p>
+  <p><a class="button" href="https://github.com/tohaa28/tohaa28.github.io/archive/refs/heads/gifts-layout-workbench-source.zip">Скачать ZIP с GitHub</a></p>
 
   <div class="card">
     <h2>Firefox — для тестирования</h2>
     <ol>
-      <li>Распакуйте ZIP в отдельную папку.</li>
+      <li>Распакуйте ZIP и откройте внутри папку <code>extension</code>. Внутри откройте папку <code>extension</code>.</li>
       <li>Откройте <code>about:debugging#/runtime/this-firefox</code>.</li>
       <li>Нажмите <b>Load Temporary Add-on / Загрузить временное дополнение</b>.</li>
-      <li>Выберите файл <code>manifest.json</code> из распакованной папки.</li>
+      <li>Выберите файл <code>extension/manifest.json</code>.</li>
       <li>Вернитесь в Макетную и обновите страницу.</li>
     </ol>
     <p class="note">Временное дополнение Firefox действует до перезапуска браузера. После стабилизации его можно упаковать и подписать как обычное Firefox-дополнение.</p>
