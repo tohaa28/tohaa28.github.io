@@ -161,7 +161,7 @@ function fetchPdfOnOrderPage(itemId) {
 }
 
 async function fetchOrderPdf(order, itemId) {
-  if (!/^\\d{5,12}$/.test(order) || !/^\\d{1,20}$/.test(itemId)) {
+  if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(itemId)) {
     throw new Error("Некорректная ссылка на PDF.");
   }
   const data = await readOrder(order);
@@ -175,11 +175,28 @@ async function fetchOrderPdf(order, itemId) {
   );
 }
 
+function fetchCurrentBinary() {
+  return (async () => {
+    const res = await fetch(location.href, { cache: "no-store" });
+    if (!res.ok) throw new Error("Файл изображения недоступен.");
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return {
+      contentType: res.headers.get("content-type") || "image/jpeg",
+      base64: btoa(binary)
+    };
+  })();
+}
+
 async function fetchPreview(order, itemId) {
   const data = await readOrder(order);
   const item = data.items.find(x => String(x.itemId) === String(itemId));
   if (!item?.imageUrl) throw new Error("Превью артикула не найдено.");
-  return { url: item.imageUrl };
+  return await runOnHiddenTab(item.imageUrl, fetchCurrentBinary);
 }
 
 async function handle(message) {
