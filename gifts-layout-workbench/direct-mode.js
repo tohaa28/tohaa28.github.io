@@ -183,6 +183,61 @@
     return clean(text.slice(article.length).replace(/^\s*[,;:]\s*/, ""));
   }
 
+  function extractExactPlaces(root, article) {
+    const result = [];
+    const seen = new Set();
+    const bad = /(?:скачать|шаблон|конструктор|pdf|cdr|макет|тираж|артикул|файл)/i;
+    const placeWord = /(?:лицо|оборот|спереди|сзади|слева|справа|сторон[аы]|клапан|крышк|дно|ручк|карман|рукав|груд|спин|капюшон|чехол|шов|клин|купол|горловин|этикет|бирк|упаковк|бок|периметр|основан|поле)/i;
+    const methodWord = /(?:DTF|DTG|шелк|тампо|грав|УФ|UV|сублим|вышив|тиснен|деколь|лазер|флекс|трансфер|печать)/i;
+
+    const add = raw => {
+      let value = removeArticlePrefix(raw, article);
+      value = clean(value)
+        .replace(/^место\s+нанесения\s*[:—-]?\s*/i, "")
+        .replace(/^место\s*[:—-]?\s*/i, "")
+        .replace(/^поверхность\s*[:—-]?\s*/i, "")
+        .replace(/^сторона\s*[:—-]?\s*/i, "");
+      if (!value || value.length > 180 || bad.test(value) || methodWord.test(value)) return;
+      const key = value.toLocaleLowerCase("ru-RU");
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(value);
+      }
+    };
+
+    for (const select of root.querySelectorAll("select")) {
+      const attrs = [
+        select.getAttribute("name"),
+        select.id,
+        String(select.className),
+        select.parentElement?.textContent
+      ].filter(Boolean).join(" ");
+      if (!/место|сторон|поле|поверхност|place|position|side|field|location/i.test(attrs)) continue;
+      const option = [...select.options].find(o => o.selected) || select.options[select.selectedIndex];
+      if (option) add(option.textContent || option.value);
+    }
+
+    for (const node of root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column .color-text, div.size--sm.flex.flex-center.flex-column > div")) {
+      const value = clean(node.textContent);
+      if (placeWord.test(value)) add(value);
+    }
+
+    for (const label of root.querySelectorAll("[data-label],label,dt,th")) {
+      if (!/место\s*нанесения|поле\s*нанесения|сторона|поверхность/i.test(clean(label.textContent))) continue;
+      const next = label.nextElementSibling;
+      if (next) add(next.textContent);
+    }
+
+    for (const node of root.querySelectorAll("*")) {
+      for (const attr of [...node.attributes]) {
+        if (!/place|position|side|field|location|место|сторон|поле|поверхност/i.test(attr.name)) continue;
+        if (placeWord.test(attr.value)) add(attr.value);
+      }
+    }
+
+    return result;
+  }
+
   function parseOrder(html, order) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const items = [];
@@ -197,12 +252,7 @@
       const method = clean(root.querySelector(".cart-tbl-imp g-droper > span")?.textContent);
       const drawTaskRaw = clean(root.getAttribute("data-drawtaskids"));
 
-      const places = [];
-      for (const placeNode of root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column")) {
-        const value = clean(placeNode.querySelector(".color-text")?.textContent);
-        const place = removeArticlePrefix(value, article);
-        if (place && !places.includes(place)) places.push(place);
-      }
+      const places = extractExactPlaces(root, article);
 
       if (!/^\d+$/.test(itemId) || !article || !method ||
           !Number.isSafeInteger(quantity) || quantity < 1) continue;
