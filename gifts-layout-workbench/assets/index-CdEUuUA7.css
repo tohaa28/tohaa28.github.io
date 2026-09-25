@@ -258,3 +258,22 @@ html[data-static-mode="true"] #orderIntro{
     min-height:32px
   }
 }
+/* Compact basket refresh icon */
+.basket-head #refreshBasket.icon-button{
+  flex:0 0 34px;
+  width:34px;
+  min-width:34px;
+  max-width:34px;
+  height:34px;
+  min-height:34px;
+  margin-left:auto;
+  padding:0;
+  display:inline-grid;
+  place-items:center;
+  font-size:21px;
+  line-height:1;
+  border-radius:50%
+}
+.basket-head #refreshBasket.icon-button:disabled{
+  opacity:.45
+}
