@@ -36,16 +36,17 @@ jobs:
           page.on("console", m => { if (m.type()==="error") errors.push("console: "+m.text()); });
           await page.goto("https://gifts.ru/", {waitUntil:"domcontentloaded", timeout:60000});
           await page.evaluate(() => {
+            const a = document.createElement("a");
+            a.id = "gwb-test-logout";
+            a.href = "/logout";
+            a.textContent = "Выйти";
+            document.body.appendChild(a);
+          });
+          await page.evaluate(() => {
             const realFetch = window.fetch.bind(window);
             window.fetch = (input, init) => {
               const raw = typeof input === "string" ? input : input?.url || String(input);
               const url = new URL(raw, location.href);
-              if (url.origin === location.origin && url.pathname === "/private") {
-                return Promise.resolve(new Response("<!doctype html><html><title>Личный кабинет</title><body>authorized</body></html>", {
-                  status: 200,
-                  headers: {"content-type":"text/html; charset=utf-8"}
-                }));
-              }
               if (url.origin === location.origin && (url.pathname === "/cart" || url.pathname === "/cart/")) {
                 return Promise.resolve(new Response('<!doctype html><html><body><a href="/private/order/7920509">Заказ 7920509</a></body></html>', {
                   status: 200,
