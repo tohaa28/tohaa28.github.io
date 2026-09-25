@@ -50,19 +50,125 @@
   function parseBasketOrders(html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const found = new Set();
+    const add = value => {
+      const number = String(value || "").trim();
+      if (/^\d{5,12}$/.test(number)) found.add(number);
+    };
 
     for (const a of doc.querySelectorAll("a[href]")) {
       const href = a.getAttribute("href") || "";
-      const m = href.match(/\/private\/order\/(\d{5,12})(?:[/?#]|$)/);
-      if (m) found.add(m[1]);
+      for (const re of [
+        /\/private\/order\/(\d{5,12})(?:[/?#]|$)/i,
+        /\/order\/(\d{5,12})(?:[/?#]|$)/i,
+        /[?&](?:order|orderno|order_number|number)=(\d{5,12})(?:[&#]|$)/i
+      ]) {
+        const m = href.match(re);
+        if (m) add(m[1]);
+      }
+    }
+
+    for (const node of doc.querySelectorAll("[data-order],[data-order-number],[data-orderno]")) {
+      const nearby = clean(node.textContent);
+      if (/заказ/i.test(nearby)) {
+        add(node.getAttribute("data-order"));
+        add(node.getAttribute("data-order-number"));
+        add(node.getAttribute("data-orderno"));
+      }
     }
 
     const text = clean(doc.body?.textContent);
-    for (const m of text.matchAll(/Заказ\s*(?:№|N)?\s*(\d{5,12})/gi)) {
-      found.add(m[1]);
+    for (const m of text.matchAll(/Заказ\s*(?:№|N)?\s*[:#-]?\s*(\d{5,12})/gi)) add(m[1]);
+
+    for (const re of [
+      /["']orderNumber["']\s*[:=]\s*["']?(\d{5,12})/gi,
+      /["']order_number["']\s*[:=]\s*["']?(\d{5,12})/gi,
+      /["']orderNo["']\s*[:=]\s*["']?(\d{5,12})/gi
+    ]) {
+      for (const m of html.matchAll(re)) add(m[1]);
     }
 
     return [...found].map(number => ({ number }));
+  }
+
+  function hostDocument() {
+    try {
+      if (parent !== window && parent.location.origin === GIFTS_ORIGIN) return parent.document;
+    } catch {}
+    return null;
+  }
+
+  function basketCandidatePaths() {
+    const paths = new Set(["/cart", "/cart/", "/private", "/", "/private/orders", "/private/order"]);
+    const doc = hostDocument();
+    if (!doc) return [...paths];
+
+    const addUrl = raw => {
+      if (!raw) return;
+      try {
+        const url = new URL(raw, GIFTS_ORIGIN + "/");
+        if (url.origin !== GIFTS_ORIGIN) return;
+        const probe = (url.pathname + url.search).toLowerCase();
+        if (/logout|delete|remove|checkout|submit|confirm|action=|\/act\//.test(probe)) return;
+        if (/cart|basket|private|order/.test(probe)) paths.add(url.pathname + url.search);
+      } catch {}
+    };
+
+    try { addUrl(parent.location.pathname + parent.location.search); } catch {}
+
+    for (const node of doc.querySelectorAll("a[href],[data-href],[data-url],[data-hash]")) {
+      const label = clean([
+        node.textContent,
+        node.getAttribute("title"),
+        node.getAttribute("aria-label"),
+        node.getAttribute("class")
+      ].filter(Boolean).join(" "));
+      const raw =
+        node.getAttribute("href") ||
+        node.getAttribute("data-href") ||
+        node.getAttribute("data-url") ||
+        node.getAttribute("data-hash") ||
+        "";
+      if (/корзин|cart|basket|заказ/i.test(label + " " + raw)) addUrl(raw);
+    }
+
+    return [...paths].slice(0, 20);
+  }
+
+  async function readRenderedOrders(path) {
+    const doc = hostDocument();
+    if (!doc) return [];
+    return await new Promise(resolve => {
+      const frame = doc.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.style.cssText = "position:fixed;left:-10000px;top:-10000px;width:2px;height:2px;opacity:0;pointer-events:none;border:0";
+      let done = false;
+      const finish = orders => {
+        if (done) return;
+        done = true;
+        try { frame.remove(); } catch {}
+        resolve(Array.isArray(orders) ? orders : []);
+      };
+      const timer = setTimeout(() => finish([]), 7000);
+      frame.onload = () => {
+        setTimeout(() => {
+          try {
+            const html = frame.contentDocument?.documentElement?.outerHTML || "";
+            clearTimeout(timer);
+            finish(parseBasketOrders(html));
+          } catch {
+            clearTimeout(timer);
+            finish([]);
+          }
+        }, 1400);
+      };
+      try {
+        frame.src = giftsUrl(path);
+        doc.documentElement.appendChild(frame);
+      } catch {
+        clearTimeout(timer);
+        finish([]);
+      }
+    });
   }
 
   function absolute(url) {
@@ -196,7 +302,17 @@
 
   async function apiBasket() {
     const found = new Map();
-    for (const path of ["/private", "/", "/private/orders", "/private/order"]) {
+
+    const host = hostDocument();
+    if (host) {
+      for (const order of parseBasketOrders(host.documentElement?.outerHTML || "")) {
+        found.set(order.number, order);
+      }
+    }
+
+    const candidates = basketCandidatePaths();
+
+    for (const path of candidates) {
       try {
         const { html } = await getHtml(path);
         for (const order of parseBasketOrders(html)) found.set(order.number, order);
@@ -205,7 +321,20 @@
       }
       if (found.size >= 30) break;
     }
-    return json({ orders: [...found.values()].slice(0, 30) });
+
+    if (!found.size) {
+      for (const path of candidates) {
+        const rendered = await readRenderedOrders(path);
+        for (const order of rendered) found.set(order.number, order);
+        if (found.size >= 30) break;
+      }
+    }
+
+    return json({
+      orders: [...found.values()].slice(0, 30),
+      direct: true,
+      scanned: candidates
+    });
   }
 
   async function apiOrder(order) {
