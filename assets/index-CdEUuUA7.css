@@ -48,3 +48,36 @@ main{
     padding:6px!important
   }
 }
+/* Backend-free GitHub Pages mode */
+html[data-static-mode="true"] #accountButton,
+html[data-static-mode="true"] #giftsLogin,
+html[data-static-mode="true"] #basketBox,
+html[data-static-mode="true"] #manualOrderLabel,
+html[data-static-mode="true"] #loadOrder,
+html[data-static-mode="true"] #orderLoading,
+html[data-static-mode="true"] #orderStep{
+  display:none!important
+}
+html[data-static-mode="true"] #staticTransfer{
+  display:block!important;
+  margin-top:12px;
+  border:2px solid var(--green);
+  background:#f8fbf2
+}
+html[data-static-mode="true"] #staticTransfer summary{
+  font-size:15px;
+  color:#405157
+}
+html[data-static-mode="true"] #staticTransfer .bookmark{
+  display:block;
+  width:100%;
+  text-align:center;
+  padding:11px 13px;
+  font-size:15px
+}
+html[data-static-mode="true"].simple-mode #orderBrowser>#staticTransfer{
+  display:block!important
+}
+html[data-static-mode="true"] #orderIntro{
+  margin-bottom:10px
+}
