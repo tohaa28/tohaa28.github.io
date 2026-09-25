@@ -1,69 +1,74 @@
-# Gifts Layout Workbench — GitHub migration
+# Gifts Layout Workbench / PrintCheck Web — canonical project state
 
 ## Source of truth
 
-Branch: `gifts-layout-workbench-source`
+Repository: `tohaa28/tohaa28.github.io`
 
-The branch contains an exact mirror of the current published Worx frontend plus a new readable backend implementation for gifts.ru.
+Development branch: `gifts-layout-workbench-source`
 
-The existing `main` branch and the current GitHub Pages homepage are intentionally left unchanged.
+Published path: `https://tohaa28.github.io/gifts-layout-workbench/`
 
-## Frontend
+Floot is not used by this project. It is not a source repository, build environment, runtime dependency, deployment target, or required service. Future development must continue from the GitHub branch above and must not depend on Floot limits or Floot-hosted artifacts.
 
-Mirrored from the last published Worx build:
+## Current architecture
 
-- `index.html`
-- `assets/index-BpU9kvz8.js`
-- `assets/index-CdEUuUA7.css`
-- `vendor/pdf-lib.min.js`
-- `vendor/jszip.min.js`
-- `vendor/jspdf.umd.min.js`
-- `vendor/svg2pdf.umd.min.js`
+The workbench runs in direct mode on `gifts.ru`.
 
-The CSS in this branch also contains the elastic workspace fix: the template/editor area shrinks with the viewport instead of keeping the old large fixed minimum heights.
-
-## Backend
-
-Serverless endpoints:
-
-- `POST /api/login` — authenticate to gifts.ru
-- `DELETE /api/login` — clear local editor session
-- `GET /api/session` — check the editor-side gifts.ru session
-- `GET /api/basket` — read available orders
-- `GET /api/orders/:order` — read order items and exact application/place labels
-- `GET /api/orders/:order/items/:itemId.pdf` — download the selected template PDF
-- `GET /api/orders/:order/items/:itemId/preview` — proxy the product preview
-
-The order parser reads application/place labels from the order DOM. Template/PDF filenames are not used as the source of place names.
+- `tools/build-launcher.mjs` builds `launcher.js`.
+- The launcher is loaded from GitHub Pages and opens the editor over the current `gifts.ru` page.
+- `direct-mode.js` provides the adapter used by the editor for session, basket, order, template and preview requests.
+- Order data is read from the real Gifts DOM/pages in the browser session.
+- The application uses the existing authenticated `gifts.ru` browser session; there is no separate Floot authentication layer.
+- The frontend and vendor libraries are static files published from GitHub.
 
 ## Safety contract
 
-After authentication, order access is read-only. The application does not open or modify "Согласования макетов", does not toggle order states and does not send production-order writes. The only POST to gifts.ru is the authentication request required to establish a session.
+Order access after authentication is read-only.
 
-## Session handling
+The application must not:
+- open or modify «Согласования макетов»;
+- toggle order states;
+- start production;
+- send writes that modify live order data.
 
-The user password is used only for the immediate gifts.ru authentication request and is not saved.
+The application may read the order, basket, article pages, template data and product previews required for the editor.
 
-The resulting gifts.ru cookie jar is compressed and encrypted into an HttpOnly, Secure, SameSite=Lax cookie belonging to the editor domain.
+## Article/place data
 
-Required environment variable:
+Application and place labels must come from the order DOM and must preserve the wording used in the order.
 
-`SESSION_SECRET`
+Do not infer place names from template/PDF filenames.
 
-Use a random value of at least 24 characters. Never commit the actual value.
+The article-to-template relation must follow the actual Gifts order/template structure.
 
-## Deployment target
+## Publishing
 
-Recommended: Vercel, because the frontend and `/api/*` functions then share one origin and the editor session cookie is first-party.
+Workflow: `.github/workflows/publish-direct-workbench.yml`
 
-The repository already includes `vercel.json` and `package.json`.
+On changes in `gifts-layout-workbench-source`, GitHub Actions:
+1. builds `launcher.js`;
+2. validates JavaScript syntax;
+3. replaces the published `main/gifts-layout-workbench/` directory;
+4. commits the publication to `main`.
+
+GitHub Pages serves the published directory.
 
 ## Validation
 
-GitHub Actions workflow: `.github/workflows/validate-workbench.yml`
+Workflow: `.github/workflows/test-direct-workbench.yml`
 
-It checks:
+The browser test verifies, among other things:
+- the editor launches on a `gifts.ru` page;
+- direct-mode session detection works;
+- the basket/order adapter works;
+- exact order place labels are parsed;
+- product preview fallback works;
+- PDF processing initializes;
+- guided simple-mode steps start in the correct state;
+- article details and the product preview are grouped inside the selected article card.
 
-1. JavaScript syntax for `lib/*.js` and `api/*.js`
-2. encryption/decryption session roundtrip
-3. exact order-place parsing using a fixture where article 15637 must resolve to place `лицо`
+## Continuity rule
+
+Do not restart the project from a new scaffold and do not replace working functionality merely to change hosting.
+
+All further UI and logic changes must be made on top of the current GitHub source branch while preserving already working order loading, template handling, article/place selection, editor tools, logo placement, export and Gifts read-only constraints.
