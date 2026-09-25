@@ -5,6 +5,7 @@ on:
     branches:
       - gifts-layout-workbench-source
     paths:
+      - ".mirror-trigger"
       - ".github/workflows/mirror-workbench.yml"
   workflow_dispatch:
 
