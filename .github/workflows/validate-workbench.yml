@@ -63,3 +63,4 @@ jobs:
           }
           console.log("order parser ok");
           NODE
+# validation-trigger: full-backend
