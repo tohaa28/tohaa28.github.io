@@ -46,14 +46,26 @@ jobs:
           const login = await frame.locator("#loginForm").count();
           if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
           if (!login) throw new Error("Login UI missing");
+          const context = await frame.evaluate(() => ({
+            href: location.href,
+            origin: location.origin,
+            baseURI: document.baseURI,
+            parentOrigin: parent.location.origin,
+            directFlag: document.documentElement.dataset.directGiftsMode || null
+          }));
+          console.log("Frame context:", JSON.stringify(context));
           const session = await frame.evaluate(async () => {
             const r = await fetch("/api/session", {cache:"no-store"});
-            return await r.json();
+            const text = await r.text();
+            return { status:r.status, type:r.headers.get("content-type"), text };
           });
-          if (session.direct !== true || typeof session.active !== "boolean") {
-            throw new Error("Direct gifts.ru session adapter is not active: "+JSON.stringify(session));
+          console.log("Session raw:", JSON.stringify(session));
+          let sessionJson;
+          try { sessionJson = JSON.parse(session.text); } catch { sessionJson = null; }
+          if (!sessionJson || sessionJson.direct !== true || typeof sessionJson.active !== "boolean") {
+            throw new Error("Direct gifts.ru session adapter is not active: "+JSON.stringify({context,session}));
           }
-          console.log("Workbench loaded:", title.replace(/\s+/g," "), "session:", JSON.stringify(session));
+          console.log("Workbench loaded:", title.replace(/\s+/g," "), "session:", JSON.stringify(sessionJson));
           if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
           await browser.close();
           NODE
