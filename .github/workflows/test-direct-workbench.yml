@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 22
       - run: node tools/build-launcher.mjs
+      - run: node --check assets/index-BpU9kvz8.js
       - run: npm init -y
       - run: npm install playwright
       - run: npx playwright install --with-deps chromium
@@ -103,6 +104,14 @@ jobs:
           if (!sessionJson || sessionJson.direct !== true || sessionJson.active !== true) {
             throw new Error("Direct gifts.ru session adapter is not active: "+JSON.stringify({context,session}));
           }
+          const orderData = await frame.evaluate(async () => {
+            const r = await fetch("/api/orders/7920509", {cache:"no-store"});
+            return await r.json();
+          });
+          if (!orderData.items?.[0]?.places?.includes("лицо")) {
+            throw new Error("Exact order place was not parsed: "+JSON.stringify(orderData));
+          }
+          console.log("Exact place test:", JSON.stringify(orderData.items[0].places));
           const basket = await frame.evaluate(async () => {
             const r = await fetch("/api/basket", {cache:"no-store"});
             return await r.json();
