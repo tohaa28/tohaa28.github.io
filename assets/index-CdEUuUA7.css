@@ -136,53 +136,126 @@ html[data-static-mode="true"] #orderIntro{
   }
 }
 
-/* Logo tools inside the template viewport */
+
+/* Full logo tools inside the template viewport */
 .stage-logo-tools{
   position:absolute;
   left:50%;
   bottom:10px;
-  z-index:6;
+  z-index:8;
   transform:translateX(-50%);
-  display:flex;
-  align-items:center;
+  display:grid;
   gap:6px;
-  padding:6px;
+  min-width:min(640px,calc(100% - 20px));
+  max-width:calc(100% - 20px);
+  padding:7px;
   border:1px solid #c9d3d4;
-  border-radius:8px;
-  background:rgba(255,255,255,.94);
+  border-radius:9px;
+  background:rgba(255,255,255,.96);
   box-shadow:0 4px 18px #24343b2b;
-  backdrop-filter:blur(4px)
+  backdrop-filter:blur(5px)
 }
 .stage-logo-tools[hidden]{
   display:none!important
 }
+.stage-tool-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-width:0
+}
 .stage-logo-tools button{
-  min-height:36px;
-  height:36px;
-  padding:6px 10px;
+  min-height:34px;
+  height:34px;
+  padding:5px 10px;
   white-space:nowrap
 }
-.stage-logo-tools .danger-tool{
+.stage-logo-tools .primary-tool{
+  font-weight:700;
+  border-color:#8faa55;
+  background:#f8fbf2
+}
+.stage-logo-tools .danger-tool:not(:disabled){
   color:#9f3029;
   border-color:#d6aaa6;
   background:#fffafa
 }
-.stage-logo-tools .danger-tool:hover{
+.stage-logo-tools .danger-tool:not(:disabled):hover{
   background:#fff1ef;
   border-color:#c77e77
 }
-@media(max-width:600px){
+.stage-angle{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  margin:0;
+  font-size:12px;
+  font-weight:600;
+  color:#52636a;
+  white-space:nowrap
+}
+.stage-angle input{
+  width:68px;
+  height:34px;
+  min-height:34px;
+  padding:4px 6px;
+  margin:0;
+  text-align:center;
+  border:1px solid #c5d0d2;
+  border-radius:5px;
+  background:#fff
+}
+/* In simple mode these actions live only in the template viewport. */
+.simple-mode #orderEditor>label.file{
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  opacity:0;
+  pointer-events:none
+}
+.simple-mode #simpleFit,
+.simple-mode #simpleCenter{
+  display:none!important
+}
+@media(max-width:700px){
   .stage-logo-tools{
     left:8px;
     right:8px;
     bottom:8px;
-    transform:none;
-    justify-content:center
+    min-width:0;
+    max-width:none;
+    transform:none
+  }
+  .stage-tool-row{
+    flex-wrap:wrap
   }
   .stage-logo-tools button{
     flex:1 1 auto;
-    min-width:0;
-    padding:5px 7px;
+    min-width:92px;
     font-size:12px
+  }
+  .stage-angle{
+    flex:0 0 auto
+  }
+}
+@media(max-width:430px){
+  .stage-logo-tools{
+    padding:5px;
+    gap:5px
+  }
+  .stage-logo-tools button{
+    min-height:32px;
+    height:32px;
+    padding:4px 6px;
+    min-width:78px;
+    font-size:11px
+  }
+  .stage-angle input{
+    width:58px;
+    height:32px;
+    min-height:32px
   }
 }
