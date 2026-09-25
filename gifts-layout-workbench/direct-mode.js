@@ -177,6 +177,88 @@
     catch { return ""; }
   }
 
+  function imageUrlCandidates(root, article = "") {
+    const found = [];
+    const seen = new Set();
+    const baseArticle = clean(article).split(".")[0].toLowerCase();
+
+    const add = raw => {
+      if (!raw) return;
+      const value = clean(String(raw).split(",")[0].trim().split(/\s+/)[0]);
+      if (!value || /^data:/i.test(value)) return;
+      const url = absolute(value);
+      if (!url || seen.has(url)) return;
+      try {
+        const parsed = new URL(url);
+        if (!/\.(?:jpe?g|png|webp|gif)(?:$|[?#])/i.test(parsed.pathname + parsed.search)) return;
+      } catch { return; }
+      seen.add(url);
+      found.push(url);
+    };
+
+    for (const node of root.querySelectorAll("img,source")) {
+      for (const attr of ["src","data-src","data-original","data-lazy","data-image","data-url","srcset","data-srcset"]) {
+        add(node.getAttribute(attr));
+      }
+    }
+
+    for (const node of root.querySelectorAll("[style]")) {
+      const style = node.getAttribute("style") || "";
+      for (const m of style.matchAll(/url\((['"]?)(.*?)\1\)/gi)) add(m[2]);
+    }
+
+    for (const node of root.querySelectorAll("a[href]")) add(node.getAttribute("href"));
+
+    return found.sort((a,b) => {
+      const score = url => {
+        const s = url.toLowerCase();
+        let n = 0;
+        if (s.includes("files.gifts.ru")) n += 20;
+        if (s.includes("/reviewer/")) n += 15;
+        if (baseArticle && (s.includes("/"+baseArticle+"_") || s.includes("/"+baseArticle+"."))) n += 40;
+        if (/_(?:500|400|300|200)(?:\.|_)/.test(s)) n += 5;
+        return n;
+      };
+      return score(b)-score(a);
+    });
+  }
+
+  function productUrlFromItem(root) {
+    const selectors = [
+      ".cart-tbl-name a[href]",
+      ".cart-tbl-id a[href]",
+      "a[href*='/id/']"
+    ];
+    for (const selector of selectors) {
+      for (const link of root.querySelectorAll(selector)) {
+        const href = absolute(link.getAttribute("href") || "");
+        try {
+          const u = new URL(href);
+          if (u.origin === GIFTS_ORIGIN && /\/id\/\d+(?:[/?#]|$)/i.test(u.pathname + u.search)) return u.href;
+        } catch {}
+      }
+    }
+    return "";
+  }
+
+  function imageFromProductHtml(html, article) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return imageUrlCandidates(doc, article)[0] || "";
+  }
+
+  async function resolveItemImage(item) {
+    if (item?.imageUrl) return item.imageUrl;
+    if (!item?.productUrl) return "";
+    try {
+      const { html } = await getHtml(item.productUrl);
+      const imageUrl = imageFromProductHtml(html, item.article);
+      if (imageUrl) item.imageUrl = imageUrl;
+      return imageUrl;
+    } catch {
+      return "";
+    }
+  }
+
   function removeArticlePrefix(value, article) {
     const text = clean(value);
     if (!article || !text.startsWith(article)) return text;
@@ -257,11 +339,8 @@
       if (!/^\d+$/.test(itemId) || !article || !method ||
           !Number.isSafeInteger(quantity) || quantity < 1) continue;
 
-      const images = [...root.querySelectorAll("img")];
-      const preferred = images.find(img => {
-        const src = img.getAttribute("src") || img.getAttribute("data-src") || "";
-        return src.includes(article.split(".")[0]);
-      }) || images[0];
+      const imageUrl = imageUrlCandidates(root, article)[0] || "";
+      const productUrl = productUrlFromItem(root);
 
       items.push({
         itemId,
@@ -272,9 +351,8 @@
         place: places.join(", "),
         places,
         drawTaskIds: drawTaskRaw ? drawTaskRaw.split(/[\s,;]+/).filter(Boolean) : [],
-        imageUrl: preferred
-          ? absolute(preferred.getAttribute("src") || preferred.getAttribute("data-src") || "")
-          : "",
+        imageUrl,
+        productUrl,
         requirements: clean(root.textContent).slice(0, 5000),
         source: "order-dom"
       });
@@ -519,18 +597,23 @@
     try {
       const parsed = await getOrder(order);
       const item = parsed.items.find(x => String(x.itemId) === String(itemId));
-      if (!item?.imageUrl) return json({ error: "Превью не найдено." }, 404);
+      if (!item) return json({ error: "Артикул заказа не найден." }, 404);
 
-      const res = await nativeFetch(item.imageUrl, {
+      const imageUrl = await resolveItemImage(item);
+      if (!imageUrl) return json({ error: "Превью не найдено ни в заказе, ни в карточке товара." }, 404);
+
+      const res = await nativeFetch(imageUrl, {
         credentials: "include",
-        cache: "no-store"
+        cache: "no-store",
+        headers: { accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8" }
       });
-      if (!res.ok) return json({ error: "Превью недоступно." }, 502);
+      const contentType = res.headers.get("content-type") || "image/jpeg";
+      if (!res.ok || !/^image\//i.test(contentType)) return json({ error: "Превью недоступно." }, 502);
 
       return new Response(await res.arrayBuffer(), {
         status: 200,
         headers: {
-          "content-type": res.headers.get("content-type") || "image/jpeg",
+          "content-type": contentType,
           "cache-control": "private, max-age=300"
         }
       });
