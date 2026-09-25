@@ -46,6 +46,12 @@ jobs:
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
               }
+              if (url.origin === location.origin && (url.pathname === "/cart" || url.pathname === "/cart/")) {
+                return Promise.resolve(new Response('<!doctype html><html><body><a href="/private/order/7920509">Заказ 7920509</a></body></html>', {
+                  status: 200,
+                  headers: {"content-type":"text/html; charset=utf-8"}
+                }));
+              }
               return realFetch(input, init);
             };
           });
@@ -83,7 +89,14 @@ jobs:
           if (!sessionJson || sessionJson.direct !== true || sessionJson.active !== true) {
             throw new Error("Direct gifts.ru session adapter is not active: "+JSON.stringify({context,session}));
           }
-          console.log("Workbench loaded:", title.replace(/\s+/g," "), "session:", JSON.stringify(sessionJson));
+          const basket = await frame.evaluate(async () => {
+            const r = await fetch("/api/basket", {cache:"no-store"});
+            return await r.json();
+          });
+          if (!Array.isArray(basket.orders) || !basket.orders.some(x => x.number === "7920509")) {
+            throw new Error("Basket parser failed: "+JSON.stringify(basket));
+          }
+          console.log("Workbench loaded:", title.replace(/\s+/g," "), "session:", JSON.stringify(sessionJson), "basket:", JSON.stringify(basket));
           if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
           await browser.close();
           NODE
