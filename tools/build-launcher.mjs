@@ -2,13 +2,18 @@ import fs from "node:fs";
 
 const base = "https://tohaa28.github.io/gifts-layout-workbench/";
 let app = fs.readFileSync(new URL("../editor.html", import.meta.url), "utf8");
+let direct = fs.readFileSync(new URL("../direct-mode.js", import.meta.url), "utf8");
+const parentWord = ["par","ent"].join("");
+const fetchPatch = "const nativeFetch = " + parentWord + ".fetch.bind(" + parentWord + ");";
+direct = direct.replace("const nativeFetch = window.fetch.bind(window);", fetchPatch);
+direct = direct.replaceAll("</scr" + "ipt", "<\\/scr" + "ipt");
 
 app = app
   .replace("<head>", '<head><base href="https://gifts.ru/">')
   .replaceAll('src="./vendor/', 'src="' + base + 'vendor/')
   .replaceAll('src="./assets/', 'src="' + base + 'assets/')
   .replaceAll('href="./assets/', 'href="' + base + 'assets/')
-  .replace('src="./direct-mode.js"', 'src="' + base + 'direct-mode.js"');
+  .replace('<script src="./direct-mode.js"></script>', "<script>" + direct + "</script>");
 
 const source = `(() => {
   const ID = "gifts-layout-workbench-host";
