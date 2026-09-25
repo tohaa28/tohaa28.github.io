@@ -395,3 +395,76 @@ html[data-static-mode="true"] #orderIntro{
   font-weight:700;
   color:#35454c
 }
+/* Guided simple workflow */
+#modeToggle{
+  display:none!important
+}
+.step-card{
+  border:2px solid #86ad35;
+  border-radius:6px;
+  background:#f8fbf2
+}
+.step2-card{
+  margin:12px 0 0!important;
+  padding:12px!important
+}
+.step2-card label{
+  margin:0
+}
+.step4-card{
+  display:grid;
+  gap:9px;
+  margin-top:4px;
+  padding:12px
+}
+.step4-card[hidden]{
+  display:none!important
+}
+.workspace-step{
+  width:100%;
+  min-width:0;
+  padding:8px 14px 7px;
+  border-bottom:1px solid #d7e1d0;
+  background:#f3f8e9;
+  color:#35454c
+}
+.workspace-step[hidden]{
+  display:none!important
+}
+.workspace-step strong{
+  display:inline-block;
+  margin-right:8px;
+  font-size:14px;
+  color:#557b0d
+}
+.workspace-step span{
+  font-size:13px;
+  color:#66777a
+}
+.simple-mode .step2-card .simple-label{
+  display:block;
+  margin-bottom:7px;
+  font-size:16px;
+  font-weight:800;
+  color:#35454c
+}
+.simple-mode #simpleControls{
+  border:0;
+  background:transparent;
+  padding:0
+}
+.simple-mode #step4Box #simpleExport{
+  min-height:48px
+}
+@media(max-width:700px){
+  .workspace-step{
+    padding:7px 8px
+  }
+  .workspace-step strong,
+  .workspace-step span{
+    display:block
+  }
+  .workspace-step span{
+    margin-top:2px
+  }
+}
