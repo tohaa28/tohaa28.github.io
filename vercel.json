@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "rewrites": [
+    {"source": "/api/orders/:order/items/:itemId.pdf", "destination": "/api/order-item?order=:order&itemId=:itemId"},
+    {"source": "/api/orders/:order/items/:itemId/preview", "destination": "/api/order-preview?order=:order&itemId=:itemId"},
+    {"source": "/api/orders/:order", "destination": "/api/order?order=:order"}
+  ],
+  "headers": [
+    {"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "no-store, max-age=0"}]}
+  ]
+}
