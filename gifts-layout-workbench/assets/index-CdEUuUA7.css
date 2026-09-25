@@ -305,3 +305,93 @@ html[data-static-mode="true"] #orderIntro{
     font-size:11px
   }
 }
+/* Clearer article chooser */
+.article-card #orderTemplatesBox>.simple-label,
+.article-card #orderTemplatesBox>.full-label{
+  display:block;
+  margin-bottom:7px;
+  font-size:16px;
+  font-weight:800;
+  color:#35454c
+}
+.article-card .template-picker{
+  border:2px solid #86ad35;
+  border-radius:6px;
+  box-shadow:0 1px 0 #86ad3520;
+  overflow:hidden
+}
+.article-card .template-picker>summary{
+  min-height:54px;
+  padding:10px 12px;
+  background:#f3f8e9;
+  font-size:15px;
+  font-weight:750;
+  color:#35454c
+}
+.article-card .template-picker>summary:hover{
+  background:#edf5de
+}
+.article-card .template-picker[open]>summary{
+  background:#e7f2d2;
+  border-bottom:2px solid #86ad35
+}
+.article-card .template-options{
+  position:relative;
+  gap:7px;
+  padding:38px 7px 8px;
+  background:#fbfcf9
+}
+.article-card .template-options:before{
+  content:"Нажмите на нужный артикул";
+  position:absolute;
+  left:12px;
+  top:10px;
+  font-size:13px;
+  line-height:18px;
+  font-weight:750;
+  color:#5b8010
+}
+.article-card .article-choice{
+  position:relative;
+  min-height:72px;
+  padding:10px 12px;
+  border:2px solid #d6dfcf;
+  border-radius:5px;
+  background:#fff;
+  transition:border-color .12s ease,background .12s ease,box-shadow .12s ease
+}
+.article-card .article-choice:hover{
+  border-color:#9fbd65;
+  background:#f8fbf2
+}
+.article-card .article-choice.selected{
+  padding-right:92px;
+  border-color:#78a51c;
+  background:#f0f8df;
+  box-shadow:inset 5px 0 0 #78a51c
+}
+.article-card .article-choice.selected:after{
+  content:"✓ Выбрано";
+  position:absolute;
+  right:10px;
+  top:10px;
+  padding:3px 6px;
+  border-radius:10px;
+  background:#6f981b;
+  color:#fff;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:800
+}
+.article-card .article-row{
+  grid-template-columns:minmax(0,82px) minmax(0,1fr);
+  padding:3px 0
+}
+.article-card .article-row .detail-key{
+  font-weight:600;
+  color:#718086
+}
+.article-card .article-row .detail-value{
+  font-weight:700;
+  color:#35454c
+}
