@@ -1,0 +1,65 @@
+name: Validate Workbench source
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-source
+    paths:
+      - "api/**"
+      - "lib/**"
+      - "package.json"
+      - "vercel.json"
+      - ".github/workflows/validate-workbench.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      SESSION_SECRET: validation-only-secret-1234567890
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gifts-layout-workbench-source
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in lib/*.js api/*.js; do
+            node --check "$f"
+          done
+
+      - name: Test session encryption
+        run: |
+          node --input-type=module - <<'NODE'
+          const m = await import("./lib/session.js");
+          const token = m.sealSession({jar:{cookies:[{key:"sid",value:"abc"}]}});
+          const back = m.unsealSession(token);
+          if (back?.jar?.cookies?.[0]?.value !== "abc") throw new Error("session roundtrip failed");
+          console.log("session roundtrip ok");
+          NODE
+
+      - name: Test exact order-place parsing
+        run: |
+          node --input-type=module - <<'NODE'
+          const {parseOrder} = await import("./lib/gifts.js");
+          const html = '<ul><li data-itemid="12345" data-drawtaskids="77"><div class="cart-tbl-name">Артикул 15637</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок</div></div><div class="cart-qty">5 шт.</div><div class="cart-tbl-imp"><g-droper><span>Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637, лицо</span></div></div></li></ul>';
+          const parsed = parseOrder(html, "7920509");
+          const x = parsed.items[0];
+          if (!x || x.article !== "15637" || x.places[0] !== "лицо" || x.method !== "Лазерная гравировка") {
+            console.error(parsed);
+            throw new Error("order parser regression");
+          }
+          console.log("order parser ok");
+          NODE
