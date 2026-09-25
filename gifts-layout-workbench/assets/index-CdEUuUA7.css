@@ -137,18 +137,24 @@ html[data-static-mode="true"] #orderIntro{
 }
 
 
-/* Full logo tools inside the template viewport */
+
+/* Full logo tools inside the template viewport: single row */
 .stage-logo-tools{
   position:absolute;
   left:50%;
   bottom:10px;
   z-index:8;
   transform:translateX(-50%);
-  display:grid;
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
   gap:6px;
-  min-width:min(640px,calc(100% - 20px));
+  width:max-content;
   max-width:calc(100% - 20px);
   padding:7px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
   border:1px solid #c9d3d4;
   border-radius:9px;
   background:rgba(255,255,255,.96);
@@ -158,14 +164,8 @@ html[data-static-mode="true"] #orderIntro{
 .stage-logo-tools[hidden]{
   display:none!important
 }
-.stage-tool-row{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  min-width:0
-}
 .stage-logo-tools button{
+  flex:0 0 auto;
   min-height:34px;
   height:34px;
   padding:5px 10px;
@@ -186,6 +186,7 @@ html[data-static-mode="true"] #orderIntro{
   border-color:#c77e77
 }
 .stage-angle{
+  flex:0 0 auto;
   display:flex;
   align-items:center;
   gap:5px;
@@ -196,7 +197,7 @@ html[data-static-mode="true"] #orderIntro{
   white-space:nowrap
 }
 .stage-angle input{
-  width:68px;
+  width:64px;
   height:34px;
   min-height:34px;
   padding:4px 6px;
@@ -206,7 +207,16 @@ html[data-static-mode="true"] #orderIntro{
   border-radius:5px;
   background:#fff
 }
-/* In simple mode these actions live only in the template viewport. */
+
+/* Logo editing is performed only inside the template viewport. */
+#transformControls,
+#simpleFit,
+#simpleCenter,
+#fieldsPanel #fit,
+#fieldsPanel #center,
+#fieldsPanel #removePlacement{
+  display:none!important
+}
 .simple-mode #orderEditor>label.file{
   position:absolute;
   width:1px;
@@ -216,29 +226,19 @@ html[data-static-mode="true"] #orderIntro{
   opacity:0;
   pointer-events:none
 }
-.simple-mode #simpleFit,
-.simple-mode #simpleCenter{
-  display:none!important
-}
 @media(max-width:700px){
   .stage-logo-tools{
     left:8px;
     right:8px;
-    bottom:8px;
-    min-width:0;
+    width:auto;
     max-width:none;
-    transform:none
-  }
-  .stage-tool-row{
-    flex-wrap:wrap
+    bottom:8px;
+    transform:none;
+    justify-content:flex-start
   }
   .stage-logo-tools button{
-    flex:1 1 auto;
-    min-width:92px;
+    min-width:auto;
     font-size:12px
-  }
-  .stage-angle{
-    flex:0 0 auto
   }
 }
 @media(max-width:430px){
@@ -249,12 +249,11 @@ html[data-static-mode="true"] #orderIntro{
   .stage-logo-tools button{
     min-height:32px;
     height:32px;
-    padding:4px 6px;
-    min-width:78px;
+    padding:4px 7px;
     font-size:11px
   }
   .stage-angle input{
-    width:58px;
+    width:56px;
     height:32px;
     min-height:32px
   }
