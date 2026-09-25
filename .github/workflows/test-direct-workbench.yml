@@ -56,9 +56,22 @@ jobs:
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920509") {
-                return Promise.resolve(new Response('<!doctype html><html><body><li data-itemid="12345" data-drawtaskids="999"><div class="cart-tbl-name">Артикул 15637</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 лицо</span></div></div></li></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><li data-itemid="12345" data-drawtaskids="999"><div class="cart-tbl-name"><a href="/id/228756">Артикул 15637</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 лицо</span></div></div></li></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
+                }));
+              }
+              if (url.origin === location.origin && url.pathname === "/id/228756") {
+                return Promise.resolve(new Response('<!doctype html><html><body><h1>Брелок Tetta</h1><img src="https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2" alt="Брелок Tetta"></body></html>', {
+                  status: 200,
+                  headers: {"content-type":"text/html; charset=utf-8"}
+                }));
+              }
+              if (url.hostname === "files.gifts.ru" && url.pathname === "/reviewer/webp/15/15637_7_500.webp") {
+                const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), ch => ch.charCodeAt(0));
+                return Promise.resolve(new Response(png, {
+                  status: 200,
+                  headers: {"content-type":"image/png"}
                 }));
               }
               if (url.origin === location.origin && (url.pathname === "/private/order/280185" || url.pathname === "/private/order/306190")) {
@@ -127,6 +140,18 @@ jobs:
             throw new Error("Exact order place was not parsed: "+JSON.stringify(orderData));
           }
           console.log("Exact place test:", JSON.stringify(orderData.items[0].places));
+          if (orderData.items?.[0]?.productUrl !== "https://gifts.ru/id/228756") {
+            throw new Error("Product URL was not captured for preview fallback: "+JSON.stringify(orderData.items?.[0]));
+          }
+          const preview = await frame.evaluate(async () => {
+            const r = await fetch("/api/orders/7920509/items/12345/preview", {cache:"no-store"});
+            const bytes = await r.arrayBuffer();
+            return {status:r.status,type:r.headers.get("content-type"),size:bytes.byteLength};
+          });
+          if (preview.status !== 200 || !/^image\//.test(preview.type || "") || preview.size < 10) {
+            throw new Error("Product preview fallback failed: "+JSON.stringify(preview));
+          }
+          console.log("Product preview fallback:", JSON.stringify(preview));
           const basket = await frame.evaluate(async () => {
             const r = await fetch("/api/basket", {cache:"no-store"});
             return await r.json();
