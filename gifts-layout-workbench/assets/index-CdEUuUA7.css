@@ -395,7 +395,7 @@ html[data-static-mode="true"] #orderIntro{
   font-weight:700;
   color:#35454c
 }
-/* Guided simple workflow */
+/* Guided simple workflow: gated steps */
 #modeToggle{
   display:none!important
 }
