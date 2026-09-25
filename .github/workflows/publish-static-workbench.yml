@@ -1,0 +1,76 @@
+name: Publish static Gifts Workbench
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-source
+    paths:
+      - "index.html"
+      - "static-mode.js"
+      - "assets/**"
+      - "vendor/**"
+      - ".github/workflows/publish-static-workbench.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout static Workbench source
+        uses: actions/checkout@v4
+        with:
+          ref: gifts-layout-workbench-source
+          path: source
+          fetch-depth: 0
+
+      - name: Validate backend-free build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f source/index.html
+          test -f source/static-mode.js
+          test -f source/assets/index-BpU9kvz8.js
+          test -f source/assets/index-CdEUuUA7.css
+          test -f source/vendor/pdf-lib.min.js
+          test ! -d source/api
+          test ! -f source/vercel.json
+          grep -q 'src="./static-mode.js"' source/index.html
+          grep -q 'src="./assets/index-BpU9kvz8.js"' source/index.html
+          grep -q 'location.origin+location.pathname' source/assets/index-BpU9kvz8.js
+          grep -q 'Backend-free GitHub Pages mode' source/assets/index-CdEUuUA7.css
+
+      - name: Checkout GitHub Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+
+      - name: Replace only the Workbench directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf site/gifts-layout-workbench
+          mkdir -p site/gifts-layout-workbench
+          cp source/index.html site/gifts-layout-workbench/index.html
+          cp source/static-mode.js site/gifts-layout-workbench/static-mode.js
+          cp -R source/assets site/gifts-layout-workbench/assets
+          cp -R source/vendor site/gifts-layout-workbench/vendor
+
+      - name: Publish to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd site
+          git config user.name "workbench-publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git add gifts-layout-workbench
+          if git diff --cached --quiet; then
+            echo "No static Workbench changes"
+          else
+            git commit -m "Publish backend-free Gifts Workbench"
+            git push origin main
+          fi
