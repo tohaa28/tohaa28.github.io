@@ -27,19 +27,18 @@ async function runOnHiddenTab(url, func, args = []) {
   }
 }
 
+function scrapeSessionDom() {
+  const authForm = document.querySelector('form[name="authform"]');
+  const loggedOut =
+    !!authForm ||
+    /Авторизация\s*-\s*Проект 111/i.test(document.title) ||
+    /\/auth(?:[/?#]|$)/i.test(location.href);
+  return { active: !loggedOut, url: location.href };
+}
+
 async function sessionStatus() {
   try {
-    const res = await fetch("https://gifts.ru/private", {
-      credentials: "include",
-      redirect: "follow",
-      cache: "no-store"
-    });
-    const html = await res.text();
-    const loggedOut =
-      /<form[^>]+name=["']authform["']/i.test(html) ||
-      /Авторизация\s*-\s*Проект 111/i.test(html) ||
-      /\/auth(?:[/?#]|$)/i.test(res.url);
-    return { active: res.ok && !loggedOut };
+    return await runOnHiddenTab("https://gifts.ru/private", scrapeSessionDom);
   } catch {
     return { active: false };
   }
@@ -140,50 +139,47 @@ async function readOrder(order) {
   return data;
 }
 
-function bytesToBase64(bytes) {
-  const chunk = 0x8000;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-async function fetchBinary(url, referer) {
-  const res = await fetch(url, {
-    credentials: "include",
-    redirect: "follow",
-    cache: "no-store",
-    headers: referer ? { Referer: referer } : {}
-  });
-  if (!res.ok) throw new Error("gifts.ru вернул HTTP " + res.status + ".");
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  return {
-    contentType: res.headers.get("content-type") || "application/octet-stream",
-    base64: bytesToBase64(bytes)
-  };
+function fetchPdfOnOrderPage(itemId) {
+  return (async () => {
+    const res = await fetch(
+      "/drawing?action=getOrderItemPdf&orderitemid=" + encodeURIComponent(itemId),
+      { credentials: "include", cache: "no-store" }
+    );
+    if (!res.ok) throw new Error("gifts.ru вернул HTTP " + res.status + ".");
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length < 5) throw new Error("Пустой PDF.");
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return {
+      contentType: res.headers.get("content-type") || "application/pdf",
+      base64: btoa(binary)
+    };
+  })();
 }
 
 async function fetchOrderPdf(order, itemId) {
-  if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(itemId)) {
+  if (!/^\\d{5,12}$/.test(order) || !/^\\d{1,20}$/.test(itemId)) {
     throw new Error("Некорректная ссылка на PDF.");
   }
-  const orderData = await readOrder(order);
-  if (!orderData.items.some(item => String(item.itemId) === String(itemId))) {
+  const data = await readOrder(order);
+  if (!data.items.some(item => String(item.itemId) === String(itemId))) {
     throw new Error("Этот PDF не относится к выбранному заказу.");
   }
-  return fetchBinary(
-    "https://gifts.ru/drawing?action=getOrderItemPdf&orderitemid=" +
-      encodeURIComponent(itemId),
-    "https://gifts.ru/private/order/" + order
+  return await runOnHiddenTab(
+    "https://gifts.ru/private/order/" + order,
+    fetchPdfOnOrderPage,
+    [itemId]
   );
 }
 
 async function fetchPreview(order, itemId) {
-  const orderData = await readOrder(order);
-  const item = orderData.items.find(x => String(x.itemId) === String(itemId));
+  const data = await readOrder(order);
+  const item = data.items.find(x => String(x.itemId) === String(itemId));
   if (!item?.imageUrl) throw new Error("Превью артикула не найдено.");
-  return fetchBinary(item.imageUrl, "https://gifts.ru/private/order/" + order);
+  return { url: item.imageUrl };
 }
 
 async function handle(message) {
