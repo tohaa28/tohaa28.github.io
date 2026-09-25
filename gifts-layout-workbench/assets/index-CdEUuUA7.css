@@ -135,3 +135,42 @@ html[data-static-mode="true"] #orderIntro{
     max-width:none
   }
 }
+/* Logo tools in the editor toolbar */
+.toolbar .logo-tools{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:0 0 auto
+}
+.toolbar .logo-tools button{
+  min-height:36px;
+  height:36px;
+  padding:6px 10px;
+  white-space:nowrap
+}
+.toolbar .logo-tools .danger-tool:not(:disabled){
+  color:#9f3029;
+  border-color:#d6aaa6;
+  background:#fffafa
+}
+.toolbar .logo-tools .danger-tool:not(:disabled):hover{
+  background:#fff1ef;
+  border-color:#c77e77
+}
+@media(max-width:900px){
+  .toolbar .template-nav{
+    flex-wrap:wrap
+  }
+  .toolbar .template-pick-hint{
+    flex:1 1 220px
+  }
+}
+@media(max-width:600px){
+  .toolbar .logo-tools{
+    order:3;
+    width:100%
+  }
+  .toolbar .logo-tools button{
+    flex:1 1 auto
+  }
+}
