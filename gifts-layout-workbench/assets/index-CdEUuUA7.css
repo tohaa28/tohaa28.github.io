@@ -135,42 +135,54 @@ html[data-static-mode="true"] #orderIntro{
     max-width:none
   }
 }
-/* Logo tools in the editor toolbar */
-.toolbar .logo-tools{
+
+/* Logo tools inside the template viewport */
+.stage-logo-tools{
+  position:absolute;
+  left:50%;
+  bottom:10px;
+  z-index:6;
+  transform:translateX(-50%);
   display:flex;
   align-items:center;
   gap:6px;
-  flex:0 0 auto
+  padding:6px;
+  border:1px solid #c9d3d4;
+  border-radius:8px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 4px 18px #24343b2b;
+  backdrop-filter:blur(4px)
 }
-.toolbar .logo-tools button{
+.stage-logo-tools[hidden]{
+  display:none!important
+}
+.stage-logo-tools button{
   min-height:36px;
   height:36px;
   padding:6px 10px;
   white-space:nowrap
 }
-.toolbar .logo-tools .danger-tool:not(:disabled){
+.stage-logo-tools .danger-tool{
   color:#9f3029;
   border-color:#d6aaa6;
   background:#fffafa
 }
-.toolbar .logo-tools .danger-tool:not(:disabled):hover{
+.stage-logo-tools .danger-tool:hover{
   background:#fff1ef;
   border-color:#c77e77
 }
-@media(max-width:900px){
-  .toolbar .template-nav{
-    flex-wrap:wrap
-  }
-  .toolbar .template-pick-hint{
-    flex:1 1 220px
-  }
-}
 @media(max-width:600px){
-  .toolbar .logo-tools{
-    order:3;
-    width:100%
+  .stage-logo-tools{
+    left:8px;
+    right:8px;
+    bottom:8px;
+    transform:none;
+    justify-content:center
   }
-  .toolbar .logo-tools button{
-    flex:1 1 auto
+  .stage-logo-tools button{
+    flex:1 1 auto;
+    min-width:0;
+    padding:5px 7px;
+    font-size:12px
   }
 }
