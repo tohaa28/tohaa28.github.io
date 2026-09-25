@@ -98,7 +98,7 @@
   }
 
   function basketCandidatePaths() {
-    const paths = new Set(["/cart", "/cart/", "/private", "/", "/private/orders", "/private/order"]);
+    const paths = new Set(["/cart", "/cart/", "/"]);
     const doc = hostDocument();
     if (!doc) return [...paths];
 
@@ -241,13 +241,57 @@
     return parsed;
   }
 
+  function authStateFromHost() {
+    const doc = hostDocument();
+    if (!doc) return null;
+
+    const bodyText = clean(doc.body?.innerText || doc.body?.textContent || "");
+    const logoutNode = [...doc.querySelectorAll("a,button,[role='button']")].find(node => {
+      const label = clean([
+        node.textContent,
+        node.getAttribute("title"),
+        node.getAttribute("aria-label"),
+        node.getAttribute("href")
+      ].filter(Boolean).join(" "));
+      return /(?:^|\s)(?:выйти|выход|logout)(?:\s|$)/i.test(label);
+    });
+    if (logoutNode) return true;
+
+    const loginNode = [...doc.querySelectorAll("a,button,[role='button'],form")].find(node => {
+      const label = clean([
+        node.textContent,
+        node.getAttribute("title"),
+        node.getAttribute("aria-label"),
+        node.getAttribute("href"),
+        node.getAttribute("action")
+      ].filter(Boolean).join(" "));
+      return /(?:^|\s)(?:войти|вход|авторизац|login)(?:\s|$)/i.test(label);
+    });
+    if (loginNode && !/выйти/i.test(bodyText)) return false;
+
+    return null;
+  }
+
   async function apiSession() {
-    try {
-      await getHtml("/private");
-      return json({ active: true, direct: true });
-    } catch {
-      return json({ active: false, direct: true });
+    const hostState = authStateFromHost();
+    if (hostState !== null) return json({ active: hostState, direct: true, source: "host-dom" });
+
+    for (const path of ["/", "/auth"]) {
+      try {
+        const res = await nativeFetch(giftsUrl(path), {
+          method: "GET",
+          credentials: "include",
+          redirect: "follow",
+          cache: "no-store",
+          headers: { accept: "text/html,application/xhtml+xml" }
+        });
+        const html = await res.text();
+        if (path === "/" && res.ok && !isAuthPage(html, res.url)) {
+          return json({ active: true, direct: true, source: "home" });
+        }
+      } catch {}
     }
+    return json({ active: false, direct: true, source: "fallback" });
   }
 
   async function apiLogin(init) {
@@ -303,11 +347,9 @@
   async function apiBasket() {
     const found = new Map();
 
-    try {
-      await getHtml("/private");
-    } catch (error) {
-      if (error?.code === "AUTH") return json({ error: error.message }, 401);
-      return json({ error: error?.message || "Не удалось проверить сеанс gifts.ru." }, 502);
+    const state = authStateFromHost();
+    if (state === false) {
+      return json({ error: "Сеанс gifts.ru не активен. Войдите в gifts.ru." }, 401);
     }
 
     const host = hostDocument();
