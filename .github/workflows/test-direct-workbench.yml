@@ -82,6 +82,17 @@ jobs:
           if (!frame) throw new Error("Workbench iframe not created");
           await frame.waitForSelector(".app", {timeout:30000});
           const title = await frame.locator(".brand").innerText();
+          const toolState = await frame.evaluate(() => {
+            const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorRemoveLogo"];
+            const missing = ids.filter(id => !document.getElementById(id));
+            const stage = document.getElementById("stage");
+            const insideStage = ids.every(id => id === "fieldLogoTools" || stage?.contains(document.getElementById(id)));
+            return {missing, insideStage, hiddenInitially: document.getElementById("fieldLogoTools")?.hidden === true};
+          });
+          if (toolState.missing.length || !toolState.insideStage || !toolState.hiddenInitially) {
+            throw new Error("In-template tools are invalid: "+JSON.stringify(toolState));
+          }
+          console.log("In-template tools:", JSON.stringify(toolState));
           const login = await frame.locator("#loginForm").count();
           if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
           if (!login) throw new Error("Login UI missing");
