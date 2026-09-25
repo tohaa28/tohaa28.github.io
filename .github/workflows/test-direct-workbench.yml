@@ -121,6 +121,21 @@ jobs:
             throw new Error("Guided workflow initial state is invalid: "+JSON.stringify(guidedState));
           }
           console.log("Guided workflow initial state:", JSON.stringify(guidedState));
+          const articleCardStructure = await frame.evaluate(() => {
+            const card = document.querySelector(".article-card");
+            const body = document.getElementById("selectedArticleBody");
+            const details = document.getElementById("orderDetails");
+            const preview = document.getElementById("productCard");
+            return {
+              bodyInsideCard: !!card?.contains(body),
+              detailsInsideBody: !!body?.contains(details),
+              previewInsideBody: !!body?.contains(preview)
+            };
+          });
+          if (!articleCardStructure.bodyInsideCard || !articleCardStructure.detailsInsideBody || !articleCardStructure.previewInsideBody) {
+            throw new Error("Selected article card grouping is invalid: "+JSON.stringify(articleCardStructure));
+          }
+          console.log("Selected article card structure:", JSON.stringify(articleCardStructure));
           const login = await frame.locator("#loginForm").count();
           if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
           if (!login) throw new Error("Login UI missing");
