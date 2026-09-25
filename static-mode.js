@@ -215,7 +215,7 @@
       box.innerHTML =
         '<b>Нужно установить локальный мост.</b>' +
         '<span>Он даёт этой странице доступ к вашей авторизованной сессии gifts.ru без backend.</span>' +
-        '<a href="./extension/manifest.json" target="_blank" rel="noopener">Файлы расширения</a>';
+        '<a href="./extension/install.html" target="_blank" rel="noopener">Установить локальный мост</a>';
       box.classList.remove("ok");
     }
   }
