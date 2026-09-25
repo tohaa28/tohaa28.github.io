@@ -110,6 +110,17 @@ jobs:
             throw new Error("In-template tools are invalid: "+JSON.stringify(toolState));
           }
           console.log("In-template tools:", JSON.stringify(toolState));
+          const guidedState = await frame.evaluate(() => ({
+            simpleMode: document.body.classList.contains("simple-mode"),
+            modeToggleHidden: document.getElementById("modeToggle")?.hidden === true || getComputedStyle(document.getElementById("modeToggle")).display === "none",
+            step2Hidden: document.getElementById("orderFieldChoiceBox")?.hidden === true,
+            step3Hidden: document.getElementById("editorStep3")?.hidden === true,
+            step4Hidden: document.getElementById("step4Box")?.hidden === true
+          }));
+          if (!guidedState.simpleMode || !guidedState.modeToggleHidden || !guidedState.step2Hidden || !guidedState.step3Hidden || !guidedState.step4Hidden) {
+            throw new Error("Guided workflow initial state is invalid: "+JSON.stringify(guidedState));
+          }
+          console.log("Guided workflow initial state:", JSON.stringify(guidedState));
           const login = await frame.locator("#loginForm").count();
           if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
           if (!login) throw new Error("Login UI missing");
