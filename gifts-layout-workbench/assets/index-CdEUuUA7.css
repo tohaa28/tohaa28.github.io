@@ -149,8 +149,9 @@ html[data-static-mode="true"] #orderIntro{
   align-items:center;
   flex-wrap:nowrap;
   gap:6px;
-  width:max-content;
+  width:calc(100% - 20px);
   max-width:calc(100% - 20px);
+  justify-content:center;
   padding:7px;
   overflow-x:auto;
   overflow-y:hidden;
@@ -277,10 +278,7 @@ html[data-static-mode="true"] #orderIntro{
 .basket-head #refreshBasket.icon-button:disabled{
   opacity:.45
 }
-/* Width-first template viewport and crop control */
-#stage{
-  max-height:none!important
-}
+/* Crop control */
 .stage-clip{
   flex:0 0 auto;
   display:flex;
