@@ -246,6 +246,29 @@ jobs:
           }
           console.log("Integrated article choice:", JSON.stringify(articleChoiceState));
 
+          const stageAspect = await frame.evaluate(() => {
+            const stage = document.getElementById("stage");
+            const canvas = document.getElementById("templateCanvas");
+            const box = stage?.getBoundingClientRect();
+            return {
+              cssWidth: box?.width || 0,
+              cssHeight: box?.height || 0,
+              cssRatio: box?.height ? box.width / box.height : 0,
+              canvasWidth: canvas?.width || 0,
+              canvasHeight: canvas?.height || 0,
+              canvasRatio: canvas?.height ? canvas.width / canvas.height : 0,
+              minWidth: stage?.style.minWidth || ""
+            };
+          });
+          const stageRatioError = stageAspect.canvasRatio
+            ? Math.abs(stageAspect.cssRatio / stageAspect.canvasRatio - 1)
+            : 1;
+          if (!(stageAspect.cssWidth > 0) || !(stageAspect.cssHeight > 0) ||
+              stageRatioError > 0.01 || stageAspect.minWidth !== "0px") {
+            throw new Error("Stage aspect ratio is not preserved: "+JSON.stringify({stageAspect,stageRatioError}));
+          }
+          console.log("Stage aspect ratio:", JSON.stringify({...stageAspect,stageRatioError}));
+
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
