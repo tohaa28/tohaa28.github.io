@@ -119,6 +119,7 @@ jobs:
             throw new Error("In-template tools are invalid: "+JSON.stringify(toolState));
           }
           console.log("In-template tools:", JSON.stringify(toolState));
+          await frame.waitForFunction(() => document.body.classList.contains("simple-mode"), null, {timeout:30000});
           const guidedState = await frame.evaluate(() => ({
             simpleMode: document.body.classList.contains("simple-mode"),
             modeToggleHidden: document.getElementById("modeToggle")?.hidden === true || getComputedStyle(document.getElementById("modeToggle")).display === "none",
