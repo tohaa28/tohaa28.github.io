@@ -300,6 +300,29 @@ jobs:
               };
             });
             console.log("Field stage diagnostics:", JSON.stringify(fieldStage));
+            const renderedFieldPixels = await frame.evaluate(() => {
+              const canvas = document.getElementById("templateCanvas");
+              const ctx = canvas.getContext("2d", {willReadFrequently:true});
+              const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+              let minX=canvas.width, minY=canvas.height, maxX=-1, maxY=-1, count=0;
+              for (let y=0; y<canvas.height; y++) {
+                for (let x=0; x<canvas.width; x++) {
+                  const p=(y*canvas.width+x)*4;
+                  const r=data[p], g=data[p+1], b=data[p+2], a=data[p+3];
+                  if (a > 80 && b > 120 && g > 70 && r < 100 && b > r + 50) {
+                    minX=Math.min(minX,x); minY=Math.min(minY,y);
+                    maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); count++;
+                  }
+                }
+              }
+              const w=maxX>=minX?maxX-minX+1:0;
+              const h=maxY>=minY?maxY-minY+1:0;
+              return {minX,minY,maxX,maxY,w,h,count,ratio:h?w/h:0};
+            });
+            console.log("Rendered field pixels:", JSON.stringify(renderedFieldPixels));
+            if (renderedFieldPixels.count < 20 || Math.abs(renderedFieldPixels.ratio - 1) > 0.02) {
+              throw new Error("Rendered square field is distorted after zoom: "+JSON.stringify(renderedFieldPixels));
+            }
             const ratios = fieldStage.ratios;
             const fieldRatioError = Math.max(
               Math.abs(ratios.stage / ratios.templatePixels - 1),
