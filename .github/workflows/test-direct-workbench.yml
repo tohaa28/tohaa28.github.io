@@ -74,6 +74,15 @@ jobs:
                   headers: {"content-type":"image/png"}
                 }));
               }
+              if (url.origin === location.origin && url.pathname === "/drawing" &&
+                  url.searchParams.get("action") === "getOrderItemPdf" &&
+                  url.searchParams.get("orderitemid") === "12345") {
+                const pdf = Uint8Array.from(atob("JVBERi0xLjMKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9NZWRpYUJveCBbIDAgMCAxNDQgNzIgXSAvUGFyZW50IDYgMCBSIC9SZXNvdXJjZXMgPDwKL0ZvbnQgMSAwIFIgL1Byb2NTZXQgWyAvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJIF0KPj4gL1JvdGF0ZSAwIC9UcmFucyA8PAoKPj4gCiAgL1R5cGUgL1BhZ2UKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL1BhZ2VNb2RlIC9Vc2VOb25lIC9QYWdlcyA2IDAgUiAvVHlwZSAvQ2F0YWxvZwo+PgplbmRvYmoKNSAwIG9iago8PAovQXV0aG9yIChhbm9ueW1vdXMpIC9DcmVhdGlvbkRhdGUgKEQ6MjAyNjA5MjYwNjQ5MjkrMDAnMDAnKSAvQ3JlYXRvciAoYW5vbnltb3VzKSAvS2V5d29yZHMgKCkgL01vZERhdGUgKEQ6MjAyNjA5MjYwNjQ5MjkrMDAnMDAnKSAvUHJvZHVjZXIgKFJlcG9ydExhYiBQREYgTGlicmFyeSAtIFwob3BlbnNvdXJjZVwpKSAKICAvU3ViamVjdCAodW5zcGVjaWZpZWQpIC9UaXRsZSAodW50aXRsZWQpIC9UcmFwcGVkIC9GYWxzZQo+PgplbmRvYmoKNiAwIG9iago8PAovQ291bnQgMSAvS2lkcyBbIDMgMCBSIF0gL1R5cGUgL1BhZ2VzCj4+CmVuZG9iago3IDAgb2JqCjw8Ci9GaWx0ZXIgWyAvQVNDSUk4NURlY29kZSAvRmxhdGVEZWNvZGUgXSAvTGVuZ3RoIDk0Cj4+CnN0cmVhbQpHYXBRaDBFPUYsMFVcSDNUXHBOWVReUUtrP3RjPklQLDtXI1UxXjIzaWhQRU1fP0NXNEtJU2k5OmJYZSgjZyQpbi1xUSFDZDhVQ247QChZT1dEVlJUIS0oST5EI34+ZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgOAowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwNjEgMDAwMDAgbiAKMDAwMDAwMDA5MiAwMDAwMCBuIAowMDAwMDAwMTk5IDAwMDAwIG4gCjAwMDAwMDAzOTEgMDAwMDAgbiAKMDAwMDAwMDQ1OSAwMDAwMCBuIAowMDAwMDAwNzIwIDAwMDAwIG4gCjAwMDAwMDA3NzkgMDAwMDAgbiAKdHJhaWxlcgo8PAovSUQgCls8Yzg1NjM1ODMwZmE4Y2UyYjVhZDIyMWYyMjQ5MDM2ZTY+PGM4NTYzNTgzMGZhOGNlMmI1YWQyMjFmMjI0OTAzNmU2Pl0KJSBSZXBvcnRMYWIgZ2VuZXJhdGVkIFBERiBkb2N1bWVudCAtLSBkaWdlc3QgKG9wZW5zb3VyY2UpCgovSW5mbyA1IDAgUgovUm9vdCA0IDAgUgovU2l6ZSA4Cj4+CnN0YXJ0eHJlZgo5NjIKJSVFT0YK"), ch => ch.charCodeAt(0));
+                return Promise.resolve(new Response(pdf, {
+                  status: 200,
+                  headers: {"content-type":"application/pdf"}
+                }));
+              }
               if (url.origin === location.origin && (url.pathname === "/private/order/280185" || url.pathname === "/private/order/306190")) {
                 return Promise.resolve(new Response('<!doctype html><html><body><p>Заказ без выбранных нанесений</p></body></html>', {
                   status: 200,
@@ -121,21 +130,15 @@ jobs:
             throw new Error("Guided workflow initial state is invalid: "+JSON.stringify(guidedState));
           }
           console.log("Guided workflow initial state:", JSON.stringify(guidedState));
-          const articleCardStructure = await frame.evaluate(() => {
-            const card = document.querySelector(".article-card");
-            const body = document.getElementById("selectedArticleBody");
-            const details = document.getElementById("orderDetails");
-            const preview = document.getElementById("productCard");
-            return {
-              bodyInsideCard: !!card?.contains(body),
-              detailsInsideBody: !!body?.contains(details),
-              previewInsideBody: !!body?.contains(preview)
-            };
-          });
-          if (!articleCardStructure.bodyInsideCard || !articleCardStructure.detailsInsideBody || !articleCardStructure.previewInsideBody) {
-            throw new Error("Selected article card grouping is invalid: "+JSON.stringify(articleCardStructure));
+          const legacyArticleBlocks = await frame.evaluate(() => ({
+            selectedArticleBody: !!document.getElementById("selectedArticleBody"),
+            orderDetails: !!document.getElementById("orderDetails"),
+            productCard: !!document.getElementById("productCard")
+          }));
+          if (legacyArticleBlocks.selectedArticleBody || legacyArticleBlocks.orderDetails || legacyArticleBlocks.productCard) {
+            throw new Error("Legacy separate article details/preview block is still present: "+JSON.stringify(legacyArticleBlocks));
           }
-          console.log("Selected article card structure:", JSON.stringify(articleCardStructure));
+          console.log("Legacy separate article block removed:", JSON.stringify(legacyArticleBlocks));
           const login = await frame.locator("#loginForm").count();
           if (!title.includes("Макетная")) throw new Error("Workbench UI not loaded");
           if (!login) throw new Error("Login UI missing");
@@ -185,6 +188,42 @@ jobs:
           if (!Array.isArray(basket.orders) || basket.orders.length !== 1 || basket.orders[0].number !== "7920509") {
             throw new Error("Basket verification failed: "+JSON.stringify(basket));
           }
+
+          await frame.waitForSelector("#basketOrders .basket-order > button", {state:"attached", timeout:30000});
+          await frame.locator("#basketOrders .basket-order > button").first().click();
+          await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
+          await frame.waitForSelector("#orderTemplateList .article-choice", {state:"attached", timeout:30000});
+
+          const articleChoiceState = await frame.evaluate(() => {
+            const choice = document.querySelector("#orderTemplateList .article-choice");
+            const summary = document.querySelector("#orderTemplateSummaryText .article-choice-content");
+            const rows = {};
+            for (const row of choice?.querySelectorAll(".article-row") || []) {
+              const key = row.querySelector(".detail-key")?.textContent?.trim();
+              const value = row.querySelector(".detail-value")?.textContent?.trim();
+              if (key) rows[key] = value || "";
+            }
+            return {
+              choiceExists: !!choice,
+              previewInsideChoice: !!choice?.querySelector(".article-thumb-wrap .article-thumb"),
+              previewSrc: choice?.querySelector(".article-thumb")?.getAttribute("src") || "",
+              summaryIntegrated: !!summary,
+              rows,
+              legacySeparateBlocks: ["selectedArticleBody","orderDetails","productCard"].some(id => !!document.getElementById(id))
+            };
+          });
+          if (!articleChoiceState.choiceExists ||
+              !articleChoiceState.previewInsideChoice ||
+              !articleChoiceState.summaryIntegrated ||
+              articleChoiceState.legacySeparateBlocks ||
+              articleChoiceState.rows["Артикул"] !== "15637" ||
+              articleChoiceState.rows["Название"] !== "Брелок" ||
+              articleChoiceState.rows["Тираж"] !== "10 шт." ||
+              !/Лазерная гравировка/.test(articleChoiceState.rows["Нанесение"] || "") ||
+              articleChoiceState.rows["Место"] !== "лицо") {
+            throw new Error("Integrated article choice is invalid: "+JSON.stringify(articleChoiceState));
+          }
+          console.log("Integrated article choice:", JSON.stringify(articleChoiceState));
 
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
