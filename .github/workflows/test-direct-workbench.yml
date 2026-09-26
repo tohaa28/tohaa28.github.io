@@ -205,6 +205,8 @@ jobs:
           await frame.locator("#basketOrders .basket-order > button").first().click();
           await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
           await frame.waitForSelector("#orderTemplateList .article-choice", {state:"attached", timeout:30000});
+          await frame.waitForSelector("#orderTemplateSummaryText .article-choice-content", {state:"attached", timeout:30000});
+          await frame.waitForFunction(() => document.getElementById("orderFieldChoiceBox")?.hidden === false, null, {timeout:30000});
 
           const articleChoiceState = await frame.evaluate(() => {
             const choice = document.querySelector("#orderTemplateList .article-choice");
