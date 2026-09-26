@@ -33,6 +33,7 @@ jobs:
           node source/tools/build-launcher.mjs
           test -f source/launcher.js
           node --check source/direct-mode.js
+          node --check source/assets/index-BpU9kvz8.js
           node --check source/launcher.js
 
       - uses: actions/checkout@v4
