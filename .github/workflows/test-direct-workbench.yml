@@ -269,6 +269,48 @@ jobs:
           }
           console.log("Stage aspect ratio:", JSON.stringify({...stageAspect,stageRatioError}));
 
+          const fieldOptionCount = await frame.locator("#orderFieldChoice option:not([value=''])").count();
+          if (fieldOptionCount > 0) {
+            await frame.selectOption("#orderFieldChoice", {index:1});
+            await frame.waitForFunction(() => {
+              const step3 = document.getElementById("editorStep3");
+              return step3 && step3.hidden === false;
+            }, null, {timeout:30000});
+            await frame.waitForTimeout(100);
+            const fieldStage = await frame.evaluate(() => {
+              const stage = document.getElementById("stage");
+              const template = document.getElementById("templateCanvas");
+              const overlay = document.getElementById("overlay");
+              const stageBox = stage.getBoundingClientRect();
+              const templateBox = template.getBoundingClientRect();
+              const overlayBox = overlay.getBoundingClientRect();
+              const num = value => Number.parseFloat(value || "0") || 0;
+              return {
+                stage:{w:stageBox.width,h:stageBox.height,styleW:stage.style.width,styleH:stage.style.height,minW:stage.style.minWidth,maxW:getComputedStyle(stage).maxWidth,maxH:getComputedStyle(stage).maxHeight},
+                template:{w:templateBox.width,h:templateBox.height,pixelW:template.width,pixelH:template.height,cssW:getComputedStyle(template).width,cssH:getComputedStyle(template).height},
+                overlay:{w:overlayBox.width,h:overlayBox.height,pixelW:overlay.width,pixelH:overlay.height,cssW:getComputedStyle(overlay).width,cssH:getComputedStyle(overlay).height},
+                scroll:{w:document.getElementById("stageScroll").clientWidth,h:document.getElementById("stageScroll").clientHeight},
+                ratios:{
+                  stage:stageBox.height?stageBox.width/stageBox.height:0,
+                  templateCss:templateBox.height?templateBox.width/templateBox.height:0,
+                  templatePixels:template.height?template.width/template.height:0,
+                  overlayCss:overlayBox.height?overlayBox.width/overlayBox.height:0,
+                  overlayPixels:overlay.height?overlay.width/overlay.height:0
+                }
+              };
+            });
+            console.log("Field stage diagnostics:", JSON.stringify(fieldStage));
+            const ratios = fieldStage.ratios;
+            const fieldRatioError = Math.max(
+              Math.abs(ratios.stage / ratios.templatePixels - 1),
+              Math.abs(ratios.templateCss / ratios.templatePixels - 1),
+              Math.abs(ratios.overlayCss / ratios.overlayPixels - 1)
+            );
+            if (!Number.isFinite(fieldRatioError) || fieldRatioError > 0.01) {
+              throw new Error("Field view stretches the canvas: "+JSON.stringify({fieldStage,fieldRatioError}));
+            }
+          }
+
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
