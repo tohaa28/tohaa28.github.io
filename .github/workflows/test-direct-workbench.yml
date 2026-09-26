@@ -205,30 +205,37 @@ jobs:
           await frame.locator("#basketOrders .basket-order > button").first().click();
           await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
           await frame.waitForSelector("#orderTemplateList .article-choice", {state:"attached", timeout:30000});
-          await frame.waitForSelector("#orderTemplateSummaryText .article-choice-content", {state:"attached", timeout:30000});
           await frame.waitForFunction(() => document.getElementById("orderFieldChoiceBox")?.hidden === false, null, {timeout:30000});
 
           const articleChoiceState = await frame.evaluate(() => {
             const choice = document.querySelector("#orderTemplateList .article-choice");
-            const summary = document.querySelector("#orderTemplateSummaryText .article-choice-content");
+            const info = choice?.querySelector(".article-choice-info");
+            const summary = document.getElementById("orderTemplateSummary");
             const rows = {};
             for (const row of choice?.querySelectorAll(".article-row") || []) {
               const key = row.querySelector(".detail-key")?.textContent?.trim();
               const value = row.querySelector(".detail-value")?.textContent?.trim();
               if (key) rows[key] = value || "";
             }
+            const badgeContent = choice ? getComputedStyle(choice, "::after").content : "";
             return {
               choiceExists: !!choice,
               previewInsideChoice: !!choice?.querySelector(".article-thumb-wrap .article-thumb"),
               previewSrc: choice?.querySelector(".article-thumb")?.getAttribute("src") || "",
-              summaryIntegrated: !!summary,
+              redundantSummaryHidden: !!summary && getComputedStyle(summary).display === "none",
+              badgeRemoved: !/Выбрано/.test(badgeContent || ""),
+              selectedPaddingRight: choice ? parseFloat(getComputedStyle(choice).paddingRight) : 999,
+              infoPaddingRight: info ? parseFloat(getComputedStyle(info).paddingRight) : 999,
               rows,
               legacySeparateBlocks: ["selectedArticleBody","orderDetails","productCard"].some(id => !!document.getElementById(id))
             };
           });
           if (!articleChoiceState.choiceExists ||
               !articleChoiceState.previewInsideChoice ||
-              !articleChoiceState.summaryIntegrated ||
+              !articleChoiceState.redundantSummaryHidden ||
+              !articleChoiceState.badgeRemoved ||
+              articleChoiceState.selectedPaddingRight > 20 ||
+              articleChoiceState.infoPaddingRight > 4 ||
               articleChoiceState.legacySeparateBlocks ||
               articleChoiceState.rows["Артикул"] !== "15637" ||
               articleChoiceState.rows["Название"] !== "Брелок" ||
