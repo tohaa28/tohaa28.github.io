@@ -9,7 +9,8 @@
     *{box-sizing:border-box}body{margin:0}.wrap{max-width:760px;margin:0 auto;padding:42px 18px}
     .card{background:#fff;border:1px solid #dce2e2;border-top:4px solid #81b315;border-radius:8px;padding:24px;box-shadow:0 10px 35px #33444b12}
     h1{margin:0 0 8px;font-size:30px;color:#36464d}.muted{color:#708087}
-    .open{display:inline-block;margin-top:12px;padding:12px 18px;border:1px solid #cad4d4;border-radius:6px;color:#405157;text-decoration:none;background:#fff}
+    .open{display:inline-block;margin-top:12px;margin-right:8px;padding:12px 18px;border:1px solid #cad4d4;border-radius:6px;color:#405157;text-decoration:none;background:#fff}
+    .open.primary{border-color:#81b315;background:#81b315;color:#fff;font-weight:600}
     ol{padding-left:22px}.note{margin-top:20px;padding:14px;background:#f2f6ed;border-left:3px solid #81b315}
   </style>
 </head>
@@ -19,11 +20,12 @@
       <h1>Макетная gifts.ru</h1>
       <p>Версия без backend и без расширения. Редактор запускается непосредственно внутри <b>gifts.ru</b>, поэтому использует обычную авторизацию сайта, читает корзину и загружает PDF как same-origin запросы.</p>
       <ol>
-        <li>Создайте в браузере закладку с именем <b>Макетная</b>.</li>
-        <li>Вставьте в адрес закладки код запуска Макетной.</li>
+        <li>Скачайте и запустите установщик закладки <b>Макетная</b> или создайте её вручную.</li>
+        <li>Если создаёте вручную — вставьте в адрес закладки код запуска Макетной.</li>
         <li>Откройте gifts.ru и нажмите эту закладку.</li>
         <li>Редактор откроется поверх текущей страницы gifts.ru.</li>
       </ol>
+      <a class="open primary" href="https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-source/downloads/Install_Maketnaya_Bookmark.cmd">Скачать установщик закладки</a>
       <a class="open" href="https://gifts.ru/" target="_blank" rel="noopener">Открыть gifts.ru ↗</a>
       <div class="note">Макетная только читает корзину/заказы и загружает шаблоны. Статусы заказа и «Согласования макетов» не изменяются.</div>
       <p class="muted">Код редактора и лаунчера хранится на GitHub Pages. Отдельный сервер не используется.</p>
