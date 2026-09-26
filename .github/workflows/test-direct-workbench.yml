@@ -206,6 +206,10 @@ jobs:
           await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
           await frame.waitForSelector("#orderTemplateList .article-choice", {state:"attached", timeout:30000});
           await frame.waitForFunction(() => document.getElementById("orderFieldChoiceBox")?.hidden === false, null, {timeout:30000});
+          await frame.waitForFunction(() => {
+            const img = document.querySelector("#orderTemplateList .article-thumb");
+            return !!img && img.hidden === false && img.complete && img.naturalWidth > 0;
+          }, null, {timeout:30000});
 
           const articleChoiceState = await frame.evaluate(() => {
             const choice = document.querySelector("#orderTemplateList .article-choice");
@@ -222,6 +226,7 @@ jobs:
               choiceExists: !!choice,
               previewInsideChoice: !!choice?.querySelector(".article-thumb-wrap .article-thumb"),
               previewSrc: choice?.querySelector(".article-thumb")?.getAttribute("src") || "",
+              previewLoaded: (() => { const img=choice?.querySelector(".article-thumb"); return !!img && !img.hidden && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0; })(),
               redundantSummaryHidden: !!summary && getComputedStyle(summary).display === "none",
               badgeRemoved: !/Выбрано/.test(badgeContent || ""),
               selectedPaddingRight: choice ? parseFloat(getComputedStyle(choice).paddingRight) : 999,
@@ -232,6 +237,7 @@ jobs:
           });
           if (!articleChoiceState.choiceExists ||
               !articleChoiceState.previewInsideChoice ||
+              !articleChoiceState.previewLoaded ||
               !articleChoiceState.redundantSummaryHidden ||
               !articleChoiceState.badgeRemoved ||
               articleChoiceState.selectedPaddingRight > 20 ||
