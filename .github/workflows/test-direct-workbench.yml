@@ -119,7 +119,18 @@ jobs:
             throw new Error("In-template tools are invalid: "+JSON.stringify(toolState));
           }
           console.log("In-template tools:", JSON.stringify(toolState));
-          await frame.waitForFunction(() => document.body.classList.contains("simple-mode"), null, {timeout:30000});
+          try {
+            await frame.waitForFunction(() => document.body.classList.contains("simple-mode"), null, {timeout:15000});
+          } catch (error) {
+            const moduleProbe = await frame.evaluate(() => ({
+              simpleMode: document.body.classList.contains("simple-mode"),
+              readyState: document.readyState,
+              pdfLib: !!globalThis.PDFLib,
+              pdfJs: !!globalThis.pdfjsLib,
+              currentScripts: [...document.scripts].map(s => ({src:s.src || "", type:s.type || "", inline:!s.src}))
+            }));
+            throw new Error("Workbench module did not initialize: "+JSON.stringify({moduleProbe,errors,error:String(error)}));
+          }
           const guidedState = await frame.evaluate(() => ({
             simpleMode: document.body.classList.contains("simple-mode"),
             modeToggleHidden: document.getElementById("modeToggle")?.hidden === true || getComputedStyle(document.getElementById("modeToggle")).display === "none",
