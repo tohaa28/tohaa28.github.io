@@ -424,6 +424,7 @@ jobs:
           if (mismatchState.audit !== "2 в заказе ≠ 1 в шаблоне" ||
               !mismatchState.mismatchClass || !mismatchState.hintUnmatched ||
               !/ОШИБКА КОНТРОЛЯ/.test(mismatchState.hint) ||
+              !/2 места .*1 поле/.test(mismatchState.hint) ||
               mismatchState.selectedField !== "" || !mismatchState.step3Hidden) {
             throw new Error("Place-count mismatch is not safely handled: "+JSON.stringify(mismatchState));
           }
