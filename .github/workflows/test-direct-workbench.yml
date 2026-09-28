@@ -230,8 +230,11 @@ jobs:
               orderData.items[0].placeCountReliable !== true ||
               orderData.items[0].pdfItemId !== "12345" ||
               orderData.items[0].templateRelationSource !== "makets-popup-orderitemid" ||
-              orderData.items.some(x => x.article === "13317.00")) {
-            throw new Error("Authoritative order/template mapping is invalid: "+JSON.stringify(orderData));
+              orderData.items.some(x => x.article === "13317.00") ||
+              !Array.isArray(orderData.orderItems) ||
+              orderData.orderItems.length !== 2 ||
+              !orderData.orderItems.some(x => x.article === "13317.00" && x.hasTemplate === false && x.templateRelationSource === "unassigned")) {
+            throw new Error("Authoritative order/template mapping or full order composition is invalid: "+JSON.stringify(orderData));
           }
           const twoPlaceOrder = await frame.evaluate(async () => {
             const r = await fetch("/api/orders/7920510", {cache:"no-store"});
@@ -278,6 +281,12 @@ jobs:
           console.log("Fresh private basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
 
           await frame.waitForSelector("#basketOrders .basket-order > button", {state:"attached", timeout:30000});
+          await frame.waitForFunction(() => [...document.querySelectorAll("#basketOrders .basket-method")].some(x => /13317\.00/.test(x.textContent || "")));
+          const basketRows = await frame.locator("#basketOrders .basket-method").allTextContents();
+          if (!basketRows.some(x => /13317\.00/.test(x))) {
+            throw new Error("Basket dropped an order item without template: "+JSON.stringify(basketRows));
+          }
+          console.log("Basket preserves unassigned order item:", JSON.stringify(basketRows));
           await frame.locator("#basketOrders .basket-order > button").first().click();
           try {
             await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
