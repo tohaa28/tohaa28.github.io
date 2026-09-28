@@ -68,6 +68,24 @@ test('numeric PDF labels map to numbered order places, not array order',()=>{
   assert.equal(auditFieldLabels(duplicate,{places:['лицо','оборот'],placeCountReliable:true}).ok,false);
 });
 
+test('annotation numbers map to fields',()=>{
+  const k=72/25.4;
+  const viewport={
+    convertToViewportPoint:(x,y)=>[x*k,y*k],
+    convertToViewportRectangle:r=>r.map(v=>v*k)
+  };
+  const annotations=[
+    {contentsObj:{str:'1'},rect:[22,22,26,26]},
+    {contents:'2.',rect:[22,82,26,86]}
+  ];
+  const labels=extractAnnotationFieldLabels(annotations,viewport);
+  assert.deepEqual(labels.map(x=>x.fieldIndex),[1,2]);
+  const bound=bindFieldLabels(fields,labels);
+  const audit=auditFieldLabels(bound,{places:[],placeCount:0,placeCountReliable:false});
+  assert.equal(audit.ok,true);
+  assert.equal(audit.mode,'pdf-numbered-only');
+});
+
 test('standalone numeric items survive line merging and punctuation',()=>{
   const PT_PER_MM=72/25.4;
   const viewport={convertToViewportPoint:(x,y)=>[x*PT_PER_MM,y*PT_PER_MM]};
