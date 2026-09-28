@@ -40,6 +40,18 @@ test('plain names and split words do not need an order-derived label',()=>{
   assert.equal(extracted[0].name,'лицо');
   assert.equal(extracted[0].printId,null);
 });
+test('explicit print label wins over unrelated nearby plain text',()=>{
+  const box=[{x:20,y:20,w:30,h:20,page:0}];
+  const strong={x:22,y:16,w:20,h:4,text:'лицо [print1]',name:'лицо',printId:'print1',confidence:3};
+  const weak={x:24,y:18,w:18,h:4,text:'Брелок',name:'Брелок',printId:null,confidence:0};
+  const bound=bindFieldLabels(box,[weak,strong]);
+  assert.equal(bound[0].labelStatus,'matched');
+  assert.equal(bound[0].pdfPlace,'лицо');
+  assert.equal(auditFieldLabels(bound,{places:['лицо']}).ok,true);
+  const duplicateStrong=bindFieldLabels(box,[strong,{...strong,text:'лицо [print2]',printId:'print2'}]);
+  assert.equal(duplicateStrong[0].labelStatus,'ambiguous');
+});
+
 test('nearby competing rectangles are ambiguous; pages bind separately',()=>{
   const boxes=[{x:0,y:0,w:10,h:10},{x:20,y:0,w:10,h:10}];
   const label={...labels[0],x:13,y:2,w:4,h:4};
