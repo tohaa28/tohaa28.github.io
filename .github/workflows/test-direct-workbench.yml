@@ -570,6 +570,10 @@ jobs:
           await frame.waitForFunction(()=>document.getElementById("pageNumber").textContent.includes("2 / 2"));
           if (!(await frame.locator("#fieldSize").innerText()).startsWith("panel A"))
             throw new Error("Mapping lost when changing PDF page");
+          // Opening an order must refresh the authoritative names, even with a cached snapshot.
+          await page.evaluate(()=>{window.__gwbScenario.html=window.__gwbScenario.html.replace("17488 panel A","17488 panel C");});
+          const refreshedOrder=await frame.evaluate(async()=>await (await fetch("/api/orders/7920515",{cache:"no-store"})).json());
+          if (refreshedOrder.items[0].places[0]!=="panel C") throw new Error("Cached order names reused");
           console.log("Order-place mapping e2e: manual, duplicate, missing, labelled, multipage, mobile and editor checks passed");
 
           const pdfWorkerTest = await frame.evaluate(async () => {

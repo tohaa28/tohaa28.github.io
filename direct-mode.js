@@ -618,7 +618,7 @@
       return json({ error: "Некорректный номер заказа." }, 400);
     }
     try {
-      const parsed = await getOrder(order);
+      const parsed = await getOrder(order, true);
       if (!parsed.items.length) {
         return json({ error: "В заказе не найдены выбранные нанесения." }, 404);
       }
