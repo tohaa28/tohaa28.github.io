@@ -304,8 +304,8 @@
     const collectNodes = nodes => {
       const places = [];
       for (const node of nodes) {
-        const value = normalizeOrderPlace(node.textContent || node.value || "", article);
-        if (value && placeWord.test(value)) places.push(value);
+        const value = removeArticlePrefix(node.textContent || node.value || "", article);
+        if (value) places.push(value);
       }
       return places;
     };

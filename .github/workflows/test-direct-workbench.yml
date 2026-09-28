@@ -5,10 +5,11 @@ on:
   push:
     branches:
       - gifts-layout-workbench-source
+      - codex/order-place-mapping
     paths:
       - "direct-mode.js"
       - "editor.html"
-      - "tools/build-launcher.mjs"
+      - "tools/**"
       - "assets/**"
       - ".github/workflows/test-direct-workbench.yml"
 
@@ -17,13 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: gifts-layout-workbench-source
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: node tools/build-launcher.mjs
       - run: node --check assets/index-BpU9kvz8.js
+      - run: node --check direct-mode.js
+      - run: node tools/test-place-mapping.mjs
       - run: npm init -y
       - run: npm install playwright
       - run: npx playwright install --with-deps chromium
@@ -31,8 +32,16 @@ jobs:
         run: |
           node --input-type=module - <<'NODE'
           import { chromium } from "playwright";
+          import { readFile } from "node:fs/promises";
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage();
+          // Serve the checked-out commit, including launcher dependencies, not live Pages.
+          await page.route("https://tohaa28.github.io/gifts-layout-workbench/**", async route => {
+            const path = new URL(route.request().url()).pathname.replace("/gifts-layout-workbench/","");
+            if (!path || path.includes("..")) throw new Error("Unexpected asset path: "+path);
+            const type = path.endsWith(".js") ? "application/javascript" : path.endsWith(".css") ? "text/css" : "text/html";
+            await route.fulfill({body:await readFile(path),contentType:type});
+          });
           const errors = [];
           page.on("pageerror", e => errors.push("pageerror: "+e.message));
           page.on("console", m => { if (m.type()==="error") errors.push("console: "+m.text()); });
@@ -61,6 +70,15 @@ jobs:
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
+              }
+              if (url.origin === location.origin && window.__gwbScenario &&
+                  url.pathname === "/private/order/" + window.__gwbScenario.order) {
+                return Promise.resolve(new Response(window.__gwbScenario.html,{headers:{"content-type":"text/html"}}));
+              }
+              if (url.origin === location.origin && window.__gwbScenario && url.pathname === "/drawing" &&
+                  url.searchParams.get("action") === "getOrderItemPdf" && url.searchParams.get("orderitemid") === "32345") {
+                const bytes = Uint8Array.from(atob(window.__gwbScenario.pdf), c => c.charCodeAt(0));
+                return Promise.resolve(new Response(bytes,{headers:{"content-type":"application/pdf"}}));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920509") {
                 return Promise.resolve(new Response('<!doctype html><html><body><li data-itemid="12345" data-drawtaskids="999"><div class="cart-tbl-name"><a href="/id/228756">Артикул 15637</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 лицо</span></div></div></li></body></html>', {
@@ -429,6 +447,130 @@ jobs:
             throw new Error("Place-count mismatch is not safely handled: "+JSON.stringify(mismatchState));
           }
           console.log("Place-count mismatch control:", JSON.stringify(mismatchState));
+
+
+          // Mismatch must also block explicit selection, not merely auto-selection.
+          await frame.evaluate(() => {
+            const select=document.getElementById("orderFieldChoice");
+            select.value="0"; select.dispatchEvent(new Event("change",{bubbles:true}));
+            document.getElementById("drawField").click();
+          });
+          if (!(await frame.locator("#editorStep3").evaluate(el => el.hidden)))
+            throw new Error("Mismatch bypassed by field selection");
+
+          async function openScenario(order,names,labels=[],multiPage=false) {
+            const pdf=await frame.evaluate(async ({labels,multiPage}) => {
+              const doc=await PDFLib.PDFDocument.create();
+              const color=PDFLib.rgb(0,0.7,0.9);
+              const first=doc.addPage([300,500]);
+              // Paint right before left: order must not become the place mapping.
+              if (multiPage) {
+                for (const [i,text] of labels.entries()) {
+                  const p=i===0?first:doc.addPage([300,500]);
+                  p.drawRectangle({x:30,y:300,width:100,height:100,borderColor:color,borderWidth:1});
+                  p.drawText(text,{x:35,y:370,size:10});
+                }
+              } else {
+                first.drawRectangle({x:160,y:300,width:100,height:100,borderColor:color,borderWidth:1});
+                first.drawRectangle({x:30,y:300,width:100,height:100,borderColor:color,borderWidth:1});
+                if(labels[0]) first.drawText(labels[0],{x:35,y:370,size:10});
+                if(labels[1]) first.drawText(labels[1],{x:165,y:370,size:10});
+              }
+              return await doc.saveAsBase64();
+            },{labels,multiPage});
+            const html='<!doctype html><html><body><li data-itemid="32345" data-drawtaskids="901,902"><div class="cart-tbl-name">Артикул 17488</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Тестовый товар</div></div><div class="cart-qty">5 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column">'+names.map(n=>'<span class="color-text">17488 '+n+'</span>').join("")+'</div></div></li></body></html>';
+            await page.evaluate(scenario=>{window.__gwbScenario=scenario;},{order,html,pdf});
+            await frame.click("#backToOrders");
+            await frame.evaluate(order=>{
+              document.getElementById("order").value=order;
+              document.getElementById("loadOrder").click();
+            },order);
+            await frame.waitForFunction(order=>
+              document.getElementById("orderLoading").hidden &&
+              !document.getElementById("orderEditor").hidden &&
+              document.getElementById("editorTitle").textContent.includes(order) &&
+              document.querySelectorAll("#orderFieldChoice option").length===3,order,{timeout:30000});
+          }
+          await openScenario("7920511",["лицо","оборот"]);
+          if (!(await frame.locator("#placeMapping").isVisible()) ||
+              !(await frame.locator("#orderFieldChoice").isDisabled()) ||
+              !(await frame.locator("#editorStep3").evaluate(el=>el.hidden)))
+            throw new Error("Equal counts without evidence must require manual mapping");
+          const mappingSelects=frame.locator("#placeMapping select");
+          if (await mappingSelects.count() !== 2) throw new Error("Missing order place selectors");
+          await frame.click("#confirmPlaceMapping");
+          if (!(await frame.locator("#placeMappingError").innerText())) throw new Error("Empty mapping accepted");
+          await mappingSelects.nth(0).selectOption("0");
+          await mappingSelects.nth(1).selectOption("0");
+          await frame.click("#confirmPlaceMapping");
+          if (!(await frame.locator("#orderFieldChoice").isDisabled())) throw new Error("Duplicate field accepted");
+          await mappingSelects.nth(0).selectOption("1");
+          await mappingSelects.nth(1).selectOption("0");
+          await frame.click("#confirmPlaceMapping");
+          await frame.waitForFunction(()=>!document.getElementById("orderFieldChoice").disabled);
+          const manualLabels=await frame.locator("#orderFieldChoice option").allTextContents();
+          if (!manualLabels[1].startsWith("оборот") || !manualLabels[2].startsWith("лицо"))
+            throw new Error("Manual mapping lost order names: "+JSON.stringify(manualLabels));
+          await frame.selectOption("#orderFieldChoice","1");
+          await frame.waitForFunction(()=>!document.getElementById("editorStep3").hidden);
+          // Preserve logo editing and Step 4 after confirmation.
+          await frame.locator("#artwork").setInputFiles({
+            name:"logo.png",mimeType:"image/png",
+            buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=","base64")
+          });
+          await frame.waitForFunction(()=>!document.getElementById("step4Box").hidden);
+          await frame.click("#editorCenter");
+          await frame.click("#editorRotateRight");
+          await frame.click("#editorRemoveLogo");
+          await frame.waitForFunction(()=>document.getElementById("step4Box").hidden);
+
+          // Reopening the same article reloads its template and drops manual confirmation.
+          await frame.locator("#orderTemplateList .article-choice").click();
+          await frame.waitForFunction(()=>!document.getElementById("placeMapping").hidden);
+          if (!(await frame.locator("#orderFieldChoice").isDisabled())) throw new Error("Stale confirmation reused");
+          // Mobile form fits in the preserved article/step layout.
+          await page.setViewportSize({width:390,height:844});
+          const mobile=await frame.locator("#placeMapping").evaluate(el=>{
+            const r=el.getBoundingClientRect();return {width:r.width,right:r.right,viewport:innerWidth};
+          });
+          if (mobile.width<=0 || mobile.right>mobile.viewport+1) throw new Error("Mapping form overflows mobile: "+JSON.stringify(mobile));
+          await page.setViewportSize({width:1280,height:900});
+
+          await openScenario("7920512",["panel A","panel B"],["panel A","panel B"]);
+          if (await frame.locator("#orderFieldChoice").isDisabled()) throw new Error("Explicit label mapping failed");
+          const autoLabels=await frame.locator("#orderFieldChoice option").allTextContents();
+          const geometricLabels=await frame.locator("#fields option").evaluateAll(options=>
+            options.filter(o=>o.value!=="").map(o=>({value:o.value,text:o.textContent,full:o.dataset.fullLabel})));
+          const right=geometricLabels.find(o=>/X 56[.,]44/.test(o.full));
+          const left=geometricLabels.find(o=>/X 10[.,]58/.test(o.full));
+          if (!right?.text.startsWith("panel B") || !left?.text.startsWith("panel A"))
+            throw new Error("PDF drawing order incorrectly overrides labels: "+JSON.stringify(geometricLabels));
+          await frame.selectOption("#orderFieldChoice",right.value);
+          await frame.waitForFunction(()=>!document.getElementById("editorStep3").hidden);
+          if (!(await frame.locator("#fieldSize").innerText()).startsWith("panel B"))
+            throw new Error("Field UI does not display the order name");
+
+          await openScenario("7920513",[],["panel A","panel B"]);
+          if (!(await frame.locator("#orderFieldChoice").isDisabled()) ||
+              await frame.locator("#placeMapping").isVisible() ||
+              !/не удалось определить/.test(await frame.locator("#fieldChoiceHint").innerText()))
+            throw new Error("Template names substituted for missing order names");
+
+          await openScenario("7920514",["лицо","лицо"]);
+          if (!(await frame.locator("#placeMapping").isVisible()) ||
+              await frame.locator("#placeMapping select").count() !== 2)
+            throw new Error("Duplicate order places collapsed");
+
+          await openScenario("7920515",["panel A","panel B"],["panel B","panel A"],true);
+          const pageLabels=await frame.locator("#orderFieldChoice option").allTextContents();
+          if (await frame.locator("#orderFieldChoice").isDisabled() ||
+              !pageLabels[1].startsWith("panel B") || !pageLabels[2].startsWith("panel A"))
+            throw new Error("Page labels failed: "+JSON.stringify(pageLabels));
+          await frame.selectOption("#orderFieldChoice","1");
+          await frame.waitForFunction(()=>document.getElementById("pageNumber").textContent.includes("2 / 2"));
+          if (!(await frame.locator("#fieldSize").innerText()).startsWith("panel A"))
+            throw new Error("Mapping lost when changing PDF page");
+          console.log("Order-place mapping e2e: manual, duplicate, missing, labelled, multipage, mobile and editor checks passed");
 
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
