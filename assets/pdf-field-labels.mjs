@@ -174,7 +174,7 @@ export function auditFieldLabels(fields, entry) {
       };
     }
 
-    issues.push('На странице заказа названия мест не указаны, а PDF не содержит полной однозначной нумерации полей 1…N');
+    issues.push(`На странице заказа названия мест не указаны, а PDF не содержит полной однозначной нумерации полей 1…N. Распознаны номера у рамок: ${indexes.length ? indexes.join(", ") : "нет"}`);
     return {ok:false,issues:[...new Set(issues)],mode:'pdf-numbered-incomplete',placeCount:0,orderNamesMissing:true,numberedFields:indexes,fieldDiagnostics};
   }
 
