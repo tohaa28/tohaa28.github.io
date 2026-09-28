@@ -93,19 +93,19 @@ jobs:
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920513") {
-                return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738674"><a class="j_add_maket" data-orderid="7738674">Макеты для заказа</a><li data-itemid="32345"><div class="cart-tbl-name">Артикул 16535.66</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Сумка для покупок Cottonica Recycle, неокрашенная</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><g-droper><span>F1: Флекс,3</span></g-droper><div class="flex-center flex-column"><span class="color-text">16535.66 сторона 1 [черный(403/Black)]</span></div></div></li></div></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><button class="j_drawtaskfilter_item" data-draw-task-id="27154860" data-draw-type="F1: Флекс [3]">3 F1: Флекс</button><div class="cart-order" id="j_cart_host" data-orderid="7738674"><a class="j_add_maket" data-orderid="7738674">Макеты для заказа</a><li data-itemid="32345" data-drawtaskids="27154860"><div class="cart-tbl-name">Артикул 16535.66</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Сумка для покупок Cottonica Recycle, неокрашенная</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><div class="cart-tbl-lbl visible-phone">Нанесение</div><div class="flex justify-center">15647,50</div><div><g-droper><span>F1: Флекс,3</span></g-droper></div><div class="size--sm flex flex-center flex-column"><div>сторона а [черный(403/Black)]</div></div></div></li></div></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920514") {
-                return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738675"><a class="j_add_maket" data-orderid="7738675">Макеты для заказа</a><li data-itemid="62345"><div class="cart-tbl-name">Артикул 15637</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок Tetta</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><div class="application-row"><g-droper><span>LM1: Лазерная гравировка,1</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 лицо</span></div></div><div class="application-row"><g-droper><span>LM1: Лазерная гравировка,2</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 оборот</span></div></div></div></li></div></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><button class="j_drawtaskfilter_item" data-draw-task-id="27133550" data-draw-type="LM1: Лазерная гравировка [1]">1 LM1</button><button class="j_drawtaskfilter_item" data-draw-task-id="27133564" data-draw-type="LM1: Лазерная гравировка [2]">2 LM1</button><div class="cart-order" id="j_cart_host" data-orderid="7738675"><a class="j_add_maket" data-orderid="7738675">Макеты для заказа</a><li data-itemid="62345" data-drawtaskids="27133550,27133564"><div class="cart-tbl-name">Артикул 15637</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок Tetta</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><div class="cart-tbl-lbl visible-phone">Нанесение</div><div class="flex justify-center">3410,00</div><div><g-droper><span>LM1: Лазерная гравировка,1</span></g-droper></div><div class="size--sm flex flex-center flex-column"><div>лицо</div></div><div><g-droper><span>LM1: Лазерная гравировка,2</span></g-droper></div><div class="size--sm flex flex-center flex-column"><div>оборот</div></div></div></li></div></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920515") {
-                return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738676"><a class="j_add_maket" data-orderid="7738676">Макеты для заказа</a><li data-itemid="72345"><div class="cart-tbl-name">Артикул 26068.40</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Блокнот Salvador в клетку, синий, формат A5</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><div class="application-row"><g-droper><span>DTF1: Печать DTF,4</span></g-droper><div class="flex-center flex-column"><span class="color-text">26068.40 оборот</span></div></div></div></li></div></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><button class="j_drawtaskfilter_item" data-draw-task-id="27154862" data-draw-type="DTF1: Печать DTF [4]">4 DTF1</button><div class="cart-order" id="j_cart_host" data-orderid="7738676"><a class="j_add_maket" data-orderid="7738676">Макеты для заказа</a><li data-itemid="72345" data-drawtaskids="27154862"><div class="cart-tbl-name">Артикул 26068.40</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Блокнот Salvador в клетку, синий, формат A5</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><div class="cart-tbl-lbl visible-phone">Нанесение</div><div class="flex justify-center">3135,00</div><div><g-droper><span>DTF1: Печать DTF,4</span></g-droper></div><div class="size--sm flex flex-center flex-column"><div>оборот</div></div></div></li></div></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
@@ -289,13 +289,15 @@ jobs:
               popupPlaceItem?.article !== "16535.66" ||
               popupPlaceItem?.placeCountSource !== "order-application-id" ||
               popupPlaceItem?.placeCountReliable !== true ||
-              JSON.stringify(popupPlaceItem?.places) !== JSON.stringify(["сторона 1 [черный(403/Black)]"]) ||
-              popupPlaceItem?.placeBindings?.[0]?.taskId !== "3" ||
+              JSON.stringify(popupPlaceItem?.places) !== JSON.stringify(["сторона а [черный(403/Black)]"]) ||
+              popupPlaceItem?.placeBindings?.[0]?.taskId !== "27154860" ||
+              popupPlaceItem?.placeBindings?.[0]?.drawTaskId !== "27154860" ||
+              popupPlaceItem?.placeBindings?.[0]?.applicationId !== "3" ||
               popupPlaceItem?.placeBindings?.[0]?.applicationIndex !== 3 ||
               popupPlaceItem?.placeBindings?.[0]?.printId !== "print1" ||
               popupPlaceItem?.placeBindings?.[0]?.index !== 1 ||
               popupPlaceItem?.placeBindings?.[0]?.templateIndex !== 1 ||
-              popupPlaceItem?.placeBindings?.[0]?.name !== "сторона 1 [черный(403/Black)]" ||
+              popupPlaceItem?.placeBindings?.[0]?.name !== "сторона а [черный(403/Black)]" ||
               JSON.stringify(popupPlaceItem?.templateApplicationIds) !== JSON.stringify(["3"]) ||
               popupPlaceOrder.body?.popupTemplateRelations?.length !== 1 ||
               popupPlaceOrder.body?.popupTemplateRelations?.[0]?.article !== "16535.66" ||
