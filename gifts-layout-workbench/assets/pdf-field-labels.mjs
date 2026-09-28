@@ -143,6 +143,13 @@ export function auditFieldLabels(fields, entry) {
   // only when the PDF provides a complete, unique 1..N set. This is not array
   // order inference: each number is real PDF text spatially bound to its frame.
   if (entry && places.length===0 && fields.length>0) {
+    const fieldDiagnostics=fields.map((f,index)=>({
+      field:index+1,
+      status:f.labelStatus,
+      pdfLabel:f.pdfLabel||"",
+      fieldIndex:Number.isInteger(f.fieldIndex)?f.fieldIndex:null,
+      source:f.source||null
+    }));
     const numbered=fields.filter(f=>f.labelStatus==='matched' && Number.isInteger(f.fieldIndex));
     const indexes=numbered.map(f=>f.fieldIndex).sort((a,b)=>a-b);
     const complete=numbered.length===fields.length &&
@@ -162,12 +169,13 @@ export function auditFieldLabels(fields, entry) {
         mode:'pdf-numbered-only',
         placeCount:fields.length,
         numberedFields:indexes,
-        orderNamesMissing:true
+        orderNamesMissing:true,
+        fieldDiagnostics
       };
     }
 
     issues.push('На странице заказа названия мест не указаны, а PDF не содержит полной однозначной нумерации полей 1…N');
-    return {ok:false,issues:[...new Set(issues)],mode:'pdf-numbered-incomplete',placeCount:0,orderNamesMissing:true};
+    return {ok:false,issues:[...new Set(issues)],mode:'pdf-numbered-incomplete',placeCount:0,orderNamesMissing:true,numberedFields:indexes,fieldDiagnostics};
   }
 
   for (const f of fields) {
