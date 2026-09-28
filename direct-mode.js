@@ -367,53 +367,8 @@
   }
 
   function escapeRegExp(value) {
-    return String(value).replace(/[.*+?^$()|[\]\\{}]/g, "\\  async function getPopupOrderItemIds(orderId) {
-    if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
-
-    const res = await nativeFetch(
-      giftsUrl("/ajax/gifts/order?action=makets_popup&oid=" + encodeURIComponent(orderId)),
-      {
-        method: "GET",
-        credentials: "include",
-        redirect: "follow",
-        cache: "no-store",
-        headers: {
-          "accept": "application/json,text/html;q=0.9,*/*;q=0.8",
-          "x-requested-with": "XMLHttpRequest"
-        }
-      }
-    );
-
-    const raw = await res.text();
-    if (isAuthPage(raw, res.url)) {
-      const error = new Error("Сеанс gifts.ru не активен. Войдите в gifts.ru.");
-      error.code = "AUTH";
-      throw error;
-    }
-    if (!res.ok) throw new Error("gifts.ru не вернул раздел «Макеты для заказа».");
-
-    let html = raw;
-    try {
-      const data = JSON.parse(raw);
-      if (data && typeof data.html === "string") html = data.html;
-    } catch {}
-
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const ids = new Set();
-
-    for (const node of doc.querySelectorAll("a[href*='getOrderItemPdf'],[data-orderitemid],[data-oiid]")) {
-      let id = clean(node.getAttribute("data-orderitemid") || node.getAttribute("data-oiid"));
-      if (!id) {
-        try {
-          const url = new URL(node.getAttribute("href") || "", GIFTS_ORIGIN + "/");
-          id = clean(url.searchParams.get("orderitemid") || url.searchParams.get("oiid"));
-        } catch {}
-      }
-      if (/^\d{1,20}$/.test(id)) ids.add(id);
-    }
-
-    return [...ids];
-  }");
+    const specials = "\\^$.*+?()[]{}|";
+    return [...String(value)].map(char => specials.includes(char) ? "\\" + char : char).join("");
   }
 
   function contextHasArticle(contextText, article) {
@@ -578,7 +533,7 @@
             claimed.add(String(relation.pdfItemId));
           };
 
-          // Strongest relation: the order row id is exactly the PDF orderitemid.
+          // Strongest relation: order row id exactly equals PDF orderitemid.
           for (const item of orderItems) {
             const exact = relations.filter(relation =>
               !claimed.has(String(relation.pdfItemId)) &&
@@ -587,9 +542,8 @@
             if (exact.length === 1) assign(item, exact[0], "makets-popup-orderitemid");
           }
 
-          // Gifts can use a different orderitemid for the PDF. Then use the article
-          // printed in the same popup row, but only when both sides are unique.
-          // Duplicate articles are never paired by array order.
+          // If Gifts uses a different PDF id, use the article printed in that popup
+          // row only when both the order article and popup relation are unique.
           for (const item of orderItems) {
             if (item.hasTemplate) continue;
             const sameArticleItems = orderItems.filter(other => articleKey(other.article) === articleKey(item.article));
