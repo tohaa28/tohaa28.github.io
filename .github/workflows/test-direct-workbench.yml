@@ -264,6 +264,29 @@ jobs:
             throw new Error("Remapped popup PDF id was rejected: "+JSON.stringify(remappedPdf));
           }
           console.log("Popup article relation maps distinct PDF id:", JSON.stringify(remappedPdf));
+          const popupPlaceOrder = await frame.evaluate(async () => {
+            const r = await fetch("/api/orders/7920513", {cache:"no-store"});
+            return {status:r.status,body:await r.json()};
+          });
+          const popupPlaceItem = popupPlaceOrder.body?.items?.[0];
+          if (popupPlaceOrder.status !== 200 ||
+              popupPlaceItem?.article !== "16535.66" ||
+              popupPlaceItem?.placeCountSource !== "makets-popup-place" ||
+              popupPlaceItem?.placeCountReliable !== true ||
+              JSON.stringify(popupPlaceItem?.places) !== JSON.stringify(["боковая сторона","дно сумки"]) ||
+              popupPlaceItem?.placeBindings?.[0]?.index !== 1 ||
+              popupPlaceItem?.placeBindings?.[0]?.name !== "боковая сторона" ||
+              popupPlaceItem?.placeBindings?.[1]?.index !== 2 ||
+              popupPlaceItem?.placeBindings?.[1]?.name !== "дно сумки" ||
+              popupPlaceOrder.body?.popupTemplateRelations?.[0]?.places?.[0] !== "боковая сторона") {
+            throw new Error("Template-popup places were not merged into the order: "+JSON.stringify(popupPlaceOrder));
+          }
+          console.log("Template popup exact places:", JSON.stringify({
+            places: popupPlaceItem.places,
+            bindings: popupPlaceItem.placeBindings,
+            source: popupPlaceItem.placeCountSource
+          }));
+
           const noTemplateOrder = await frame.evaluate(async () => {
             const r = await fetch("/api/orders/7920512", {cache:"no-store"});
             return {status:r.status,body:await r.json()};
