@@ -127,7 +127,7 @@ export function bindFieldLabels(fields, labels) {
     const strongest = found.filter(label => strength(label)===maxStrength);
     if (strongest.length!==1) { f.labelStatus='ambiguous'; continue; }
     const label=strongest[0];
-    Object.assign(f,{pdfLabel:label.text,pdfPlace:label.name,printId:label.printId,fieldIndex:label.fieldIndex||null,labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},labelStatus:'matched'});
+    Object.assign(f,{pdfLabel:label.text,pdfPlace:label.name,printId:label.printId,fieldIndex:label.fieldIndex||null,labelSource:label.source||null,labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},labelStatus:'matched'});
   }
   for (const f of result) if (f.printId && result.filter(g=>g.printId===f.printId).length>1) f.labelStatus='ambiguous';
   for (const f of result) if (f.fieldIndex && result.filter(g=>g.fieldIndex===f.fieldIndex).length>1) f.labelStatus='ambiguous';
@@ -148,7 +148,7 @@ export function auditFieldLabels(fields, entry) {
       status:f.labelStatus,
       pdfLabel:f.pdfLabel||"",
       fieldIndex:Number.isInteger(f.fieldIndex)?f.fieldIndex:null,
-      source:f.source||null
+      source:f.labelSource||null
     }));
     const numbered=fields.filter(f=>f.labelStatus==='matched' && Number.isInteger(f.fieldIndex));
     const indexes=numbered.map(f=>f.fieldIndex).sort((a,b)=>a-b);
