@@ -119,9 +119,9 @@ jobs:
                     : oid === "7738673"
                       ? '<table></table>'
                       : oid === "7738674"
-                        ? '<table><thead><tr><th>Артикул</th><th>Нанесение</th><th>Макет</th></tr></thead><tbody><tr><td>Сумка для покупок Cottonica Recycle, неокрашенная<br>16535.66</td><td>[F1] Флекс (30 x 30 см) (3)</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=32345">Скачать PDF</a></td></tr></tbody></table>'
+                        ? '<div class="ready-makets"><a href="/drawing?action=getOrderItemPdf&orderitemid=99903">Скачать PDF (готовый макет)</a></div><h3>Шаблоны макетов для выбранных нанесений</h3><table><thead><tr><th>Артикул</th><th>Нанесение</th><th>Макет</th></tr></thead><tbody><tr><td>Сумка для покупок Cottonica Recycle, неокрашенная<br>16535.66</td><td>[F1] Флекс (30 x 30 см) (3)</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=32345">Скачать PDF</a></td></tr></tbody></table>'
                         : oid === "7738675"
-                          ? '<table><thead><tr><th>Артикул</th><th>Нанесение</th><th>Макет</th></tr></thead><tbody><tr><td>Брелок Tetta<br>Артикул 15637</td><td><div>[LM1] Лазерная гравировка (3.2 x 3.2 см) (1)</div><div>[LM1] Лазерная гравировка (3.2 x 3.2 см) (2)</div></td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=62345">Скачать PDF</a></td></tr></tbody></table>'
+                          ? '<div class="ready-makets"><a href="/drawing?action=getOrderItemPdf&orderitemid=99901">Скачать PDF (готовый макет)</a></div><h3>Шаблоны макетов для выбранных нанесений</h3><table><thead><tr><th>Артикул</th><th>Нанесение</th><th>Макет</th></tr></thead><tbody><tr><td>Брелок Tetta<br>Артикул 15637</td><td><div>[LM1] Лазерная гравировка (3.2 x 3.2 см) (1)</div><div>[LM1] Лазерная гравировка (3.2 x 3.2 см) (2)</div></td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=62345">Скачать PDF</a></td></tr></tbody></table>'
                           : "";
                 return Promise.resolve(new Response(JSON.stringify({status:"ok",html:rows}), {
                   status: 200,
@@ -287,6 +287,9 @@ jobs:
               popupPlaceItem?.placeBindings?.[0]?.index !== 3 ||
               popupPlaceItem?.placeBindings?.[0]?.name !== "сторона 1 [черный(403/Black)]" ||
               JSON.stringify(popupPlaceItem?.templateApplicationIds) !== JSON.stringify(["3"]) ||
+              popupPlaceOrder.body?.popupTemplateRelations?.length !== 1 ||
+              popupPlaceOrder.body?.popupTemplateRelations?.[0]?.article !== "16535.66" ||
+              popupPlaceOrder.body?.popupTemplateRelations?.[0]?.pdfItemId !== "32345" ||
               JSON.stringify(popupPlaceOrder.body?.popupTemplateRelations?.[0]?.applicationIds) !== JSON.stringify(["3"])) {
             throw new Error("Selected application ID was not joined to the real order place: "+JSON.stringify(popupPlaceOrder));
           }
