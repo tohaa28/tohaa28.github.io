@@ -35,12 +35,13 @@ export function extractFieldLabels(content, viewport) {
       }).join(''));
       const ids = [...text.matchAll(/\bprint\s*(\d+)\b/ig)];
       const explicitName=/^(?:место(?: нанесения)?|поле)\s*[:：]/i.test(text);
+      const numericIndex=/^[1-9]\d?$/.test(text) ? Number(text) : null;
       const plainName=/^[\p{L}][\p{L}\s()-]{1,79}$/u.test(text);
-      if (ids.length > 1 || (!ids.length && !explicitName && !plainName)) continue;
-      const confidence = ids.length ? 3 : explicitName ? 2 : 0;
+      if (ids.length > 1 || (!ids.length && !explicitName && !numericIndex && !plainName)) continue;
+      const confidence = ids.length ? 3 : numericIndex ? 2.5 : explicitName ? 2 : 0;
       const points = group.flatMap(t => [0,t.w].flatMap(u => [-.2*t.h,.8*t.h].map(v => viewport.convertToViewportPoint(t.x+t.ux*u-t.uy*v,t.y+t.uy*u+t.ux*v))));
       const xs=points.map(p=>p[0]*MM), ys=points.map(p=>p[1]*MM);
-      labels.push({text, name:placeName(text), printId:ids[0] ? `print${Number(ids[0][1])}` : null, confidence, x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)});
+      labels.push({text, name:placeName(text), printId:ids[0] ? `print${Number(ids[0][1])}` : null, fieldIndex:numericIndex, confidence, x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)});
     }
   }
   return labels;
@@ -73,21 +74,41 @@ export function bindFieldLabels(fields, labels) {
     const strongest = found.filter(label => strength(label)===maxStrength);
     if (strongest.length!==1) { f.labelStatus='ambiguous'; continue; }
     const label=strongest[0];
-    Object.assign(f,{pdfLabel:label.text,pdfPlace:label.name,printId:label.printId,labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},labelStatus:'matched'});
+    Object.assign(f,{pdfLabel:label.text,pdfPlace:label.name,printId:label.printId,fieldIndex:label.fieldIndex||null,labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},labelStatus:'matched'});
   }
   for (const f of result) if (f.printId && result.filter(g=>g.printId===f.printId).length>1) f.labelStatus='ambiguous';
+  for (const f of result) if (f.fieldIndex && result.filter(g=>g.fieldIndex===f.fieldIndex).length>1) f.labelStatus='ambiguous';
   return result;
 }
 
 export function auditFieldLabels(fields, entry) {
-  const places = (entry?.places?.length ? entry.places : entry?.place ? [entry.place] : []).map(text=>({name:nameKey(placeName(text)), id:printKey(text)}));
+  const places = (entry?.places?.length ? entry.places : entry?.place ? [entry.place] : []).map(text=>({raw:clean(text),name:nameKey(placeName(text)), id:printKey(text)}));
   const used=new Set(), issues=[];
   for (const f of fields) {
+    delete f.orderPlace;
+    delete f.orderPlaceIndex;
     if (f.labelStatus!=='matched') { issues.push('Не найдена однозначная подпись PDF для поля'); continue; }
     if (!entry) continue;
+
+    if (Number.isInteger(f.fieldIndex)) {
+      const index=f.fieldIndex-1;
+      if (index<0 || index>=places.length || used.has(index)) {
+        issues.push(`Номер поля PDF «${f.pdfLabel}» не соответствует единственному месту заказа`);
+      } else {
+        used.add(index);
+        f.orderPlace=places[index].raw;
+        f.orderPlaceIndex=index;
+      }
+      continue;
+    }
+
     const matches=places.map((p,i)=>({p,i})).filter(({p})=>p.name && p.name===nameKey(f.pdfPlace) && (!p.id || `print${Number(p.id)}`===f.printId));
     if (matches.length!==1 || used.has(matches[0]?.i)) issues.push(`Подпись PDF «${f.pdfLabel}» не соответствует единственному месту заказа`);
-    else used.add(matches[0].i);
+    else {
+      used.add(matches[0].i);
+      f.orderPlace=places[matches[0].i].raw;
+      f.orderPlaceIndex=matches[0].i;
+    }
   }
   if (entry && (used.size!==places.length || fields.length!==places.length || entry.placeCountReliable===false)) issues.push('Соответствие всех мест заказа не подтверждено');
   return {ok:fields.length>0 && issues.length===0, issues:[...new Set(issues)]};
