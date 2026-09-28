@@ -240,12 +240,57 @@
     const methodWord = /(?:DTF|DTG|шелк|тампо|грав|УФ|UV|сублим|вышив|тиснен|деколь|лазер|флекс|трансфер|печать)/i;
     let value = removeArticlePrefix(raw, article);
     value = clean(value)
-      .replace(/^место\s+нанесения\s*[:—-]?\s*/i, "")
-      .replace(/^место\s*[:—-]?\s*/i, "")
-      .replace(/^поверхность\s*[:—-]?\s*/i, "")
-      .replace(/^сторона\s*[:—-]?\s*/i, "");
+      .replace(/^место\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
+      .replace(/^место\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
+      .replace(/^поле\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
+      .replace(/^поле\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
+      .replace(/^поверхность\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
+      .replace(/^сторона\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "");
     if (!value || value.length > 180 || bad.test(value) || methodWord.test(value)) return "";
     return value;
+  }
+
+  function placeKey(value) {
+    return clean(value)
+      .toLocaleLowerCase("ru-RU")
+      .replace(/ё/g, "е")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  }
+
+  function explicitPlaceIndex(raw) {
+    const text = clean(raw);
+    const match = text.match(/(?:место(?:\s+нанесения)?|поле(?:\s+нанесения)?|позиция|place|field)\s*(?:№|#)?\s*(\d{1,2})\b/i);
+    const value = match ? Number(match[1]) : 0;
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+
+  function makePlaceBindings(entries, article, source) {
+    const bindings = [];
+    const seen = new Set();
+    for (const entry of entries) {
+      const raw = typeof entry === "string" ? entry : entry?.raw;
+      const index = typeof entry === "object" && Number.isInteger(entry?.index)
+        ? entry.index
+        : explicitPlaceIndex(raw);
+      const name = normalizeOrderPlace(raw, article);
+      if (!name) continue;
+      const key = `${index || ""}|${placeKey(name)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      bindings.push({ name, index, source });
+    }
+    return bindings;
+  }
+
+  function placeAuditFromBindings(bindings, source, reliable, signals) {
+    return {
+      places: bindings.map(binding => binding.name),
+      placeBindings: bindings,
+      source,
+      reliable,
+      signals
+    };
   }
 
   function extractPlaceAudit(root, article) {
