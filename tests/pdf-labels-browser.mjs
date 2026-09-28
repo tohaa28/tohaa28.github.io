@@ -127,7 +127,8 @@ export async function verifyPdfLabels(frame) {
   }));
   assert.match(numericState.options[1],/лицо/);
   assert.match(numericState.options[2],/оборот/);
-  assert.match(numericState.options[1],/LM1: Лазерная гравировка/);
+  assert.match(numericState.options[1],/LM1: Лазерная гравировка,1/);
+  assert.match(numericState.options[2],/LM1: Лазерная гравировка,2/);
   assert.equal(numericState.unmatched,false);
   assert.equal(numericState.selected,'');
   assert.equal(numericState.step3Hidden,true);
