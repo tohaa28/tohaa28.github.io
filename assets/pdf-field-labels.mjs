@@ -186,6 +186,15 @@ export function bindFieldLabels(fields, labels) {
 
 export function auditFieldLabels(fields, entry) {
   const places = (entry?.places?.length ? entry.places : entry?.place ? [entry.place] : []).map(text=>({raw:clean(text),name:nameKey(placeName(text)), id:printKey(text)}));
+  const explicitBindings = (Array.isArray(entry?.placeBindings) ? entry.placeBindings : [])
+    .map(binding => ({
+      name: clean(binding?.name),
+      key: nameKey(placeName(binding?.name || "")),
+      index: Number.isInteger(binding?.index) ? binding.index : null,
+      source: binding?.source || ""
+    }))
+    .filter(binding => binding.name);
+  const indexedBindings = explicitBindings.filter(binding => Number.isInteger(binding.index));
   const used=new Set(), issues=[];
 
   // Some Gifts orders do not expose textual place names at all, while the
@@ -235,6 +244,25 @@ export function auditFieldLabels(fields, entry) {
     if (!entry) continue;
 
     if (Number.isInteger(f.fieldIndex)) {
+      if (indexedBindings.length) {
+        const matches=indexedBindings.filter(binding => binding.index===f.fieldIndex);
+        if (matches.length!==1) {
+          issues.push(`Номер поля PDF «${f.pdfLabel}» не соответствует единственному пронумерованному месту на странице заказа/шаблона`);
+        } else {
+          const binding=matches[0];
+          const placeIndex=places.findIndex(place => place.name===binding.key);
+          if (placeIndex<0 || used.has(placeIndex)) {
+            issues.push(`Место «${binding.name}» для поля PDF «${f.pdfLabel}» не найдено однозначно в заказе`);
+          } else {
+            used.add(placeIndex);
+            f.orderPlace=places[placeIndex].raw;
+            f.orderPlaceIndex=placeIndex;
+            f.orderPlaceBindingSource=binding.source;
+          }
+        }
+        continue;
+      }
+
       const index=f.fieldIndex-1;
       if (index<0 || index>=places.length || used.has(index)) {
         issues.push(`Номер поля PDF «${f.pdfLabel}» не соответствует единственному месту заказа`);
