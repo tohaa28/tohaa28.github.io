@@ -124,23 +124,24 @@ export async function verifyPdfLabels(frame) {
       value:row.querySelector('.detail-value')?.textContent?.trim()||''
     }))
   }));
-  assert.match(numericState.options[1],/Место 1/);
-  assert.match(numericState.options[2],/Место 2/);
+  assert.match(numericState.options[1],/боковая сторона/);
+  assert.match(numericState.options[2],/дно сумки/);
   assert.match(numericState.options[1],/P1: Шелкография с трансфером/);
   assert.equal(numericState.unmatched,false);
   assert.equal(numericState.selected,'');
   assert.equal(numericState.step3Hidden,true);
-  assert.match(numericState.hint,/названия мест не указаны/i);
-  assert.match(numericState.hint,/1, 2/);
-  assert.match(numericState.rows.find(r=>r.key==='Место 1')?.value||'',/по нумерации PDF/);
-  assert.match(numericState.rows.find(r=>r.key==='Место 2')?.value||'',/по нумерации PDF/);
-  assert.match(numericState.rows.find(r=>r.key==='Контроль мест')?.value||'',/2 поля по явной нумерации PDF/);
-  assert.match(numericState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Поля 1, 2 однозначно пронумерованы/);
+  assert.match(numericState.hint,/Контроль мест: 2 в заказе = 2 полей в шаблоне/i);
+  assert.match(numericState.hint,/боковая сторона/);
+  assert.match(numericState.hint,/дно сумки/);
+  assert.match(numericState.rows.find(r=>r.key==='Место 1')?.value||'',/боковая сторона/);
+  assert.match(numericState.rows.find(r=>r.key==='Место 2')?.value||'',/дно сумки/);
+  assert.match(numericState.rows.find(r=>r.key==='Контроль мест')?.value||'',/2 в заказе = 2 в шаблоне/);
+  assert.match(numericState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Соответствуют местам заказа/);
 
   await frame.selectOption('#orderFieldChoice',{index:1});
   await frame.waitForFunction(()=>document.getElementById('editorStep3')?.hidden===false);
   assert.equal(await frame.locator('#orderFieldChoice').inputValue(),'0');
-  console.log('Numbered PDF fallback without order place names:',JSON.stringify(numericState));
+  console.log('Template-popup place names mapped to numbered PDF fields:',JSON.stringify(numericState));
 
   // Same fallback, but the digits exist only as PDF FreeText annotations.
   const annotationPdf=makeAnnotationNumericPdf();
@@ -160,10 +161,11 @@ export async function verifyPdfLabels(frame) {
     hint:document.getElementById('fieldChoiceHint')?.textContent||'',
     unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
   }));
-  assert.match(annotationState.options[1],/Место 1/);
-  assert.match(annotationState.options[2],/Место 2/);
+  assert.match(annotationState.options[1],/боковая сторона/);
+  assert.match(annotationState.options[2],/дно сумки/);
   assert.equal(annotationState.unmatched,false);
-  assert.match(annotationState.hint,/названия мест не указаны/i);
-  console.log('Annotation-only numbered PDF fallback:',JSON.stringify(annotationState));
+  assert.match(annotationState.hint,/боковая сторона/);
+  assert.match(annotationState.hint,/дно сумки/);
+  console.log('Annotation-only PDF uses template-popup place names:',JSON.stringify(annotationState));
 
 }
