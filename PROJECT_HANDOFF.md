@@ -347,3 +347,17 @@
 - `f8c2b79d72ebc34a00f109f272436b44291d7aa0` — подключение annotations в реальном browser/editor pipeline;
 - `edde013058e645d17f375438c629281b1eb5433f` — корректная cross-source дедупликация без ослабления ambiguity;
 - `fc8e31b79a0edac430c7dc0ec410d84e8f43a203` — browser regression annotation-only PDF.
+
+### 2026-09-28 — cache-bust после исправления заказа 7987235
+
+- После реального скриншота заказа `7987235` усилено чтение маленьких цифровых подписей: standalone text-items + PDF FreeText annotations.
+- Добавлен browser e2e, где номера существуют только как PDF annotations; workflow `36475030378` — success.
+- Чтобы пользователь не получал старый `pdf-field-labels.mjs` из HTTP-кэша GitHub Pages, основной bundle теперь импортирует `./pdf-field-labels.mjs?v=f48fc644`.
+- Финальный workflow после cache-bust: `36475280549` — success; публикация `36475280540` — success.
+- Опубликованные файлы синхронизированы с source: module blob `f48fc6443807ad06156ad5dda2fee15021341af2`, bundle blob `d89da034cb42e783a8c7c131063f2f7a0eadb9bf`.
+- Если реальный PDF всё ещё не проходит, ошибка теперь показывает фактически распознанные номера у рамок (`Распознаны номера у рамок: ...`), что позволяет отличить отсутствие text/annotation от проблемы геометрического связывания.
+
+Ключевые коммиты:
+- `93fe56d443da4b39583f0527286a40fb4513d1df` — regression cross-source de-duplication;
+- `fc8e31b79a0edac430c7dc0ec410d84e8f43a203` — browser regression annotation-only PDF;
+- `e8f36a0d0213db36dd09379f447d0e3b13b42658` — cache-bust импорта PDF field label module.
