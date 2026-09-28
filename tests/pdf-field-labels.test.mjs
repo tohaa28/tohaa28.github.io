@@ -40,6 +40,33 @@ test('plain names and split words do not need an order-derived label',()=>{
   assert.equal(extracted[0].name,'лицо');
   assert.equal(extracted[0].printId,null);
 });
+test('numeric PDF labels map to numbered order places, not array order',()=>{
+  const viewport={convertToViewportPoint:(x,y)=>[x,120-y]};
+  const content={items:[
+    {str:'2',width:6,height:10,transform:[10,0,0,10,24,92]},
+    {str:'1',width:6,height:10,transform:[10,0,0,10,24,32]}
+  ]};
+  const extracted=extractFieldLabels(content,viewport);
+  assert.deepEqual(extracted.map(x=>x.fieldIndex).sort((a,b)=>a-b),[1,2]);
+
+  const bound=bindFieldLabels(fields,extracted);
+  const audit=auditFieldLabels(bound,{places:['лицо','оборот'],placeCountReliable:true});
+  assert.equal(audit.ok,true);
+  assert.equal(bound.find(f=>f.fieldIndex===1).orderPlace,'лицо');
+  assert.equal(bound.find(f=>f.fieldIndex===2).orderPlace,'оборот');
+
+  const reversed=bindFieldLabels([...fields].reverse(),[...extracted].reverse());
+  assert.equal(auditFieldLabels(reversed,{places:['лицо','оборот'],placeCountReliable:true}).ok,true);
+  assert.equal(reversed.find(f=>f.fieldIndex===1).orderPlace,'лицо');
+  assert.equal(reversed.find(f=>f.fieldIndex===2).orderPlace,'оборот');
+
+  const duplicate=bindFieldLabels(fields,[
+    {x:22,y:14,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5},
+    {x:22,y:74,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5}
+  ]);
+  assert.equal(auditFieldLabels(duplicate,{places:['лицо','оборот'],placeCountReliable:true}).ok,false);
+});
+
 test('explicit print label wins over unrelated nearby plain text',()=>{
   const box=[{x:20,y:20,w:30,h:20,page:0}];
   const strong={x:22,y:16,w:20,h:4,text:'лицо [print1]',name:'лицо',printId:'print1',confidence:3};
