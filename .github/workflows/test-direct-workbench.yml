@@ -279,19 +279,21 @@ jobs:
           const popupPlaceItem = popupPlaceOrder.body?.items?.[0];
           if (popupPlaceOrder.status !== 200 ||
               popupPlaceItem?.article !== "16535.66" ||
-              popupPlaceItem?.placeCountSource !== "makets-popup-place" ||
+              popupPlaceItem?.placeCountSource !== "order-application-id" ||
               popupPlaceItem?.placeCountReliable !== true ||
-              JSON.stringify(popupPlaceItem?.places) !== JSON.stringify(["боковая сторона","дно сумки"]) ||
-              popupPlaceItem?.placeBindings?.[0]?.index !== 1 ||
-              popupPlaceItem?.placeBindings?.[0]?.name !== "боковая сторона" ||
-              popupPlaceItem?.placeBindings?.[1]?.index !== 2 ||
-              popupPlaceItem?.placeBindings?.[1]?.name !== "дно сумки" ||
-              popupPlaceOrder.body?.popupTemplateRelations?.[0]?.places?.[0] !== "боковая сторона") {
-            throw new Error("Template-popup places were not merged into the order: "+JSON.stringify(popupPlaceOrder));
+              JSON.stringify(popupPlaceItem?.places) !== JSON.stringify(["сторона 1 [черный(403/Black)]"]) ||
+              popupPlaceItem?.placeBindings?.[0]?.taskId !== "3" ||
+              popupPlaceItem?.placeBindings?.[0]?.printId !== "print3" ||
+              popupPlaceItem?.placeBindings?.[0]?.index !== 3 ||
+              popupPlaceItem?.placeBindings?.[0]?.name !== "сторона 1 [черный(403/Black)]" ||
+              JSON.stringify(popupPlaceItem?.templateApplicationIds) !== JSON.stringify(["3"]) ||
+              JSON.stringify(popupPlaceOrder.body?.popupTemplateRelations?.[0]?.applicationIds) !== JSON.stringify(["3"])) {
+            throw new Error("Selected application ID was not joined to the real order place: "+JSON.stringify(popupPlaceOrder));
           }
-          console.log("Template popup exact places:", JSON.stringify({
+          console.log("Order place + popup application ID:", JSON.stringify({
             places: popupPlaceItem.places,
             bindings: popupPlaceItem.placeBindings,
+            templateApplicationIds: popupPlaceItem.templateApplicationIds,
             source: popupPlaceItem.placeCountSource
           }));
 
