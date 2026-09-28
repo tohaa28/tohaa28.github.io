@@ -98,12 +98,13 @@ export async function verifyPdfLabels(frame) {
     console.log(`Equal-count ${fixture} label safely blocked:`,JSON.stringify(names));
   }
 
-  // Real-world fallback: the order page exposes no place names, while the PDF
-  // itself contains two colored fields explicitly numbered 1 and 2.
+  // Real Gifts chain: the order page exposes ",1 -> лицо" and ",2 -> оборот";
+  // the template popup repeats those selected-application IDs as "(1)" and "(2)";
+  // the PDF contains the corresponding numbered fields.
   const numericPdf=makeNumericPdf();
   await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},numericPdf.toString('base64'));
   await frame.evaluate(async()=>{
-    document.getElementById('order').value='7920513';
+    document.getElementById('order').value='7920514';
     await document.getElementById('loadOrder').onclick();
   });
   await frame.waitForFunction(()=>{
@@ -124,30 +125,30 @@ export async function verifyPdfLabels(frame) {
       value:row.querySelector('.detail-value')?.textContent?.trim()||''
     }))
   }));
-  assert.match(numericState.options[1],/боковая сторона/);
-  assert.match(numericState.options[2],/дно сумки/);
-  assert.match(numericState.options[1],/P1: Шелкография с трансфером/);
+  assert.match(numericState.options[1],/лицо/);
+  assert.match(numericState.options[2],/оборот/);
+  assert.match(numericState.options[1],/LM1: Лазерная гравировка/);
   assert.equal(numericState.unmatched,false);
   assert.equal(numericState.selected,'');
   assert.equal(numericState.step3Hidden,true);
   assert.match(numericState.hint,/Контроль мест: 2 в заказе = 2 полей в шаблоне/i);
-  assert.match(numericState.hint,/боковая сторона/);
-  assert.match(numericState.hint,/дно сумки/);
-  assert.match(numericState.rows.find(r=>r.key==='Место 1')?.value||'',/боковая сторона/);
-  assert.match(numericState.rows.find(r=>r.key==='Место 2')?.value||'',/дно сумки/);
+  assert.match(numericState.hint,/лицо/);
+  assert.match(numericState.hint,/оборот/);
+  assert.match(numericState.rows.find(r=>r.key==='Место 1')?.value||'',/лицо/);
+  assert.match(numericState.rows.find(r=>r.key==='Место 2')?.value||'',/оборот/);
   assert.match(numericState.rows.find(r=>r.key==='Контроль мест')?.value||'',/2 в заказе = 2 в шаблоне/);
   assert.match(numericState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Соответствуют местам заказа/);
 
   await frame.selectOption('#orderFieldChoice',{index:1});
   await frame.waitForFunction(()=>document.getElementById('editorStep3')?.hidden===false);
   assert.equal(await frame.locator('#orderFieldChoice').inputValue(),'0');
-  console.log('Template-popup place names mapped to numbered PDF fields:',JSON.stringify(numericState));
+  console.log('Order application IDs mapped to numbered PDF fields:',JSON.stringify(numericState));
 
   // Same fallback, but the digits exist only as PDF FreeText annotations.
   const annotationPdf=makeAnnotationNumericPdf();
   await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},annotationPdf.toString('base64'));
   await frame.evaluate(async()=>{
-    document.getElementById('order').value='7920513';
+    document.getElementById('order').value='7920514';
     await document.getElementById('loadOrder').onclick();
   });
   await frame.waitForFunction(()=>{
@@ -161,11 +162,11 @@ export async function verifyPdfLabels(frame) {
     hint:document.getElementById('fieldChoiceHint')?.textContent||'',
     unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
   }));
-  assert.match(annotationState.options[1],/боковая сторона/);
-  assert.match(annotationState.options[2],/дно сумки/);
+  assert.match(annotationState.options[1],/лицо/);
+  assert.match(annotationState.options[2],/оборот/);
   assert.equal(annotationState.unmatched,false);
-  assert.match(annotationState.hint,/боковая сторона/);
-  assert.match(annotationState.hint,/дно сумки/);
-  console.log('Annotation-only PDF uses template-popup place names:',JSON.stringify(annotationState));
+  assert.match(annotationState.hint,/лицо/);
+  assert.match(annotationState.hint,/оборот/);
+  console.log('Annotation-only PDF uses order application-ID place names:',JSON.stringify(annotationState));
 
 }
