@@ -97,10 +97,9 @@
     return null;
   }
 
-  function basketCandidatePaths() {
-    const paths = new Set(["/cart", "/cart/", "/"]);
-    const doc = hostDocument();
-    if (!doc) return [...paths];
+  function basketLinksFromHtml(html) {
+    const paths = new Set();
+    const doc = new DOMParser().parseFromString(html || "", "text/html");
 
     const addUrl = raw => {
       if (!raw) return;
@@ -109,11 +108,9 @@
         if (url.origin !== GIFTS_ORIGIN) return;
         const probe = (url.pathname + url.search).toLowerCase();
         if (/logout|delete|remove|checkout|submit|confirm|action=|\/act\//.test(probe)) return;
-        if (/cart|basket|private|order/.test(probe)) paths.add(url.pathname + url.search);
+        if (/cart|basket/.test(probe)) paths.add(url.pathname + url.search);
       } catch {}
     };
-
-    try { addUrl(parent.location.pathname + parent.location.search); } catch {}
 
     for (const node of doc.querySelectorAll("a[href],[data-href],[data-url],[data-hash]")) {
       const label = clean([
@@ -128,47 +125,58 @@
         node.getAttribute("data-url") ||
         node.getAttribute("data-hash") ||
         "";
-      if (/корзин|cart|basket|заказ/i.test(label + " " + raw)) addUrl(raw);
+      if (/корзин|cart|basket/i.test(label + " " + raw)) addUrl(raw);
     }
 
-    return [...paths].slice(0, 20);
+    return [...paths];
   }
 
-  async function readRenderedOrders(path) {
-    const doc = hostDocument();
-    if (!doc) return [];
-    return await new Promise(resolve => {
-      const frame = doc.createElement("iframe");
-      frame.setAttribute("aria-hidden", "true");
-      frame.style.cssText = "position:fixed;left:-10000px;top:-10000px;width:2px;height:2px;opacity:0;pointer-events:none;border:0";
-      let done = false;
-      const finish = orders => {
-        if (done) return;
-        done = true;
-        try { frame.remove(); } catch {}
-        resolve(Array.isArray(orders) ? orders : []);
-      };
-      const timer = setTimeout(() => finish([]), 7000);
-      frame.onload = () => {
-        setTimeout(() => {
-          try {
-            const html = frame.contentDocument?.documentElement?.outerHTML || "";
-            clearTimeout(timer);
-            finish(parseBasketOrders(html));
-          } catch {
-            clearTimeout(timer);
-            finish([]);
-          }
-        }, 1400);
-      };
+  async function readBasketFromSite() {
+    const found = new Map();
+    const scanned = [];
+    const seenPaths = new Set();
+
+    const scanPath = async path => {
+      if (!path || seenPaths.has(path)) return false;
+      seenPaths.add(path);
+      scanned.push(path);
+      const { html } = await getHtml(path);
+      const orders = parseBasketOrders(html);
+      for (const order of orders) found.set(order.number, order);
+      return orders.length > 0;
+    };
+
+    // Known cart endpoints are authoritative and are always fetched from gifts.ru.
+    for (const path of ["/cart", "/cart/"]) {
       try {
-        frame.src = giftsUrl(path);
-        doc.documentElement.appendChild(frame);
-      } catch {
-        clearTimeout(timer);
-        finish([]);
+        if (await scanPath(path)) return { found, scanned, source: "site-cart" };
+      } catch (error) {
+        if (error?.code === "AUTH") throw error;
       }
-    });
+    }
+
+    // If the site's cart route changes, discover it from a freshly fetched home page,
+    // never from the already-open browser DOM.
+    let homeHtml = "";
+    try {
+      const home = await getHtml("/");
+      homeHtml = home.html;
+      scanned.push("/");
+    } catch (error) {
+      if (error?.code === "AUTH") throw error;
+    }
+
+    for (const path of basketLinksFromHtml(homeHtml)) {
+      try {
+        if (await scanPath(path)) return { found, scanned, source: "site-discovered-cart" };
+      } catch (error) {
+        if (error?.code === "AUTH") throw error;
+      }
+    }
+
+    // Some gifts.ru pages include active order links directly on the freshly fetched home page.
+    for (const order of parseBasketOrders(homeHtml)) found.set(order.number, order);
+    return { found, scanned, source: "site-home" };
   }
 
   function absolute(url) {
@@ -373,8 +381,8 @@
     return { order: String(order), items };
   }
 
-  async function getOrder(order) {
-    if (orderCache.has(order)) return orderCache.get(order);
+  async function getOrder(order, fresh = false) {
+    if (!fresh && orderCache.has(order)) return orderCache.get(order);
     const { html } = await getHtml("/private/order/" + order);
     const parsed = parseOrder(html, order);
     orderCache.set(order, parsed);
@@ -485,67 +493,50 @@
   }
 
   async function apiBasket() {
-    const found = new Map();
+    // A basket refresh must reflect gifts.ru now, not the DOM/cache captured when the editor opened.
+    orderCache.clear();
 
-    const state = authStateFromHost();
-    if (state === false) {
-      return json({ error: "Сеанс gifts.ru не активен. Войдите в gifts.ru." }, 401);
-    }
+    try {
+      const snapshot = await readBasketFromSite();
+      const rawOrders = [...snapshot.found.values()].slice(0, 30);
+      const verified = [];
+      let cursor = 0;
 
-    const host = hostDocument();
-    if (host) {
-      for (const order of parseBasketOrders(host.documentElement?.outerHTML || "")) {
-        found.set(order.number, order);
-      }
-    }
-
-    const candidates = basketCandidatePaths();
-
-    for (const path of candidates) {
-      try {
-        const { html } = await getHtml(path);
-        for (const order of parseBasketOrders(html)) found.set(order.number, order);
-      } catch {}
-      if (found.size >= 30) break;
-    }
-
-    if (!found.size) {
-      for (const path of candidates) {
-        const rendered = await readRenderedOrders(path);
-        for (const order of rendered) found.set(order.number, order);
-        if (found.size >= 30) break;
-      }
-    }
-
-    const rawOrders = [...found.values()].slice(0, 30);
-    const verified = [];
-    let cursor = 0;
-
-    async function verifyNext() {
-      while (cursor < rawOrders.length) {
-        const candidate = rawOrders[cursor++];
-        try {
-          const parsed = await getOrder(String(candidate.number));
-          if (Array.isArray(parsed.items) && parsed.items.length) {
-            verified.push(candidate);
+      async function verifyNext() {
+        while (cursor < rawOrders.length) {
+          const candidate = rawOrders[cursor++];
+          try {
+            const parsed = await getOrder(String(candidate.number), true);
+            if (Array.isArray(parsed.items) && parsed.items.length) {
+              verified.push(candidate);
+            }
+          } catch (error) {
+            if (error?.code === "AUTH") throw error;
           }
-        } catch {}
+        }
       }
+
+      await Promise.all(
+        Array.from({ length: Math.min(3, rawOrders.length) }, () => verifyNext())
+      );
+
+      verified.sort((a, b) => rawOrders.findIndex(x => x.number === a.number) - rawOrders.findIndex(x => x.number === b.number));
+
+      return json({
+        orders: verified,
+        direct: true,
+        source: snapshot.source,
+        refreshedFromSite: true,
+        scanned: snapshot.scanned,
+        candidates: rawOrders.length,
+        verified: verified.length
+      });
+    } catch (error) {
+      return json(
+        { error: error?.message || String(error), refreshedFromSite: true },
+        error?.code === "AUTH" ? 401 : 502
+      );
     }
-
-    await Promise.all(
-      Array.from({ length: Math.min(3, rawOrders.length) }, () => verifyNext())
-    );
-
-    verified.sort((a, b) => rawOrders.findIndex(x => x.number === a.number) - rawOrders.findIndex(x => x.number === b.number));
-
-    return json({
-      orders: verified,
-      direct: true,
-      scanned: candidates,
-      candidates: rawOrders.length,
-      verified: verified.length
-    });
   }
 
   async function apiOrder(order) {

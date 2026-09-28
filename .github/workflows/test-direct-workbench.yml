@@ -43,6 +43,12 @@ jobs:
             a.href = "/logout";
             a.textContent = "Выйти";
             document.body.appendChild(a);
+            const stale = document.createElement("a");
+            stale.id = "gwb-stale-order";
+            stale.href = "/private/order/1111111";
+            stale.textContent = "Заказ 1111111";
+            document.body.appendChild(stale);
+            window.__gwbCartFetches = 0;
           });
           await page.evaluate(() => {
             const realFetch = window.fetch.bind(window);
@@ -50,6 +56,7 @@ jobs:
               const raw = typeof input === "string" ? input : input?.url || String(input);
               const url = new URL(raw, location.href);
               if (url.origin === location.origin && (url.pathname === "/cart" || url.pathname === "/cart/")) {
+                window.__gwbCartFetches = (window.__gwbCartFetches || 0) + 1;
                 return Promise.resolve(new Response('<!doctype html><html><body><a href="/private/order/7920509">Заказ 7920509</a><a href="/private/order/280185">Заказ 280185</a><a href="/private/order/306190">Заказ 306190</a></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
@@ -193,13 +200,24 @@ jobs:
             throw new Error("Product preview fallback failed: "+JSON.stringify(preview));
           }
           console.log("Product preview fallback:", JSON.stringify(preview));
+          const cartFetchesBefore = await page.evaluate(() => window.__gwbCartFetches || 0);
           const basket = await frame.evaluate(async () => {
-            const r = await fetch("/api/basket", {cache:"no-store"});
+            const r = await fetch("/api/basket?refresh=test1", {cache:"no-store"});
             return await r.json();
           });
-          if (!Array.isArray(basket.orders) || basket.orders.length !== 1 || basket.orders[0].number !== "7920509") {
-            throw new Error("Basket verification failed: "+JSON.stringify(basket));
+          const basketAgain = await frame.evaluate(async () => {
+            const r = await fetch("/api/basket?refresh=test2", {cache:"no-store"});
+            return await r.json();
+          });
+          const cartFetchesAfter = await page.evaluate(() => window.__gwbCartFetches || 0);
+          if (!Array.isArray(basket.orders) || basket.orders.length !== 1 || basket.orders[0].number !== "7920509" ||
+              basket.orders.some(x => x.number === "1111111") ||
+              basket.refreshedFromSite !== true || !/^site-/.test(basket.source || "") ||
+              !Array.isArray(basketAgain.orders) || basketAgain.orders[0]?.number !== "7920509" ||
+              cartFetchesAfter < cartFetchesBefore + 2) {
+            throw new Error("Fresh site basket verification failed: "+JSON.stringify({basket,basketAgain,cartFetchesBefore,cartFetchesAfter}));
           }
+          console.log("Fresh site basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,cartFetchesBefore,cartFetchesAfter}));
 
           await frame.waitForSelector("#basketOrders .basket-order > button", {state:"attached", timeout:30000});
           await frame.locator("#basketOrders .basket-order > button").first().click();
