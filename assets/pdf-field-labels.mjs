@@ -209,7 +209,7 @@ export function auditFieldLabels(fields, entry) {
       const taskId = /^\d{1,20}$/.test(String(binding?.taskId || "")) ? String(Number(binding.taskId)) : "";
       const printId = /^print\d+$/i.test(String(binding?.printId || ""))
         ? String(binding.printId).toLowerCase()
-        : taskId ? `print${taskId}` : "";
+        : "";
       return {
         name: clean(binding?.name),
         key: nameKey(placeName(binding?.name || "")),
@@ -223,6 +223,79 @@ export function auditFieldLabels(fields, entry) {
     .filter(binding => binding.name);
   const indexedBindings = explicitBindings.filter(binding => Number.isInteger(binding.index));
   const used=new Set(), issues=[];
+
+  // When Gifts gives an explicit ordered set of selected applications for one
+  // template, binding.index is PDF-local (1..N), while taskId is global to the
+  // order. The detected vector fields retain their PDF operator-stream order
+  // in pdfOrder. If all counts agree and no existing PDF label contradicts
+  // that sequence, this is an unambiguous mapping for the editor even when the
+  // visible field number itself was converted to curves and is not text.
+  const localIndexes=indexedBindings.map(binding=>binding.index).sort((a,b)=>a-b);
+  const completeLocalSequence=
+    fields.length>0 &&
+    places.length===fields.length &&
+    indexedBindings.length===fields.length &&
+    new Set(localIndexes).size===fields.length &&
+    localIndexes.every((value,index)=>value===index+1) &&
+    entry?.placeCountReliable!==false;
+
+  if (entry && completeLocalSequence && fields.some(field=>field.labelStatus!=='matched')) {
+    const ordered=[...fields].sort((a,b)=>
+      (a.page??0)-(b.page??0) ||
+      (a.pdfOrder??Number.MAX_SAFE_INTEGER)-(b.pdfOrder??Number.MAX_SAFE_INTEGER) ||
+      a.y-b.y || a.x-b.x
+    );
+    let compatible=true;
+    const mapped=[];
+    const seenPlaces=new Set();
+
+    for (let rank=0;rank<ordered.length;rank++) {
+      const field=ordered[rank];
+      const localIndex=rank+1;
+      const binding=indexedBindings.find(candidate=>candidate.index===localIndex);
+      const placeIndex=binding ? places.findIndex(place=>place.name===binding.key) : -1;
+      const expectedPrint=`print${localIndex}`;
+      const actualPrint=field.printId ? String(field.printId).toLowerCase() : "";
+      if (!binding || placeIndex<0 || seenPlaces.has(placeIndex) ||
+          (Number.isInteger(field.fieldIndex) && field.fieldIndex!==localIndex) ||
+          (actualPrint && actualPrint!==expectedPrint)) {
+        compatible=false;
+        break;
+      }
+      seenPlaces.add(placeIndex);
+      mapped.push({field,binding,placeIndex,localIndex,expectedPrint});
+    }
+
+    if (compatible && mapped.length===fields.length) {
+      for (const {field,binding,placeIndex,localIndex,expectedPrint} of mapped) {
+        field.orderPlace=places[placeIndex].raw;
+        field.orderPlaceIndex=placeIndex;
+        field.orderMethod=binding.method||"";
+        field.orderPlaceBindingSource=binding.source||"order-application-id+makets-popup";
+        field.templateIndex=localIndex;
+        field.fieldIndex=Number.isInteger(field.fieldIndex)?field.fieldIndex:localIndex;
+        field.printId=field.printId||expectedPrint;
+        field.pdfPlace=field.pdfPlace||binding.name;
+        field.pdfLabel=field.pdfLabel||`${binding.name} [${expectedPrint}]`;
+        field.labelSource=[field.labelSource,"application-sequence"].filter(Boolean).join("+");
+        field.labelStatus="matched";
+      }
+      return {
+        ok:true,
+        issues:[],
+        mode:"application-sequence",
+        mappedBy:"order-application-id+popup-sequence+pdf-order",
+        placeCount:fields.length,
+        fieldMappings:mapped.map(({binding,localIndex})=>({
+          index:localIndex,
+          name:binding.name,
+          printId:`print${localIndex}`,
+          taskId:binding.taskId||"",
+          method:binding.method||""
+        }))
+      };
+    }
+  }
 
   // Some Gifts orders do not expose textual place names at all, while the
   // application-template itself explicitly numbers every field. Accept that
