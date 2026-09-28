@@ -268,38 +268,80 @@
     return /^\d{1,20}$/.test(String(id || "")) ? "print" + String(Number(id)) : "";
   }
 
-  function extractOrderApplicationBindings(root, article) {
-    const methodNodes = [...root.querySelectorAll(".cart-tbl-imp g-droper > span")];
-    const placeNodes = [...root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column > .color-text")];
+  function extractDrawTaskCatalog(doc) {
+    const catalog = new Map();
+    for (const node of doc.querySelectorAll(".j_drawtaskfilter_item[data-draw-task-id]")) {
+      const drawTaskId = clean(node.getAttribute("data-draw-task-id"));
+      if (!/^\d{1,20}$/.test(drawTaskId)) continue;
+      const rawType = clean(node.getAttribute("data-draw-type") || node.textContent || "");
+      const indexMatch = rawType.match(/\[(\d{1,20})\]\s*$/);
+      const applicationId = indexMatch ? indexMatch[1] : "";
+      catalog.set(drawTaskId, {
+        drawTaskId,
+        applicationId,
+        applicationIndex: /^\d+$/.test(applicationId) ? Number(applicationId) : null,
+        type: rawType.replace(/\s*\[\d{1,20}\]\s*$/, "")
+      });
+    }
+    return catalog;
+  }
+
+  function extractOrderApplicationBindings(root, article, drawTaskCatalog = new Map()) {
+    const imp = root.querySelector(".cart-tbl-imp");
+    if (!imp) return [];
+
+    const methodNodes = [...imp.querySelectorAll("g-droper > span")]
+      .filter(node => /\b[A-ZА-Я]+[\w-]*\d+[\w-]*\s*:/i.test(clean(node.textContent || "")));
+
+    // Real order DOM (verified on saved order 7980838):
+    // direct child with method -> next direct child .size--sm.flex.flex-center.flex-column with place.
+    const renderedPlaceNodes = [...imp.querySelectorAll(":scope > .size--sm.flex.flex-center.flex-column > div")];
+    const legacyPlaceNodes = [...imp.querySelectorAll(".flex-center.flex-column > .color-text")];
+    const allPlaceNodes = renderedPlaceNodes.length ? renderedPlaceNodes : legacyPlaceNodes;
+    const drawTaskIds = clean(root.getAttribute("data-drawtaskids"))
+      .split(/[\s,;]+/)
+      .filter(Boolean);
     const bindings = [];
 
-    const localPlaceFor = methodNode => {
-      let container = methodNode.parentElement;
-      while (container && container !== root) {
-        const methods = container.querySelectorAll?.("g-droper > span") || [];
-        const places = container.querySelectorAll?.(".flex-center.flex-column > .color-text") || [];
-        if (methods.length === 1 && places.length === 1) return places[0];
-        container = container.parentElement;
+    const siblingPlaceFor = methodNode => {
+      let block = methodNode;
+      while (block.parentElement && block.parentElement !== imp) block = block.parentElement;
+      if (block.parentElement !== imp) return null;
+      let next = block.nextElementSibling;
+      while (next) {
+        if (next.matches?.(".size--sm.flex.flex-center.flex-column")) {
+          return next.querySelector(":scope > div") || next;
+        }
+        if (next.querySelector?.("g-droper > span")) break;
+        next = next.nextElementSibling;
       }
       return null;
     };
 
     methodNodes.forEach((methodNode, index) => {
       const rawMethod = clean(methodNode.textContent || "");
-      const taskId = selectedApplicationId(rawMethod);
-      let placeNode = localPlaceFor(methodNode);
-      if (!placeNode && methodNodes.length === placeNodes.length) placeNode = placeNodes[index];
+      const methodApplicationId = selectedApplicationId(rawMethod);
+      const drawTaskId = drawTaskIds[index] || "";
+      const catalog = drawTaskCatalog.get(drawTaskId) || null;
+      const applicationId = catalog?.applicationId || methodApplicationId;
+      const applicationIndex = /^\d+$/.test(applicationId) ? Number(applicationId) : null;
+
+      let placeNode = siblingPlaceFor(methodNode);
+      if (!placeNode && methodNodes.length === allPlaceNodes.length) placeNode = allPlaceNodes[index];
       const name = normalizeOrderPlace(placeNode?.textContent || "", article);
       if (!name) return;
+
       bindings.push({
         name,
-        taskId,
-        applicationId: taskId,
-        applicationIndex: /^\d+$/.test(taskId) ? Number(taskId) : null,
+        taskId: drawTaskId || applicationId,
+        drawTaskId,
+        applicationId,
+        applicationIndex,
         printId: "",
         index: null,
         method: rawMethod,
-        source: "order-application-row"
+        methodType: catalog?.type || rawMethod.replace(/,\s*\d+\s*$/, ""),
+        source: drawTaskId ? "order-drawtask-row" : "order-application-row"
       });
     });
 
@@ -728,6 +770,7 @@
   function parseOrder(html, order) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const items = [];
+    const drawTaskCatalog = extractDrawTaskCatalog(doc);
 
     for (const root of doc.querySelectorAll("li[data-itemid]")) {
       const itemId = clean(root.getAttribute("data-itemid"));
@@ -740,7 +783,7 @@
       const drawTaskRaw = clean(root.getAttribute("data-drawtaskids"));
       const drawTaskIds = drawTaskRaw ? drawTaskRaw.split(/[\s,;]+/).filter(Boolean) : [];
       const placeAudit = extractPlaceAudit(root, article);
-      const applicationBindings = extractOrderApplicationBindings(root, article);
+      const applicationBindings = extractOrderApplicationBindings(root, article, drawTaskCatalog);
       if (applicationBindings.length) {
         const byName = new Map(applicationBindings.map(binding => [placeKey(binding.name), binding]));
         placeAudit.placeBindings = (placeAudit.placeBindings || []).map(binding => {
@@ -840,7 +883,9 @@
             if (item.templateApplicationIds.length && item.applicationBindings.length) {
               const matched = item.templateApplicationIds
                 .map((id, localIndex) => {
-                  const binding = item.applicationBindings.find(candidate => String(candidate.taskId) === String(id));
+                  const binding = item.applicationBindings.find(candidate =>
+                    String(candidate.applicationId || "") === String(id)
+                  );
                   return binding ? {
                     ...binding,
                     templateIndex: localIndex + 1,
@@ -873,7 +918,8 @@
                 return {
                   name,
                   taskId: existing?.taskId || "",
-                  applicationId: existing?.applicationId || existing?.taskId || "",
+                  drawTaskId: existing?.drawTaskId || "",
+                  applicationId: existing?.applicationId || "",
                   applicationIndex: existing?.applicationIndex || null,
                   templateIndex: existing?.templateIndex || null,
                   printId: existing?.printId || "",
