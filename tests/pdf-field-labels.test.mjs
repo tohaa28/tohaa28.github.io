@@ -117,6 +117,28 @@ test('standalone numeric items survive line merging and punctuation',()=>{
   assert.equal(audit.mode,'pdf-numbered-only');
 });
 
+test('explicit page place numbers map PDF digits to exact names, not array order',()=>{
+  const boxes=[{x:20,y:20,w:30,h:20},{x:20,y:80,w:30,h:20}];
+  const numeric=[
+    {x:22,y:22,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.9,source:'numeric-item'},
+    {x:22,y:82,w:4,h:4,text:'2',name:'2',fieldIndex:2,confidence:2.9,source:'numeric-item'}
+  ];
+  const bound=bindFieldLabels(boxes,numeric);
+  const entry={
+    places:['дно','боковая сторона'],
+    placeBindings:[
+      {name:'боковая сторона',index:1,source:'makets-popup-place'},
+      {name:'дно',index:2,source:'makets-popup-place'}
+    ],
+    placeCountReliable:true
+  };
+  const audit=auditFieldLabels(bound,entry);
+  assert.equal(audit.ok,true);
+  assert.equal(bound.find(f=>f.fieldIndex===1).orderPlace,'боковая сторона');
+  assert.equal(bound.find(f=>f.fieldIndex===2).orderPlace,'дно');
+  assert.equal(bound.find(f=>f.fieldIndex===1).orderPlaceBindingSource,'makets-popup-place');
+});
+
 test('complete numeric PDF fields are usable when order has no place names',()=>{
   const boxes=[{x:20,y:20,w:30,h:20,page:0},{x:20,y:80,w:30,h:20,page:0}];
   const numeric=[
