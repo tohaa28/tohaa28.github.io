@@ -405,8 +405,13 @@ jobs:
             document.getElementById("loadOrder").click();
           });
           await frame.waitForFunction(() => {
+            const loading = document.getElementById("orderLoading");
+            const editor = document.getElementById("orderEditor");
             const row=[...document.querySelectorAll("#orderTemplateList .article-row")].find(x => x.querySelector(".detail-key")?.textContent?.trim()==="Контроль мест");
-            return row?.querySelector(".detail-value")?.textContent?.includes("2 в заказе ≠ 1 в шаблоне");
+            return loading?.hidden === true &&
+              editor?.hidden === false &&
+              row?.querySelector(".detail-value")?.textContent?.includes("2 в заказе ≠ 1 в шаблоне") &&
+              /ОШИБКА КОНТРОЛЯ/.test(document.getElementById("fieldChoiceHint")?.textContent || "");
           }, null, {timeout:30000});
           const mismatchState = await frame.evaluate(() => ({
             audit:[...document.querySelectorAll("#orderTemplateList .article-row")].find(x => x.querySelector(".detail-key")?.textContent?.trim()==="Контроль мест")?.querySelector(".detail-value")?.textContent?.trim() || "",
