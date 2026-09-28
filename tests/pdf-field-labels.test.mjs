@@ -44,8 +44,8 @@ test('numeric PDF labels map to numbered order places, not array order',()=>{
   const PT_PER_MM=72/25.4;
   const viewport={convertToViewportPoint:(x,y)=>[x*PT_PER_MM,y*PT_PER_MM]};
   const content={items:[
-    {str:'2',width:4,height:4,transform:[4,0,0,4,22,74]},
-    {str:'1',width:4,height:4,transform:[4,0,0,4,22,14]}
+    {str:'2',width:4,height:4,transform:[4,0,0,4,22,82]},
+    {str:'1',width:4,height:4,transform:[4,0,0,4,22,22]}
   ]};
   const extracted=extractFieldLabels(content,viewport);
   assert.deepEqual(extracted.map(x=>x.fieldIndex).sort((a,b)=>a-b),[1,2]);
@@ -62,8 +62,8 @@ test('numeric PDF labels map to numbered order places, not array order',()=>{
   assert.equal(reversed.find(f=>f.fieldIndex===2).orderPlace,'оборот');
 
   const duplicate=bindFieldLabels(fields,[
-    {x:22,y:14,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5},
-    {x:22,y:74,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5}
+    {x:22,y:22,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5},
+    {x:22,y:82,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5}
   ]);
   assert.equal(auditFieldLabels(duplicate,{places:['лицо','оборот'],placeCountReliable:true}).ok,false);
 });
