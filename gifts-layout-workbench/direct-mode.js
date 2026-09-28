@@ -285,28 +285,54 @@
     return clean(text.slice(article.length).replace(/^\s*[,;:]\s*/, ""));
   }
 
-  function extractExactPlaces(root, article) {
-    const result = [];
-    const seen = new Set();
+  function normalizeOrderPlace(raw, article) {
     const bad = /(?:скачать|шаблон|конструктор|pdf|cdr|макет|тираж|артикул|файл)/i;
-    const placeWord = /(?:лицо|оборот|спереди|сзади|слева|справа|сторон[аы]|клапан|крышк|дно|ручк|карман|рукав|груд|спин|капюшон|чехол|шов|клин|купол|горловин|этикет|бирк|упаковк|бок|периметр|основан|поле)/i;
     const methodWord = /(?:DTF|DTG|шелк|тампо|грав|УФ|UV|сублим|вышив|тиснен|деколь|лазер|флекс|трансфер|печать)/i;
+    let value = removeArticlePrefix(raw, article);
+    value = clean(value)
+      .replace(/^место\s+нанесения\s*[:—-]?\s*/i, "")
+      .replace(/^место\s*[:—-]?\s*/i, "")
+      .replace(/^поверхность\s*[:—-]?\s*/i, "")
+      .replace(/^сторона\s*[:—-]?\s*/i, "");
+    if (!value || value.length > 180 || bad.test(value) || methodWord.test(value)) return "";
+    return value;
+  }
 
-    const add = raw => {
-      let value = removeArticlePrefix(raw, article);
-      value = clean(value)
-        .replace(/^место\s+нанесения\s*[:—-]?\s*/i, "")
-        .replace(/^место\s*[:—-]?\s*/i, "")
-        .replace(/^поверхность\s*[:—-]?\s*/i, "")
-        .replace(/^сторона\s*[:—-]?\s*/i, "");
-      if (!value || value.length > 180 || bad.test(value) || methodWord.test(value)) return;
-      const key = value.toLocaleLowerCase("ru-RU");
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push(value);
+  function extractPlaceAudit(root, article) {
+    const placeWord = /(?:лицо|оборот|спереди|сзади|слева|справа|верх|низ|внутр|наруж|торец|сторон[аы]|клапан|крышк|дно|ручк|карман|рукав|груд|спин|капюшон|чехол|шов|клин|купол|горловин|этикет|бирк|упаковк|бок|периметр|основан|поле|центр)/i;
+
+    const collectNodes = nodes => {
+      const places = [];
+      for (const node of nodes) {
+        const value = normalizeOrderPlace(node.textContent || node.value || "", article);
+        if (value && placeWord.test(value)) places.push(value);
       }
+      return places;
     };
 
+    // This is the explicit place row currently used by gifts.ru in an order item.
+    const orderRows = collectNodes(root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column .color-text"));
+    if (orderRows.length) {
+      return {
+        places: orderRows,
+        source: "order-place-row",
+        reliable: true,
+        signals: { orderRows: orderRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
+      };
+    }
+
+    // Alternative rendered order layout used on some gifts.ru pages.
+    const renderedRows = collectNodes(root.querySelectorAll("div.size--sm.flex.flex-center.flex-column > div"));
+    if (renderedRows.length) {
+      return {
+        places: renderedRows,
+        source: "rendered-place-row",
+        reliable: true,
+        signals: { orderRows: renderedRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
+      };
+    }
+
+    const selected = [];
     for (const select of root.querySelectorAll("select")) {
       const attrs = [
         select.getAttribute("name"),
@@ -316,28 +342,54 @@
       ].filter(Boolean).join(" ");
       if (!/место|сторон|поле|поверхност|place|position|side|field|location/i.test(attrs)) continue;
       const option = [...select.options].find(o => o.selected) || select.options[select.selectedIndex];
-      if (option) add(option.textContent || option.value);
+      const value = normalizeOrderPlace(option?.textContent || option?.value || "", article);
+      if (value) selected.push(value);
+    }
+    if (selected.length) {
+      return {
+        places: selected,
+        source: "selected-place-control",
+        reliable: true,
+        signals: { orderRows: 0, selectedControls: selected.length, labelledValues: 0, attributes: 0 }
+      };
     }
 
-    for (const node of root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column .color-text, div.size--sm.flex.flex-center.flex-column > div")) {
-      const value = clean(node.textContent);
-      if (placeWord.test(value)) add(value);
-    }
-
+    const labelled = [];
     for (const label of root.querySelectorAll("[data-label],label,dt,th")) {
       if (!/место\s*нанесения|поле\s*нанесения|сторона|поверхность/i.test(clean(label.textContent))) continue;
-      const next = label.nextElementSibling;
-      if (next) add(next.textContent);
+      const value = normalizeOrderPlace(label.nextElementSibling?.textContent || "", article);
+      if (value) labelled.push(value);
+    }
+    if (labelled.length) {
+      return {
+        places: labelled,
+        source: "labelled-place-value",
+        reliable: false,
+        signals: { orderRows: 0, selectedControls: 0, labelledValues: labelled.length, attributes: 0 }
+      };
     }
 
+    // Attribute scanning is only a last-resort hint. Deduplicate it because one DOM node
+    // can repeat the same place in several attributes.
+    const attrs = [];
+    const seen = new Set();
     for (const node of root.querySelectorAll("*")) {
       for (const attr of [...node.attributes]) {
         if (!/place|position|side|field|location|место|сторон|поле|поверхност/i.test(attr.name)) continue;
-        if (placeWord.test(attr.value)) add(attr.value);
+        const value = normalizeOrderPlace(attr.value, article);
+        const key = value.toLocaleLowerCase("ru-RU");
+        if (value && placeWord.test(value) && !seen.has(key)) {
+          seen.add(key);
+          attrs.push(value);
+        }
       }
     }
-
-    return result;
+    return {
+      places: attrs,
+      source: attrs.length ? "place-attribute-fallback" : "not-found",
+      reliable: false,
+      signals: { orderRows: 0, selectedControls: 0, labelledValues: 0, attributes: attrs.length }
+    };
   }
 
   function parseOrder(html, order) {
@@ -353,8 +405,9 @@
       const quantity = qtyMatch ? Number(qtyMatch[0]) : NaN;
       const method = clean(root.querySelector(".cart-tbl-imp g-droper > span")?.textContent);
       const drawTaskRaw = clean(root.getAttribute("data-drawtaskids"));
-
-      const places = extractExactPlaces(root, article);
+      const drawTaskIds = drawTaskRaw ? drawTaskRaw.split(/[\s,;]+/).filter(Boolean) : [];
+      const placeAudit = extractPlaceAudit(root, article);
+      const places = placeAudit.places;
 
       if (!/^\d+$/.test(itemId) || !article || !method ||
           !Number.isSafeInteger(quantity) || quantity < 1) continue;
@@ -370,7 +423,15 @@
         method,
         place: places.join(", "),
         places,
-        drawTaskIds: drawTaskRaw ? drawTaskRaw.split(/[\s,;]+/).filter(Boolean) : [],
+        placeCount: places.length,
+        placeCountSource: placeAudit.source,
+        placeCountReliable: placeAudit.reliable,
+        placeCountSignals: {
+          ...placeAudit.signals,
+          drawTasks: drawTaskIds.length,
+          methods: root.querySelectorAll(".cart-tbl-imp g-droper > span").length
+        },
+        drawTaskIds,
         imageUrl,
         productUrl,
         requirements: clean(root.textContent).slice(0, 5000),
@@ -378,7 +439,20 @@
       });
     }
 
-    return { order: String(order), items };
+    const articleSummary = {};
+    for (const item of items) {
+      const key = item.article;
+      if (!articleSummary[key]) articleSummary[key] = { article: key, itemCount: 0, placeCount: 0, itemIds: [] };
+      articleSummary[key].itemCount++;
+      articleSummary[key].placeCount += item.placeCount || 0;
+      articleSummary[key].itemIds.push(item.itemId);
+    }
+    for (const item of items) {
+      item.articlePlaceCount = articleSummary[item.article]?.placeCount || item.placeCount || 0;
+      item.articleItemCount = articleSummary[item.article]?.itemCount || 1;
+    }
+
+    return { order: String(order), items, articlePlaceSummary: Object.values(articleSummary) };
   }
 
   async function getOrder(order, fresh = false) {
