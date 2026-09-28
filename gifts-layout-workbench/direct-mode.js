@@ -240,12 +240,12 @@
     const methodWord = /(?:DTF|DTG|шелк|тампо|грав|УФ|UV|сублим|вышив|тиснен|деколь|лазер|флекс|трансфер|печать)/i;
     let value = removeArticlePrefix(raw, article);
     value = clean(value)
-      .replace(/^место\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
-      .replace(/^место\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
-      .replace(/^поле\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
-      .replace(/^поле\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
-      .replace(/^поверхность\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "")
-      .replace(/^сторона\s*(?:№|#)?\s*\d{0,2}\s*[:—-]?\s*/i, "");
+      // Strip only explicit UI labels. Real place names such as
+      // "сторона 1 [черный(403/Black)]" must remain byte-for-byte meaningful.
+      .replace(/^место\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "")
+      .replace(/^место\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "")
+      .replace(/^поле\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "")
+      .replace(/^поле\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "");
     if (!value || value.length > 180 || bad.test(value) || methodWord.test(value)) return "";
     return value;
   }
@@ -505,6 +505,13 @@
       if (directAttr) return directAttr;
       const hint = popupArticleHint(node.textContent || "");
       if (hint) return hint;
+    }
+
+    // In the real "Шаблоны макетов для выбранных нанесений" table the article
+    // is often a standalone line under the product name, without "Артикул".
+    for (const node of candidates) {
+      const value = clean(node.textContent || "");
+      if (/^\d{4,}(?:\.\d+)*$/.test(value)) return value;
     }
     return popupArticleHint(context.textContent || "");
   }
