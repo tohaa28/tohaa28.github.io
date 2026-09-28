@@ -148,7 +148,8 @@ export async function verifyPdfLabels(frame) {
     assert.equal(await frame.locator('#orderFieldChoice').inputValue(),'');
     assert.equal(await frame.locator('#editorStep3').evaluate(e=>e.hidden),true);
     const hint=await frame.locator('#fieldChoiceHint').textContent();
-    assert.match(hint,/1 в заказе = 1/);assert.match(hint,/Автовыбор отключён/);
+    assert.match(hint,/Не удалось однозначно сопоставить места нанесения/);assert.match(hint,/Автовыбор отключён/);
+    assert.doesNotMatch(hint,/Контроль мест|Подписи PDF/);
     const names=await frame.locator('#orderFieldChoice option').allTextContents();
     assert.equal(names.some(n=>/лицо/.test(n)),false);
     console.log(`Equal-count ${fixture} label safely blocked:`,JSON.stringify(names));
