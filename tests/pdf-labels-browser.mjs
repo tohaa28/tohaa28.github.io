@@ -125,8 +125,8 @@ export async function verifyPdfLabels(frame) {
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
   await frame.waitForFunction(()=>document.querySelectorAll('#fields option').length===3);
   const options=await frame.locator('#fields option').allTextContents();
-  assert.match(options[1],/оборот \[print2\]/);
-  assert.match(options[2],/лицо \[print1\]/);
+  assert.match(options[1],/^оборот · стр\./);
+  assert.match(options[2],/^лицо · стр\./);
   assert.match(options[1],/Y 73/);
   assert.match(options[2],/Y 123/);
   console.log('PDF text → geometry (reversed print IDs):',JSON.stringify(options));
@@ -138,7 +138,7 @@ export async function verifyPdfLabels(frame) {
   await frame.evaluate(async()=>{document.getElementById('order').value='7920510';await document.getElementById('loadOrder').onclick();});
   await frame.waitForFunction(()=>document.getElementById('orderLoading').hidden && document.querySelectorAll('#orderFieldChoice option').length===3);
   const names=await frame.locator('#orderFieldChoice option').allTextContents();
-  assert.match(names[1],/оборот \[print2\]/);assert.match(names[2],/лицо \[print1\]/);
+  assert.match(names[1],/^оборот · LM1:/);assert.match(names[2],/^лицо · LM1:/);
   assert.equal(await frame.locator('#fieldChoiceHint').evaluate(e=>e.classList.contains('unmatched')),false);
   console.log('Order validates PDF names without reordering:',JSON.stringify(names));
   for(const fixture of ['wrong','missing']) {
