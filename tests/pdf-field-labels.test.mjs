@@ -117,6 +117,34 @@ test('standalone numeric items survive line merging and punctuation',()=>{
   assert.equal(audit.mode,'pdf-numbered-only');
 });
 
+test('numeric frame labels inherit semantic names from distant print table',()=>{
+  const boxes=[{x:20,y:20,w:30,h:20},{x:80,y:20,w:30,h:20}];
+  const labels=[
+    {x:22,y:22,w:3,h:3,text:'1',name:'1',fieldIndex:1,printId:null,confidence:2.75,source:'numeric-item'},
+    {x:82,y:22,w:3,h:3,text:'2',name:'2',fieldIndex:2,printId:null,confidence:2.75,source:'numeric-item'},
+    {x:10,y:150,w:30,h:4,text:'лицо [print1]',name:'лицо',fieldIndex:null,printId:'print1',confidence:3,source:'assembled-line'},
+    {x:50,y:150,w:30,h:4,text:'оборот [print2]',name:'оборот',fieldIndex:null,printId:'print2',confidence:3,source:'assembled-line'}
+  ];
+  const bound=bindFieldLabels(boxes,labels);
+  assert.equal(bound[0].pdfPlace,'лицо');
+  assert.equal(bound[0].printId,'print1');
+  assert.equal(bound[1].pdfPlace,'оборот');
+  assert.equal(bound[1].printId,'print2');
+
+  const entry={
+    places:['оборот','лицо'],
+    placeBindings:[
+      {name:'лицо',taskId:'1',printId:'print1',index:1,source:'order-application-id+makets-popup'},
+      {name:'оборот',taskId:'2',printId:'print2',index:2,source:'order-application-id+makets-popup'}
+    ],
+    placeCountReliable:true
+  };
+  const audit=auditFieldLabels(bound,entry);
+  assert.equal(audit.ok,true);
+  assert.equal(bound[0].orderPlace,'лицо');
+  assert.equal(bound[1].orderPlace,'оборот');
+});
+
 test('explicit page place numbers map PDF digits to exact names, not array order',()=>{
   const boxes=[{x:20,y:20,w:30,h:20},{x:20,y:80,w:30,h:20}];
   const numeric=[
