@@ -438,3 +438,26 @@
 - `101ef34f1cf6417950ffd3e32776ba90c7c92aac` — browser regressions для unlabeled 15637 и single-field 26068.40;
 - `5a91b911cc60bb18bcf3de714a2e7af19a41f4d8` — cache-bust опубликованного field mapper;
 - `29d7994e46d7ead63985fd4b1817e50bf7b14491` — финально зелёный browser test set.
+
+### 2026-09-28 — проверка по сохранённому HTML заказа 7980838
+
+- Пользователь передал сохранённый реальный HTML страницы `/private/order/7980838`. Это позволило заменить оставшиеся предположения точными DOM-селекторами Gifts.
+- Реальная структура заказа:
+  - `#j_cart_host[data-orderid=7798973]`;
+  - 15637: item `49271958`, `data-drawtaskids="27133550,27133564"`; методы `LM1: Лазерная гравировка,1` и `...,2`; следующие соседние блоки мест: `лицо`, `оборот`;
+  - 16535.66: item `49298390`, draw task `27154860`; `F1: Флекс,3`; точное место `сторона а [черный(403/Black)]` (буква `а`, не цифра `1`);
+  - 26068.40: item `49298411`, draw task `27154862`; `DTF1: Печать DTF,4`; место `оборот`;
+  - глобальный фильтр нанесений содержит `.j_drawtaskfilter_item[data-draw-task-id]` и `data-draw-type`: `27133550 -> LM1 ... [1]`, `27133564 -> ... [2]`, `27154860 -> F1 ... [3]`, `27154862 -> DTF1 ... [4]`.
+- Найдена фактическая причина прежней ошибки: `extractPlaceAudit()` уже умел читать реальный rendered place selector, поэтому карточка показывала имя; но `extractOrderApplicationBindings()` искал только старый `.color-text`, которого в реальном order DOM для этих мест нет. Поэтому exact application binding не создавался и Шаг 2 деградировал до PDF-заглушки.
+- `direct-mode.js`: добавлен `extractDrawTaskCatalog(doc)`. Он связывает настоящий `drawTaskId` с номером выбранного нанесения `[N]` из фильтра заказа.
+- `extractOrderApplicationBindings()` теперь разбирает реальную последовательность прямых детей `.cart-tbl-imp`: блок метода `g-droper > span` -> следующий sibling `.size--sm.flex.flex-center.flex-column > div` с точным именем места. Старый `.color-text` оставлен как legacy fallback.
+- Binding теперь хранит одновременно `drawTaskId` (например `27154860`) и `applicationId/applicationIndex` (`3`). Popup `(3)` сопоставляется по `applicationId`, а не по ошибочно названному `taskId`.
+- Browser/workflow mocks переписаны под реальную DOM-структуру сохранённого заказа, включая `data-drawtaskids` и глобальный task filter.
+- Regression подтвердил для F1: `сторона а [черный(403/Black)]`, `taskId/drawTaskId=27154860`, `applicationId=3`, локальный `templateIndex=1`, `printId=print1`.
+- Regression 15637 по реальному DOM: Шаг 2 = `лицо · LM1: Лазерная гравировка,1` и `оборот · LM1: Лазерная гравировка,2`, `unmatched=false`.
+- Regression 26068.40: `оборот · DTF1: Печать DTF,4`, `unmatched=false`.
+- Финальный workflow с real-DOM mocks `36482442101` — success. Публикация parser commit `36482348160` — success.
+
+Ключевые коммиты:
+- `774097406a6190a755b802ba96806720e2b06b93` — parser реальной Gifts DOM / draw-task catalog;
+- `bca61c6d7f3e4809c7e66f67767cf2cc5fc3f995` — regression mocks по сохранённому HTML заказа 7980838.
