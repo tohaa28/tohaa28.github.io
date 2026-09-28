@@ -68,7 +68,7 @@ jobs:
               const url = new URL(raw, location.href);
               if (url.origin === location.origin && (url.pathname === "/private/orders/basket" || url.pathname === "/private/orders/basket/")) {
                 window.__gwbBasketFetches = (window.__gwbBasketFetches || 0) + 1;
-                return Promise.resolve(new Response('<!doctype html><html><body><main class="orders-basket"><a href="/private/order/7920509">Заказ 7920509</a><div>Архивный текст: Заказ 306190</div><script>window.fake={"orderNumber":"280185"}</script></main></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><main class="orders-basket"><a href="/private/order/7920509">Заказ 7920509</a><a href="/private/order/7920512">Заказ 7920512</a><div>Архивный текст: Заказ 306190</div><script>window.fake={"orderNumber":"280185"}</script></main></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
@@ -86,6 +86,12 @@ jobs:
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
               }
+              if (url.origin === location.origin && url.pathname === "/private/order/7920512") {
+                return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738673"><a class="j_add_maket" data-orderid="7738673">Макеты для заказа</a><li data-itemid="42345"><div class="cart-tbl-name"><a href="/id/228758">Артикул 99999</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Товар без шаблона</div></div><div class="cart-qty">3 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">99999 лицо</span></div></div></li></div></body></html>', {
+                  status: 200,
+                  headers: {"content-type":"text/html; charset=utf-8"}
+                }));
+              }
               if (url.origin === location.origin && url.pathname === "/private/order/7920510") {
                 return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738672"><a class="j_add_maket" data-orderid="7738672">Макеты для заказа</a><li data-itemid="22345" data-drawtaskids="901,902"><div class="cart-tbl-name"><a href="/id/228757">Артикул 17488</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Тестовый товар</div></div><div class="cart-qty">5 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">17488 лицо</span><span class="color-text">17488 оборот</span></div></div></li></div></body></html>', {
                   status: 200,
@@ -98,7 +104,9 @@ jobs:
                   ? '<table><tr><td>Артикул 15637</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=54321">PDF</a></td></tr></table>'
                   : oid === "7738672"
                     ? '<table><tr><td>Артикул 17488</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=22345">PDF</a></td></tr></table>'
-                    : "";
+                    : oid === "7738673"
+                      ? '<table></table>'
+                      : "";
                 return Promise.resolve(new Response(JSON.stringify({status:"ok",html:rows}), {
                   status: 200,
                   headers: {"content-type":"application/json; charset=utf-8"}
@@ -248,6 +256,20 @@ jobs:
             throw new Error("Remapped popup PDF id was rejected: "+JSON.stringify(remappedPdf));
           }
           console.log("Popup article relation maps distinct PDF id:", JSON.stringify(remappedPdf));
+          const noTemplateOrder = await frame.evaluate(async () => {
+            const r = await fetch("/api/orders/7920512", {cache:"no-store"});
+            return {status:r.status,body:await r.json()};
+          });
+          if (noTemplateOrder.status !== 200 ||
+              noTemplateOrder.body?.templateCount !== 0 ||
+              noTemplateOrder.body?.items?.length !== 0 ||
+              noTemplateOrder.body?.orderItems?.length !== 1 ||
+              noTemplateOrder.body?.orderItems?.[0]?.article !== "99999" ||
+              noTemplateOrder.body?.orderItems?.[0]?.hasTemplate !== false) {
+            throw new Error("Order without templates lost its composition: "+JSON.stringify(noTemplateOrder));
+          }
+          console.log("No-template order composition:", JSON.stringify(noTemplateOrder.body.orderItems));
+
           const twoPlaceOrder = await frame.evaluate(async () => {
             const r = await fetch("/api/orders/7920510", {cache:"no-store"});
             return await r.json();
@@ -282,10 +304,12 @@ jobs:
           });
           const basketFetchesAfter = await page.evaluate(() => window.__gwbBasketFetches || 0);
           const legacyCartFetchesAfter = await page.evaluate(() => window.__gwbLegacyCartFetches || 0);
-          if (!Array.isArray(basket.orders) || basket.orders.length !== 1 || basket.orders[0].number !== "7920509" ||
+          if (!Array.isArray(basket.orders) || basket.orders.length !== 2 ||
+              basket.orders[0]?.number !== "7920509" || basket.orders[1]?.number !== "7920512" ||
               basket.orders.some(x => x.number === "1111111") ||
               basket.refreshedFromSite !== true || !/^private-orders-/.test(basket.source || "") ||
-              !Array.isArray(basketAgain.orders) || basketAgain.orders[0]?.number !== "7920509" ||
+              !Array.isArray(basketAgain.orders) || basketAgain.orders.length !== 2 ||
+              basketAgain.orders[0]?.number !== "7920509" || basketAgain.orders[1]?.number !== "7920512" ||
               basketFetchesAfter < basketFetchesBefore + 2 ||
               legacyCartFetchesAfter !== legacyCartFetchesBefore) {
             throw new Error("Fresh private basket verification failed: "+JSON.stringify({basket,basketAgain,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
@@ -293,12 +317,19 @@ jobs:
           console.log("Fresh private basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
 
           await frame.waitForSelector("#basketOrders .basket-order > button", {state:"attached", timeout:30000});
-          await frame.waitForFunction(() => [...document.querySelectorAll("#basketOrders .basket-method")].some(x => /13317\.00/.test(x.textContent || "")));
+          await frame.waitForFunction(() => {
+            const rows=[...document.querySelectorAll("#basketOrders .basket-method")].map(x=>x.textContent||"");
+            return rows.some(x => /13317\.00/.test(x)) && rows.some(x => /99999/.test(x));
+          });
           const basketRows = await frame.locator("#basketOrders .basket-method").allTextContents();
-          if (!basketRows.some(x => /13317\.00/.test(x))) {
-            throw new Error("Basket dropped an order item without template: "+JSON.stringify(basketRows));
+          const basketSummary = await frame.locator("#basketStatus").textContent();
+          if (!basketRows.some(x => /13317\.00/.test(x)) ||
+              !basketRows.some(x => /99999/.test(x)) ||
+              !/Корзин: 2/.test(basketSummary || "") ||
+              !/С шаблонами выбранных нанесений: 1/.test(basketSummary || "")) {
+            throw new Error("Basket dropped real order rows or miscounted templates: "+JSON.stringify({basketRows,basketSummary}));
           }
-          console.log("Basket preserves unassigned order item:", JSON.stringify(basketRows));
+          console.log("Basket preserves rows without templates:", JSON.stringify({basketRows,basketSummary}));
           await frame.locator("#basketOrders .basket-order > button").first().click();
           try {
             await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
