@@ -143,6 +143,7 @@ export function bindFieldLabels(fields, labels) {
   const canonical=[];
   for (const label of [...labels].sort((a,b)=>(b.confidence||0)-(a.confidence||0))) {
     const duplicate=canonical.some(other =>
+      other.source && label.source && other.source!==label.source &&
       other.fieldIndex===label.fieldIndex &&
       other.printId===label.printId &&
       clean(other.text)===clean(label.text) &&
