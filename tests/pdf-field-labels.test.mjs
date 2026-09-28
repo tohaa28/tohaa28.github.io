@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {extractFieldLabels,bindFieldLabels,auditFieldLabels} from '../assets/pdf-field-labels.mjs';
+import {extractFieldLabels,extractAnnotationFieldLabels,bindFieldLabels,auditFieldLabels} from '../assets/pdf-field-labels.mjs';
 const fields=[{x:20,y:20,w:30,h:20,page:0},{x:20,y:80,w:30,h:20,page:0}];
 const labels=[{x:22,y:74,w:20,h:4,text:'лицо [print1]',name:'лицо',printId:'print1'},{x:22,y:14,w:20,h:4,text:'оборот [print2]',name:'оборот',printId:'print2'}];
 test('PDF geometry wins over all array orders and print number order',()=>{
