@@ -32,6 +32,38 @@ function makeNumericPdf() {
   return Buffer.from(pdf,'ascii');
 }
 
+
+function makeAnnotationNumericPdf() {
+  const stream = [
+    'q',
+    '0 0.65 0.85 RG',
+    '1 w',
+    '40 60 200 250 re S',
+    '340 60 200 250 re S',
+    'Q',
+    ''
+  ].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 400] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R /Annots [6 0 R 7 0 R] >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Type /Annot /Subtype /FreeText /Rect [44 292 56 306] /Contents (1) /DA (/F1 12 Tf 0 g) /F 4 >>',
+    '<< /Type /Annot /Subtype /FreeText /Rect [344 292 356 306] /Contents (2) /DA (/F1 12 Tf 0 g) /F 4 >>'
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){
+    offsets.push(Buffer.byteLength(pdf,'ascii'));
+    pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 export async function verifyPdfLabels(frame) {
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
@@ -109,5 +141,29 @@ export async function verifyPdfLabels(frame) {
   await frame.waitForFunction(()=>document.getElementById('editorStep3')?.hidden===false);
   assert.equal(await frame.locator('#orderFieldChoice').inputValue(),'0');
   console.log('Numbered PDF fallback without order place names:',JSON.stringify(numericState));
+
+  // Same fallback, but the digits exist only as PDF FreeText annotations.
+  const annotationPdf=makeAnnotationNumericPdf();
+  await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},annotationPdf.toString('base64'));
+  await frame.evaluate(async()=>{
+    document.getElementById('order').value='7920513';
+    await document.getElementById('loadOrder').onclick();
+  });
+  await frame.waitForFunction(()=>{
+    const loading=document.getElementById('orderLoading');
+    return loading?.hidden===true &&
+      document.querySelectorAll('#orderFieldChoice option').length===3 &&
+      document.getElementById('orderEditor')?.hidden===false;
+  });
+  const annotationState=await frame.evaluate(()=>({
+    options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
+    hint:document.getElementById('fieldChoiceHint')?.textContent||'',
+    unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
+  }));
+  assert.match(annotationState.options[1],/Место 1/);
+  assert.match(annotationState.options[2],/Место 2/);
+  assert.equal(annotationState.unmatched,false);
+  assert.match(annotationState.hint,/названия мест не указаны/i);
+  console.log('Annotation-only numbered PDF fallback:',JSON.stringify(annotationState));
 
 }
