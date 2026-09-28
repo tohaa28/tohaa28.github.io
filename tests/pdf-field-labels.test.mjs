@@ -143,6 +143,8 @@ test('numeric frame labels inherit semantic names from distant print table',()=>
   assert.equal(audit.ok,true);
   assert.equal(bound[0].orderPlace,'лицо');
   assert.equal(bound[1].orderPlace,'оборот');
+  assert.equal(bound[0].orderMethod,'');
+  assert.equal(bound[1].orderMethod,'');
 });
 
 test('explicit page place numbers map PDF digits to exact names, not array order',()=>{
