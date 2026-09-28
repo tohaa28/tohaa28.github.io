@@ -48,30 +48,49 @@ jobs:
             stale.href = "/private/order/1111111";
             stale.textContent = "Заказ 1111111";
             document.body.appendChild(stale);
-            window.__gwbCartFetches = 0;
+            window.__gwbBasketFetches = 0; window.__gwbLegacyCartFetches = 0;
           });
           await page.evaluate(() => {
             const realFetch = window.fetch.bind(window);
             window.fetch = (input, init) => {
               const raw = typeof input === "string" ? input : input?.url || String(input);
               const url = new URL(raw, location.href);
+              if (url.origin === location.origin && (url.pathname === "/private/orders/basket" || url.pathname === "/private/orders/basket/")) {
+                window.__gwbBasketFetches = (window.__gwbBasketFetches || 0) + 1;
+                return Promise.resolve(new Response('<!doctype html><html><body><main class="orders-basket"><a href="/private/order/7920509">Заказ 7920509</a><div>Архивный текст: Заказ 306190</div><script>window.fake={"orderNumber":"280185"}</script></main></body></html>', {
+                  status: 200,
+                  headers: {"content-type":"text/html; charset=utf-8"}
+                }));
+              }
               if (url.origin === location.origin && (url.pathname === "/cart" || url.pathname === "/cart/")) {
-                window.__gwbCartFetches = (window.__gwbCartFetches || 0) + 1;
-                return Promise.resolve(new Response('<!doctype html><html><body><a href="/private/order/7920509">Заказ 7920509</a><a href="/private/order/280185">Заказ 280185</a><a href="/private/order/306190">Заказ 306190</a></body></html>', {
+                window.__gwbLegacyCartFetches = (window.__gwbLegacyCartFetches || 0) + 1;
+                return Promise.resolve(new Response('<!doctype html><html><body><a href="/private/order/280185">НЕ список корзин</a></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920509") {
-                return Promise.resolve(new Response('<!doctype html><html><body><li data-itemid="12345" data-drawtaskids="999"><div class="cart-tbl-name"><a href="/id/228756">Артикул 15637</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 лицо</span></div></div></li></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738671"><a class="j_add_maket" data-orderid="7738671">Макеты для заказа</a><li data-itemid="12345" data-drawtaskids="999"><div class="cart-tbl-name"><a href="/id/228756">Артикул 15637</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Брелок</div></div><div class="cart-qty">10 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">15637 лицо</span></div></div></li><li data-itemid="33333"><div class="cart-tbl-name">Артикул 13317.00</div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Без выбранного нанесения</div></div><div class="cart-qty">2 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">13317.00 чужое поле</span></div></div></li></div></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/private/order/7920510") {
-                return Promise.resolve(new Response('<!doctype html><html><body><li data-itemid="22345" data-drawtaskids="901,902"><div class="cart-tbl-name"><a href="/id/228757">Артикул 17488</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Тестовый товар</div></div><div class="cart-qty">5 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">17488 лицо</span><span class="color-text">17488 оборот</span></div></div></li></body></html>', {
+                return Promise.resolve(new Response('<!doctype html><html><body><div class="cart-order" id="j_cart_host" data-orderid="7738672"><a class="j_add_maket" data-orderid="7738672">Макеты для заказа</a><li data-itemid="22345" data-drawtaskids="901,902"><div class="cart-tbl-name"><a href="/id/228757">Артикул 17488</a></div><div class="cart-tbl-id"><div class="cart-tbl-lbl">Тестовый товар</div></div><div class="cart-qty">5 шт.</div><div class="cart-tbl-imp"><g-droper><span>LM1: Лазерная гравировка</span></g-droper><div class="flex-center flex-column"><span class="color-text">17488 лицо</span><span class="color-text">17488 оборот</span></div></div></li></div></body></html>', {
                   status: 200,
                   headers: {"content-type":"text/html; charset=utf-8"}
+                }));
+              }
+              if (url.origin === location.origin && url.pathname === "/ajax/gifts/order" && url.searchParams.get("action") === "makets_popup") {
+                const oid = url.searchParams.get("oid");
+                const rows = oid === "7738671"
+                  ? '<table><tr><td>Артикул 15637</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=12345">PDF</a></td></tr></table>'
+                  : oid === "7738672"
+                    ? '<table><tr><td>Артикул 17488</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=22345">PDF</a></td></tr></table>'
+                    : "";
+                return Promise.resolve(new Response(JSON.stringify({status:"ok",html:rows}), {
+                  status: 200,
+                  headers: {"content-type":"application/json; charset=utf-8"}
                 }));
               }
               if (url.origin === location.origin && url.pathname === "/id/228757") {
@@ -200,8 +219,14 @@ jobs:
             throw new Error("Exact order place was not parsed: "+JSON.stringify(orderData));
           }
           console.log("Exact place test:", JSON.stringify(orderData.items[0].places));
-          if (orderData.items[0].placeCount !== 1 || orderData.items[0].placeCountSource !== "order-place-row" || orderData.items[0].placeCountReliable !== true) {
-            throw new Error("Single-place count audit is invalid: "+JSON.stringify(orderData.items[0]));
+          if (orderData.items.length !== 1 ||
+              orderData.items[0].placeCount !== 1 ||
+              orderData.items[0].placeCountSource !== "order-place-row" ||
+              orderData.items[0].placeCountReliable !== true ||
+              orderData.items[0].pdfItemId !== "12345" ||
+              orderData.items[0].templateRelationSource !== "makets-popup-orderitemid" ||
+              orderData.items.some(x => x.article === "13317.00")) {
+            throw new Error("Authoritative order/template mapping is invalid: "+JSON.stringify(orderData));
           }
           const twoPlaceOrder = await frame.evaluate(async () => {
             const r = await fetch("/api/orders/7920510", {cache:"no-store"});
@@ -225,7 +250,8 @@ jobs:
             throw new Error("Product preview fallback failed: "+JSON.stringify(preview));
           }
           console.log("Product preview fallback:", JSON.stringify(preview));
-          const cartFetchesBefore = await page.evaluate(() => window.__gwbCartFetches || 0);
+          const basketFetchesBefore = await page.evaluate(() => window.__gwbBasketFetches || 0);
+          const legacyCartFetchesBefore = await page.evaluate(() => window.__gwbLegacyCartFetches || 0);
           const basket = await frame.evaluate(async () => {
             const r = await fetch("/api/basket?refresh=test1", {cache:"no-store"});
             return await r.json();
@@ -234,15 +260,17 @@ jobs:
             const r = await fetch("/api/basket?refresh=test2", {cache:"no-store"});
             return await r.json();
           });
-          const cartFetchesAfter = await page.evaluate(() => window.__gwbCartFetches || 0);
+          const basketFetchesAfter = await page.evaluate(() => window.__gwbBasketFetches || 0);
+          const legacyCartFetchesAfter = await page.evaluate(() => window.__gwbLegacyCartFetches || 0);
           if (!Array.isArray(basket.orders) || basket.orders.length !== 1 || basket.orders[0].number !== "7920509" ||
               basket.orders.some(x => x.number === "1111111") ||
-              basket.refreshedFromSite !== true || !/^site-/.test(basket.source || "") ||
+              basket.refreshedFromSite !== true || !/^private-orders-/.test(basket.source || "") ||
               !Array.isArray(basketAgain.orders) || basketAgain.orders[0]?.number !== "7920509" ||
-              cartFetchesAfter < cartFetchesBefore + 2) {
-            throw new Error("Fresh site basket verification failed: "+JSON.stringify({basket,basketAgain,cartFetchesBefore,cartFetchesAfter}));
+              basketFetchesAfter < basketFetchesBefore + 2 ||
+              legacyCartFetchesAfter !== legacyCartFetchesBefore) {
+            throw new Error("Fresh private basket verification failed: "+JSON.stringify({basket,basketAgain,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
           }
-          console.log("Fresh site basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,cartFetchesBefore,cartFetchesAfter}));
+          console.log("Fresh private basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
 
           await frame.waitForSelector("#basketOrders .basket-order > button", {state:"attached", timeout:30000});
           await frame.locator("#basketOrders .basket-order > button").first().click();
@@ -309,6 +337,13 @@ jobs:
             throw new Error("Integrated article choice is invalid: "+JSON.stringify(articleChoiceState));
           }
           console.log("Integrated article choice:", JSON.stringify(articleChoiceState));
+          const fieldPlaceMapping = await frame.evaluate(() =>
+            [...document.querySelectorAll("#orderFieldChoice option")].map(x => x.textContent || "")
+          );
+          if (!fieldPlaceMapping.some(text => /лицо/i.test(text))) {
+            throw new Error("Order place was not mapped onto detected template field: "+JSON.stringify(fieldPlaceMapping));
+          }
+          console.log("Mapped field names:", JSON.stringify(fieldPlaceMapping));
 
           const stageAspect = await frame.evaluate(() => {
             const stage = document.getElementById("stage");
