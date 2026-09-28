@@ -296,38 +296,42 @@
   function extractPlaceAudit(root, article) {
     const placeWord = /(?:лицо|оборот|спереди|сзади|слева|справа|верх|низ|внутр|наруж|торец|сторон[аы]|клапан|крышк|дно|ручк|карман|рукав|груд|спин|капюшон|чехол|шов|клин|купол|горловин|этикет|бирк|упаковк|бок|периметр|основан|поле|центр)/i;
 
-    const collectNodes = nodes => {
-      const places = [];
-      for (const node of nodes) {
-        const value = normalizeOrderPlace(node.textContent || node.value || "", article);
-        if (value && placeWord.test(value)) places.push(value);
-      }
-      return places;
-    };
+    const fromNodes = (nodes, source) => makePlaceBindings(
+      [...nodes].map(node => ({ raw: node.textContent || node.value || "", index: explicitPlaceIndex(node.textContent || node.value || "") })),
+      article,
+      source
+    );
 
-    // This is the explicit place row currently used by gifts.ru in an order item.
-    const orderRows = collectNodes(root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column > .color-text"));
+    // Authoritative place rows on the order page. These selectors already mean
+    // "selected application place", so do not reject an unfamiliar place name.
+    const orderRows = fromNodes(
+      root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column > .color-text"),
+      "order-place-row"
+    );
     if (orderRows.length) {
-      return {
-        places: orderRows,
-        source: "order-place-row",
-        reliable: true,
-        signals: { orderRows: orderRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
-      };
+      return placeAuditFromBindings(
+        orderRows,
+        "order-place-row",
+        true,
+        { orderRows: orderRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
+      );
     }
 
     // Alternative rendered order layout used on some gifts.ru pages.
-    const renderedRows = collectNodes(root.querySelectorAll("div.size--sm.flex.flex-center.flex-column > div"));
+    const renderedRows = fromNodes(
+      root.querySelectorAll("div.size--sm.flex.flex-center.flex-column > div"),
+      "rendered-place-row"
+    );
     if (renderedRows.length) {
-      return {
-        places: renderedRows,
-        source: "rendered-place-row",
-        reliable: true,
-        signals: { orderRows: renderedRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
-      };
+      return placeAuditFromBindings(
+        renderedRows,
+        "rendered-place-row",
+        true,
+        { orderRows: renderedRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
+      );
     }
 
-    const selected = [];
+    const selectedEntries = [];
     for (const select of root.querySelectorAll("select")) {
       const attrs = [
         select.getAttribute("name"),
@@ -337,54 +341,57 @@
       ].filter(Boolean).join(" ");
       if (!/место|сторон|поле|поверхност|place|position|side|field|location/i.test(attrs)) continue;
       const option = [...select.options].find(o => o.selected) || select.options[select.selectedIndex];
-      const value = normalizeOrderPlace(option?.textContent || option?.value || "", article);
-      if (value) selected.push(value);
+      if (option) selectedEntries.push({ raw: option.textContent || option.value || "", index: explicitPlaceIndex(option.textContent || option.value || "") });
     }
+    const selected = makePlaceBindings(selectedEntries, article, "selected-place-control");
     if (selected.length) {
-      return {
-        places: selected,
-        source: "selected-place-control",
-        reliable: true,
-        signals: { orderRows: 0, selectedControls: selected.length, labelledValues: 0, attributes: 0 }
-      };
+      return placeAuditFromBindings(
+        selected,
+        "selected-place-control",
+        true,
+        { orderRows: 0, selectedControls: selected.length, labelledValues: 0, attributes: 0 }
+      );
     }
 
-    const labelled = [];
+    const labelledEntries = [];
     for (const label of root.querySelectorAll("[data-label],label,dt,th")) {
-      if (!/место\s*нанесения|поле\s*нанесения|сторона|поверхность/i.test(clean(label.textContent))) continue;
-      const value = normalizeOrderPlace(label.nextElementSibling?.textContent || "", article);
-      if (value) labelled.push(value);
+      const labelText = clean(label.textContent);
+      if (!/место\s*нанесения|поле\s*нанесения|сторона|поверхность|place|position|side|field|location/i.test(labelText)) continue;
+      const valueNode = label.nextElementSibling;
+      if (!valueNode) continue;
+      labelledEntries.push({
+        raw: valueNode.textContent || "",
+        index: explicitPlaceIndex(labelText) || explicitPlaceIndex(valueNode.textContent || "")
+      });
     }
+    const labelled = makePlaceBindings(labelledEntries, article, "labelled-place-value");
     if (labelled.length) {
-      return {
-        places: labelled,
-        source: "labelled-place-value",
-        reliable: false,
-        signals: { orderRows: 0, selectedControls: 0, labelledValues: labelled.length, attributes: 0 }
-      };
+      return placeAuditFromBindings(
+        labelled,
+        "labelled-place-value",
+        true,
+        { orderRows: 0, selectedControls: 0, labelledValues: labelled.length, attributes: 0 }
+      );
     }
 
-    // Attribute scanning is only a last-resort hint. Deduplicate it because one DOM node
-    // can repeat the same place in several attributes.
-    const attrs = [];
-    const seen = new Set();
+    // Attribute scanning is only a last-resort hint.
+    const attrEntries = [];
     for (const node of root.querySelectorAll("*")) {
       for (const attr of [...node.attributes]) {
         if (!/place|position|side|field|location|место|сторон|поле|поверхност/i.test(attr.name)) continue;
         const value = normalizeOrderPlace(attr.value, article);
-        const key = value.toLocaleLowerCase("ru-RU");
-        if (value && placeWord.test(value) && !seen.has(key)) {
-          seen.add(key);
-          attrs.push(value);
+        if (value && placeWord.test(value)) {
+          attrEntries.push({ raw: attr.value, index: explicitPlaceIndex(attr.value) });
         }
       }
     }
-    return {
-      places: attrs,
-      source: attrs.length ? "place-attribute-fallback" : "not-found",
-      reliable: false,
-      signals: { orderRows: 0, selectedControls: 0, labelledValues: 0, attributes: attrs.length }
-    };
+    const attrs = makePlaceBindings(attrEntries, article, "place-attribute-fallback");
+    return placeAuditFromBindings(
+      attrs,
+      attrs.length ? "place-attribute-fallback" : "not-found",
+      false,
+      { orderRows: 0, selectedControls: 0, labelledValues: 0, attributes: attrs.length }
+    );
   }
 
   function getOrderInternalId(doc) {
