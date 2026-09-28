@@ -366,6 +366,32 @@
     return clean(value).replace(/^артикул\s*/i, "").replace(/\s+/g, "").toLocaleLowerCase("ru-RU");
   }
 
+  function popupArticleFromContext(context) {
+    if (!context) return "";
+    const attr = clean(
+      context.getAttribute?.("data-article") ||
+      context.getAttribute?.("data-articul") ||
+      ""
+    );
+    if (attr) return attr;
+
+    const candidates = context.querySelectorAll?.(
+      "[data-article],[data-articul],.cart-tbl-name,.article,.articul,td,th,span,strong"
+    ) || [];
+    for (const node of candidates) {
+      const directAttr = clean(
+        node.getAttribute?.("data-article") ||
+        node.getAttribute?.("data-articul") ||
+        ""
+      );
+      if (directAttr) return directAttr;
+      const hint = popupArticleHint(node.textContent || "");
+      if (hint) return hint;
+    }
+    return popupArticleHint(context.textContent || "");
+  }
+
+
   function escapeRegExp(value) {
     const specials = "\\^$.*+?()[]{}|";
     return [...String(value)].map(char => specials.includes(char) ? "\\" + char : char).join("");
@@ -430,11 +456,7 @@
 
       const context = node.closest("tr,li,[data-itemid],.cart-tbl-row,.maket-row,.template-row") || node.parentElement;
       const contextText = clean(context?.textContent || node.textContent || "");
-      const article = clean(
-        context?.getAttribute?.("data-article") ||
-        context?.getAttribute?.("data-articul") ||
-        popupArticleHint(contextText)
-      );
+      const article = popupArticleFromContext(context);
 
       relations.push({ pdfItemId, article, contextText });
     }
