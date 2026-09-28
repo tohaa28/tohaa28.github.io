@@ -33,6 +33,62 @@ function makeNumericPdf() {
 }
 
 
+
+function makeUnlabeledTwoFieldPdf() {
+  const stream = [
+    'q',
+    '0 0.65 0.85 RG',
+    '1 w',
+    '40 60 200 250 re S',
+    '340 60 200 250 re S',
+    'Q',
+    ''
+  ].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 400] /Resources << >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){
+    offsets.push(Buffer.byteLength(pdf,'ascii'));
+    pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
+function makeUnlabeledSingleFieldPdf() {
+  const stream = [
+    'q',
+    '0 0.65 0.85 RG',
+    '1 w',
+    '40 60 200 250 re S',
+    'Q',
+    ''
+  ].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){
+    offsets.push(Buffer.byteLength(pdf,'ascii'));
+    pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeAnnotationNumericPdf() {
   const stream = [
     'q',
@@ -101,7 +157,7 @@ export async function verifyPdfLabels(frame) {
   // Real Gifts chain: the order page exposes ",1 -> лицо" and ",2 -> оборот";
   // the template popup repeats those selected-application IDs as "(1)" and "(2)";
   // the PDF contains the corresponding numbered fields.
-  const numericPdf=makeNumericPdf();
+  const numericPdf=makeUnlabeledTwoFieldPdf();
   await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},numericPdf.toString('base64'));
   await frame.evaluate(async()=>{
     document.getElementById('order').value='7920514';
@@ -125,10 +181,8 @@ export async function verifyPdfLabels(frame) {
       value:row.querySelector('.detail-value')?.textContent?.trim()||''
     }))
   }));
-  assert.match(numericState.options[1],/лицо/);
-  assert.match(numericState.options[2],/оборот/);
-  assert.match(numericState.options[1],/LM1: Лазерная гравировка,1/);
-  assert.match(numericState.options[2],/LM1: Лазерная гравировка,2/);
+  assert.match(numericState.options[1],/^лицо · LM1: Лазерная гравировка,1$/);
+  assert.match(numericState.options[2],/^оборот · LM1: Лазерная гравировка,2$/);
   assert.equal(numericState.unmatched,false);
   assert.equal(numericState.selected,'');
   assert.equal(numericState.step3Hidden,true);
@@ -144,6 +198,39 @@ export async function verifyPdfLabels(frame) {
   await frame.waitForFunction(()=>document.getElementById('editorStep3')?.hidden===false);
   assert.equal(await frame.locator('#orderFieldChoice').inputValue(),'0');
   console.log('Order application IDs mapped to numbered PDF fields:',JSON.stringify(numericState));
+
+
+
+  // Order-global application id 4 becomes PDF-local print1 because this
+  // template contains exactly one selected application.
+  const singlePdf=makeUnlabeledSingleFieldPdf();
+  await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},singlePdf.toString('base64'));
+  await frame.evaluate(async()=>{
+    document.getElementById('order').value='7920515';
+    await document.getElementById('loadOrder').onclick();
+  });
+  await frame.waitForFunction(()=>{
+    const loading=document.getElementById('orderLoading');
+    return loading?.hidden===true &&
+      document.querySelectorAll('#orderFieldChoice option').length===2 &&
+      document.getElementById('orderEditor')?.hidden===false;
+  });
+  const singleState=await frame.evaluate(()=>({
+    options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
+    hint:document.getElementById('fieldChoiceHint')?.textContent||'',
+    unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true,
+    selected:document.getElementById('orderFieldChoice')?.value||'',
+    rows:[...document.querySelectorAll('#orderTemplateList .article-row')].map(row=>({
+      key:row.querySelector('.detail-key')?.textContent?.trim()||'',
+      value:row.querySelector('.detail-value')?.textContent?.trim()||''
+    }))
+  }));
+  assert.match(singleState.options[1],/^оборот · DTF1: Печать DTF,4$/);
+  assert.equal(singleState.unmatched,false);
+  assert.match(singleState.hint,/Места: оборот/);
+  assert.match(singleState.rows.find(r=>r.key==='Место')?.value||'',/оборот/);
+  assert.match(singleState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Сопоставлено по ID выбранных нанесений/);
+  console.log('Global application 4 -> local print1:',JSON.stringify(singleState));
 
   // Same fallback, but the digits exist only as PDF FreeText annotations.
   const annotationPdf=makeAnnotationNumericPdf();
