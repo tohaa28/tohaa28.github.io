@@ -98,6 +98,45 @@ export function extractFieldLabels(content, viewport) {
   }
   return unique;
 }
+
+export function extractAnnotationFieldLabels(annotations, viewport) {
+  const labels=[];
+  for (const annotation of annotations || []) {
+    const raw = annotation?.contentsObj?.str ?? annotation?.contents ?? annotation?.fieldValue ?? "";
+    const text=clean(raw);
+    if (!text || !Array.isArray(annotation?.rect) || annotation.rect.length!==4) continue;
+    const numeric=/^([1-9]\d?)\s*[.):.-]?$/.exec(text);
+    const fieldIndex=numeric ? Number(numeric[1]) : null;
+    if (!fieldIndex) continue;
+
+    let rect;
+    if (typeof viewport.convertToViewportRectangle==="function") {
+      rect=viewport.convertToViewportRectangle(annotation.rect);
+    } else {
+      const [x1,y1,x2,y2]=annotation.rect;
+      const p1=viewport.convertToViewportPoint(x1,y1);
+      const p2=viewport.convertToViewportPoint(x2,y2);
+      rect=[p1[0],p1[1],p2[0],p2[1]];
+    }
+    if (!rect?.every(Number.isFinite)) continue;
+    const xs=[rect[0],rect[2]].map(v=>v*MM);
+    const ys=[rect[1],rect[3]].map(v=>v*MM);
+    labels.push({
+      text:String(fieldIndex),
+      name:String(fieldIndex),
+      printId:null,
+      fieldIndex,
+      confidence:2.9,
+      source:'annotation',
+      x:Math.min(...xs),
+      y:Math.min(...ys),
+      w:Math.max(...xs)-Math.min(...xs),
+      h:Math.max(...ys)-Math.min(...ys)
+    });
+  }
+  return labels;
+}
+
 export function bindFieldLabels(fields, labels) {
   const result = fields.map(f => ({...f, labelStatus:'missing'}));
   const claims = new Map();
