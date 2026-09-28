@@ -446,7 +446,8 @@ jobs:
               articleChoiceState.rows["Тираж"] !== "10 шт." ||
               !/Лазерная гравировка/.test(articleChoiceState.rows["Нанесение"] || "") ||
               articleChoiceState.rows["Место"] !== "лицо" ||
-              articleChoiceState.rows["Контроль мест"] !== "1 в заказе = 1 в шаблоне") {
+              articleChoiceState.rows["Контроль мест"] !== undefined ||
+              articleChoiceState.rows["Подписи PDF"] !== undefined) {
             throw new Error("Integrated article choice is invalid: "+JSON.stringify(articleChoiceState));
           }
           console.log("Integrated article choice:", JSON.stringify(articleChoiceState));
@@ -555,24 +556,28 @@ jobs:
           await frame.waitForFunction(() => {
             const loading = document.getElementById("orderLoading");
             const editor = document.getElementById("orderEditor");
-            const row=[...document.querySelectorAll("#orderTemplateList .article-row")].find(x => x.querySelector(".detail-key")?.textContent?.trim()==="Контроль мест");
+            const choice = document.querySelector("#orderTemplateList .article-choice");
+            const hint = document.getElementById("fieldChoiceHint");
             return loading?.hidden === true &&
               editor?.hidden === false &&
-              row?.querySelector(".detail-value")?.textContent?.includes("2 в заказе ≠ 1 в шаблоне") &&
-              /ОШИБКА КОНТРОЛЯ/.test(document.getElementById("fieldChoiceHint")?.textContent || "");
+              choice?.classList.contains("place-count-mismatch") === true &&
+              hint?.classList.contains("unmatched") === true &&
+              /Не удалось однозначно сопоставить места нанесения/i.test(hint?.textContent || "");
           }, null, {timeout:30000});
           const mismatchState = await frame.evaluate(() => ({
-            audit:[...document.querySelectorAll("#orderTemplateList .article-row")].find(x => x.querySelector(".detail-key")?.textContent?.trim()==="Контроль мест")?.querySelector(".detail-value")?.textContent?.trim() || "",
+            technicalRows:[...document.querySelectorAll("#orderTemplateList .article-row")].filter(x => {
+              const key=x.querySelector(".detail-key")?.textContent?.trim() || "";
+              return key==="Контроль мест" || key==="Подписи PDF";
+            }).length,
             mismatchClass:document.querySelector("#orderTemplateList .article-choice")?.classList.contains("place-count-mismatch") === true,
             hint:document.getElementById("fieldChoiceHint")?.textContent || "",
             hintUnmatched:document.getElementById("fieldChoiceHint")?.classList.contains("unmatched") === true,
             selectedField:document.getElementById("orderFieldChoice")?.value || "",
             step3Hidden:document.getElementById("editorStep3")?.hidden === true
           }));
-          if (mismatchState.audit !== "2 в заказе ≠ 1 в шаблоне" ||
+          if (mismatchState.technicalRows !== 0 ||
               !mismatchState.mismatchClass || !mismatchState.hintUnmatched ||
-              !/ОШИБКА КОНТРОЛЯ/.test(mismatchState.hint) ||
-              !/2 места .*1 поле/.test(mismatchState.hint) ||
+              !/Не удалось однозначно сопоставить места нанесения/i.test(mismatchState.hint) ||
               mismatchState.selectedField !== "" || !mismatchState.step3Hidden) {
             throw new Error("Place-count mismatch is not safely handled: "+JSON.stringify(mismatchState));
           }
