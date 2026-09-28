@@ -179,6 +179,24 @@ export function bindFieldLabels(fields, labels) {
     const label=strongest[0];
     Object.assign(f,{pdfLabel:label.text,pdfPlace:label.name,printId:label.printId,fieldIndex:label.fieldIndex||null,labelSource:label.source||null,labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},labelStatus:'matched'});
   }
+  // Gifts templates often print the semantic name in the table below the
+  // drawing ("лицо [print1]"), while only a bare 1/2/3 is placed by the frame.
+  // Use the shared printN id to enrich the spatially-bound numeric label.
+  const globalPrintLabels = canonical.filter(label => label.printId && clean(label.name));
+  for (const f of result) {
+    if (f.labelStatus !== 'matched' || !Number.isInteger(f.fieldIndex)) continue;
+    const printId = `print${f.fieldIndex}`;
+    const matches = globalPrintLabels.filter(label => label.printId === printId);
+    const names = [...new Set(matches.map(label => nameKey(label.name)).filter(Boolean))];
+    if (names.length !== 1) continue;
+    const best = matches.sort((a,b)=>(b.confidence||0)-(a.confidence||0))[0];
+    if (!best) continue;
+    f.pdfLabel = best.text;
+    f.pdfPlace = best.name;
+    f.printId = printId;
+    f.labelSource = [f.labelSource, 'global-print-table'].filter(Boolean).join('+');
+  }
+
   for (const f of result) if (f.printId && result.filter(g=>g.printId===f.printId).length>1) f.labelStatus='ambiguous';
   for (const f of result) if (f.fieldIndex && result.filter(g=>g.fieldIndex===f.fieldIndex).length>1) f.labelStatus='ambiguous';
   return result;
@@ -187,12 +205,20 @@ export function bindFieldLabels(fields, labels) {
 export function auditFieldLabels(fields, entry) {
   const places = (entry?.places?.length ? entry.places : entry?.place ? [entry.place] : []).map(text=>({raw:clean(text),name:nameKey(placeName(text)), id:printKey(text)}));
   const explicitBindings = (Array.isArray(entry?.placeBindings) ? entry.placeBindings : [])
-    .map(binding => ({
-      name: clean(binding?.name),
-      key: nameKey(placeName(binding?.name || "")),
-      index: Number.isInteger(binding?.index) ? binding.index : null,
-      source: binding?.source || ""
-    }))
+    .map(binding => {
+      const taskId = /^\d{1,20}$/.test(String(binding?.taskId || "")) ? String(Number(binding.taskId)) : "";
+      const printId = /^print\d+$/i.test(String(binding?.printId || ""))
+        ? String(binding.printId).toLowerCase()
+        : taskId ? `print${taskId}` : "";
+      return {
+        name: clean(binding?.name),
+        key: nameKey(placeName(binding?.name || "")),
+        index: Number.isInteger(binding?.index) ? binding.index : null,
+        taskId,
+        printId,
+        source: binding?.source || ""
+      };
+    })
     .filter(binding => binding.name);
   const indexedBindings = explicitBindings.filter(binding => Number.isInteger(binding.index));
   const used=new Set(), issues=[];
@@ -242,6 +268,27 @@ export function auditFieldLabels(fields, entry) {
     delete f.orderPlaceIndex;
     if (f.labelStatus!=='matched') { issues.push('Не найдена однозначная подпись PDF для поля'); continue; }
     if (!entry) continue;
+
+    if (f.printId) {
+      const printMatches = explicitBindings.filter(binding => binding.printId === String(f.printId).toLowerCase());
+      if (printMatches.length) {
+        if (printMatches.length !== 1) {
+          issues.push(`PDF «${f.pdfLabel}» соответствует нескольким местам по ${f.printId}`);
+        } else {
+          const binding = printMatches[0];
+          const placeIndex = places.findIndex(place => place.name === binding.key);
+          if (placeIndex < 0 || used.has(placeIndex)) {
+            issues.push(`Место «${binding.name}» для PDF «${f.pdfLabel}» не найдено однозначно в заказе`);
+          } else {
+            used.add(placeIndex);
+            f.orderPlace = places[placeIndex].raw;
+            f.orderPlaceIndex = placeIndex;
+            f.orderPlaceBindingSource = binding.source;
+          }
+        }
+        continue;
+      }
+    }
 
     if (Number.isInteger(f.fieldIndex)) {
       if (indexedBindings.length) {
