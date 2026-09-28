@@ -41,10 +41,11 @@ test('plain names and split words do not need an order-derived label',()=>{
   assert.equal(extracted[0].printId,null);
 });
 test('numeric PDF labels map to numbered order places, not array order',()=>{
-  const viewport={convertToViewportPoint:(x,y)=>[x,120-y]};
+  const PT_PER_MM=72/25.4;
+  const viewport={convertToViewportPoint:(x,y)=>[x*PT_PER_MM,y*PT_PER_MM]};
   const content={items:[
-    {str:'2',width:6,height:10,transform:[10,0,0,10,24,92]},
-    {str:'1',width:6,height:10,transform:[10,0,0,10,24,32]}
+    {str:'2',width:4,height:4,transform:[4,0,0,4,22,74]},
+    {str:'1',width:4,height:4,transform:[4,0,0,4,22,14]}
   ]};
   const extracted=extractFieldLabels(content,viewport);
   assert.deepEqual(extracted.map(x=>x.fieldIndex).sort((a,b)=>a-b),[1,2]);
