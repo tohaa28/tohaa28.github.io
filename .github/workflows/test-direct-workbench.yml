@@ -113,7 +113,7 @@ jobs:
                     : oid === "7738673"
                       ? '<table></table>'
                       : oid === "7738674"
-                        ? '<table><tr><td>Артикул 16535.66</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=32345">PDF</a></td></tr></table>'
+                        ? '<table><thead><tr><th>Артикул</th><th>Место 1</th><th>Место 2</th><th>Шаблон</th></tr></thead><tbody><tr><td>Артикул 16535.66</td><td>боковая сторона</td><td>дно сумки</td><td><a href="/drawing?action=getOrderItemPdf&orderitemid=32345">PDF</a></td></tr></tbody></table>'
                         : "";
                 return Promise.resolve(new Response(JSON.stringify({status:"ok",html:rows}), {
                   status: 200,
