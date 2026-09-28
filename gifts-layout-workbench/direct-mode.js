@@ -49,45 +49,18 @@
 
   function parseBasketOrders(html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const found = new Set();
-    const add = value => {
-      const number = String(value || "").trim();
-      if (/^\d{5,12}$/.test(number)) found.add(number);
-    };
+    const found = new Map();
 
     for (const a of doc.querySelectorAll("a[href]")) {
-      const href = a.getAttribute("href") || "";
-      for (const re of [
-        /\/private\/order\/(\d{5,12})(?:[/?#]|$)/i,
-        /\/order\/(\d{5,12})(?:[/?#]|$)/i,
-        /[?&](?:order|orderno|order_number|number)=(\d{5,12})(?:[&#]|$)/i
-      ]) {
-        const m = href.match(re);
-        if (m) add(m[1]);
-      }
+      try {
+        const url = new URL(a.getAttribute("href") || "", GIFTS_ORIGIN + "/");
+        if (url.origin !== GIFTS_ORIGIN) continue;
+        const match = url.pathname.match(/^\/private\/order\/(\d{5,12})(?:\/|$)/i);
+        if (match && !found.has(match[1])) found.set(match[1], { number: match[1] });
+      } catch {}
     }
 
-    for (const node of doc.querySelectorAll("[data-order],[data-order-number],[data-orderno]")) {
-      const nearby = clean(node.textContent);
-      if (/заказ/i.test(nearby)) {
-        add(node.getAttribute("data-order"));
-        add(node.getAttribute("data-order-number"));
-        add(node.getAttribute("data-orderno"));
-      }
-    }
-
-    const text = clean(doc.body?.textContent);
-    for (const m of text.matchAll(/Заказ\s*(?:№|N)?\s*[:#-]?\s*(\d{5,12})/gi)) add(m[1]);
-
-    for (const re of [
-      /["']orderNumber["']\s*[:=]\s*["']?(\d{5,12})/gi,
-      /["']order_number["']\s*[:=]\s*["']?(\d{5,12})/gi,
-      /["']orderNo["']\s*[:=]\s*["']?(\d{5,12})/gi
-    ]) {
-      for (const m of html.matchAll(re)) add(m[1]);
-    }
-
-    return [...found].map(number => ({ number }));
+    return [...found.values()];
   }
 
   function hostDocument() {
@@ -132,51 +105,28 @@
   }
 
   async function readBasketFromSite() {
-    const found = new Map();
     const scanned = [];
-    const seenPaths = new Set();
 
-    const scanPath = async path => {
-      if (!path || seenPaths.has(path)) return false;
-      seenPaths.add(path);
-      scanned.push(path);
-      const { html } = await getHtml(path);
-      const orders = parseBasketOrders(html);
-      for (const order of orders) found.set(order.number, order);
-      return orders.length > 0;
+    for (const path of ["/private/orders/basket", "/private/orders/basket/"]) {
+      try {
+        const { html } = await getHtml(path);
+        scanned.push(path);
+        const orders = parseBasketOrders(html);
+        return {
+          found: new Map(orders.map(order => [order.number, order])),
+          scanned,
+          source: "private-orders-basket"
+        };
+      } catch (error) {
+        if (error?.code === "AUTH") throw error;
+      }
+    }
+
+    return {
+      found: new Map(),
+      scanned,
+      source: "private-orders-basket-not-found"
     };
-
-    // Known cart endpoints are authoritative and are always fetched from gifts.ru.
-    for (const path of ["/cart", "/cart/"]) {
-      try {
-        if (await scanPath(path)) return { found, scanned, source: "site-cart" };
-      } catch (error) {
-        if (error?.code === "AUTH") throw error;
-      }
-    }
-
-    // If the site's cart route changes, discover it from a freshly fetched home page,
-    // never from the already-open browser DOM.
-    let homeHtml = "";
-    try {
-      const home = await getHtml("/");
-      homeHtml = home.html;
-      scanned.push("/");
-    } catch (error) {
-      if (error?.code === "AUTH") throw error;
-    }
-
-    for (const path of basketLinksFromHtml(homeHtml)) {
-      try {
-        if (await scanPath(path)) return { found, scanned, source: "site-discovered-cart" };
-      } catch (error) {
-        if (error?.code === "AUTH") throw error;
-      }
-    }
-
-    // Some gifts.ru pages include active order links directly on the freshly fetched home page.
-    for (const order of parseBasketOrders(homeHtml)) found.set(order.number, order);
-    return { found, scanned, source: "site-home" };
   }
 
   function absolute(url) {
@@ -311,7 +261,7 @@
     };
 
     // This is the explicit place row currently used by gifts.ru in an order item.
-    const orderRows = collectNodes(root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column .color-text"));
+    const orderRows = collectNodes(root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column > .color-text"));
     if (orderRows.length) {
       return {
         places: orderRows,
@@ -392,6 +342,68 @@
     };
   }
 
+  function getOrderInternalId(doc) {
+    const nodes = [
+      doc.querySelector("#j_cart_host[data-orderid]"),
+      doc.querySelector(".cart-order[data-orderid]"),
+      doc.querySelector(".j_add_maket[data-orderid]")
+    ];
+
+    for (const node of nodes) {
+      const value = clean(node?.getAttribute("data-orderid"));
+      if (/^\d{1,20}$/.test(value)) return value;
+    }
+    return "";
+  }
+
+  async function getPopupOrderItemIds(orderId) {
+    if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
+
+    const res = await nativeFetch(
+      giftsUrl("/ajax/gifts/order?action=makets_popup&oid=" + encodeURIComponent(orderId)),
+      {
+        method: "GET",
+        credentials: "include",
+        redirect: "follow",
+        cache: "no-store",
+        headers: {
+          "accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    );
+
+    const raw = await res.text();
+    if (isAuthPage(raw, res.url)) {
+      const error = new Error("Сеанс gifts.ru не активен. Войдите в gifts.ru.");
+      error.code = "AUTH";
+      throw error;
+    }
+    if (!res.ok) throw new Error("gifts.ru не вернул раздел «Макеты для заказа».");
+
+    let html = raw;
+    try {
+      const data = JSON.parse(raw);
+      if (data && typeof data.html === "string") html = data.html;
+    } catch {}
+
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const ids = new Set();
+
+    for (const node of doc.querySelectorAll("a[href*='getOrderItemPdf'],[data-orderitemid],[data-oiid]")) {
+      let id = clean(node.getAttribute("data-orderitemid") || node.getAttribute("data-oiid"));
+      if (!id) {
+        try {
+          const url = new URL(node.getAttribute("href") || "", GIFTS_ORIGIN + "/");
+          id = clean(url.searchParams.get("orderitemid") || url.searchParams.get("oiid"));
+        } catch {}
+      }
+      if (/^\d{1,20}$/.test(id)) ids.add(id);
+    }
+
+    return [...ids];
+  }
+
   function parseOrder(html, order) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const items = [];
@@ -452,13 +464,62 @@
       item.articleItemCount = articleSummary[item.article]?.itemCount || 1;
     }
 
-    return { order: String(order), items, articlePlaceSummary: Object.values(articleSummary) };
+    return { order: String(order), orderInternalId: getOrderInternalId(doc), items, articlePlaceSummary: Object.values(articleSummary) };
   }
 
   async function getOrder(order, fresh = false) {
     if (!fresh && orderCache.has(order)) return orderCache.get(order);
     const { html } = await getHtml("/private/order/" + order);
     const parsed = parseOrder(html, order);
+
+    if (parsed.orderInternalId) {
+      try {
+        const popupIds = await getPopupOrderItemIds(parsed.orderInternalId);
+        parsed.maketsPopupLoaded = true;
+        parsed.popupOrderItemIds = popupIds;
+
+        if (popupIds.length) {
+          const allowed = new Set(popupIds);
+          parsed.items = parsed.items.filter(item => allowed.has(String(item.itemId)));
+          for (const item of parsed.items) {
+            item.pdfItemId = String(item.itemId);
+            item.templateRelationSource = "makets-popup-orderitemid";
+          }
+        } else {
+          parsed.items = parsed.items.filter(item => item.drawTaskIds?.length > 0);
+        }
+      } catch (error) {
+        if (error?.code === "AUTH") throw error;
+        parsed.maketsPopupLoaded = false;
+        parsed.maketsPopupError = error?.message || String(error);
+        parsed.items = parsed.items.filter(item => item.drawTaskIds?.length > 0);
+      }
+    } else {
+      parsed.maketsPopupLoaded = false;
+      parsed.items = parsed.items.filter(item => item.drawTaskIds?.length > 0);
+    }
+
+    const summary = {};
+    for (const item of parsed.items) {
+      if (!summary[item.article]) {
+        summary[item.article] = {
+          article: item.article,
+          itemCount: 0,
+          placeCount: 0,
+          itemIds: []
+        };
+      }
+      summary[item.article].itemCount++;
+      summary[item.article].placeCount += item.placeCount || 0;
+      summary[item.article].itemIds.push(item.itemId);
+    }
+
+    parsed.articlePlaceSummary = Object.values(summary);
+    for (const item of parsed.items) {
+      item.articlePlaceCount = summary[item.article]?.placeCount || item.placeCount || 0;
+      item.articleItemCount = summary[item.article]?.itemCount || 1;
+    }
+
     orderCache.set(order, parsed);
     return parsed;
   }
