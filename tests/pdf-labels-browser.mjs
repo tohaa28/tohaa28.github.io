@@ -100,6 +100,8 @@ export async function verifyPdfLabels(frame) {
   assert.equal(numericState.step3Hidden,true);
   assert.match(numericState.hint,/названия мест не указаны/i);
   assert.match(numericState.hint,/1, 2/);
+  assert.match(numericState.rows.find(r=>r.key==='Место 1')?.value||'',/по нумерации PDF/);
+  assert.match(numericState.rows.find(r=>r.key==='Место 2')?.value||'',/по нумерации PDF/);
   assert.match(numericState.rows.find(r=>r.key==='Контроль мест')?.value||'',/2 поля по явной нумерации PDF/);
   assert.match(numericState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Поля 1, 2 однозначно пронумерованы/);
 
