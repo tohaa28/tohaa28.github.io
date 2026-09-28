@@ -472,6 +472,12 @@
     const { html } = await getHtml("/private/order/" + order);
     const parsed = parseOrder(html, order);
 
+    // Preserve the complete order composition separately from the subset that has
+    // an application-template. Basket/order UI needs every real item; the editor
+    // must only attempt PDF download for template-linked items.
+    const orderItems = parsed.items;
+    let templateItemIds = null;
+
     if (parsed.orderInternalId) {
       try {
         const popupIds = await getPopupOrderItemIds(parsed.orderInternalId);
@@ -479,25 +485,44 @@
         parsed.popupOrderItemIds = popupIds;
 
         if (popupIds.length) {
-          const allowed = new Set(popupIds);
-          parsed.items = parsed.items.filter(item => allowed.has(String(item.itemId)));
-          for (const item of parsed.items) {
-            item.pdfItemId = String(item.itemId);
-            item.templateRelationSource = "makets-popup-orderitemid";
+          templateItemIds = new Set(popupIds.map(String));
+          for (const item of orderItems) {
+            item.hasTemplate = templateItemIds.has(String(item.itemId));
+            if (item.hasTemplate) {
+              item.pdfItemId = String(item.itemId);
+              item.templateRelationSource = "makets-popup-orderitemid";
+            } else {
+              item.templateRelationSource = "unassigned";
+            }
           }
         } else {
-          parsed.items = parsed.items.filter(item => item.drawTaskIds?.length > 0);
+          for (const item of orderItems) {
+            item.hasTemplate = Boolean(item.drawTaskIds?.length);
+            item.templateRelationSource = item.hasTemplate ? "drawtask-fallback" : "unassigned";
+            if (item.hasTemplate) item.pdfItemId = String(item.itemId);
+          }
         }
       } catch (error) {
         if (error?.code === "AUTH") throw error;
         parsed.maketsPopupLoaded = false;
         parsed.maketsPopupError = error?.message || String(error);
-        parsed.items = parsed.items.filter(item => item.drawTaskIds?.length > 0);
+        for (const item of orderItems) {
+          item.hasTemplate = Boolean(item.drawTaskIds?.length);
+          item.templateRelationSource = item.hasTemplate ? "drawtask-fallback" : "unassigned";
+          if (item.hasTemplate) item.pdfItemId = String(item.itemId);
+        }
       }
     } else {
       parsed.maketsPopupLoaded = false;
-      parsed.items = parsed.items.filter(item => item.drawTaskIds?.length > 0);
+      for (const item of orderItems) {
+        item.hasTemplate = Boolean(item.drawTaskIds?.length);
+        item.templateRelationSource = item.hasTemplate ? "drawtask-fallback" : "unassigned";
+        if (item.hasTemplate) item.pdfItemId = String(item.itemId);
+      }
     }
+
+    parsed.orderItems = orderItems;
+    parsed.items = orderItems.filter(item => item.hasTemplate);
 
     const summary = {};
     for (const item of parsed.items) {
@@ -642,7 +667,7 @@
           const candidate = rawOrders[cursor++];
           try {
             const parsed = await getOrder(String(candidate.number), true);
-            if (Array.isArray(parsed.items) && parsed.items.length) {
+            if (Array.isArray(parsed.orderItems) && parsed.orderItems.length) {
               verified.push(candidate);
             }
           } catch (error) {
