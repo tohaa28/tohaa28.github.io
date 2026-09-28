@@ -699,6 +699,47 @@
             item.pdfItemId = String(relation.pdfItemId);
             item.templateRelationSource = source;
             item.templateRelationArticle = relation.article || "";
+            item.templateRelationMethod = relation.method || "";
+            item.templatePlaces = Array.isArray(relation.places) ? [...relation.places] : [];
+            item.templatePlaceBindings = Array.isArray(relation.placeBindings)
+              ? relation.placeBindings.map(binding => ({...binding}))
+              : [];
+
+            if (!Array.isArray(item.placeBindings)) item.placeBindings = [];
+
+            // The order page owns the place name. The popup may add an explicit
+            // field number for the same name, which is useful for numeric PDF labels.
+            if (item.places?.length) {
+              item.placeBindings = item.places.map(name => {
+                const existing = item.placeBindings.find(binding => placeKey(binding.name) === placeKey(name));
+                const popup = item.templatePlaceBindings.find(binding => placeKey(binding.name) === placeKey(name));
+                return {
+                  name,
+                  index: existing?.index || popup?.index || null,
+                  source: existing?.source || (popup ? "order+makets-popup" : item.placeCountSource)
+                };
+              });
+
+              if (item.templatePlaces.length) {
+                const orderKeys = new Set(item.places.map(placeKey));
+                const templateKeys = new Set(item.templatePlaces.map(placeKey));
+                item.templatePlacesMatch =
+                  orderKeys.size === templateKeys.size &&
+                  [...orderKeys].every(key => templateKeys.has(key));
+              }
+            } else if (item.templatePlaces.length) {
+              // Some order layouts hide the selected place in the item row, while
+              // "Макеты для заказа" prints it next to the PDF link. Use that exact
+              // value instead of inventing "Место 1/2".
+              item.places = [...item.templatePlaces];
+              item.place = item.places.join(", ");
+              item.placeBindings = item.templatePlaceBindings.map(binding => ({...binding}));
+              item.placeCount = item.places.length;
+              item.placeCountSource = "makets-popup-place";
+              item.placeCountReliable = true;
+              item.templatePlacesMatch = true;
+            }
+
             claimed.add(String(relation.pdfItemId));
           };
 
@@ -723,8 +764,23 @@
                 contextHasArticle(relation.contextText, item.article)
               )
             );
-            if (sameArticleItems.length === 1 && candidates.length === 1) {
-              assign(item, candidates[0], "makets-popup-article");
+
+            const itemPlaceKeys = new Set((item.places || []).map(placeKey));
+            const placeMatched = itemPlaceKeys.size
+              ? candidates.filter(relation => {
+                  const relationKeys = new Set((relation.places || []).map(placeKey));
+                  return relationKeys.size &&
+                    [...itemPlaceKeys].every(key => relationKeys.has(key));
+                })
+              : [];
+            const resolvedCandidates = placeMatched.length === 1 ? placeMatched : candidates;
+
+            if ((sameArticleItems.length === 1 || placeMatched.length === 1) && resolvedCandidates.length === 1) {
+              assign(
+                item,
+                resolvedCandidates[0],
+                placeMatched.length === 1 ? "makets-popup-article-place" : "makets-popup-article"
+              );
             } else {
               item.hasTemplate = false;
               item.templateRelationSource = candidates.length > 1 || sameArticleItems.length > 1
