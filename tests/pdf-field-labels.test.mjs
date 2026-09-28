@@ -134,8 +134,8 @@ test('numeric frame labels inherit semantic names from distant print table',()=>
   const entry={
     places:['оборот','лицо'],
     placeBindings:[
-      {name:'лицо',taskId:'1',printId:'print1',index:1,source:'order-application-id+makets-popup'},
-      {name:'оборот',taskId:'2',printId:'print2',index:2,source:'order-application-id+makets-popup'}
+      {name:'лицо',taskId:'1',printId:'print1',index:1,method:'LM1: Лазерная гравировка,1',source:'order-application-id+makets-popup'},
+      {name:'оборот',taskId:'2',printId:'print2',index:2,method:'LM1: Лазерная гравировка,2',source:'order-application-id+makets-popup'}
     ],
     placeCountReliable:true
   };
@@ -143,8 +143,8 @@ test('numeric frame labels inherit semantic names from distant print table',()=>
   assert.equal(audit.ok,true);
   assert.equal(bound[0].orderPlace,'лицо');
   assert.equal(bound[1].orderPlace,'оборот');
-  assert.equal(bound[0].orderMethod,'');
-  assert.equal(bound[1].orderMethod,'');
+  assert.equal(bound[0].orderMethod,'LM1: Лазерная гравировка,1');
+  assert.equal(bound[1].orderMethod,'LM1: Лазерная гравировка,2');
 });
 
 test('explicit page place numbers map PDF digits to exact names, not array order',()=>{
