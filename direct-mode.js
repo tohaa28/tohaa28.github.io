@@ -258,6 +258,72 @@
       .trim();
   }
 
+  function selectedApplicationId(raw) {
+    const text = clean(raw);
+    const match = text.match(/(?:,|\()\s*(\d{1,20})\s*\)?\s*$/);
+    return match ? match[1] : "";
+  }
+
+  function printIdForApplication(id) {
+    return /^\d{1,20}$/.test(String(id || "")) ? "print" + String(Number(id)) : "";
+  }
+
+  function extractOrderApplicationBindings(root, article) {
+    const methodNodes = [...root.querySelectorAll(".cart-tbl-imp g-droper > span")];
+    const placeNodes = [...root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column > .color-text")];
+    const bindings = [];
+
+    const localPlaceFor = methodNode => {
+      let container = methodNode.parentElement;
+      while (container && container !== root) {
+        const methods = container.querySelectorAll?.("g-droper > span") || [];
+        const places = container.querySelectorAll?.(".flex-center.flex-column > .color-text") || [];
+        if (methods.length === 1 && places.length === 1) return places[0];
+        container = container.parentElement;
+      }
+      return null;
+    };
+
+    methodNodes.forEach((methodNode, index) => {
+      const rawMethod = clean(methodNode.textContent || "");
+      const taskId = selectedApplicationId(rawMethod);
+      let placeNode = localPlaceFor(methodNode);
+      if (!placeNode && methodNodes.length === placeNodes.length) placeNode = placeNodes[index];
+      const name = normalizeOrderPlace(placeNode?.textContent || "", article);
+      if (!name) return;
+      bindings.push({
+        name,
+        taskId,
+        printId: printIdForApplication(taskId),
+        index: /^\d+$/.test(taskId) ? Number(taskId) : null,
+        method: rawMethod,
+        source: "order-application-row"
+      });
+    });
+
+    return bindings;
+  }
+
+  function popupApplicationIdsFromContext(context) {
+    if (!context) return [];
+    let text = "";
+    const row = context.closest?.("tr");
+    const table = row?.closest?.("table");
+    if (row && table) {
+      const headerRow = table.querySelector("thead tr") || [...table.querySelectorAll("tr")].find(candidate => candidate.querySelector("th"));
+      const headers = headerRow ? [...headerRow.children] : [];
+      const cells = [...row.children];
+      for (let index = 0; index < headers.length; index++) {
+        const label = clean(headers[index].textContent);
+        if (!/нанесени|application|print/i.test(label) || /макет|template/i.test(label)) continue;
+        text += " " + clean(cells[index]?.textContent || "");
+      }
+    }
+    if (!text.trim()) text = clean(context.textContent || "");
+    const ids = [...text.matchAll(/\((\d{1,20})\)/g)].map(match => match[1]);
+    return [...new Set(ids)];
+  }
+
   function explicitPlaceIndex(raw) {
     const text = clean(raw);
     const match = text.match(/(?:место(?:\s+нанесения)?|поле(?:\s+нанесения)?|позиция|place|field)\s*(?:№|#)?\s*(\d{1,2})\b/i);
@@ -595,6 +661,7 @@
       const placeBindings = popupPlaceBindingsFromContext(context, article);
       const places = placeBindings.map(binding => binding.name);
       const method = popupMethodFromContext(context);
+      const applicationIds = popupApplicationIdsFromContext(context);
 
       relations.push({
         pdfItemId,
@@ -602,6 +669,7 @@
         method,
         places,
         placeBindings,
+        applicationIds,
         placeSource: places.length ? "makets-popup-place" : "not-found",
         contextText
       });
@@ -625,6 +693,14 @@
       const drawTaskRaw = clean(root.getAttribute("data-drawtaskids"));
       const drawTaskIds = drawTaskRaw ? drawTaskRaw.split(/[\s,;]+/).filter(Boolean) : [];
       const placeAudit = extractPlaceAudit(root, article);
+      const applicationBindings = extractOrderApplicationBindings(root, article);
+      if (applicationBindings.length) {
+        const byName = new Map(applicationBindings.map(binding => [placeKey(binding.name), binding]));
+        placeAudit.placeBindings = (placeAudit.placeBindings || []).map(binding => {
+          const application = byName.get(placeKey(binding.name));
+          return application ? {...binding, ...application} : binding;
+        });
+      }
       const places = placeAudit.places;
 
       if (!/^\d+$/.test(itemId) || !article || !method ||
@@ -642,6 +718,7 @@
         place: places.join(", "),
         places,
         placeBindings: placeAudit.placeBindings || [],
+        applicationBindings,
         placeCount: places.length,
         placeCountSource: placeAudit.source,
         placeCountReliable: placeAudit.reliable,
