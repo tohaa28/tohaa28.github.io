@@ -31,6 +31,7 @@ jobs:
         run: |
           node --input-type=module - <<'NODE'
           import { chromium } from "playwright";
+          import fs from "node:fs";
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage();
           const errors = [];
@@ -130,13 +131,8 @@ jobs:
               return realFetch(input, init);
             };
           });
-          await page.evaluate(() => new Promise((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = "https://tohaa28.github.io/gifts-layout-workbench/launcher.js?v=" + Date.now();
-            s.onload = resolve;
-            s.onerror = () => reject(new Error("Published launcher.js was blocked or failed to load"));
-            document.documentElement.appendChild(s);
-          }));
+          const launcherSource = fs.readFileSync("launcher.js", "utf8");
+          await page.addScriptTag({content: launcherSource});
           await page.waitForSelector("#gifts-layout-workbench-host iframe", {timeout:30000});
           const frame = page.frames().find(f => f.parentFrame() === page.mainFrame());
           if (!frame) throw new Error("Workbench iframe not created");
