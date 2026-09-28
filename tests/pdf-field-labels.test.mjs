@@ -68,6 +68,24 @@ test('numeric PDF labels map to numbered order places, not array order',()=>{
   assert.equal(auditFieldLabels(duplicate,{places:['лицо','оборот'],placeCountReliable:true}).ok,false);
 });
 
+test('standalone numeric items survive line merging and punctuation',()=>{
+  const PT_PER_MM=72/25.4;
+  const viewport={convertToViewportPoint:(x,y)=>[x*PT_PER_MM,y*PT_PER_MM]};
+  const content={items:[
+    {str:'1.',width:4,height:4,transform:[4,0,0,4,22,22]},
+    {str:'Сумка',width:20,height:4,transform:[4,0,0,4,28,22]},
+    {str:'2',width:4,height:4,transform:[4,0,0,4,22,82]}
+  ]};
+  const extracted=extractFieldLabels(content,viewport);
+  const numeric=extracted.filter(x=>Number.isInteger(x.fieldIndex));
+  assert.deepEqual(numeric.map(x=>x.fieldIndex).sort((a,b)=>a-b),[1,2]);
+  assert.equal(numeric.every(x=>x.source==='numeric-item'),true);
+  const bound=bindFieldLabels(fields,extracted);
+  const audit=auditFieldLabels(bound,{places:[],placeCount:0,placeCountReliable:false});
+  assert.equal(audit.ok,true);
+  assert.equal(audit.mode,'pdf-numbered-only');
+});
+
 test('complete numeric PDF fields are usable when order has no place names',()=>{
   const boxes=[{x:20,y:20,w:30,h:20,page:0},{x:20,y:80,w:30,h:20,page:0}];
   const numeric=[
