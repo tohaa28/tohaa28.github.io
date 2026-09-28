@@ -56,8 +56,10 @@ export function bindFieldLabels(fields, labels) {
       const dx=Math.max(f.x-cx,0,cx-f.x-f.w), dy=Math.max(f.y-cy,0,cy-f.y-f.h);
       return {index, distance:Math.hypot(dx,dy)};
     }).sort((a,b)=>a.distance-b.distance);
-    // Nearby means <= 12 mm; a competing rectangle within 3 mm is ambiguous.
-    if (!ranked.length || ranked[0].distance>12) continue;
+    // Named labels may sit next to a field; a bare numeric field index must be
+    // inside the field or no farther than 2 mm from its border.
+    const maxDistance = Number.isInteger(label.fieldIndex) ? 2 : 12;
+    if (!ranked.length || ranked[0].distance>maxDistance) continue;
     if (ranked[1] && ranked[1].distance-ranked[0].distance<3) {
       for (const r of ranked.filter(r=>r.distance-ranked[0].distance<3)) result[r.index].labelStatus='ambiguous';
       continue;
@@ -84,6 +86,39 @@ export function bindFieldLabels(fields, labels) {
 export function auditFieldLabels(fields, entry) {
   const places = (entry?.places?.length ? entry.places : entry?.place ? [entry.place] : []).map(text=>({raw:clean(text),name:nameKey(placeName(text)), id:printKey(text)}));
   const used=new Set(), issues=[];
+
+  // Some Gifts orders do not expose textual place names at all, while the
+  // application-template itself explicitly numbers every field. Accept that
+  // only when the PDF provides a complete, unique 1..N set. This is not array
+  // order inference: each number is real PDF text spatially bound to its frame.
+  if (entry && places.length===0 && fields.length>0) {
+    const numbered=fields.filter(f=>f.labelStatus==='matched' && Number.isInteger(f.fieldIndex));
+    const indexes=numbered.map(f=>f.fieldIndex).sort((a,b)=>a-b);
+    const complete=numbered.length===fields.length &&
+      indexes.every((value,index)=>value===index+1) &&
+      new Set(indexes).size===indexes.length;
+    const declared=Number.isInteger(entry.placeCount) ? entry.placeCount : 0;
+    const countCompatible=declared===0 || declared===fields.length;
+
+    if (complete && countCompatible) {
+      for (const f of fields) {
+        f.orderPlace=`Место ${f.fieldIndex}`;
+        f.orderPlaceIndex=f.fieldIndex-1;
+      }
+      return {
+        ok:true,
+        issues:[],
+        mode:'pdf-numbered-only',
+        placeCount:fields.length,
+        numberedFields:indexes,
+        orderNamesMissing:true
+      };
+    }
+
+    issues.push('На странице заказа названия мест не указаны, а PDF не содержит полной однозначной нумерации полей 1…N');
+    return {ok:false,issues:[...new Set(issues)],mode:'pdf-numbered-incomplete',placeCount:0,orderNamesMissing:true};
+  }
+
   for (const f of fields) {
     delete f.orderPlace;
     delete f.orderPlaceIndex;
@@ -111,5 +146,5 @@ export function auditFieldLabels(fields, entry) {
     }
   }
   if (entry && (used.size!==places.length || fields.length!==places.length || entry.placeCountReliable===false)) issues.push('Соответствие всех мест заказа не подтверждено');
-  return {ok:fields.length>0 && issues.length===0, issues:[...new Set(issues)]};
+  return {ok:fields.length>0 && issues.length===0, issues:[...new Set(issues)], mode:'order-names'};
 }
