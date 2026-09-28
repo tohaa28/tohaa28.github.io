@@ -68,6 +68,19 @@ test('numeric PDF labels map to numbered order places, not array order',()=>{
   assert.equal(auditFieldLabels(duplicate,{places:['лицо','оборот'],placeCountReliable:true}).ok,false);
 });
 
+test('same label from text and annotation is de-duplicated, not a hidden conflict',()=>{
+  const box=[{x:20,y:20,w:30,h:20}];
+  const textLabel={x:22,y:22,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.75,source:'numeric-item'};
+  const annotationLabel={...textLabel,confidence:2.9,source:'annotation'};
+  const result=bindFieldLabels(box,[textLabel,annotationLabel]);
+  assert.equal(result[0].labelStatus,'matched');
+  assert.equal(result[0].fieldIndex,1);
+  assert.equal(result[0].labelSource,'annotation');
+
+  const trueConflict=bindFieldLabels(box,[textLabel,{...textLabel,x:23,source:'numeric-item'}]);
+  assert.equal(trueConflict[0].labelStatus,'ambiguous');
+});
+
 test('annotation numbers map to fields',()=>{
   const k=72/25.4;
   const viewport={
