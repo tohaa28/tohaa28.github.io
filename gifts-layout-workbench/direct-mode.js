@@ -781,8 +781,35 @@
             item.templatePlaceBindings = Array.isArray(relation.placeBindings)
               ? relation.placeBindings.map(binding => ({...binding}))
               : [];
+            item.templateApplicationIds = Array.isArray(relation.applicationIds)
+              ? [...relation.applicationIds]
+              : [];
 
             if (!Array.isArray(item.placeBindings)) item.placeBindings = [];
+            if (!Array.isArray(item.applicationBindings)) item.applicationBindings = [];
+
+            // Strongest mapping visible on the real Gifts pages:
+            // order row ",N" -> template popup "(N)" -> PDF [printN].
+            if (item.templateApplicationIds.length && item.applicationBindings.length) {
+              const matched = item.templateApplicationIds
+                .map(id => item.applicationBindings.find(binding => String(binding.taskId) === String(id)))
+                .filter(Boolean);
+              const unique = [...new Map(matched.map(binding => [placeKey(binding.name), binding])).values()];
+              if (unique.length === item.templateApplicationIds.length) {
+                item.places = unique.map(binding => binding.name);
+                item.place = item.places.join(", ");
+                item.placeBindings = unique.map(binding => ({
+                  ...binding,
+                  index: Number.isInteger(binding.index) ? binding.index : (/^\d+$/.test(binding.taskId) ? Number(binding.taskId) : null),
+                  printId: binding.printId || printIdForApplication(binding.taskId),
+                  source: "order-application-id+makets-popup"
+                }));
+                item.placeCount = item.places.length;
+                item.placeCountSource = "order-application-id";
+                item.placeCountReliable = true;
+                item.templatePlacesMatch = true;
+              }
+            }
 
             // The order page owns the place name. The popup may add an explicit
             // field number for the same name, which is useful for numeric PDF labels.
@@ -792,7 +819,10 @@
                 const popup = item.templatePlaceBindings.find(binding => placeKey(binding.name) === placeKey(name));
                 return {
                   name,
+                  taskId: existing?.taskId || "",
+                  printId: existing?.printId || "",
                   index: existing?.index || popup?.index || null,
+                  method: existing?.method || "",
                   source: existing?.source || (popup ? "order+makets-popup" : item.placeCountSource)
                 };
               });
@@ -850,13 +880,29 @@
                     [...itemPlaceKeys].every(key => relationKeys.has(key));
                 })
               : [];
-            const resolvedCandidates = placeMatched.length === 1 ? placeMatched : candidates;
+            const itemApplicationIds = new Set(
+              (item.applicationBindings || []).map(binding => String(binding.taskId || "")).filter(Boolean)
+            );
+            const applicationMatched = itemApplicationIds.size
+              ? candidates.filter(relation => {
+                  const ids = Array.isArray(relation.applicationIds) ? relation.applicationIds : [];
+                  return ids.length && ids.every(id => itemApplicationIds.has(String(id)));
+                })
+              : [];
+            const resolvedCandidates =
+              applicationMatched.length === 1 ? applicationMatched :
+              placeMatched.length === 1 ? placeMatched :
+              candidates;
 
-            if ((sameArticleItems.length === 1 || placeMatched.length === 1) && resolvedCandidates.length === 1) {
+            if ((sameArticleItems.length === 1 || placeMatched.length === 1 || applicationMatched.length === 1) && resolvedCandidates.length === 1) {
               assign(
                 item,
                 resolvedCandidates[0],
-                placeMatched.length === 1 ? "makets-popup-article-place" : "makets-popup-article"
+                applicationMatched.length === 1
+                  ? "makets-popup-article-application"
+                  : placeMatched.length === 1
+                    ? "makets-popup-article-place"
+                    : "makets-popup-article"
               );
             } else {
               item.hasTemplate = false;
