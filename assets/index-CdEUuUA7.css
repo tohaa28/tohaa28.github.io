@@ -543,3 +543,24 @@ html[data-static-mode="true"] #orderIntro{
     padding-top:0
   }
 }
+
+/* Per-article application-place integrity audit */
+.article-card .place-count-audit.ok .detail-value{
+  color:#557b0d
+}
+.article-card .place-count-audit.bad .detail-value{
+  color:#a33b32;
+  font-weight:800
+}
+.article-card .article-choice.place-count-mismatch{
+  border-color:#d29a94;
+  background:#fff9f8
+}
+.article-card .article-choice.place-count-mismatch.selected{
+  border-color:#b9544a;
+  box-shadow:inset 5px 0 0 #b9544a
+}
+#fieldChoiceHint.unmatched{
+  color:#a33b32;
+  font-weight:700
+}
