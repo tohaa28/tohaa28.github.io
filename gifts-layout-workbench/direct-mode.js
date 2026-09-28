@@ -460,6 +460,89 @@
     }
   }
 
+  function popupPlaceBindingsFromContext(context, article) {
+    if (!context) return [];
+    const entries = [];
+    const add = (raw, index = null) => {
+      const text = clean(raw);
+      if (!text) return;
+      entries.push({ raw: text, index: Number.isInteger(index) ? index : explicitPlaceIndex(text) });
+    };
+
+    // Most reliable case: a table column explicitly named "Место нанесения",
+    // "Поле", "Сторона" etc. Read the cell in the same template row.
+    const row = context.closest?.("tr");
+    const table = row?.closest?.("table");
+    if (row && table) {
+      const headerRow = table.querySelector("thead tr") || [...table.querySelectorAll("tr")].find(candidate => candidate.querySelector("th"));
+      const headers = headerRow ? [...headerRow.children] : [];
+      const cells = [...row.children];
+      headers.forEach((header, index) => {
+        const label = clean(header.textContent);
+        if (!/место(?:\s+нанесения)?|поле(?:\s+нанесения)?|сторона|поверхность|place|position|side|field|location/i.test(label)) return;
+        const cell = cells[index];
+        if (cell) add(cell.textContent, explicitPlaceIndex(label) || explicitPlaceIndex(cell.textContent || ""));
+      });
+    }
+
+    // Explicitly labelled value pairs in non-table popup layouts.
+    for (const label of context.querySelectorAll?.("[data-label],label,dt,th,.label") || []) {
+      const labelText = clean(label.textContent);
+      if (!/место(?:\s+нанесения)?|поле(?:\s+нанесения)?|сторона|поверхность|place|position|side|field|location/i.test(labelText)) continue;
+      const value = label.nextElementSibling;
+      if (value) add(value.textContent, explicitPlaceIndex(labelText) || explicitPlaceIndex(value.textContent || ""));
+    }
+
+    // Dedicated attributes/classes are also authoritative because they encode
+    // the semantic role of the value, not a guessed word from arbitrary text.
+    for (const node of context.querySelectorAll?.(
+      "[data-place],[data-position],[data-side],[data-field],[data-location],[class*='place'],[class*='position'],[class*='side'],[class*='field'],[class*='location']"
+    ) || []) {
+      const attrValue =
+        node.getAttribute?.("data-place") ||
+        node.getAttribute?.("data-position") ||
+        node.getAttribute?.("data-side") ||
+        node.getAttribute?.("data-field") ||
+        node.getAttribute?.("data-location");
+      add(attrValue || node.textContent || "", explicitPlaceIndex(node.textContent || "") || explicitPlaceIndex(attrValue || ""));
+    }
+
+    // Some popup versions render "Место нанесения: ..." as plain text in a
+    // small leaf element. Restrict this fallback to explicit place prefixes.
+    for (const node of context.querySelectorAll?.("td,li,div,span,p,strong") || []) {
+      const text = clean(node.textContent);
+      if (!text || text.length > 220) continue;
+      if (!/^(?:место(?:\s+нанесения)?|поле(?:\s+нанесения)?|сторона|поверхность)\b/i.test(text)) continue;
+      add(text);
+    }
+
+    return makePlaceBindings(entries, article, "makets-popup-place");
+  }
+
+  function popupMethodFromContext(context) {
+    if (!context) return "";
+    const row = context.closest?.("tr");
+    const table = row?.closest?.("table");
+    if (row && table) {
+      const headerRow = table.querySelector("thead tr") || [...table.querySelectorAll("tr")].find(candidate => candidate.querySelector("th"));
+      const headers = headerRow ? [...headerRow.children] : [];
+      const cells = [...row.children];
+      for (let index = 0; index < headers.length; index++) {
+        const label = clean(headers[index].textContent);
+        if (!/(?:^|\s)(?:вид\s+)?нанесени|способ\s+печати|метод(?:\s+нанесения)?/i.test(label) || /место/i.test(label)) continue;
+        const value = clean(cells[index]?.textContent || "");
+        if (value) return value;
+      }
+    }
+    const node = context.querySelector?.("[data-method],[data-print-method],.method,.printing-method");
+    return clean(
+      node?.getAttribute?.("data-method") ||
+      node?.getAttribute?.("data-print-method") ||
+      node?.textContent ||
+      ""
+    );
+  }
+
   async function getPopupTemplateRelations(orderId) {
     if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
 
