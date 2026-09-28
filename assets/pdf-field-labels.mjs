@@ -216,6 +216,7 @@ export function auditFieldLabels(fields, entry) {
         index: Number.isInteger(binding?.index) ? binding.index : null,
         taskId,
         printId,
+        method: clean(binding?.method || ""),
         source: binding?.source || ""
       };
     })
@@ -283,6 +284,7 @@ export function auditFieldLabels(fields, entry) {
             used.add(placeIndex);
             f.orderPlace = places[placeIndex].raw;
             f.orderPlaceIndex = placeIndex;
+            f.orderMethod = binding.method || "";
             f.orderPlaceBindingSource = binding.source;
           }
         }
@@ -304,6 +306,7 @@ export function auditFieldLabels(fields, entry) {
             used.add(placeIndex);
             f.orderPlace=places[placeIndex].raw;
             f.orderPlaceIndex=placeIndex;
+            f.orderMethod=binding.method || "";
             f.orderPlaceBindingSource=binding.source;
           }
         }
