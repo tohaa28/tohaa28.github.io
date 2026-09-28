@@ -356,7 +356,33 @@
     return "";
   }
 
-  async function getPopupOrderItemIds(orderId) {
+  function popupArticleHint(text) {
+    const value = clean(text);
+    const match = value.match(/(?:артикул|арт\.?)[\s:№#-]*([\p{L}\p{N}][\p{L}\p{N}._\/-]*)/iu);
+    return clean(match?.[1] || "");
+  }
+
+  function articleKey(value) {
+    return clean(value).replace(/^артикул\s*/i, "").replace(/\s+/g, "").toLocaleLowerCase("ru-RU");
+  }
+
+  function escapeRegExp(value) {
+    const specials = "\\^$.*+?()[]{}|";
+    return [...String(value)].map(char => specials.includes(char) ? "\\" + char : char).join("");
+  }
+
+  function contextHasArticle(contextText, article) {
+    const haystack = clean(contextText);
+    const needle = clean(article);
+    if (!haystack || !needle) return false;
+    try {
+      return new RegExp("(^|[^\\p{L}\\p{N}._\\/-])" + escapeRegExp(needle) + "(?=$|[^\\p{L}\\p{N}._\\/-])", "iu").test(haystack);
+    } catch {
+      return haystack.includes(needle);
+    }
+  }
+
+  async function getPopupTemplateRelations(orderId) {
     if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
 
     const res = await nativeFetch(
@@ -388,20 +414,32 @@
     } catch {}
 
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const ids = new Set();
+    const relations = [];
+    const seen = new Set();
 
-    for (const node of doc.querySelectorAll("a[href*='getOrderItemPdf'],[data-orderitemid],[data-oiid]")) {
-      let id = clean(node.getAttribute("data-orderitemid") || node.getAttribute("data-oiid"));
-      if (!id) {
+    for (const node of doc.querySelectorAll("a[href*=\'getOrderItemPdf\'],[data-orderitemid],[data-oiid]")) {
+      let pdfItemId = clean(node.getAttribute("data-orderitemid") || node.getAttribute("data-oiid"));
+      if (!pdfItemId) {
         try {
           const url = new URL(node.getAttribute("href") || "", GIFTS_ORIGIN + "/");
-          id = clean(url.searchParams.get("orderitemid") || url.searchParams.get("oiid"));
+          pdfItemId = clean(url.searchParams.get("orderitemid") || url.searchParams.get("oiid"));
         } catch {}
       }
-      if (/^\d{1,20}$/.test(id)) ids.add(id);
+      if (!/^\d{1,20}$/.test(pdfItemId) || seen.has(pdfItemId)) continue;
+      seen.add(pdfItemId);
+
+      const context = node.closest("tr,li,[data-itemid],.cart-tbl-row,.maket-row,.template-row") || node.parentElement;
+      const contextText = clean(context?.textContent || node.textContent || "");
+      const article = clean(
+        context?.getAttribute?.("data-article") ||
+        context?.getAttribute?.("data-articul") ||
+        popupArticleHint(contextText)
+      );
+
+      relations.push({ pdfItemId, article, contextText });
     }
 
-    return [...ids];
+    return relations;
   }
 
   function parseOrder(html, order) {
@@ -480,19 +518,49 @@
 
     if (parsed.orderInternalId) {
       try {
-        const popupIds = await getPopupOrderItemIds(parsed.orderInternalId);
+        const relations = await getPopupTemplateRelations(parsed.orderInternalId);
         parsed.maketsPopupLoaded = true;
-        parsed.popupOrderItemIds = popupIds;
+        parsed.popupTemplateRelations = relations;
+        parsed.popupOrderItemIds = relations.map(relation => relation.pdfItemId);
 
-        if (popupIds.length) {
-          templateItemIds = new Set(popupIds.map(String));
+        if (relations.length) {
+          const claimed = new Set();
+          const assign = (item, relation, source) => {
+            item.hasTemplate = true;
+            item.pdfItemId = String(relation.pdfItemId);
+            item.templateRelationSource = source;
+            item.templateRelationArticle = relation.article || "";
+            claimed.add(String(relation.pdfItemId));
+          };
+
+          // Strongest relation: order row id exactly equals PDF orderitemid.
           for (const item of orderItems) {
-            item.hasTemplate = templateItemIds.has(String(item.itemId));
-            if (item.hasTemplate) {
-              item.pdfItemId = String(item.itemId);
-              item.templateRelationSource = "makets-popup-orderitemid";
+            const exact = relations.filter(relation =>
+              !claimed.has(String(relation.pdfItemId)) &&
+              String(relation.pdfItemId) === String(item.itemId)
+            );
+            if (exact.length === 1) assign(item, exact[0], "makets-popup-orderitemid");
+          }
+
+          // If Gifts uses a different PDF id, use the article printed in that popup
+          // row only when both the order article and popup relation are unique.
+          for (const item of orderItems) {
+            if (item.hasTemplate) continue;
+            const sameArticleItems = orderItems.filter(other => articleKey(other.article) === articleKey(item.article));
+            const candidates = relations.filter(relation =>
+              !claimed.has(String(relation.pdfItemId)) &&
+              (
+                (relation.article && articleKey(relation.article) === articleKey(item.article)) ||
+                contextHasArticle(relation.contextText, item.article)
+              )
+            );
+            if (sameArticleItems.length === 1 && candidates.length === 1) {
+              assign(item, candidates[0], "makets-popup-article");
             } else {
-              item.templateRelationSource = "unassigned";
+              item.hasTemplate = false;
+              item.templateRelationSource = candidates.length > 1 || sameArticleItems.length > 1
+                ? "makets-popup-ambiguous"
+                : "unassigned";
             }
           }
         } else {
@@ -721,7 +789,7 @@
 
     try {
       const parsed = await getOrder(order);
-      if (!parsed.items.some(item => String(item.itemId) === String(itemId))) {
+      if (!parsed.items.some(item => String(item.pdfItemId || item.itemId) === String(itemId))) {
         return json({ error: "Этот PDF не относится к выбранному заказу." }, 404);
       }
 
