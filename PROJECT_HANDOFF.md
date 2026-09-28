@@ -414,3 +414,27 @@
 - `013df634994035c007e374ceef27e2db3d5f8050` / `b2f8fd993208ae484b467278ea3ea208fc9ec6c9` — только нижний шаблонный раздел popup и точный heading boundary;
 - `3c6dd8aa1c2a494a3bdd62d8da0ea851b0d7c799` / `9eb05cd5b2e0ab6960e873c65b3f74a351174932` — field-specific method IDs;
 - `952838ab5c91be74ae5a2e0cda8d734ee3562604` — финальный cache-bust и опубликованный код.
+
+### 2026-09-28 — список Шага 2 показывает реальные места и локальный printN
+
+- По новым скриншотам заказа `7980838` карточки уже читали реальные места (`лицо`, `оборот`), но Шаг 2 всё ещё показывал `Подпись PDF не подтверждена`. Причина: селектор строился только из геометрического PDF label audit.
+- Уточнена модель идентификаторов: номер выбранного нанесения на странице заказа (`...,3`, `...,4`) — глобальный application/task ID заказа; `print1`, `print2` внутри конкретного PDF — локальная нумерация полей этого шаблона. Их нельзя считать одним числом.
+- В `direct-mode.js` application binding теперь хранит `taskId/applicationIndex` отдельно. После чтения нижнего раздела popup `Шаблоны макетов для выбранных нанесений` каждому вошедшему в конкретный PDF нанесению назначается локальный `templateIndex=1..N`, `index=1..N`, `printId=print1..printN` по последовательности выбранных нанесений этого шаблона.
+- Пример: заказный application ID `4` для `26068.40 / оборот` входит в PDF один; поэтому это `taskId=4`, но локально `templateIndex=1`, `printId=print1`. Это исправляет прежнюю ошибку `4 -> print4`.
+- `pdf-field-labels.mjs`: добавлен режим `application-sequence`. Если Gifts однозначно дал полный набор selected applications для PDF, число мест = числу найденных векторных полей, локальные индексы образуют `1..N`, а существующие PDF labels не противоречат последовательности, поля сопоставляются по `pdfOrder` (порядок операторов самого PDF) с локальными `print1..N`. Это закрывает шаблоны, где цифры возле рамок переведены в кривые и не доступны как PDF text.
+- При таком сопоставлении каждое поле получает `orderPlace`, `orderMethod`, `printId`, `templateIndex`; audit возвращает `ok=true`, mode `application-sequence`, а карточка сообщает `Сопоставлено по ID выбранных нанесений и структуре шаблона`.
+- Шаг 2 больше не использует `Подпись PDF не подтверждена` вместо известного места. `oo()/Ao()` сначала используют `orderPlace`, затем PDF label, затем явный `placeBinding` по локальному template index. В простом режиме показывается пользовательское `место · метод`, без технического `[printN]`.
+- Подробный selector также использует реальное имя места, но сохраняет страницу, размеры и координаты поля.
+- Regression 15637: PDF специально не содержит текстовых цифр возле двух рамок. Результат браузерного e2e: `лицо · LM1: Лазерная гравировка,1` и `оборот · LM1: Лазерная гравировка,2`; `unmatched=false`; `2 в заказе = 2 в шаблоне`.
+- Regression 26068.40: application ID `4`, единственное поле PDF без текстовой подписи. Результат: `оборот · DTF1: Печать DTF,4`; `unmatched=false`; `1 в заказе = 1 в шаблоне`; внутренне `4 -> local print1`.
+- Финальный тест workflow `36481385553` — success. Публикация `36481330869` — success.
+- Source/main синхронизированы: `pdf-field-labels.mjs` blob `5e35079661b4b1ced164b8da8a6345d8ae2a47d3`; bundle blob `b749e2c6558d5445c3ecf77403c71bd73e4fa8f7`. Launcher содержит локальный `templateIndex`, `applicationIndex` и exact place bindings.
+
+Ключевые коммиты:
+- `d1d3fc895b38e00d9daf1949828296cd6c2f6bb7` — разделение order application ID и PDF-local print ID;
+- `d0635b995b2c4e0a7a34c7235ef0f639d88df4c7` — fallback сопоставления unlabeled vector fields по локальной application sequence и pdfOrder;
+- `4201f2c2669fd317f07b512d75b9006881b56d70` — реальные названия мест в selectors, без технической заглушки;
+- `ade53d3ed3700c6bc8e3c23320fd8212d8ca1108` — mock/regression application ID 4;
+- `101ef34f1cf6417950ffd3e32776ba90c7c92aac` — browser regressions для unlabeled 15637 и single-field 26068.40;
+- `5a91b911cc60bb18bcf3de714a2e7af19a41f4d8` — cache-bust опубликованного field mapper;
+- `29d7994e46d7ead63985fd4b1817e50bf7b14491` — финально зелёный browser test set.
