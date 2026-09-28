@@ -68,6 +68,30 @@ test('numeric PDF labels map to numbered order places, not array order',()=>{
   assert.equal(auditFieldLabels(duplicate,{places:['лицо','оборот'],placeCountReliable:true}).ok,false);
 });
 
+test('complete numeric PDF fields are usable when order has no place names',()=>{
+  const boxes=[{x:20,y:20,w:30,h:20,page:0},{x:20,y:80,w:30,h:20,page:0}];
+  const numeric=[
+    {x:22,y:22,w:4,h:4,text:'1',name:'1',fieldIndex:1,confidence:2.5},
+    {x:22,y:82,w:4,h:4,text:'2',name:'2',fieldIndex:2,confidence:2.5}
+  ];
+  const bound=bindFieldLabels(boxes,numeric);
+  const audit=auditFieldLabels(bound,{places:[],place:'',placeCount:0,placeCountReliable:false});
+  assert.equal(audit.ok,true);
+  assert.equal(audit.mode,'pdf-numbered-only');
+  assert.equal(audit.placeCount,2);
+  assert.deepEqual(audit.numberedFields,[1,2]);
+  assert.equal(bound.find(f=>f.fieldIndex===1).orderPlace,'Место 1');
+  assert.equal(bound.find(f=>f.fieldIndex===2).orderPlace,'Место 2');
+
+  const missing=bindFieldLabels(boxes,[numeric[0]]);
+  const missingAudit=auditFieldLabels(missing,{places:[],placeCount:0,placeCountReliable:false});
+  assert.equal(missingAudit.ok,false);
+  assert.equal(missingAudit.mode,'pdf-numbered-incomplete');
+
+  const outside=bindFieldLabels([boxes[0]],[{...numeric[0],x:5,y:5}]);
+  assert.notEqual(outside[0].labelStatus,'matched');
+});
+
 test('explicit print label wins over unrelated nearby plain text',()=>{
   const box=[{x:20,y:20,w:30,h:20,page:0}];
   const strong={x:22,y:16,w:20,h:4,text:'лицо [print1]',name:'лицо',printId:'print1',confidence:3};
