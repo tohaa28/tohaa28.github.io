@@ -400,8 +400,10 @@ jobs:
 
           await frame.click("#backToOrders");
           await frame.waitForSelector("#orderBrowser:not([hidden])", {timeout:30000});
-          await frame.fill("#order", "7920510");
-          await frame.click("#loadOrder");
+          await frame.evaluate(() => {
+            document.getElementById("order").value = "7920510";
+            document.getElementById("loadOrder").click();
+          });
           await frame.waitForFunction(() => {
             const row=[...document.querySelectorAll("#orderTemplateList .article-row")].find(x => x.querySelector(".detail-key")?.textContent?.trim()==="Контроль мест");
             return row?.querySelector(".detail-value")?.textContent?.includes("2 в заказе ≠ 1 в шаблоне");
