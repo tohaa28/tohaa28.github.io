@@ -37,9 +37,10 @@ export function extractFieldLabels(content, viewport) {
       const explicitName=/^(?:место(?: нанесения)?|поле)\s*[:：]/i.test(text);
       const plainName=/^[\p{L}][\p{L}\s()-]{1,79}$/u.test(text);
       if (ids.length > 1 || (!ids.length && !explicitName && !plainName)) continue;
+      const confidence = ids.length ? 3 : explicitName ? 2 : 0;
       const points = group.flatMap(t => [0,t.w].flatMap(u => [-.2*t.h,.8*t.h].map(v => viewport.convertToViewportPoint(t.x+t.ux*u-t.uy*v,t.y+t.uy*u+t.ux*v))));
       const xs=points.map(p=>p[0]*MM), ys=points.map(p=>p[1]*MM);
-      labels.push({text, name:placeName(text), printId:ids[0] ? `print${Number(ids[0][1])}` : null, x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)});
+      labels.push({text, name:placeName(text), printId:ids[0] ? `print${Number(ids[0][1])}` : null, confidence, x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)});
     }
   }
   return labels;
@@ -66,8 +67,12 @@ export function bindFieldLabels(fields, labels) {
   }
   for (const [index, found] of claims) {
     const f=result[index];
-    if (f.labelStatus==='ambiguous' || found.length!==1) { f.labelStatus='ambiguous'; continue; }
-    const label=found[0];
+    if (f.labelStatus==='ambiguous') continue;
+    const strength = label => Number.isFinite(label.confidence) ? label.confidence : label.printId ? 3 : 0;
+    const maxStrength = Math.max(...found.map(strength));
+    const strongest = found.filter(label => strength(label)===maxStrength);
+    if (strongest.length!==1) { f.labelStatus='ambiguous'; continue; }
+    const label=strongest[0];
     Object.assign(f,{pdfLabel:label.text,pdfPlace:label.name,printId:label.printId,labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},labelStatus:'matched'});
   }
   for (const f of result) if (f.printId && result.filter(g=>g.printId===f.printId).length>1) f.labelStatus='ambiguous';
