@@ -294,8 +294,10 @@
       bindings.push({
         name,
         taskId,
-        printId: printIdForApplication(taskId),
-        index: /^\d+$/.test(taskId) ? Number(taskId) : null,
+        applicationId: taskId,
+        applicationIndex: /^\d+$/.test(taskId) ? Number(taskId) : null,
+        printId: "",
+        index: null,
         method: rawMethod,
         source: "order-application-row"
       });
@@ -837,7 +839,15 @@
             // order row ",N" -> template popup "(N)" -> PDF [printN].
             if (item.templateApplicationIds.length && item.applicationBindings.length) {
               const matched = item.templateApplicationIds
-                .map(id => item.applicationBindings.find(binding => String(binding.taskId) === String(id)))
+                .map((id, localIndex) => {
+                  const binding = item.applicationBindings.find(candidate => String(candidate.taskId) === String(id));
+                  return binding ? {
+                    ...binding,
+                    templateIndex: localIndex + 1,
+                    index: localIndex + 1,
+                    printId: "print" + (localIndex + 1)
+                  } : null;
+                })
                 .filter(Boolean);
               const unique = [...new Map(matched.map(binding => [placeKey(binding.name), binding])).values()];
               if (unique.length === item.templateApplicationIds.length) {
@@ -845,8 +855,6 @@
                 item.place = item.places.join(", ");
                 item.placeBindings = unique.map(binding => ({
                   ...binding,
-                  index: Number.isInteger(binding.index) ? binding.index : (/^\d+$/.test(binding.taskId) ? Number(binding.taskId) : null),
-                  printId: binding.printId || printIdForApplication(binding.taskId),
                   source: "order-application-id+makets-popup"
                 }));
                 item.placeCount = item.places.length;
@@ -865,6 +873,9 @@
                 return {
                   name,
                   taskId: existing?.taskId || "",
+                  applicationId: existing?.applicationId || existing?.taskId || "",
+                  applicationIndex: existing?.applicationIndex || null,
+                  templateIndex: existing?.templateIndex || null,
                   printId: existing?.printId || "",
                   index: existing?.index || popup?.index || null,
                   method: existing?.method || "",
