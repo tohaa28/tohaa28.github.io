@@ -512,6 +512,15 @@
     for (const node of candidates) {
       const value = clean(node.textContent || "");
       if (/^\d{4,}(?:\.\d+)*$/.test(value)) return value;
+
+      // <td>Product name<br>16535.66</td> has concatenated textContent in
+      // some DOM implementations, so keep BR boundaries from innerHTML.
+      const html = String(node.innerHTML || "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, " ");
+      for (const line of html.split(/\n+/).map(clean)) {
+        if (/^\d{4,}(?:\.\d+)*$/.test(line)) return line;
+      }
     }
     return popupArticleHint(context.textContent || "");
   }
@@ -616,6 +625,14 @@
     );
   }
 
+  function popupTemplateSection(doc) {
+    const headings = [...doc.querySelectorAll("h1,h2,h3,h4,h5,h6,div,p,span,strong")];
+    const heading = headings.find(node =>
+      /шаблоны\s+макетов\s+для\s+выбранных\s+нанесений/i.test(clean(node.textContent || ""))
+    );
+    return heading || null;
+  }
+
   async function getPopupTemplateRelations(orderId) {
     if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
 
@@ -650,8 +667,19 @@
     const doc = new DOMParser().parseFromString(html, "text/html");
     const relations = [];
     const seen = new Set();
+    const templateHeading = popupTemplateSection(doc);
+    let candidateNodes = [...doc.querySelectorAll("a[href*=\'getOrderItemPdf\'],[data-orderitemid],[data-oiid]")];
 
-    for (const node of doc.querySelectorAll("a[href*=\'getOrderItemPdf\'],[data-orderitemid],[data-oiid]")) {
+    // The popup contains ordinary maket downloads above and the authoritative
+    // "Шаблоны макетов для выбранных нанесений" section below. If that heading
+    // exists, ignore candidate links that occur before it.
+    if (templateHeading) {
+      candidateNodes = candidateNodes.filter(node =>
+        Boolean(templateHeading.compareDocumentPosition(node) & 4)
+      );
+    }
+
+    for (const node of candidateNodes) {
       let pdfItemId = clean(node.getAttribute("data-orderitemid") || node.getAttribute("data-oiid"));
       if (!pdfItemId) {
         try {
