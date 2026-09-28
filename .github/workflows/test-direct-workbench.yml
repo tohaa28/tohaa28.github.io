@@ -398,6 +398,8 @@ jobs:
             }
           }
 
+          await frame.click("#backToOrders");
+          await frame.waitForSelector("#orderBrowser:not([hidden])", {timeout:30000});
           await frame.fill("#order", "7920510");
           await frame.click("#loadOrder");
           await frame.waitForFunction(() => {
