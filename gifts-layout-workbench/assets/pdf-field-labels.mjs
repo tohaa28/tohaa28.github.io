@@ -140,7 +140,17 @@ export function extractAnnotationFieldLabels(annotations, viewport) {
 export function bindFieldLabels(fields, labels) {
   const result = fields.map(f => ({...f, labelStatus:'missing'}));
   const claims = new Map();
-  for (const label of labels) {
+  const canonical=[];
+  for (const label of [...labels].sort((a,b)=>(b.confidence||0)-(a.confidence||0))) {
+    const duplicate=canonical.some(other =>
+      other.fieldIndex===label.fieldIndex &&
+      other.printId===label.printId &&
+      clean(other.text)===clean(label.text) &&
+      Math.abs(other.x-label.x)+Math.abs(other.y-label.y)+Math.abs(other.w-label.w)+Math.abs(other.h-label.h)<1
+    );
+    if (!duplicate) canonical.push(label);
+  }
+  for (const label of canonical) {
     const cx=label.x+label.w/2, cy=label.y+label.h/2;
     const ranked = result.map((f,index) => {
       const dx=Math.max(f.x-cx,0,cx-f.x-f.w), dy=Math.max(f.y-cy,0,cy-f.y-f.h);
