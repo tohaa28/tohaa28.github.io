@@ -626,11 +626,21 @@
   }
 
   function popupTemplateSection(doc) {
-    const headings = [...doc.querySelectorAll("h1,h2,h3,h4,h5,h6,div,p,span,strong")];
-    const heading = headings.find(node =>
-      /шаблоны\s+макетов\s+для\s+выбранных\s+нанесений/i.test(clean(node.textContent || ""))
+    const phrase = "шаблоны макетов для выбранных нанесений";
+    const nodes = [...doc.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,strong,div")];
+    const exact = nodes.find(node =>
+      clean(node.textContent || "").toLocaleLowerCase("ru-RU") === phrase
     );
-    return heading || null;
+    if (exact) return exact;
+
+    // Fallback only to a short heading-like node. A large wrapper may contain
+    // the same phrase together with the upper "готовые макеты" section and must
+    // not become the boundary.
+    return nodes.find(node => {
+      const text = clean(node.textContent || "");
+      return text.length <= 90 &&
+        /шаблоны\s+макетов\s+для\s+выбранных\s+нанесений/i.test(text);
+    }) || null;
   }
 
   async function getPopupTemplateRelations(orderId) {
