@@ -186,13 +186,11 @@ export async function verifyPdfLabels(frame) {
   assert.equal(numericState.unmatched,false);
   assert.equal(numericState.selected,'');
   assert.equal(numericState.step3Hidden,true);
-  assert.match(numericState.hint,/Контроль мест: 2 в заказе = 2 полей в шаблоне/i);
-  assert.match(numericState.hint,/лицо/);
-  assert.match(numericState.hint,/оборот/);
+  assert.match(numericState.hint,/Места: лицо, оборот/i);
   assert.match(numericState.rows.find(r=>r.key==='Место 1')?.value||'',/лицо/);
   assert.match(numericState.rows.find(r=>r.key==='Место 2')?.value||'',/оборот/);
-  assert.match(numericState.rows.find(r=>r.key==='Контроль мест')?.value||'',/2 в заказе = 2 в шаблоне/);
-  assert.match(numericState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Сопоставлено по ID выбранных нанесений/);
+  assert.equal(numericState.rows.some(r=>r.key==='Контроль мест'),false);
+  assert.equal(numericState.rows.some(r=>r.key==='Подписи PDF'),false);
 
   await frame.selectOption('#orderFieldChoice',{index:1});
   await frame.waitForFunction(()=>document.getElementById('editorStep3')?.hidden===false);
@@ -229,7 +227,8 @@ export async function verifyPdfLabels(frame) {
   assert.equal(singleState.unmatched,false);
   assert.match(singleState.hint,/Места: оборот/);
   assert.match(singleState.rows.find(r=>r.key==='Место')?.value||'',/оборот/);
-  assert.match(singleState.rows.find(r=>r.key==='Подписи PDF')?.value||'',/Сопоставлено по ID выбранных нанесений/);
+  assert.equal(singleState.rows.some(r=>r.key==='Контроль мест'),false);
+  assert.equal(singleState.rows.some(r=>r.key==='Подписи PDF'),false);
   console.log('Global application 4 -> local print1:',JSON.stringify(singleState));
 
   // Same fallback, but the digits exist only as PDF FreeText annotations.
