@@ -40,7 +40,7 @@ jobs:
             const path = new URL(route.request().url()).pathname.replace("/gifts-layout-workbench/","");
             if (!path || path.includes("..")) throw new Error("Unexpected asset path: "+path);
             const type = path.endsWith(".js") ? "application/javascript" : path.endsWith(".css") ? "text/css" : "text/html";
-            await route.fulfill({body:await readFile(path),contentType:type});
+            await route.fulfill({body:await readFile(path),contentType:type,headers:{"access-control-allow-origin":"*"}});
           });
           const errors = [];
           page.on("pageerror", e => errors.push("pageerror: "+e.message));
