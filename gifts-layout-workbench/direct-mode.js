@@ -795,9 +795,10 @@
     }
     try {
       const parsed = await getOrder(order);
-      if (!parsed.items.length) {
-        return json({ error: "В заказе не найдены выбранные нанесения." }, 404);
+      if (!Array.isArray(parsed.orderItems) || !parsed.orderItems.length) {
+        return json({ error: "В заказе не найдены позиции." }, 404);
       }
+      parsed.templateCount = Array.isArray(parsed.items) ? parsed.items.length : 0;
       return json(parsed);
     } catch (error) {
       return json({ error: error?.message || String(error) }, error?.code === "AUTH" ? 401 : 502);
