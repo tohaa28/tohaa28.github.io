@@ -7,18 +7,46 @@ const placeName = s => clean(s.replace(/\[?\s*print\s*\d+\s*\]?/ig, '').replace(
 
 export function extractFieldLabels(content, viewport) {
   const lines = [];
-  // Assemble nearby fragments on the same baseline, independently of PDF stream order.
-  const items = content.items.filter(t => t.str?.trim() && t.transform).map(t => {
+  const labels = [];
+
+  const rawItems = content.items.filter(t => t.str?.trim() && t.transform).map(t => {
     const [a,b,,,x,y] = t.transform, scale = Math.hypot(a,b);
     return {text:t.str, x,y, ux:a/scale, uy:b/scale, w:Math.abs(t.width), h:Math.abs(t.height)||scale};
   }).filter(t => [t.x,t.y,t.ux,t.uy,t.w,t.h].every(Number.isFinite));
-  items.sort((a,b) => b.y-a.y || a.x-b.x);
+
+  const boundsFor = group => {
+    const points = group.flatMap(t => [0,t.w].flatMap(u => [-.2*t.h,.8*t.h].map(v => viewport.convertToViewportPoint(t.x+t.ux*u-t.uy*v,t.y+t.uy*u+t.ux*v))));
+    const xs=points.map(p=>p[0]*MM), ys=points.map(p=>p[1]*MM);
+    return {x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)};
+  };
+
+  // Field numbers in Gifts templates are often tiny standalone PDF text items.
+  // Read them directly before line assembly, because PDF.js may otherwise merge
+  // the digit with unrelated text that shares the same baseline.
+  for (const item of rawItems) {
+    const text=clean(item.text);
+    const match=/^([1-9]\d?)\s*[.):.-]?$/.exec(text);
+    if (!match) continue;
+    const fieldIndex=Number(match[1]);
+    labels.push({
+      text:String(fieldIndex),
+      name:String(fieldIndex),
+      printId:null,
+      fieldIndex,
+      confidence:2.75,
+      source:'numeric-item',
+      ...boundsFor([item])
+    });
+  }
+
+  // Assemble nearby fragments on the same baseline, independently of PDF stream order.
+  const items=[...rawItems].sort((a,b) => b.y-a.y || a.x-b.x);
   for (const t of items) {
     let line = lines.find(l => Math.abs(l.ux-t.ux)<.01 && Math.abs(l.uy-t.uy)<.01 && Math.abs((t.x-l.x)*-l.uy+(t.y-l.y)*l.ux)<Math.min(l.h,t.h)*.3);
     if (!line) lines.push(line = {...t, parts:[]});
     line.parts.push(t);
   }
-  const labels = [];
+
   for (const line of lines) {
     line.parts.sort((a,b) => (a.x-b.x)*line.ux+(a.y-b.y)*line.uy);
     const groups = [];
@@ -35,18 +63,41 @@ export function extractFieldLabels(content, viewport) {
       }).join(''));
       const ids = [...text.matchAll(/\bprint\s*(\d+)\b/ig)];
       const explicitName=/^(?:место(?: нанесения)?|поле)\s*[:：]/i.test(text);
-      const numericIndex=/^[1-9]\d?$/.test(text) ? Number(text) : null;
+      const numericMatch=/^([1-9]\d?)\s*[.):.-]?$/.exec(text);
+      const numericIndex=numericMatch ? Number(numericMatch[1]) : null;
       const plainName=/^[\p{L}][\p{L}\s()-]{1,79}$/u.test(text);
       if (ids.length > 1 || (!ids.length && !explicitName && !numericIndex && !plainName)) continue;
+
+      // A one-item numeric group is already captured above. Skipping it avoids
+      // turning the same digit into two equally strong claims for one field.
+      if (numericIndex && group.length===1) continue;
+
       const confidence = ids.length ? 3 : numericIndex ? 2.5 : explicitName ? 2 : 0;
-      const points = group.flatMap(t => [0,t.w].flatMap(u => [-.2*t.h,.8*t.h].map(v => viewport.convertToViewportPoint(t.x+t.ux*u-t.uy*v,t.y+t.uy*u+t.ux*v))));
-      const xs=points.map(p=>p[0]*MM), ys=points.map(p=>p[1]*MM);
-      labels.push({text, name:placeName(text), printId:ids[0] ? `print${Number(ids[0][1])}` : null, fieldIndex:numericIndex, confidence, x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)});
+      labels.push({
+        text,
+        name:placeName(text),
+        printId:ids[0] ? `print${Number(ids[0][1])}` : null,
+        fieldIndex:numericIndex,
+        confidence,
+        source:'assembled-line',
+        ...boundsFor(group)
+      });
     }
   }
-  return labels;
-}
 
+  // De-duplicate equivalent labels that can arise from unusual PDF text streams.
+  const unique=[];
+  for (const label of labels) {
+    if (unique.some(other =>
+      other.fieldIndex===label.fieldIndex &&
+      other.printId===label.printId &&
+      clean(other.text)===clean(label.text) &&
+      Math.abs(other.x-label.x)+Math.abs(other.y-label.y)+Math.abs(other.w-label.w)+Math.abs(other.h-label.h)<.5
+    )) continue;
+    unique.push(label);
+  }
+  return unique;
+}
 export function bindFieldLabels(fields, labels) {
   const result = fields.map(f => ({...f, labelStatus:'missing'}));
   const claims = new Map();
