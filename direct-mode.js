@@ -592,8 +592,19 @@
       const context = node.closest("tr,li,[data-itemid],.cart-tbl-row,.maket-row,.template-row") || node.parentElement;
       const contextText = clean(context?.textContent || node.textContent || "");
       const article = popupArticleFromContext(context);
+      const placeBindings = popupPlaceBindingsFromContext(context, article);
+      const places = placeBindings.map(binding => binding.name);
+      const method = popupMethodFromContext(context);
 
-      relations.push({ pdfItemId, article, contextText });
+      relations.push({
+        pdfItemId,
+        article,
+        method,
+        places,
+        placeBindings,
+        placeSource: places.length ? "makets-popup-place" : "not-found",
+        contextText
+      });
     }
 
     return relations;
@@ -630,6 +641,7 @@
         method,
         place: places.join(", "),
         places,
+        placeBindings: placeAudit.placeBindings || [],
         placeCount: places.length,
         placeCountSource: placeAudit.source,
         placeCountReliable: placeAudit.reliable,
