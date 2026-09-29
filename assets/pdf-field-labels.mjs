@@ -164,10 +164,9 @@ export function bindFieldLabels(fields, labels) {
     const index = Number(match[1]);
     if (!Number.isInteger(index) || index < 1) continue;
     if (printSequence.has(index)) {
-      const existing = printSequence.get(index);
-      if (nameKey(existing.name) !== nameKey(label.name) || clean(existing.text) !== clean(label.text)) {
-        printSequenceAmbiguous = true;
-      }
+      // A second canonical claim for the same printN is not safe. Exact
+      // text/annotation duplicates were already collapsed above.
+      printSequenceAmbiguous = true;
       continue;
     }
     printSequence.set(index,label);
@@ -437,6 +436,25 @@ export function auditFieldLabels(fields, entry) {
       }
     }
 
+    if (f.printId) {
+      const rawPrintMatches=places.map((place,index)=>({place,index})).filter(({place})=>
+        place.id && `print${Number(place.id)}`===String(f.printId).toLowerCase()
+      );
+      if (rawPrintMatches.length) {
+        if (rawPrintMatches.length!==1 ||
+            (clean(f.pdfPlace) && rawPrintMatches[0].place.name!==nameKey(f.pdfPlace)) ||
+            used.has(rawPrintMatches[0].index)) {
+          issues.push(`PDF «${f.pdfLabel}» не соответствует единственному месту заказа по ${f.printId}`);
+        } else {
+          const match=rawPrintMatches[0];
+          used.add(match.index);
+          f.orderPlace=match.place.raw;
+          f.orderPlaceIndex=match.index;
+        }
+        continue;
+      }
+    }
+
     if (Number.isInteger(f.fieldIndex)) {
       if (indexedBindings.length) {
         const matches=indexedBindings.filter(binding => binding.index===f.fieldIndex);
@@ -458,6 +476,20 @@ export function auditFieldLabels(fields, entry) {
         continue;
       }
 
+      const semanticName=nameKey(f.pdfPlace || "");
+      if (semanticName && !/^\d+$/.test(semanticName)) {
+        const semanticMatches=places.map((place,index)=>({place,index}))
+          .filter(({place})=>place.name===semanticName && (!place.id || `print${Number(place.id)}`===String(f.printId||`print${f.fieldIndex}`).toLowerCase()));
+        if (semanticMatches.length!==1 || used.has(semanticMatches[0]?.index)) {
+          issues.push(`Подпись PDF «${f.pdfLabel}» не соответствует единственному месту заказа`);
+        } else {
+          const match=semanticMatches[0];
+          used.add(match.index);
+          f.orderPlace=match.place.raw;
+          f.orderPlaceIndex=match.index;
+        }
+        continue;
+      }
       const index=f.fieldIndex-1;
       if (index<0 || index>=places.length || used.has(index)) {
         issues.push(`Номер поля PDF «${f.pdfLabel}» не соответствует единственному месту заказа`);
