@@ -526,7 +526,11 @@ export async function verifyPdfLabels(frame) {
   });
   await frame.waitForFunction(()=>document.getElementById('orderLoading')?.hidden===true && document.querySelectorAll('#orderTemplates option').length===3);
 
-  await frame.selectOption('#orderTemplates','0');
+  await frame.evaluate(()=>{
+    const select=document.getElementById('orderTemplates');
+    select.value='0';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  });
   await frame.waitForFunction(()=>document.querySelectorAll('#orderFieldChoice option').length===3 && document.getElementById('orderEditor')?.hidden===false);
   const ordinaryState7987235=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
@@ -541,7 +545,11 @@ export async function verifyPdfLabels(frame) {
   assert.ok(ordinaryState7987235.full.slice(1).every(text=>/300\.00 × 300\.00 мм/.test(text)),JSON.stringify(ordinaryState7987235));
   console.log('Exact 7987235 ordinary fields resolved:',JSON.stringify(ordinaryState7987235));
 
-  await frame.selectOption('#orderTemplates','1');
+  await frame.evaluate(()=>{
+    const select=document.getElementById('orderTemplates');
+    select.value='1';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  });
   await frame.waitForFunction(()=>document.querySelectorAll('#orderFieldChoice option').length===2 && document.getElementById('orderEditor')?.hidden===false);
   const rotatedState7987235=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
