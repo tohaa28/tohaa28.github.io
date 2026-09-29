@@ -616,6 +616,43 @@ export async function verifyPdfLabels(frame) {
       status:document.getElementById('status')?.textContent||''
     }));
     console.log('REAL 16535 FIELD DIAGNOSTIC:',JSON.stringify(state16535));
+
+    // The public constructor contains many coloured vector objects. In the
+    // exact order context only the two selected 300x300 mm application fields
+    // are valid; size-aware ranking must suppress all decorative candidates.
+    await frame.parentFrame().evaluate(base64=>{
+      window.__gwbTemplateOverrides={
+        ...(window.__gwbTemplateOverrides||{}),
+        '49312484':base64
+      };
+    },real16535.toString('base64'));
+    await frame.evaluate(async()=>{
+      document.getElementById('order').value='7987235';
+      await document.getElementById('loadOrder').onclick();
+    });
+    await frame.waitForFunction(()=>document.getElementById('orderLoading')?.hidden===true && document.querySelectorAll('#orderTemplates option').length===3);
+    await frame.evaluate(()=>{
+      const select=document.getElementById('orderTemplates');
+      select.value='0';
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+    await frame.waitForFunction(()=>{
+      const article=document.getElementById('article')?.value||'';
+      const fields=[...document.querySelectorAll('#fields option')].slice(1).map(o=>o.textContent||'');
+      return article==='16535.66' && fields.length===2 && fields.every(text=>/30\.00 × 30\.00 мм/.test(text));
+    },null,{timeout:30000});
+    const realOrder16535=await frame.evaluate(()=>({
+      fields:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
+      places:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
+      unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
+    }));
+    assert.equal(realOrder16535.fields.length,3);
+    assert.match(realOrder16535.fields[1],/30\.00 × 30\.00 мм/);
+    assert.match(realOrder16535.fields[2],/30\.00 × 30\.00 мм/);
+    assert.match(realOrder16535.places[1],/^сторона b /);
+    assert.match(realOrder16535.places[2],/^сторона а /);
+    assert.equal(realOrder16535.unmatched,false);
+    console.log('REAL 16535 exact-order fields resolved:',JSON.stringify(realOrder16535));
   } catch (error) {
     console.log('REAL 16535 FIELD DIAGNOSTIC unavailable:',error?.stack||String(error));
   }
