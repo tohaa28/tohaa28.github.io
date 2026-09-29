@@ -430,4 +430,24 @@ export async function verifyPdfLabels(frame) {
   assert.match(annotationState.hint,/оборот/);
   console.log('Annotation-only PDF uses order application-ID place names:',JSON.stringify(annotationState));
 
+  // Diagnostic against the real public 16535 constructor. Keep non-fatal while
+  // diagnosing CDN/template variations; the output is used to build a local
+  // deterministic regression.
+  try {
+    const remote=await fetch('https://files.gifts.ru/reviewer/constructor/16535_1.pdf',{headers:{'user-agent':'Mozilla/5.0'}});
+    assert.equal(remote.ok,true,'16535 constructor fetch failed: '+remote.status);
+    const real16535=Buffer.from(await remote.arrayBuffer());
+    await frame.locator('#manualTemplate').setInputFiles({name:'16535_1.pdf',mimeType:'application/pdf',buffer:real16535});
+    await frame.waitForFunction(()=>document.getElementById('orderLoading')?.hidden!==false && document.querySelectorAll('#fields option').length>=1);
+    await frame.waitForTimeout(300);
+    const state16535=await frame.evaluate(()=>({
+      options:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
+      dimensions:document.getElementById('dimensions')?.textContent||'',
+      status:document.getElementById('status')?.textContent||''
+    }));
+    console.log('REAL 16535 FIELD DIAGNOSTIC:',JSON.stringify(state16535));
+  } catch (error) {
+    console.log('REAL 16535 FIELD DIAGNOSTIC unavailable:',error?.stack||String(error));
+  }
+
 }
