@@ -321,6 +321,14 @@ export async function verifyPdfLabels(frame) {
   assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 19\.40|77\.61 × 47\.63/);
   console.log('Service header/table excluded from field search:',JSON.stringify(serviceZoneState));
 
+  const realPrintSequenceSignature=JSON.parse(fs.readFileSync('tests/fixtures/7980838_15637.real-signature.json','utf8'));
+  assert.equal(realPrintSequenceSignature.sha256,'78da1027e24d8dc54ff9a431f812c0347b6b65d7220c591ba673c0de8d77bd3c');
+  assert.deepEqual(realPrintSequenceSignature.places.map(x=>[x.index,x.name,x.printId]),[
+    [1,'лицо','print1'],
+    [2,'оборот','print2']
+  ]);
+  assert.deepEqual(realPrintSequenceSignature.fieldDrawings.filter(x=>x.fillOpacity===0.025).map(x=>x.drawingIndex),[7,9]);
+
   const printSequencePdf=makeDistantPrintSequencePdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'print-sequence.pdf',mimeType:'application/pdf',buffer:printSequencePdf});
   await frame.waitForFunction(()=>
