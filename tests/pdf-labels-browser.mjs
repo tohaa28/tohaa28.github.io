@@ -93,17 +93,21 @@ function makeUnlabeledSingleFieldPdf() {
 function makeServiceZoneExclusionPdf() {
   const stream=[
     'q',
+    // Permanent upper-left service marker.
     '0 0.72 0.2 RG',
     '2 w',
     '30 320 100 40 re S',
+    // Coloured order/requirements table in the lower-right, matching the
+    // layout from the user's real constructor screenshot.
     '0.85 0.15 0.2 RG',
-    '220 300 240 50 re S',
+    '360 30 210 130 re S',
+    // The only real application field, away from both service zones.
     '0 0.55 0.85 RG',
     '2 w',
-    '250 100 120 100 re S',
+    '230 190 120 100 re S',
     'Q',
-    'BT /F1 10 Tf 30 370 Td (Pantone) Tj ET',
-    'BT /F1 10 Tf 320 350 Td (300 dpi) Tj ET',
+    'BT /F1 10 Tf 375 140 Td (Pantone) Tj ET',
+    'BT /F1 10 Tf 500 45 Td (300 dpi) Tj ET',
     ''
   ].join('\n');
   const objects=[
