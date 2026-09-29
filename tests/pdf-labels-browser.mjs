@@ -231,6 +231,47 @@ function makeOpaqueConcaveFieldPdf() {
   return Buffer.from(pdf,'ascii');
 }
 
+function makeTransparentFieldWithDashedBorderPdf() {
+  const mm=72/25.4;
+  const x=150, y=150, size=32*mm, pad=.2*mm, dash=7*mm, thick=.7*mm;
+  const x0=x-pad, y0=y-pad, outer=size+2*pad;
+  const dashes=[];
+  for(let offset=0;offset<outer;offset+=dash*2){
+    const len=Math.min(dash,outer-offset);
+    dashes.push(`${x0+offset} ${y0} ${len} ${thick} re`);
+    dashes.push(`${x0+offset} ${y0+outer-thick} ${len} ${thick} re`);
+    dashes.push(`${x0} ${y0+offset} ${thick} ${len} re`);
+    dashes.push(`${x0+outer-thick} ${y0+offset} ${thick} ${len} re`);
+  }
+  const stream=[
+    'q',
+    '/GS98 gs',
+    '0.95 0.18 0.22 rg',
+    `${x} ${y} ${size} ${size} re f`,
+    'Q',
+    'q',
+    '0.95 0.18 0.22 rg',
+    ...dashes,
+    'f',
+    'Q',
+    ''
+  ].join('\n');
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 500 500] /Resources << /ExtGState << /GS98 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    '<< /Type /ExtGState /ca 0.025 /CA 1 >>'
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeOpacity98ArbitraryFieldPdf(fillOpacity = 0.02) {
   // Non-rectangular Bezier field. It has no colored stroke and no text label;
   // the only field marker is a 2% opaque fill (= 98% transparency).
@@ -360,6 +401,19 @@ export async function verifyPdfLabels(frame) {
     [2,'оборот','print2']
   ]);
   assert.deepEqual(realPrintSequenceSignature.fieldDrawings.filter(x=>x.fillOpacity===0.025).map(x=>x.drawingIndex),[7,9]);
+  const realFieldBox=d=>{
+    const [x0,y0,x1,y1]=d.bboxMm;
+    return{x:x0,y:y0,w:x1-x0,h:y1-y0};
+  };
+  const realPairDelta=(a,b)=>{
+    const x=realFieldBox(a),y=realFieldBox(b);
+    return Math.abs(x.x-y.x)+Math.abs(x.y-y.y)+Math.abs(x.w-y.w)+Math.abs(x.h-y.h);
+  };
+  const redPairDelta=realPairDelta(realPrintSequenceSignature.fieldDrawings[0],realPrintSequenceSignature.fieldDrawings[1]);
+  const bluePairDelta=realPairDelta(realPrintSequenceSignature.fieldDrawings[2],realPrintSequenceSignature.fieldDrawings[3]);
+  assert.ok(redPairDelta>.3 && redPairDelta<=1.5,'Real 15637 red field/border delta no longer covers the clipping regression');
+  assert.ok(bluePairDelta>.3 && bluePairDelta<=1.5,'Real 15637 blue field/border delta no longer covers the clipping regression');
+
 
   const printSequencePdf=makeDistantPrintSequencePdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'print-sequence.pdf',mimeType:'application/pdf',buffer:printSequencePdf});
@@ -398,6 +452,29 @@ export async function verifyPdfLabels(frame) {
   assert.equal(concaveState.selected,'0');
   assert.match(concaveState.fieldSize,/из векторного шаблона/);
   console.log('Opaque concave field uses exact path, not bbox:',JSON.stringify(concaveState));
+
+  // Gifts templates such as real 7980838/15637 contain a 32 x 32 mm,
+  // 2.5%-opaque working field and an opaque dashed border about 32.4 x 32.4 mm.
+  // The border is decoration only: it must never become the clipping contour.
+  const borderedPdf=makeTransparentFieldWithDashedBorderPdf();
+  await frame.locator('#manualTemplate').setInputFiles({name:'transparent-field-dashed-border.pdf',mimeType:'application/pdf',buffer:borderedPdf});
+  await frame.waitForFunction(()=>
+    document.getElementById('templateName')?.textContent==='transparent-field-dashed-border.pdf' &&
+    document.querySelectorAll('#fields option').length===2
+  );
+  await frame.selectOption('#fields','0');
+  await frame.waitForFunction(()=>/по прозрачной заливке/.test(document.getElementById('fieldSize')?.textContent||''));
+  const dashedBorderState=await frame.evaluate(()=>({
+    selected:document.getElementById('fields')?.value||'',
+    fieldSize:document.getElementById('fieldSize')?.textContent||'',
+    option:document.querySelector('#fields option:nth-child(2)')?.textContent||''
+  }));
+  assert.equal(dashedBorderState.selected,'0');
+  assert.match(dashedBorderState.fieldSize,/32(?:[.,]0+)? × 32(?:[.,]0+)? мм/);
+  assert.match(dashedBorderState.fieldSize,/по прозрачной заливке/);
+  assert.doesNotMatch(dashedBorderState.fieldSize,/32[.,]4/);
+  console.log('Transparent working field beats near-identical dashed border:',JSON.stringify(dashedBorderState));
+
 
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
