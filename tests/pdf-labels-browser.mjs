@@ -503,13 +503,6 @@ export async function verifyPdfLabels(frame) {
   });
   assert.equal(api7987235.status,200);
   assert.equal(api7987235.body?.items?.length,2);
-  const fetchAudit7987235=await frame.parentFrame().evaluate(()=>window.__gwbPdfFetchAudit||[]);
-  console.log('7987235 PDF fetch audit:',JSON.stringify(fetchAudit7987235));
-  for (const id of ['49312484','49327474']) {
-    const hit=fetchAudit7987235.find(row=>row.pdfItemId===id);
-    assert.ok(hit,'No PDF fetch recorded for '+id);
-    assert.equal(hit.hasSpecificOverride,true,'Specific PDF override missed for '+id);
-  }
   const bag7987235=api7987235.body.items.find(item=>item.article==='16535.66');
   const umbrella7987235=api7987235.body.items.find(item=>item.article==='12393.89');
   assert.ok(bag7987235,'16535.66 missing from exact 7987235 parse');
@@ -539,6 +532,14 @@ export async function verifyPdfLabels(frame) {
     await document.getElementById('loadOrder').onclick();
   });
   await frame.waitForFunction(()=>document.getElementById('orderLoading')?.hidden===true && document.querySelectorAll('#orderTemplates option').length===3);
+
+  const fetchAudit7987235=await frame.parentFrame().evaluate(()=>window.__gwbPdfFetchAudit||[]);
+  console.log('7987235 PDF fetch audit:',JSON.stringify(fetchAudit7987235));
+  for (const id of ['49312484','49327474']) {
+    const hit=[...fetchAudit7987235].reverse().find(row=>row.pdfItemId===id);
+    assert.ok(hit,'No PDF fetch recorded for '+id);
+    assert.equal(hit.hasSpecificOverride,true,'Specific PDF override missed for '+id);
+  }
 
   await frame.evaluate(()=>{
     const select=document.getElementById('orderTemplates');
