@@ -346,7 +346,7 @@ export async function verifyPdfLabels(frame) {
   await frame.locator('#artwork').setInputFiles({name:'clip-test.svg',mimeType:'image/svg+xml',buffer:logoSvg});
   await frame.waitForFunction(()=>document.getElementById('step4Box')?.hidden===false && document.getElementById('editorClip')?.disabled===false);
   await frame.locator('#editorClip').check();
-  await frame.locator('#export').click();
+  await frame.locator('#simpleExport').click();
   await frame.waitForFunction(()=>{
     const link=document.getElementById('downloadResult');
     return !!link && link.hidden===false && /^blob:/.test(link.href||'');
