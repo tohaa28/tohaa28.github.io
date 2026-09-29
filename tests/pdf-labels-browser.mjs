@@ -89,6 +89,42 @@ function makeUnlabeledSingleFieldPdf() {
   return Buffer.from(pdf,'ascii');
 }
 
+
+function makeOpacity98ArbitraryFieldPdf() {
+  // Non-rectangular Bezier field. It has no colored stroke and no text label;
+  // the only field marker is a 2% opaque fill (= 98% transparency).
+  const stream = [
+    'q',
+    '/GS98 gs',
+    '0.5 g',
+    '40 60 m',
+    '170 35 245 125 205 245 c',
+    '135 290 45 245 25 145 c',
+    '18 105 22 78 40 60 c',
+    'h',
+    'f',
+    'Q',
+    ''
+  ].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 340] /Resources << /ExtGState << /GS98 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    '<< /Type /ExtGState /ca 0.02 /CA 1 >>'
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){
+    offsets.push(Buffer.byteLength(pdf,'ascii'));
+    pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeAnnotationNumericPdf() {
   const stream = [
     'q',
@@ -200,9 +236,10 @@ export async function verifyPdfLabels(frame) {
 
 
 
-  // Order-global application id 4 becomes PDF-local print1 because this
-  // template contains exactly one selected application.
-  const singlePdf=makeUnlabeledSingleFieldPdf();
+  // Order-global application id 4 becomes PDF-local print1. Normal colored
+  // field detection finds nothing; the field is an arbitrary Bezier path whose
+  // fill has 98% transparency (2% opacity), so the new fallback must find it.
+  const singlePdf=makeOpacity98ArbitraryFieldPdf();
   await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},singlePdf.toString('base64'));
   await frame.evaluate(async()=>{
     document.getElementById('order').value='7920515';
@@ -230,7 +267,7 @@ export async function verifyPdfLabels(frame) {
   assert.match(singleState.rows.find(r=>r.key==='Место')?.value||'',/оборот/);
   assert.equal(singleState.rows.some(r=>r.key==='Контроль мест'),false);
   assert.equal(singleState.rows.some(r=>r.key==='Подписи PDF'),false);
-  console.log('Global application 4 -> local print1:',JSON.stringify(singleState));
+  console.log('98% transparent arbitrary field -> application 4 -> local print1:',JSON.stringify(singleState));
 
   // Same fallback, but the digits exist only as PDF FreeText annotations.
   const annotationPdf=makeAnnotationNumericPdf();
