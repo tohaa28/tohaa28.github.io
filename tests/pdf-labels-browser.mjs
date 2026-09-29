@@ -346,12 +346,20 @@ export async function verifyPdfLabels(frame) {
   await frame.locator('#artwork').setInputFiles({name:'clip-test.svg',mimeType:'image/svg+xml',buffer:logoSvg});
   await frame.waitForFunction(()=>document.getElementById('step4Box')?.hidden===false && document.getElementById('editorClip')?.disabled===false);
   await frame.locator('#editorClip').check();
-  const downloadPromise=frame.page().waitForEvent('download',{timeout:30000});
   await frame.locator('#export').click();
-  const exported=await downloadPromise;
-  const exportedPath=await exported.path();
-  assert.ok(exportedPath,'Exported PDF has no temporary path');
-  const exportedBytes=fs.readFileSync(exportedPath);
+  await frame.waitForFunction(()=>{
+    const link=document.getElementById('downloadResult');
+    return !!link && link.hidden===false && /^blob:/.test(link.href||'');
+  },null,{timeout:30000});
+  const exportedBase64=await frame.evaluate(async()=>{
+    const link=document.getElementById('downloadResult');
+    const response=await fetch(link.href);
+    const bytes=new Uint8Array(await response.arrayBuffer());
+    let binary='';
+    for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+    return btoa(binary);
+  });
+  const exportedBytes=Buffer.from(exportedBase64,'base64');
   const clipDiagnostics=await frame.evaluate(async ({base64,signature})=>{
     const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
     const pdf=await globalThis.pdfjsLib.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:false}).promise;
