@@ -240,6 +240,18 @@ export async function verifyPdfLabels(frame) {
   // field detection finds nothing; the field is an arbitrary Bezier path whose
   // fill has 98% transparency (2% opacity), so the new fallback must find it.
   const singlePdf=makeOpacity98ArbitraryFieldPdf();
+  const opacityOps=await frame.evaluate(async base64=>{
+    const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+    const pdf=await globalThis.pdfjsLib.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:false}).promise;
+    const page=await pdf.getPage(1);
+    const list=await page.getOperatorList();
+    const names=new Map(Object.entries(globalThis.pdfjsLib.OPS||{}).map(([name,id])=>[id,name]));
+    const rows=list.fnArray.map((fn,index)=>({name:names.get(fn)||String(fn),args:list.argsArray[index]}))
+      .filter(row=>/GState|Fill|constructPath|fill|stroke/i.test(row.name));
+    await pdf.destroy();
+    return rows;
+  },singlePdf.toString('base64'));
+  console.log('98% opacity PDF operator diagnostics:',JSON.stringify(opacityOps));
   await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},singlePdf.toString('base64'));
   await frame.evaluate(async()=>{
     document.getElementById('order').value='7920515';
