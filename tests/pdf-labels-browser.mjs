@@ -411,7 +411,11 @@ export async function verifyPdfLabels(frame) {
   assert.match(options[1],/Y 73/);
   assert.match(options[2],/Y 123/);
   console.log('PDF printN sequence overrides distant/reversed label geometry:',JSON.stringify(options));
-  await frame.selectOption('#fields','0');
+  await frame.evaluate(()=>{
+    const select=document.getElementById('fields');
+    select.value='0';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  });
   await frame.waitForFunction(()=>document.getElementById('stage')?.dataset.fieldViewAligned==='false');
   const ordinaryViewState=await frame.evaluate(()=>{
     const stage=document.getElementById('stage');
