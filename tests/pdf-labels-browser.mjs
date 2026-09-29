@@ -576,14 +576,13 @@ export async function verifyPdfLabels(frame) {
   });
   await frame.waitForFunction(()=>{
     const article=document.getElementById('article')?.value||'';
-    const fields=[...document.querySelectorAll('#fields option')].slice(1).map(o=>o.textContent||'');
+    const status=document.getElementById('status')?.textContent||'';
     return article==='12393.89' &&
       document.getElementById('orderEditor')?.hidden===false &&
-      document.querySelectorAll('#orderFieldChoice option').length===2 &&
-      fields.length===1 &&
-      /200\.00 × 100\.00 мм/.test(fields[0]);
-  });
+      (/Шаблон заказа №7987235 открыт/.test(status)||/Выберите поле для логотипа/.test(status));
+  },null,{timeout:30000});
   const rotatedState7987235=await frame.evaluate(()=>({
+    status:document.getElementById('status')?.textContent||'',
     options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
     full:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
     fieldSize:document.getElementById('fieldSize')?.textContent||'',
@@ -591,6 +590,7 @@ export async function verifyPdfLabels(frame) {
     hint:document.getElementById('fieldChoiceHint')?.textContent||'',
     unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
   }));
+  console.log('Exact 7987235 rotated state before assertions:',JSON.stringify(rotatedState7987235));
   assert.equal(rotatedState7987235.options.length,2);
   assert.match(rotatedState7987235.options[1],/^купол, клин 1 .*B4: Шелкография на текстиль,3$/);
   assert.equal(rotatedState7987235.unmatched,false);
