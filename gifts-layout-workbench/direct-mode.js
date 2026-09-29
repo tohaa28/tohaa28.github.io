@@ -286,6 +286,21 @@
     return catalog;
   }
 
+  function drawTaskIdsForItem(root) {
+    const explicit = clean(root.getAttribute("data-drawtaskids"))
+      .split(/[\s,;]+/)
+      .filter(value => /^\d{1,20}$/.test(value));
+    if (explicit.length) return explicit;
+
+    const buttons = [...root.querySelectorAll(
+      ".j_edit_draw[data-drawtaskid],.j_edit_draw[data-draw-task-id],[data-drawtaskid][data-id]"
+    )];
+    const ids = buttons
+      .map(node => clean(node.getAttribute("data-drawtaskid") || node.getAttribute("data-draw-task-id")))
+      .filter(value => /^\d{1,20}$/.test(value));
+    return [...new Set(ids)];
+  }
+
   function extractOrderApplicationBindings(root, article, drawTaskCatalog = new Map()) {
     const imp = root.querySelector(".cart-tbl-imp");
     if (!imp) return [];
@@ -298,9 +313,7 @@
     const renderedPlaceNodes = [...imp.querySelectorAll(":scope > .size--sm.flex.flex-center.flex-column > div")];
     const legacyPlaceNodes = [...imp.querySelectorAll(".flex-center.flex-column > .color-text")];
     const allPlaceNodes = renderedPlaceNodes.length ? renderedPlaceNodes : legacyPlaceNodes;
-    const drawTaskIds = clean(root.getAttribute("data-drawtaskids"))
-      .split(/[\s,;]+/)
-      .filter(Boolean);
+    const drawTaskIds = drawTaskIdsForItem(root);
     const bindings = [];
 
     const siblingPlaceFor = methodNode => {
@@ -348,8 +361,8 @@
     return bindings;
   }
 
-  function popupApplicationIdsFromContext(context) {
-    if (!context) return [];
+  function popupApplicationTextFromContext(context) {
+    if (!context) return "";
     let text = "";
     const row = context.closest?.("tr");
     const table = row?.closest?.("table");
@@ -363,7 +376,38 @@
         text += " " + clean(cells[index]?.textContent || "");
       }
     }
-    if (!text.trim()) text = clean(context.textContent || "");
+    return text.trim() || clean(context.textContent || "");
+  }
+
+  function popupApplicationSpecsFromContext(context) {
+    const text = popupApplicationTextFromContext(context);
+    const specs = [];
+    const seen = new Set();
+    const rx = /\[([^\]]+)\]\s*([^()]*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*[xх×]\s*(\d+(?:[.,]\d+)?)\s*(?:см|cm)\s*\)\s*\(\s*(\d{1,20})\s*\)/gi;
+    for (const match of text.matchAll(rx)) {
+      const applicationId = match[5];
+      if (seen.has(applicationId)) continue;
+      seen.add(applicationId);
+      const w = Number(match[3].replace(",", ".")) * 10;
+      const h = Number(match[4].replace(",", ".")) * 10;
+      if (!(w > 0 && h > 0 && Number.isFinite(w + h))) continue;
+      specs.push({
+        applicationId,
+        applicationIndex: Number(applicationId),
+        code: clean(match[1]),
+        method: clean(`[${match[1]}] ${match[2]}`),
+        w,
+        h,
+        source: "makets-popup-application-size"
+      });
+    }
+    return specs;
+  }
+
+  function popupApplicationIdsFromContext(context) {
+    const specs = popupApplicationSpecsFromContext(context);
+    if (specs.length) return specs.map(spec => spec.applicationId);
+    const text = popupApplicationTextFromContext(context);
     const ids = [...text.matchAll(/\((\d{1,20})\)/g)].map(match => match[1]);
     return [...new Set(ids)];
   }
@@ -750,7 +794,10 @@
       const placeBindings = popupPlaceBindingsFromContext(context, article);
       const places = placeBindings.map(binding => binding.name);
       const method = popupMethodFromContext(context);
-      const applicationIds = popupApplicationIdsFromContext(context);
+      const applications = popupApplicationSpecsFromContext(context);
+      const applicationIds = applications.length
+        ? applications.map(application => application.applicationId)
+        : popupApplicationIdsFromContext(context);
 
       relations.push({
         pdfItemId,
@@ -759,6 +806,7 @@
         places,
         placeBindings,
         applicationIds,
+        applications,
         placeSource: places.length ? "makets-popup-place" : "not-found",
         contextText
       });
@@ -777,11 +825,11 @@
       const article = clean(root.querySelector(".cart-tbl-name")?.textContent)
         .replace(/^Артикул\s*/i, "");
       const product = clean(root.querySelector(".cart-tbl-id .cart-tbl-lbl")?.textContent);
-      const qtyMatch = clean(root.querySelector(".cart-qty")?.textContent).match(/\d+/);
+      const qtyNode = root.querySelector(".cart-qty");
+      const qtyMatch = clean(qtyNode?.value || qtyNode?.getAttribute?.("value") || qtyNode?.textContent).match(/\d+/);
       const quantity = qtyMatch ? Number(qtyMatch[0]) : NaN;
-      const method = clean(root.querySelector(".cart-tbl-imp g-droper > span")?.textContent);
-      const drawTaskRaw = clean(root.getAttribute("data-drawtaskids"));
-      const drawTaskIds = drawTaskRaw ? drawTaskRaw.split(/[\s,;]+/).filter(Boolean) : [];
+      const primaryMethod = clean(root.querySelector(".cart-tbl-imp g-droper > span")?.textContent);
+      const drawTaskIds = drawTaskIdsForItem(root);
       const placeAudit = extractPlaceAudit(root, article);
       const applicationBindings = extractOrderApplicationBindings(root, article, drawTaskCatalog);
       if (applicationBindings.length) {
@@ -792,6 +840,8 @@
         });
       }
       const places = placeAudit.places;
+      const methods = [...new Set(applicationBindings.map(binding => binding.method).filter(Boolean))];
+      const method = methods.length ? methods.join("; ") : primaryMethod;
 
       if (!/^\d+$/.test(itemId) || !article || !method ||
           !Number.isSafeInteger(quantity) || quantity < 1) continue;
@@ -805,6 +855,7 @@
         product,
         quantity,
         method,
+        methods,
         place: places.join(", "),
         places,
         placeBindings: placeAudit.placeBindings || [],
@@ -874,6 +925,17 @@
             item.templateApplicationIds = Array.isArray(relation.applicationIds)
               ? [...relation.applicationIds]
               : [];
+            item.templateApplications = Array.isArray(relation.applications)
+              ? relation.applications.map(application => ({...application}))
+              : [];
+            item.expectedFieldSizes = item.templateApplications
+              .filter(application => Number.isFinite(application.w) && Number.isFinite(application.h))
+              .map(application => ({
+                applicationId: application.applicationId,
+                w: application.w,
+                h: application.h,
+                source: application.source || "makets-popup-application-size"
+              }));
 
             if (!Array.isArray(item.placeBindings)) item.placeBindings = [];
             if (!Array.isArray(item.applicationBindings)) item.applicationBindings = [];
@@ -886,11 +948,17 @@
                   const binding = item.applicationBindings.find(candidate =>
                     String(candidate.applicationId || "") === String(id)
                   );
+                  const application = item.templateApplications.find(candidate =>
+                    String(candidate.applicationId || "") === String(id)
+                  );
                   return binding ? {
                     ...binding,
                     templateIndex: localIndex + 1,
                     index: localIndex + 1,
-                    printId: "print" + (localIndex + 1)
+                    printId: "print" + (localIndex + 1),
+                    fieldW: application?.w,
+                    fieldH: application?.h,
+                    fieldSizeSource: application?.source || ""
                   } : null;
                 })
                 .filter(Boolean);
@@ -925,6 +993,9 @@
                   printId: existing?.printId || "",
                   index: existing?.index || popup?.index || null,
                   method: existing?.method || "",
+                  fieldW: existing?.fieldW,
+                  fieldH: existing?.fieldH,
+                  fieldSizeSource: existing?.fieldSizeSource || "",
                   source: existing?.source || (popup ? "order+makets-popup" : item.placeCountSource)
                 };
               });
@@ -983,7 +1054,9 @@
                 })
               : [];
             const itemApplicationIds = new Set(
-              (item.applicationBindings || []).map(binding => String(binding.taskId || "")).filter(Boolean)
+              (item.applicationBindings || [])
+                .map(binding => String(binding.applicationId || binding.taskId || ""))
+                .filter(Boolean)
             );
             const applicationMatched = itemApplicationIds.size
               ? candidates.filter(relation => {
