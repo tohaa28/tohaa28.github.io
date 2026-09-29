@@ -339,22 +339,22 @@ export async function verifyPdfLabels(frame) {
     document.querySelectorAll('#fields option').length===3
   );
   const options=await frame.locator('#fields option').allTextContents();
-  assert.match(options[1],/^оборот · стр\./);
-  assert.match(options[2],/^лицо · стр\./);
+  assert.match(options[1],/^лицо · стр\./);
+  assert.match(options[2],/^оборот · стр\./);
   assert.match(options[1],/Y 73/);
   assert.match(options[2],/Y 123/);
-  console.log('PDF text → geometry (reversed print IDs):',JSON.stringify(options));
+  console.log('PDF printN sequence overrides distant/reversed label geometry:',JSON.stringify(options));
 
-  // Same PDF through the order adapter: the order lists face first, PDF draws back first.
+  // Same PDF through the order adapter: print1 is field 1 and print2 is field 2.
   await frame.parentFrame().evaluate(base64=>{
     window.__gwbTemplateOverride=base64;
   },fs.readFileSync('tests/fixtures/reversed.pdf').toString('base64'));
   await frame.evaluate(async()=>{document.getElementById('order').value='7920510';await document.getElementById('loadOrder').onclick();});
   await frame.waitForFunction(()=>document.getElementById('orderLoading').hidden && document.querySelectorAll('#orderFieldChoice option').length===3);
   const names=await frame.locator('#orderFieldChoice option').allTextContents();
-  assert.match(names[1],/^оборот · LM1:/);assert.match(names[2],/^лицо · LM1:/);
+  assert.match(names[1],/^лицо · LM1:/);assert.match(names[2],/^оборот · LM1:/);
   assert.equal(await frame.locator('#fieldChoiceHint').evaluate(e=>e.classList.contains('unmatched')),false);
-  console.log('Order validates PDF names without reordering:',JSON.stringify(names));
+  console.log('Order follows authoritative printN sequence:',JSON.stringify(names));
   for(const fixture of ['wrong','missing']) {
     await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},fs.readFileSync(`tests/fixtures/${fixture}.pdf`).toString('base64'));
     await frame.evaluate(async()=>{document.getElementById('order').value='7920509';await document.getElementById('loadOrder').onclick();});
