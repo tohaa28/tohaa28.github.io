@@ -382,7 +382,7 @@ export async function verifyPdfLabels(frame) {
   // vector shapes just like real application frames.
   const serviceZonePdf=makeServiceZoneExclusionPdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'service-zones.pdf',mimeType:'application/pdf',buffer:serviceZonePdf});
-  await frame.waitForFunction(()=>document.getElementById('templateName')?.textContent==='service-zones.pdf');
+  await frame.waitForFunction(()=>!/^Открываю/.test(document.getElementById('status')?.textContent||'') && document.getElementById('templateName')?.textContent==='service-zones.pdf');
   await frame.waitForTimeout(400);
   const serviceZoneState=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
@@ -418,8 +418,9 @@ export async function verifyPdfLabels(frame) {
   const printSequencePdf=makeDistantPrintSequencePdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'print-sequence.pdf',mimeType:'application/pdf',buffer:printSequencePdf});
   await frame.waitForFunction(()=>
-    document.getElementById('templateName')?.textContent==='print-sequence.pdf' &&
-    document.querySelectorAll('#fields option').length===3
+    !/^Открываю/.test(document.getElementById('status')?.textContent||'') && document.getElementById('templateName')?.textContent==='print-sequence.pdf' &&
+    document.querySelectorAll('#fields option').length===3 &&
+    document.querySelectorAll('#fields option')[1]?.textContent.startsWith('face · стр.')
   );
   const printSequenceOptions=await frame.locator('#fields option').allTextContents();
   assert.match(printSequenceOptions[1],/^face · стр\./);
@@ -431,7 +432,7 @@ export async function verifyPdfLabels(frame) {
   const opaqueConcavePdf=makeOpaqueConcaveFieldPdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'opaque-concave.pdf',mimeType:'application/pdf',buffer:opaqueConcavePdf});
   await frame.waitForFunction(()=>
-    document.getElementById('templateName')?.textContent==='opaque-concave.pdf' &&
+    !/^Открываю/.test(document.getElementById('status')?.textContent||'') && document.getElementById('templateName')?.textContent==='opaque-concave.pdf' &&
     document.querySelectorAll('#fields option').length===2
   );
   assert.equal(await frame.locator('#fields').inputValue(),'');
@@ -459,7 +460,7 @@ export async function verifyPdfLabels(frame) {
   const borderedPdf=makeTransparentFieldWithDashedBorderPdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'transparent-field-dashed-border.pdf',mimeType:'application/pdf',buffer:borderedPdf});
   await frame.waitForFunction(()=>
-    document.getElementById('templateName')?.textContent==='transparent-field-dashed-border.pdf' &&
+    !/^Открываю/.test(document.getElementById('status')?.textContent||'') && document.getElementById('templateName')?.textContent==='transparent-field-dashed-border.pdf' &&
     document.querySelectorAll('#fields option').length===2
   );
   await frame.evaluate(()=>{
@@ -483,7 +484,7 @@ export async function verifyPdfLabels(frame) {
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
   await frame.waitForFunction(()=>
-    document.getElementById('templateName')?.textContent==='reversed.pdf' &&
+    !/^Открываю/.test(document.getElementById('status')?.textContent||'') && document.getElementById('templateName')?.textContent==='reversed.pdf' &&
     document.querySelectorAll('#fields option').length===3
   );
   const options=await frame.locator('#fields option').allTextContents();
@@ -642,6 +643,10 @@ export async function verifyPdfLabels(frame) {
   await frame.locator('#artwork').setInputFiles({name:'clip-test.svg',mimeType:'image/svg+xml',buffer:logoSvg});
   await frame.waitForFunction(()=>document.getElementById('step4Box')?.hidden===false && document.getElementById('editorClip')?.disabled===false);
   await frame.locator('#editorClip').check();
+  // This SVG is RGB and the fixture method is DTF: explicitly acknowledge the
+  // new color-model error before testing the unchanged PDF clipping exporter.
+  await frame.waitForFunction(()=>window.gwbLogoPreflight?.some(r=>r.findings.some(f=>f.id==='rgb-color-model')));
+  await frame.locator('#confirmErrors').check();
   await frame.locator('#simpleExport').click();
   await frame.waitForFunction(()=>{
     const link=document.getElementById('downloadResult');

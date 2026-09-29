@@ -1,3 +1,5 @@
+import {applyLogoPreflight} from './patch-artwork-preflight.mjs';
+applyLogoPreflight();
 import fs from "node:fs";
 
 const base = "https://tohaa28.github.io/gifts-layout-workbench/";

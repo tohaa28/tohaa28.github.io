@@ -8,7 +8,7 @@ on:
       - "index.html"
       - "editor.html"
       - "direct-mode.js"
-      - "tools/build-launcher.mjs"
+      - "tools/**"
       - "assets/**"
       - "vendor/**"
       - ".github/workflows/publish-direct-workbench.yml"
@@ -18,12 +18,15 @@ permissions:
   contents: write
 
 jobs:
+  verify:
+    uses: ./.github/workflows/test-direct-workbench.yml
   publish:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: gifts-layout-workbench-source
+          ref: ${{ github.sha }}
           path: source
           fetch-depth: 0
 

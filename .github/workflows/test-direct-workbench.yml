@@ -1,6 +1,7 @@
 name: Test direct Workbench on gifts.ru
 
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     branches:
@@ -8,7 +9,7 @@ on:
     paths:
       - "direct-mode.js"
       - "editor.html"
-      - "tools/build-launcher.mjs"
+      - "tools/**"
       - "assets/**"
       - "tests/**"
       - ".github/workflows/test-direct-workbench.yml"
@@ -19,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: gifts-layout-workbench-source
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -47,6 +48,9 @@ jobs:
           const errors = [];
           page.on("pageerror", e => errors.push("pageerror: "+e.message));
           page.on("console", m => { if (m.type()==="error") errors.push("console: "+m.text()); });
+          // Deterministic host shell; order/template requests are independently mocked below.
+          // Set WORKBENCH_LIVE_SMOKE=1 to exercise the live host chrome as well.
+          if (!process.env.WORKBENCH_LIVE_SMOKE) await page.route("https://gifts.ru/", route => route.fulfill({contentType:"text/html",body:"<!doctype html><html><head><title>Gifts test host</title></head><body><main></main></body></html>"}));
           await page.goto("https://gifts.ru/", {waitUntil:"domcontentloaded", timeout:60000});
           await page.evaluate(() => {
             const a = document.createElement("a");
@@ -669,6 +673,8 @@ jobs:
 
           const {verifyPdfLabels} = await import("./tests/pdf-labels-browser.mjs");
           await verifyPdfLabels(frame);
+          const {verifyLogoPreflight} = await import("./tests/logo-preflight-browser.mjs");
+          await verifyLogoPreflight(frame);
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");

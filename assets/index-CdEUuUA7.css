@@ -564,3 +564,5 @@ html[data-static-mode="true"] #orderIntro{
   color:#a33b32;
   font-weight:700
 }
+
+.logo-preflight{margin-top:12px;font-size:13px;line-height:1.45;overflow-wrap:anywhere}.logo-preflight section{margin:12px 0}.logo-preflight p{margin:7px 0}.logo-preflight .bad{color:#a82036}.logo-preflight .manual{color:#785b16}.logo-preflight .ok{color:#16706a}.logo-preflight a{display:block;margin-top:8px}

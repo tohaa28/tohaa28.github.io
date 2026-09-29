@@ -1,0 +1,1416 @@
+{
+  "version": "2026-09-29.1",
+  "checkedAt": "2026-09-29",
+  "sources": [
+    {
+      "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+      "sha256": "49a904f7fbcded3f7f76690c0913f12142c8adef0751ce89198e11a04043ad5e"
+    },
+    {
+      "url": "https://gifts.ru/maket-problems",
+      "sha256": "411170ffeed761ac70ca287f9d727825991cd16d624c53c5d616081639c241e0"
+    }
+  ],
+  "sourceCodes": [
+    "A0",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "AR1",
+    "AR2",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "DTF-F",
+    "DTF1",
+    "DTF2",
+    "DTF3",
+    "DTF4",
+    "DTG1",
+    "DTG2",
+    "DTG3",
+    "F1",
+    "F2",
+    "F3",
+    "FS",
+    "H1",
+    "H2",
+    "H3",
+    "HC1",
+    "HC2",
+    "I1",
+    "I2",
+    "I3",
+    "IB1",
+    "IB2",
+    "IB3",
+    "IO1",
+    "IO2",
+    "IO3",
+    "LB1",
+    "LB2",
+    "LB3",
+    "LB4",
+    "LC1",
+    "LC2",
+    "LC3",
+    "LM1",
+    "LM2",
+    "LM3",
+    "LRC",
+    "LRM",
+    "LRUV",
+    "LSC",
+    "LSM",
+    "LSP",
+    "LUV1",
+    "LUV2",
+    "LUV3",
+    "M1",
+    "M2",
+    "M3",
+    "MS1",
+    "MS2",
+    "PS1",
+    "RP1",
+    "RP2",
+    "RP3",
+    "SB1",
+    "SB21",
+    "SB22",
+    "SB3",
+    "SBR1",
+    "SBR2",
+    "SH1",
+    "SH2",
+    "SH3",
+    "SHR",
+    "SL1",
+    "SL2",
+    "T1",
+    "T2",
+    "T3",
+    "UV-DTF1",
+    "UV-DTF2",
+    "UV1",
+    "UV2",
+    "UV3",
+    "UVP",
+    "UVR",
+    "UVRL"
+  ],
+  "rules": {
+    "B1": {
+      "code": "B1",
+      "name": "Шелкография на текстиль",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.4,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        },
+        {
+          "when": "foilOrPuff",
+          "positive": 0.5,
+          "negative": 0.6
+        },
+        {
+          "when": "puff",
+          "maxColors": 1
+        }
+      ]
+    },
+    "B2": {
+      "code": "B2",
+      "name": "Шелкография на текстиль",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.4,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        },
+        {
+          "when": "foilOrPuff",
+          "positive": 0.5,
+          "negative": 0.6
+        },
+        {
+          "when": "puff",
+          "maxColors": 1
+        }
+      ]
+    },
+    "B3": {
+      "code": "B3",
+      "name": "Шелкография на текстиль",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.4,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        },
+        {
+          "when": "foilOrPuff",
+          "positive": 0.5,
+          "negative": 0.6
+        },
+        {
+          "when": "puff",
+          "maxColors": 1
+        }
+      ]
+    },
+    "B4": {
+      "code": "B4",
+      "name": "Шелкография на текстиль",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.4,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        },
+        {
+          "when": "foilOrPuff",
+          "positive": 0.5,
+          "negative": 0.6
+        },
+        {
+          "when": "puff",
+          "maxColors": 1
+        }
+      ]
+    },
+    "D1": {
+      "code": "D1",
+      "name": "Шелкография с трансфером",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.4,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        }
+      ]
+    },
+    "D2": {
+      "code": "D2",
+      "name": "Шелкография с трансфером",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.4,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        }
+      ]
+    },
+    "D3": {
+      "code": "D3",
+      "name": "Шелкография с трансфером",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.4,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        }
+      ]
+    },
+    "D4": {
+      "code": "D4",
+      "name": "Шелкография с трансфером",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.4,
+      "palette": "Pantone C",
+      "tintMin": 20,
+      "conditions": [
+        {
+          "when": "underbase",
+          "positive": 0.4
+        }
+      ]
+    },
+    "SH1": {
+      "code": "SH1",
+      "name": "Шелкография (1 цвет)",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "maxColors": 1,
+      "notes": [
+        "Цветные и тёмные изделия: ограниченная палитра без подложки."
+      ]
+    },
+    "SH2": {
+      "code": "SH2",
+      "name": "Шелкография (1 цвет)",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "maxColors": 1,
+      "notes": [
+        "Цветные и тёмные изделия: ограниченная палитра без подложки."
+      ]
+    },
+    "SH3": {
+      "code": "SH3",
+      "name": "Шелкография (1 цвет)",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.3,
+      "palette": "Pantone C",
+      "maxColors": 1,
+      "notes": [
+        "Цветные и тёмные изделия: ограниченная палитра без подложки."
+      ]
+    },
+    "SHR": {
+      "code": "SHR",
+      "name": "Круговая шелкография",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.3,
+      "isolated": 0.3,
+      "maxColors": 1,
+      "palette": "золото, серебро, прозрачный глянцевый лак"
+    },
+    "I1": {
+      "code": "I1",
+      "name": "Вышивка",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "negativeRange": [
+        1,
+        1.2
+      ],
+      "letter": 5,
+      "round": 2,
+      "palette": "палитра ниток / Pantone C",
+      "conditions": [
+        {
+          "when": "specialThread",
+          "positive": 1.5,
+          "negative": 2,
+          "letter": 7
+        }
+      ]
+    },
+    "I2": {
+      "code": "I2",
+      "name": "Вышивка",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "negativeRange": [
+        1,
+        1.2
+      ],
+      "letter": 5,
+      "round": 2,
+      "palette": "палитра ниток / Pantone C",
+      "conditions": [
+        {
+          "when": "specialThread",
+          "positive": 1.5,
+          "negative": 2,
+          "letter": 7
+        }
+      ]
+    },
+    "I3": {
+      "code": "I3",
+      "name": "Вышивка",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "negativeRange": [
+        1,
+        1.2
+      ],
+      "letter": 5,
+      "round": 2,
+      "palette": "палитра ниток / Pantone C",
+      "conditions": [
+        {
+          "when": "specialThread",
+          "positive": 1.5,
+          "negative": 2,
+          "letter": 7
+        }
+      ]
+    },
+    "IB1": {
+      "code": "IB1",
+      "name": "Вышивка",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "negativeRange": [
+        1,
+        1.2
+      ],
+      "letter": 5,
+      "round": 2,
+      "palette": "палитра ниток / Pantone C",
+      "conditions": [
+        {
+          "when": "specialThread",
+          "positive": 1.5,
+          "negative": 2,
+          "letter": 7
+        }
+      ]
+    },
+    "IB2": {
+      "code": "IB2",
+      "name": "Вышивка",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "negativeRange": [
+        1,
+        1.2
+      ],
+      "letter": 5,
+      "round": 2,
+      "palette": "палитра ниток / Pantone C",
+      "conditions": [
+        {
+          "when": "specialThread",
+          "positive": 1.5,
+          "negative": 2,
+          "letter": 7
+        }
+      ]
+    },
+    "IB3": {
+      "code": "IB3",
+      "name": "Вышивка",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "negativeRange": [
+        1,
+        1.2
+      ],
+      "letter": 5,
+      "round": 2,
+      "palette": "палитра ниток / Pantone C",
+      "conditions": [
+        {
+          "when": "specialThread",
+          "positive": 1.5,
+          "negative": 2,
+          "letter": 7
+        }
+      ]
+    },
+    "IO1": {
+      "code": "IO1",
+      "name": "Объёмная вышивка",
+      "minDpi": 300,
+      "positive": 2,
+      "negative": 2,
+      "letter": 10,
+      "round": 4.5,
+      "palette": "палитра ниток / Pantone C"
+    },
+    "IO2": {
+      "code": "IO2",
+      "name": "Объёмная вышивка",
+      "minDpi": 300,
+      "positive": 2,
+      "negative": 2,
+      "letter": 10,
+      "round": 4.5,
+      "palette": "палитра ниток / Pantone C"
+    },
+    "IO3": {
+      "code": "IO3",
+      "name": "Объёмная вышивка",
+      "minDpi": 300,
+      "positive": 2,
+      "negative": 2,
+      "letter": 10,
+      "round": 4.5,
+      "palette": "палитра ниток / Pantone C"
+    },
+    "A0": {
+      "code": "A0",
+      "name": "Тампопечать",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.15,
+      "palette": "Pantone C",
+      "notes": [
+        "Силикон: стандартные цвета без подложки, подбор Pantone недоступен."
+      ]
+    },
+    "A1": {
+      "code": "A1",
+      "name": "Тампопечать",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.15,
+      "palette": "Pantone C",
+      "notes": [
+        "Силикон: стандартные цвета без подложки, подбор Pantone недоступен."
+      ]
+    },
+    "A2": {
+      "code": "A2",
+      "name": "Тампопечать",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.15,
+      "palette": "Pantone C",
+      "notes": [
+        "Силикон: стандартные цвета без подложки, подбор Pantone недоступен."
+      ]
+    },
+    "A3": {
+      "code": "A3",
+      "name": "Тампопечать",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.15,
+      "palette": "Pantone C",
+      "notes": [
+        "Силикон: стандартные цвета без подложки, подбор Pantone недоступен."
+      ]
+    },
+    "A4": {
+      "code": "A4",
+      "name": "Тампопечать",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.15,
+      "palette": "Pantone C",
+      "notes": [
+        "Силикон: стандартные цвета без подложки, подбор Pantone недоступен."
+      ]
+    },
+    "AR1": {
+      "code": "AR1",
+      "name": "Тампопечать на шары",
+      "minDpi": 160,
+      "positive": 0.4,
+      "negative": 0.4,
+      "recommendedDpi": 300,
+      "tintMin": 15,
+      "tintMax": 85,
+      "palette": "Pantone C или CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "pantone",
+          "maxColors": 2
+        }
+      ],
+      "notes": [
+        "Для CMYK + White важные элементы рекомендованы от 2 мм."
+      ]
+    },
+    "AR2": {
+      "code": "AR2",
+      "name": "Тампопечать на шары",
+      "minDpi": 160,
+      "positive": 0.4,
+      "negative": 0.4,
+      "recommendedDpi": 300,
+      "tintMin": 15,
+      "tintMax": 85,
+      "palette": "Pantone C или CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "pantone",
+          "maxColors": 2
+        }
+      ],
+      "notes": [
+        "Для CMYK + White важные элементы рекомендованы от 2 мм."
+      ]
+    },
+    "H1": {
+      "code": "H1",
+      "name": "Деколь",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "Pantone C / Heraeus",
+      "notes": [
+        "Допуск цвета Pantone до 25%."
+      ]
+    },
+    "H2": {
+      "code": "H2",
+      "name": "Деколь",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "Pantone C / Heraeus",
+      "notes": [
+        "Допуск цвета Pantone до 25%."
+      ]
+    },
+    "H3": {
+      "code": "H3",
+      "name": "Деколь",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "Pantone C / Heraeus",
+      "notes": [
+        "Допуск цвета Pantone до 25%."
+      ]
+    },
+    "HC1": {
+      "code": "HC1",
+      "name": "Холодная деколь",
+      "minDpi": 300,
+      "positive": 0.2,
+      "negative": 0.25,
+      "tintMin": 20,
+      "palette": "Pantone C"
+    },
+    "HC2": {
+      "code": "HC2",
+      "name": "Холодная деколь",
+      "minDpi": 300,
+      "positive": 0.2,
+      "negative": 0.25,
+      "tintMin": 20,
+      "palette": "Pantone C"
+    },
+    "SB1": {
+      "code": "SB1",
+      "name": "Сублимация",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "tintMin": 8,
+      "inkMax": 330,
+      "palette": "CMYK"
+    },
+    "SB21": {
+      "code": "SB21",
+      "name": "Сублимация",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "tintMin": 8,
+      "inkMax": 330,
+      "palette": "CMYK"
+    },
+    "SB22": {
+      "code": "SB22",
+      "name": "Сублимация",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "tintMin": 8,
+      "inkMax": 330,
+      "palette": "CMYK"
+    },
+    "SBR1": {
+      "code": "SBR1",
+      "name": "Сублимация",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "tintMin": 8,
+      "inkMax": 330,
+      "palette": "CMYK"
+    },
+    "SBR2": {
+      "code": "SBR2",
+      "name": "Сублимация",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "tintMin": 8,
+      "inkMax": 330,
+      "palette": "CMYK"
+    },
+    "SB3": {
+      "code": "SB3",
+      "name": "Сублимация на лентах",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "tintMin": 8,
+      "inkMax": 330,
+      "palette": "CMYK",
+      "guard": 3,
+      "guardReference": "край ленты"
+    },
+    "LM1": {
+      "code": "LM1",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LM2": {
+      "code": "LM2",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LM3": {
+      "code": "LM3",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LB1": {
+      "code": "LB1",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LB2": {
+      "code": "LB2",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LB3": {
+      "code": "LB3",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LB4": {
+      "code": "LB4",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LRM": {
+      "code": "LRM",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала"
+    },
+    "LSM": {
+      "code": "LSM",
+      "name": "Лазерная гравировка по металлу",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "цвет материала",
+      "guard": 2,
+      "guardReference": "край шильда"
+    },
+    "LC1": {
+      "code": "LC1",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LC2": {
+      "code": "LC2",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LC3": {
+      "code": "LC3",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LRC": {
+      "code": "LRC",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LSP": {
+      "code": "LSP",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ],
+      "guard": 2,
+      "guardReference": "край шильда"
+    },
+    "LSC": {
+      "code": "LSC",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ],
+      "guard": 2,
+      "guardReference": "край шильда"
+    },
+    "LUV1": {
+      "code": "LUV1",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LUV2": {
+      "code": "LUV2",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LUV3": {
+      "code": "LUV3",
+      "name": "Лазерная гравировка",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "LRUV": {
+      "code": "LRUV",
+      "name": "Круговая UV-гравировка",
+      "minDpi": 300,
+      "positive": 0.2,
+      "negative": 0.3,
+      "letter": 2,
+      "palette": "цвет материала",
+      "conditions": [
+        {
+          "when": "leatherFleeceNeoprene",
+          "positive": 1,
+          "letter": 5
+        }
+      ]
+    },
+    "T1": {
+      "code": "T1",
+      "name": "Тиснение бесцветное",
+      "minDpi": 300,
+      "positive": 0.2,
+      "negative": 0.3,
+      "guard": 18,
+      "guardReference": "край изделия",
+      "palette": "цвет материала",
+      "closedContours": true,
+      "noStrokes": true,
+      "noIntersections": true
+    },
+    "T2": {
+      "code": "T2",
+      "name": "Тиснение фольгой",
+      "minDpi": 300,
+      "positive": 0.3,
+      "negative": 0.5,
+      "guard": 18,
+      "guardReference": "край изделия",
+      "palette": "цвет материала / фольги",
+      "closedContours": true,
+      "noStrokes": true,
+      "noIntersections": true
+    },
+    "T3": {
+      "code": "T3",
+      "name": "Микротиснение фольгой",
+      "minDpi": 300,
+      "textureElement": 2,
+      "textureGap": 0.5,
+      "textureBoundary": 0.3,
+      "textureInset": 0.3,
+      "maxTextures": 3,
+      "conditions": [
+        {
+          "when": "customTexture",
+          "positive": 0.3,
+          "negative": 0.3
+        }
+      ],
+      "notes": [
+        "Не более трёх текстур на клише по согласованию."
+      ]
+    },
+    "M1": {
+      "code": "M1",
+      "name": "Цифровая печать на вставке",
+      "minDpi": 300,
+      "positive": 0.15,
+      "tintMin": 10,
+      "palette": "CMYK"
+    },
+    "M2": {
+      "code": "M2",
+      "name": "Цифровая печать на вставке",
+      "minDpi": 300,
+      "positive": 0.15,
+      "tintMin": 10,
+      "palette": "CMYK"
+    },
+    "M3": {
+      "code": "M3",
+      "name": "Цифровая печать на вставке",
+      "minDpi": 300,
+      "positive": 0.15,
+      "tintMin": 10,
+      "palette": "CMYK",
+      "guard": 5,
+      "guardReference": "край циферблата",
+      "bleed": 2
+    },
+    "UV1": {
+      "code": "UV1",
+      "name": "УФ-печать",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "softTouch",
+          "positive": 0.5,
+          "negative": 0.5
+        },
+        {
+          "when": "fineDetail",
+          "minDpi": 600
+        }
+      ],
+      "notes": [
+        "Для мелких элементов 600–1200 dpi."
+      ]
+    },
+    "UV2": {
+      "code": "UV2",
+      "name": "УФ-печать",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "softTouch",
+          "positive": 0.5,
+          "negative": 0.5
+        },
+        {
+          "when": "fineDetail",
+          "minDpi": 600
+        }
+      ],
+      "notes": [
+        "Для мелких элементов 600–1200 dpi."
+      ]
+    },
+    "UV3": {
+      "code": "UV3",
+      "name": "УФ-печать",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "softTouch",
+          "positive": 0.5,
+          "negative": 0.5
+        },
+        {
+          "when": "fineDetail",
+          "minDpi": 600
+        }
+      ],
+      "notes": [
+        "Для мелких элементов 600–1200 dpi."
+      ]
+    },
+    "UVR": {
+      "code": "UVR",
+      "name": "УФ-печать",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "softTouch",
+          "positive": 0.5,
+          "negative": 0.5
+        },
+        {
+          "when": "fineDetail",
+          "minDpi": 600
+        }
+      ],
+      "notes": [
+        "Для мелких элементов 600–1200 dpi."
+      ]
+    },
+    "UVP": {
+      "code": "UVP",
+      "name": "УФ-печать",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.15,
+      "tintMin": 20,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "softTouch",
+          "positive": 0.5,
+          "negative": 0.5
+        },
+        {
+          "when": "fineDetail",
+          "minDpi": 600
+        }
+      ],
+      "notes": [
+        "Для мелких элементов 600–1200 dpi."
+      ]
+    },
+    "UVRL": {
+      "code": "UVRL",
+      "name": "Круговая УФ-печать с лаком",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.2,
+      "tintMin": 20,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "softTouch",
+          "positive": 0.5,
+          "negative": 0.5
+        }
+      ]
+    },
+    "F1": {
+      "code": "F1",
+      "name": "Флекс",
+      "minDpi": 300,
+      "positive": 1,
+      "negative": 1,
+      "isolated": 3,
+      "maxColors": 1,
+      "palette": "каталог плёнок"
+    },
+    "F2": {
+      "code": "F2",
+      "name": "Флекс",
+      "minDpi": 300,
+      "positive": 2,
+      "negative": 2,
+      "isolated": 3,
+      "maxColors": 1,
+      "palette": "каталог плёнок"
+    },
+    "F3": {
+      "code": "F3",
+      "name": "Флекс",
+      "minDpi": 300,
+      "positive": 3,
+      "negative": 3,
+      "isolated": 3,
+      "maxColors": 1,
+      "palette": "каталог плёнок"
+    },
+    "FS": {
+      "code": "FS",
+      "name": "Флекстран",
+      "minDpi": 300,
+      "positive": 1.5,
+      "negative": 1.5,
+      "letter": 5,
+      "maxColors": 1,
+      "palette": "каталог"
+    },
+    "SL1": {
+      "code": "SL1",
+      "name": "Наклейка",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.2,
+      "tintMin": 10,
+      "inkMax": 330,
+      "palette": "CMYK",
+      "guard": 2,
+      "guardReference": "линия реза",
+      "bleed": 2,
+      "notes": [
+        "Белая основа."
+      ]
+    },
+    "SL2": {
+      "code": "SL2",
+      "name": "Наклейка",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.2,
+      "tintMin": 10,
+      "inkMax": 330,
+      "palette": "CMYK",
+      "guard": 2,
+      "guardReference": "линия реза",
+      "bleed": 2,
+      "notes": [
+        "Белая основа."
+      ]
+    },
+    "PS1": {
+      "code": "PS1",
+      "name": "Наклейка",
+      "minDpi": 300,
+      "positive": 0.15,
+      "negative": 0.2,
+      "tintMin": 10,
+      "inkMax": 330,
+      "palette": "CMYK",
+      "guard": 2,
+      "guardReference": "линия реза",
+      "bleed": 2,
+      "notes": [
+        "Белая основа."
+      ]
+    },
+    "DTG1": {
+      "code": "DTG1",
+      "name": "Печать DTG",
+      "minDpi": 300,
+      "positive": 0.3,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)"
+    },
+    "DTG2": {
+      "code": "DTG2",
+      "name": "Печать DTG",
+      "minDpi": 300,
+      "positive": 0.3,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)"
+    },
+    "DTG3": {
+      "code": "DTG3",
+      "name": "Печать DTG",
+      "minDpi": 300,
+      "positive": 0.3,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)"
+    },
+    "DTF1": {
+      "code": "DTF1",
+      "name": "Печать DTF",
+      "minDpi": 300,
+      "positive": 0.6,
+      "negative": 0.6,
+      "isolated": 2,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "paperCardboard",
+          "positive": 1.5
+        }
+      ],
+      "notes": [
+        "Бумага и картон: линии и отдельные элементы от 1,5 мм; более тонкие — на плашках."
+      ]
+    },
+    "DTF2": {
+      "code": "DTF2",
+      "name": "Печать DTF",
+      "minDpi": 300,
+      "positive": 0.6,
+      "negative": 0.6,
+      "isolated": 2,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "paperCardboard",
+          "positive": 1.5
+        }
+      ],
+      "notes": [
+        "Бумага и картон: линии и отдельные элементы от 1,5 мм; более тонкие — на плашках."
+      ]
+    },
+    "DTF3": {
+      "code": "DTF3",
+      "name": "Печать DTF",
+      "minDpi": 300,
+      "positive": 0.6,
+      "negative": 0.6,
+      "isolated": 2,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "paperCardboard",
+          "positive": 1.5
+        }
+      ],
+      "notes": [
+        "Бумага и картон: линии и отдельные элементы от 1,5 мм; более тонкие — на плашках."
+      ]
+    },
+    "DTF4": {
+      "code": "DTF4",
+      "name": "Печать DTF",
+      "minDpi": 300,
+      "positive": 0.6,
+      "negative": 0.6,
+      "isolated": 2,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)",
+      "conditions": [
+        {
+          "when": "paperCardboard",
+          "positive": 1.5
+        }
+      ],
+      "notes": [
+        "Бумага и картон: линии и отдельные элементы от 1,5 мм; более тонкие — на плашках."
+      ]
+    },
+    "DTF-F": {
+      "code": "DTF-F",
+      "name": "Печать DTF с эффектами",
+      "minDpi": 300,
+      "positive": 1.2,
+      "negative": 1.2,
+      "isolated": 2,
+      "palette": "золото, серебро",
+      "conditions": [
+        {
+          "when": "combinedDtf",
+          "foilOutline": 4
+        }
+      ]
+    },
+    "UV-DTF1": {
+      "code": "UV-DTF1",
+      "name": "УФ-DTF печать",
+      "minDpi": 300,
+      "positive": 0.6,
+      "negative": 0.6,
+      "isolated": 2,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)"
+    },
+    "UV-DTF2": {
+      "code": "UV-DTF2",
+      "name": "УФ-DTF печать",
+      "minDpi": 300,
+      "positive": 0.6,
+      "negative": 0.6,
+      "isolated": 2,
+      "tintMin": 15,
+      "palette": "CMYK (+ White)"
+    },
+    "MS1": {
+      "code": "MS1",
+      "name": "Металстикер",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "чёрный — глянец; серый — матовая поверхность",
+      "notes": [
+        "Элементы менее 3 мм соединяются с соседними линией до 0,1 мм."
+      ]
+    },
+    "MS2": {
+      "code": "MS2",
+      "name": "Металстикер",
+      "minDpi": 300,
+      "positive": 0.1,
+      "negative": 0.2,
+      "palette": "чёрный — глянец; серый — матовая поверхность",
+      "notes": [
+        "Элементы менее 3 мм соединяются с соседними линией до 0,1 мм."
+      ]
+    },
+    "RP1": {
+      "code": "RP1",
+      "name": "Печать на лентах (1 цвет)",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "maxColors": 1,
+      "guardLong": 2,
+      "guardShort": 20,
+      "guardReference": "край ленты / линия реза"
+    },
+    "RP2": {
+      "code": "RP2",
+      "name": "Печать на лентах (1 цвет)",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "maxColors": 1,
+      "guardLong": 2,
+      "guardShort": 20,
+      "guardReference": "край ленты / линия реза"
+    },
+    "RP3": {
+      "code": "RP3",
+      "name": "Печать на лентах (1 цвет)",
+      "minDpi": 300,
+      "positive": 0.25,
+      "negative": 0.3,
+      "maxColors": 1,
+      "guardLong": 2,
+      "guardShort": 20,
+      "guardReference": "край ленты / линия реза"
+    }
+  }
+}
