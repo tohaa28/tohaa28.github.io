@@ -204,16 +204,35 @@ export function bindFieldLabels(fields, labels) {
 
 export function auditFieldLabels(fields, entry) {
   const places = (entry?.places?.length ? entry.places : entry?.place ? [entry.place] : []).map(text=>({raw:clean(text),name:nameKey(placeName(text)), id:printKey(text)}));
-  const explicitBindings = (Array.isArray(entry?.placeBindings) ? entry.placeBindings : [])
+  const sequenceBindings = (Array.isArray(entry?.templateApplicationIds) ? entry.templateApplicationIds : [])
+    .map((applicationId, localIndex) => {
+      const source = (Array.isArray(entry?.applicationBindings) ? entry.applicationBindings : [])
+        .find(binding => String(binding?.applicationId || "") === String(applicationId));
+      if (!source?.name) return null;
+      return {
+        ...source,
+        index: localIndex + 1,
+        templateIndex: localIndex + 1,
+        printId: `print${localIndex + 1}`,
+        source: [source.source, "template-application-sequence"].filter(Boolean).join("+")
+      };
+    })
+    .filter(Boolean);
+  const explicitBindingsRaw = [
+    ...(Array.isArray(entry?.placeBindings) ? entry.placeBindings : []),
+    ...sequenceBindings
+  ]
     .map(binding => {
       const taskId = /^\d{1,20}$/.test(String(binding?.taskId || "")) ? String(Number(binding.taskId)) : "";
       const printId = /^print\d+$/i.test(String(binding?.printId || ""))
         ? String(binding.printId).toLowerCase()
         : "";
+      const templateIndex = Number.isInteger(binding?.templateIndex) ? binding.templateIndex : null;
+      const index = templateIndex ?? (Number.isInteger(binding?.index) ? binding.index : null);
       return {
         name: clean(binding?.name),
         key: nameKey(placeName(binding?.name || "")),
-        index: Number.isInteger(binding?.index) ? binding.index : null,
+        index,
         taskId,
         printId,
         method: clean(binding?.method || ""),
@@ -221,6 +240,9 @@ export function auditFieldLabels(fields, entry) {
       };
     })
     .filter(binding => binding.name);
+  const explicitBindings = [...new Map(
+    explicitBindingsRaw.map(binding => [`${binding.index || ""}|${binding.key}`, binding])
+  ).values()];
   const indexedBindings = explicitBindings.filter(binding => Number.isInteger(binding.index));
   const used=new Set(), issues=[];
 
