@@ -640,7 +640,7 @@ export async function verifyPdfLabels(frame) {
     await frame.waitForFunction(()=>{
       const article=document.getElementById('article')?.value||'';
       const fields=[...document.querySelectorAll('#fields option')].slice(1).map(o=>o.textContent||'');
-      return article==='16535.66' && fields.length===2 && fields.every(text=>/30\.00 × 30\.00 мм/.test(text));
+      return article==='16535.66' && fields.length===2 && fields.every(text=>/300\.00 × 300\.00 мм/.test(text));
     },null,{timeout:30000});
     const realOrder16535=await frame.evaluate(()=>({
       fields:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
@@ -648,8 +648,8 @@ export async function verifyPdfLabels(frame) {
       unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
     }));
     assert.equal(realOrder16535.fields.length,3);
-    assert.match(realOrder16535.fields[1],/30\.00 × 30\.00 мм/);
-    assert.match(realOrder16535.fields[2],/30\.00 × 30\.00 мм/);
+    assert.match(realOrder16535.fields[1],/300\.00 × 300\.00 мм/);
+    assert.match(realOrder16535.fields[2],/300\.00 × 300\.00 мм/);
     assert.match(realOrder16535.places[1],/^сторона b /);
     assert.match(realOrder16535.places[2],/^сторона а /);
     assert.equal(realOrder16535.unmatched,false);
