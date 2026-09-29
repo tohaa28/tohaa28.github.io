@@ -240,9 +240,13 @@ export async function verifyPdfLabels(frame) {
   // field detection finds nothing; the field is an arbitrary Bezier path whose
   // fill has 98% transparency (2% opacity), so the new fallback must find it.
   // The real Chromium/Skia Gifts template 7987235_12393.89.pdf stores the
-  // nominal 98% transparent field as /ca .025. Exercise that upper boundary
-  // directly so floating-point representation cannot silently exclude it.
-  const singlePdf=makeOpacity98ArbitraryFieldPdf(0.025);
+  // nominal 98% transparent field as /ca .025. Keep the observed real-file
+  // signature in the repo and exercise that exact alpha in the browser fixture.
+  const realOpacitySignature=JSON.parse(fs.readFileSync('tests/fixtures/7987235_12393.89.real-signature.json','utf8'));
+  assert.equal(realOpacitySignature.fixture,'7987235_12393.89.pdf');
+  assert.equal(realOpacitySignature.sha256,'2095e577e7c512b6a21bd015ab32f78111bcbbc5663dceb11f2d98a8949a96c6');
+  assert.equal(realOpacitySignature.pdf.fillAlpha,0.025);
+  const singlePdf=makeOpacity98ArbitraryFieldPdf(realOpacitySignature.pdf.fillAlpha);
   const opacityOps=await frame.evaluate(async base64=>{
     const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
     const pdf=await globalThis.pdfjsLib.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:false}).promise;
