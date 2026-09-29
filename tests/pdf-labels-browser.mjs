@@ -341,6 +341,62 @@ export async function verifyPdfLabels(frame) {
   assert.doesNotMatch(rotatedState.fieldSize,/212(?:[.,]\d+)? × 212/);
   console.log('Real 7987235 rotated field geometry preserved:',JSON.stringify(rotatedState));
 
+  // Verify the PDF exporter clips with the same rotated path, not its bbox.
+  const logoSvg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><rect width="200" height="100" fill="#111"/></svg>');
+  await frame.locator('#artwork').setInputFiles({name:'clip-test.svg',mimeType:'image/svg+xml',buffer:logoSvg});
+  await frame.waitForFunction(()=>document.getElementById('step4Box')?.hidden===false && document.getElementById('editorClip')?.disabled===false);
+  await frame.locator('#editorClip').check();
+  const downloadPromise=frame.page().waitForEvent('download',{timeout:30000});
+  await frame.locator('#export').click();
+  const exported=await downloadPromise;
+  const exportedPath=await exported.path();
+  assert.ok(exportedPath,'Exported PDF has no temporary path');
+  const exportedBytes=fs.readFileSync(exportedPath);
+  const clipDiagnostics=await frame.evaluate(async ({base64,signature})=>{
+    const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+    const pdf=await globalThis.pdfjsLib.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:false}).promise;
+    const page=await pdf.getPage(1);
+    const list=await page.getOperatorList();
+    const ops=globalThis.pdfjsLib.OPS||{};
+    const flatten=value=>{
+      const out=[];
+      const walk=v=>{
+        if(v==null)return;
+        if(ArrayBuffer.isView(v)){for(const x of v)out.push(Number(x));return;}
+        if(Array.isArray(v)){for(const x of v)walk(x);return;}
+        if(typeof v==='object'){
+          const keys=Object.keys(v).filter(k=>/^\\d+$/.test(k)).sort((a,b)=>Number(a)-Number(b));
+          if(keys.length){for(const k of keys)walk(v[k]);return;}
+        }
+        const n=Number(v);if(Number.isFinite(n))out.push(n);
+      };
+      walk(value);return out;
+    };
+    const H=Number(signature.pdf.pageRectPt[3]);
+    const p0=[Number(signature.pdf.polygonPt[0][0]),H-Number(signature.pdf.polygonPt[0][1])];
+    const p1=[Number(signature.pdf.polygonPt[1][0]),H-Number(signature.pdf.polygonPt[1][1])];
+    let matchingContours=0,clipOps=0;
+    for(let i=0;i<list.fnArray.length;i++){
+      const fn=list.fnArray[i],args=list.argsArray[i];
+      if(fn===ops.clip||fn===ops.eoClip)clipOps++;
+      if(fn!==ops.constructPath)continue;
+      const raw=flatten(args?.[1]);
+      for(let j=0;j+5<raw.length;j++){
+        if(raw[j]===0 &&
+           Math.abs(raw[j+1]-p0[0])<0.1 && Math.abs(raw[j+2]-p0[1])<0.1 &&
+           raw[j+3]===1 &&
+           Math.abs(raw[j+4]-p1[0])<0.1 && Math.abs(raw[j+5]-p1[1])<0.1){
+          matchingContours++;break;
+        }
+      }
+    }
+    await pdf.destroy();
+    return{matchingContours,clipOps,size:bytes.byteLength};
+  },{base64:exportedBytes.toString('base64'),signature:realOpacitySignature});
+  assert.ok(clipDiagnostics.clipOps>=1,'Exported PDF contains no clipping operation');
+  assert.ok(clipDiagnostics.matchingContours>=2,'Exporter did not repeat the real rotated field contour for clipping: '+JSON.stringify(clipDiagnostics));
+  console.log('Export clips by real rotated contour:',JSON.stringify(clipDiagnostics));
+
   // Same fallback, but the digits exist only as PDF FreeText annotations.
   const annotationPdf=makeAnnotationNumericPdf();
   await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},annotationPdf.toString('base64'));
