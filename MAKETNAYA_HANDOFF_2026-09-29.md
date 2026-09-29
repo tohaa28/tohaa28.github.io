@@ -228,3 +228,14 @@ Run:
 - Publish workflow зависит от reusable browser-test и публикует тот же github.sha, который был проверен. Результаты CI и публикации будут дописаны после завершения.
 
 - Интеграция в существующий compiled editor оформлена воспроизводимым `tools/patch-artwork-preflight.mjs`: он применяется из `tools/build-launcher.mjs` до тестирования/публикации. SHA-256 исходного и итогового JS проверяются; при изменении исходного bundle сборка останавливается для повторной проверки патча. Большой исходный bundle с PDF.js в ветке остаётся прежним, а опубликованный bundle содержит проверенные изменения. Это устраняет передачу неизменённых библиотек в запросе GitHub и делает патч отдельно обозримым. Для локального editor.html сначала выполнить `node tools/build-launcher.mjs`.
+
+
+#### Подтверждённая публикация модуля проверки
+
+- Исходный commit: `3c5a7d2446d00ca7960cd5da6f5f201be3dddfcd`.
+- Unit + полный browser regression: https://github.com/tohaa28/tohaa28.github.io/actions/runs/36623568943 — SUCCESS.
+- Publish (с обязательным verify/browser-test): https://github.com/tohaa28/tohaa28.github.io/actions/runs/36623569352 — SUCCESS.
+- Pages: https://github.com/tohaa28/tohaa28.github.io/actions/runs/36623678724 — SUCCESS; опубликованный main commit `71432377a4de168e24aae4277edc257ee7f627c9`.
+- SHA-256 опубликованного editor bundle: `7b4c65cdbdd7f455fe4153f55507129de3c509a272e68b7c9bd5f59bcd5d03c3` — совпадает с локально проверенной сборкой.
+- HTML и оба новых модуля получены с GitHub Pages HTTP 200 и совпали с проверенными файлами. Браузерный smoke опубликованного launcher: 92 кода, корректный UV-DTF1, новый UI, pageerror=[] — PASS.
+- Публикация: https://tohaa28.github.io/gifts-layout-workbench/ .
