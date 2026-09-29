@@ -272,7 +272,10 @@ export async function verifyPdfLabels(frame) {
   // vector shapes just like real application frames.
   const serviceZonePdf=makeServiceZoneExclusionPdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'service-zones.pdf',mimeType:'application/pdf',buffer:serviceZonePdf});
-  await frame.waitForFunction(()=>document.querySelectorAll('#fields option').length===2);
+  await frame.waitForFunction(()=>
+    document.getElementById('templateName')?.textContent==='service-zones.pdf' &&
+    document.querySelectorAll('#fields option').length===2
+  );
   const serviceZoneState=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
     dimensions:document.getElementById('dimensions')?.textContent||''
