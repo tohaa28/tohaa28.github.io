@@ -429,6 +429,37 @@ jobs:
             throw new Error("Basket dropped real order rows or miscounted templates: "+JSON.stringify({basketRows,basketSummary}));
           }
           console.log("Basket preserves rows without templates:", JSON.stringify({basketRows,basketSummary}));
+          const basketGroupState = await frame.evaluate(() => {
+            const orders=[...document.querySelectorAll("#basketOrders .basket-order")];
+            return orders.map(order=>{
+              const button=order.querySelector(":scope > .basket-order-title");
+              const methods=[...order.querySelectorAll(":scope > .basket-methods > .basket-method")];
+              const orderStyle=getComputedStyle(order);
+              return {
+                title:button?.textContent?.trim()||"",
+                articles:methods.map(x=>x.dataset.article||""),
+                articleCount:methods.length,
+                orderBorderTop:parseFloat(orderStyle.borderTopWidth)||0,
+                itemBorders:methods.map(x=>({
+                  left:parseFloat(getComputedStyle(x).borderLeftWidth)||0,
+                  right:parseFloat(getComputedStyle(x).borderRightWidth)||0,
+                  bottom:parseFloat(getComputedStyle(x).borderBottomWidth)||0
+                }))
+              };
+            });
+          });
+          if (basketGroupState.length !== 2 ||
+              basketGroupState[0]?.title !== "Заказ №7920509" ||
+              basketGroupState[0]?.articleCount !== 2 ||
+              JSON.stringify(basketGroupState[0]?.articles) !== JSON.stringify(["15637","13317.00"]) ||
+              basketGroupState[1]?.title !== "Заказ №7920512" ||
+              basketGroupState[1]?.articleCount !== 1 ||
+              JSON.stringify(basketGroupState[1]?.articles) !== JSON.stringify(["99999"]) ||
+              !basketGroupState.every(x=>x.orderBorderTop>0) ||
+              basketGroupState.some(x=>x.itemBorders.some(b=>b.left>0||b.right>0||b.bottom>0))) {
+            throw new Error("Basket articles are not compactly grouped by order: "+JSON.stringify(basketGroupState));
+          }
+          console.log("Basket articles grouped under one order frame:", JSON.stringify(basketGroupState));
           await frame.locator("#basketOrders .basket-order > button").first().click();
           try {
             await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
