@@ -90,7 +90,7 @@ function makeUnlabeledSingleFieldPdf() {
 }
 
 
-function makeOpacity98ArbitraryFieldPdf() {
+function makeOpacity98ArbitraryFieldPdf(fillOpacity = 0.02) {
   // Non-rectangular Bezier field. It has no colored stroke and no text label;
   // the only field marker is a 2% opaque fill (= 98% transparency).
   const stream = [
@@ -111,7 +111,7 @@ function makeOpacity98ArbitraryFieldPdf() {
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 340] /Resources << /ExtGState << /GS98 5 0 R >> >> /Contents 4 0 R >>',
     `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
-    '<< /Type /ExtGState /ca 0.02 /CA 1 >>'
+    `<< /Type /ExtGState /ca ${fillOpacity} /CA 1 >>`
   ];
   let pdf='%PDF-1.4\n', offsets=[0];
   for(let i=0;i<objects.length;i++){
@@ -239,7 +239,10 @@ export async function verifyPdfLabels(frame) {
   // Order-global application id 4 becomes PDF-local print1. Normal colored
   // field detection finds nothing; the field is an arbitrary Bezier path whose
   // fill has 98% transparency (2% opacity), so the new fallback must find it.
-  const singlePdf=makeOpacity98ArbitraryFieldPdf();
+  // The real Chromium/Skia Gifts template 7987235_12393.89.pdf stores the
+  // nominal 98% transparent field as /ca .025. Exercise that upper boundary
+  // directly so floating-point representation cannot silently exclude it.
+  const singlePdf=makeOpacity98ArbitraryFieldPdf(0.025);
   const opacityOps=await frame.evaluate(async base64=>{
     const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
     const pdf=await globalThis.pdfjsLib.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:false}).promise;
