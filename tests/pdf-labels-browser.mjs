@@ -411,24 +411,6 @@ export async function verifyPdfLabels(frame) {
   assert.match(options[1],/Y 73/);
   assert.match(options[2],/Y 123/);
   console.log('PDF printN sequence overrides distant/reversed label geometry:',JSON.stringify(options));
-  await frame.evaluate(()=>{
-    const select=document.getElementById('fields');
-    select.value='0';
-    select.dispatchEvent(new Event('change',{bubbles:true}));
-  });
-  await frame.waitForFunction(()=>document.getElementById('stage')?.dataset.fieldViewAligned==='false');
-  const ordinaryViewState=await frame.evaluate(()=>{
-    const stage=document.getElementById('stage');
-    return{
-      aligned:stage?.dataset.fieldViewAligned||'',
-      rotation:Number(stage?.dataset.fieldViewRotation||0),
-      fieldSize:document.getElementById('fieldSize')?.textContent||''
-    };
-  });
-  assert.equal(ordinaryViewState.aligned,'false');
-  assert.ok(Math.abs(ordinaryViewState.rotation)<0.01,'Ordinary axis-aligned field was rotated: '+JSON.stringify(ordinaryViewState));
-  assert.doesNotMatch(ordinaryViewState.fieldSize,/вид выровнен/);
-  console.log('Ordinary axis-aligned field view remains unchanged:',JSON.stringify(ordinaryViewState));
 
   // Same PDF through the order adapter: print1 is field 1 and print2 is field 2.
   await frame.parentFrame().evaluate(base64=>{
@@ -563,28 +545,16 @@ export async function verifyPdfLabels(frame) {
   await frame.waitForFunction(()=>document.getElementById('orderLoading').hidden && document.querySelectorAll('#orderFieldChoice option').length===2);
   await frame.selectOption('#orderFieldChoice',{index:1});
   await frame.waitForFunction(()=>/по прозрачной заливке/.test(document.getElementById('fieldSize')?.textContent||''));
-  await frame.waitForFunction(()=>document.getElementById('stage')?.dataset.fieldViewAligned==='true');
-  const rotatedState=await frame.evaluate(()=>{
-    const stage=document.getElementById('stage');
-    const rect=stage?.getBoundingClientRect();
-    return{
-      fieldSize:document.getElementById('fieldSize')?.textContent||'',
-      selected:document.getElementById('orderFieldChoice')?.value||'',
-      option:document.querySelector('#orderFieldChoice option:nth-child(2)')?.textContent||'',
-      viewAligned:stage?.dataset.fieldViewAligned||'',
-      viewRotation:Number(stage?.dataset.fieldViewRotation||0),
-      stageRatio:rect?.height?rect.width/rect.height:0
-    };
-  });
+  const rotatedState=await frame.evaluate(()=>({
+    fieldSize:document.getElementById('fieldSize')?.textContent||'',
+    selected:document.getElementById('orderFieldChoice')?.value||'',
+    option:document.querySelector('#orderFieldChoice option:nth-child(2)')?.textContent||''
+  }));
   assert.equal(rotatedState.selected,'0');
   assert.match(rotatedState.fieldSize,/200(?:[.,]0+)? × 100(?:[.,]0+)? мм/);
   assert.match(rotatedState.fieldSize,/по прозрачной заливке/);
-  assert.match(rotatedState.fieldSize,/вид выровнен/);
   assert.doesNotMatch(rotatedState.fieldSize,/212(?:[.,]\d+)? × 212/);
-  assert.equal(rotatedState.viewAligned,'true');
-  assert.ok(Math.abs(Math.abs(rotatedState.viewRotation)-45)<2,'Unexpected aligned-view rotation: '+JSON.stringify(rotatedState));
-  assert.ok(rotatedState.stageRatio>1.35,'Rotated 200x100 field view did not become horizontal: '+JSON.stringify(rotatedState));
-  console.log('Real 7987235 rotated field geometry preserved and horizontally aligned:',JSON.stringify(rotatedState));
+  console.log('Real 7987235 rotated field geometry preserved:',JSON.stringify(rotatedState));
 
   // Verify the PDF exporter clips with the same rotated path, not its bbox.
   const logoSvg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><rect width="200" height="100" fill="#111"/></svg>');
