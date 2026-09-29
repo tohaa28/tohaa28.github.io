@@ -332,10 +332,16 @@ jobs:
           });
           if (twoPlaceOrder.items?.[0]?.placeCount !== 2 ||
               JSON.stringify(twoPlaceOrder.items[0].places) !== JSON.stringify(["лицо","оборот"]) ||
-              twoPlaceOrder.items[0].placeCountSignals?.drawTasks !== 2) {
-            throw new Error("Two-place order audit is invalid: "+JSON.stringify(twoPlaceOrder));
+              twoPlaceOrder.items[0].placeCountSignals?.drawTasks !== 2 ||
+              JSON.stringify((twoPlaceOrder.items[0].placeBindings || []).map(x => x.name)) !== JSON.stringify(["лицо","оборот"]) ||
+              JSON.stringify((twoPlaceOrder.items[0].placeBindings || []).map(x => String(x.applicationId ?? x.applicationIndex ?? ""))) !== JSON.stringify(["1","2"]) ||
+              (twoPlaceOrder.items[0].placeBindings || []).some(x => !x.templateIndex || !x.printId)) {
+            throw new Error("Two-place order names/bindings are invalid: "+JSON.stringify(twoPlaceOrder));
           }
-          console.log("Two-place count test:", JSON.stringify(twoPlaceOrder.items[0]));
+          console.log("Two-place names/bindings:", JSON.stringify({
+            places: twoPlaceOrder.items[0].places,
+            bindings: twoPlaceOrder.items[0].placeBindings
+          }));
           if (orderData.items?.[0]?.productUrl !== "https://gifts.ru/id/228756") {
             throw new Error("Product URL was not captured for preview fallback: "+JSON.stringify(orderData.items?.[0]));
           }
