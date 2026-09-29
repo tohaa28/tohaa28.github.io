@@ -199,6 +199,38 @@ function makeSelectedOrdinaryFieldsPdf(scale=0.1) {
   return Buffer.from(pdf,'ascii');
 }
 
+function makeOpaqueConcaveFieldPdf() {
+  // Ordinary opaque coloured field with a concave L-shaped contour.
+  // The missing upper-right quadrant is inside the bbox but outside the field.
+  const stream=[
+    'q',
+    '0.95 0.18 0.22 rg',
+    '40 40 m',
+    '220 40 l',
+    '220 100 l',
+    '100 100 l',
+    '100 260 l',
+    '40 260 l',
+    'h',
+    'f',
+    'Q',
+    ''
+  ].join('\n');
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`
+  ];
+  let pdf='%PDF-1.4\n',offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeOpacity98ArbitraryFieldPdf(fillOpacity = 0.02) {
   // Non-rectangular Bezier field. It has no colored stroke and no text label;
   // the only field marker is a 2% opaque fill (= 98% transparency).
@@ -339,6 +371,33 @@ export async function verifyPdfLabels(frame) {
   assert.match(printSequenceOptions[1],/^face · стр\./);
   assert.match(printSequenceOptions[2],/^back · стр\./);
   console.log('Distant [print1]/[print2] table defines field order:',JSON.stringify(printSequenceOptions));
+
+  // Ordinary coloured arbitrary fields must retain their actual contour, not
+  // collapse to an axis-aligned bounding box.
+  const opaqueConcavePdf=makeOpaqueConcaveFieldPdf();
+  await frame.locator('#manualTemplate').setInputFiles({name:'opaque-concave.pdf',mimeType:'application/pdf',buffer:opaqueConcavePdf});
+  await frame.waitForFunction(()=>
+    document.getElementById('templateName')?.textContent==='opaque-concave.pdf' &&
+    document.querySelectorAll('#fields option').length===2
+  );
+  assert.equal(await frame.locator('#fields').inputValue(),'');
+  const overlayBox=await frame.locator('#overlay').boundingBox();
+  assert.ok(overlayBox && overlayBox.width>0 && overlayBox.height>0);
+  // PDF point (180,180) lies inside the bbox but in the missing quadrant of L.
+  await frame.locator('#overlay').click({position:{x:overlayBox.width*0.60,y:overlayBox.height*0.40}});
+  await frame.waitForTimeout(80);
+  assert.equal(await frame.locator('#fields').inputValue(),'','bbox-only hit test incorrectly selected concave field');
+  // PDF point (70,180) lies in the vertical leg of the actual L contour.
+  await frame.locator('#overlay').click({position:{x:overlayBox.width*(70/300),y:overlayBox.height*0.40}});
+  await frame.waitForFunction(()=>document.getElementById('fields')?.value==='0');
+  const concaveState=await frame.evaluate(()=>({
+    selected:document.getElementById('fields')?.value||'',
+    fieldSize:document.getElementById('fieldSize')?.textContent||'',
+    option:document.querySelector('#fields option:nth-child(2)')?.textContent||''
+  }));
+  assert.equal(concaveState.selected,'0');
+  assert.match(concaveState.fieldSize,/из векторного шаблона/);
+  console.log('Opaque concave field uses exact path, not bbox:',JSON.stringify(concaveState));
 
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
