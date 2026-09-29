@@ -546,7 +546,15 @@ export async function verifyPdfLabels(frame) {
     select.value='0';
     select.dispatchEvent(new Event('change',{bubbles:true}));
   });
-  await frame.waitForFunction(()=>document.querySelectorAll('#orderFieldChoice option').length===3 && document.getElementById('orderEditor')?.hidden===false);
+  await frame.waitForFunction(()=>{
+    const article=document.getElementById('article')?.value||'';
+    const fields=[...document.querySelectorAll('#fields option')].slice(1).map(o=>o.textContent||'');
+    return article==='16535.66' &&
+      document.getElementById('orderEditor')?.hidden===false &&
+      document.querySelectorAll('#orderFieldChoice option').length===3 &&
+      fields.length===2 &&
+      fields.every(text=>/300\.00 × 300\.00 мм/.test(text));
+  });
   const ordinaryState7987235=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
     full:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
@@ -566,7 +574,15 @@ export async function verifyPdfLabels(frame) {
     select.value='1';
     select.dispatchEvent(new Event('change',{bubbles:true}));
   });
-  await frame.waitForFunction(()=>document.querySelectorAll('#orderFieldChoice option').length===2 && document.getElementById('orderEditor')?.hidden===false);
+  await frame.waitForFunction(()=>{
+    const article=document.getElementById('article')?.value||'';
+    const fields=[...document.querySelectorAll('#fields option')].slice(1).map(o=>o.textContent||'');
+    return article==='12393.89' &&
+      document.getElementById('orderEditor')?.hidden===false &&
+      document.querySelectorAll('#orderFieldChoice option').length===2 &&
+      fields.length===1 &&
+      /200\.00 × 100\.00 мм/.test(fields[0]);
+  });
   const rotatedState7987235=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
     full:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
