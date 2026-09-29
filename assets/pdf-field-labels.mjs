@@ -151,6 +151,56 @@ export function bindFieldLabels(fields, labels) {
     );
     if (!duplicate) canonical.push(label);
   }
+
+  // Gifts' own template table defines the local field sequence:
+  // [print1] is always field 1, [print2] is field 2, etc. These labels can be
+  // far away from the drawing (usually in the requirements/application table),
+  // so their semantic order must take precedence over spatial proximity.
+  const printSequence = new Map();
+  let printSequenceAmbiguous = false;
+  for (const label of canonical) {
+    const match = /^print(\d+)$/i.exec(String(label.printId || ""));
+    if (!match || !clean(label.name)) continue;
+    const index = Number(match[1]);
+    if (!Number.isInteger(index) || index < 1) continue;
+    if (printSequence.has(index)) {
+      const existing = printSequence.get(index);
+      if (nameKey(existing.name) !== nameKey(label.name) || clean(existing.text) !== clean(label.text)) {
+        printSequenceAmbiguous = true;
+      }
+      continue;
+    }
+    printSequence.set(index,label);
+  }
+  const completePrintSequence =
+    !printSequenceAmbiguous &&
+    result.length > 0 &&
+    printSequence.size === result.length &&
+    [...Array(result.length)].every((_,i)=>printSequence.has(i+1));
+
+  if (completePrintSequence) {
+    const ordered = result
+      .map((field,arrayIndex)=>({field,arrayIndex}))
+      .sort((a,b)=>
+        (a.field.page ?? 0) - (b.field.page ?? 0) ||
+        ((Number.isFinite(a.field.pdfOrder) ? a.field.pdfOrder : a.arrayIndex) -
+         (Number.isFinite(b.field.pdfOrder) ? b.field.pdfOrder : b.arrayIndex))
+      );
+    for (let i=0;i<ordered.length;i++) {
+      const index=i+1;
+      const label=printSequence.get(index);
+      Object.assign(ordered[i].field,{
+        pdfLabel:label.text,
+        pdfPlace:label.name,
+        printId:`print${index}`,
+        fieldIndex:index,
+        labelSource:[label.source,"print-sequence"].filter(Boolean).join("+"),
+        labelBounds:{x:label.x,y:label.y,w:label.w,h:label.h},
+        labelStatus:"matched"
+      });
+    }
+    return result;
+  }
   for (const label of canonical) {
     const cx=label.x+label.w/2, cy=label.y+label.h/2;
     const ranked = result.map((f,index) => {
