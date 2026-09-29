@@ -462,7 +462,11 @@ export async function verifyPdfLabels(frame) {
     document.getElementById('templateName')?.textContent==='transparent-field-dashed-border.pdf' &&
     document.querySelectorAll('#fields option').length===2
   );
-  await frame.selectOption('#fields','0');
+  await frame.evaluate(()=>{
+    const select=document.getElementById('fields');
+    select.value='0';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  });
   await frame.waitForFunction(()=>/по прозрачной заливке/.test(document.getElementById('fieldSize')?.textContent||''));
   const dashedBorderState=await frame.evaluate(()=>({
     selected:document.getElementById('fields')?.value||'',
