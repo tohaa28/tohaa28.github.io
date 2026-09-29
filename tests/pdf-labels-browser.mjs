@@ -516,8 +516,8 @@ export async function verifyPdfLabels(frame) {
   assert.deepEqual(umbrella7987235.expectedFieldSizes.map(x=>[x.w,x.h]),[[200,100]]);
   assert.deepEqual(umbrella7987235.places,['купол, клин 1 [подложка; черный(Black); желтый(106C)]']);
   console.log('Exact 7987235 order parse:',JSON.stringify({
-    bag:{quantity:bag7987235.quantity,places:bag7987235.places,drawTaskIds:bag7987235.drawTaskIds,sizes:bag7987235.expectedFieldSizes},
-    umbrella:{quantity:umbrella7987235.quantity,places:umbrella7987235.places,drawTaskIds:umbrella7987235.drawTaskIds,sizes:umbrella7987235.expectedFieldSizes}
+    bag:{quantity:bag7987235.quantity,places:bag7987235.places,drawTaskIds:bag7987235.drawTaskIds,sizes:bag7987235.expectedFieldSizes,templateApplicationIds:bag7987235.templateApplicationIds,placeBindings:bag7987235.placeBindings,applicationBindings:bag7987235.applicationBindings},
+    umbrella:{quantity:umbrella7987235.quantity,places:umbrella7987235.places,drawTaskIds:umbrella7987235.drawTaskIds,sizes:umbrella7987235.expectedFieldSizes,templateApplicationIds:umbrella7987235.templateApplicationIds,placeBindings:umbrella7987235.placeBindings,applicationBindings:umbrella7987235.applicationBindings}
   }));
 
   await frame.evaluate(async()=>{
@@ -538,6 +538,7 @@ export async function verifyPdfLabels(frame) {
     hint:document.getElementById('fieldChoiceHint')?.textContent||'',
     unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
   }));
+  console.log('Exact 7987235 ordinary field state before assertions:',JSON.stringify(ordinaryState7987235));
   assert.equal(ordinaryState7987235.options.length,3);
   assert.match(ordinaryState7987235.options[1],/^сторона b .*D1: Шелкография с трансфером,1$/);
   assert.match(ordinaryState7987235.options[2],/^сторона а .*F1: Флекс,2$/);
