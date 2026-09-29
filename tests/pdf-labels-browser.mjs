@@ -90,6 +90,36 @@ function makeUnlabeledSingleFieldPdf() {
 }
 
 
+function makeDistantPrintSequencePdf() {
+  const stream=[
+    'q',
+    '0.95 0.12 0.17 RG',
+    '2 w',
+    '210 260 90 90 re S',
+    '0.09 0.22 0.60 RG',
+    '2 w',
+    '360 260 90 90 re S',
+    'Q',
+    'BT /F1 10 Tf 380 70 Td (face [print1]) Tj ET',
+    'BT /F1 10 Tf 210 45 Td (back [print2]) Tj ET',
+    ''
+  ].join('\n');
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 450] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+  let pdf='%PDF-1.4\n',offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeServiceZoneExclusionPdf() {
   const stream=[
     'q',
@@ -290,6 +320,17 @@ export async function verifyPdfLabels(frame) {
   assert.ok(serviceZoneState.options.slice(1).every(text=>/33\.51 × 22\.93 мм/.test(text)),JSON.stringify(serviceZoneState));
   assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 19\.40|77\.61 × 47\.63/);
   console.log('Service header/table excluded from field search:',JSON.stringify(serviceZoneState));
+
+  const printSequencePdf=makeDistantPrintSequencePdf();
+  await frame.locator('#manualTemplate').setInputFiles({name:'print-sequence.pdf',mimeType:'application/pdf',buffer:printSequencePdf});
+  await frame.waitForFunction(()=>
+    document.getElementById('templateName')?.textContent==='print-sequence.pdf' &&
+    document.querySelectorAll('#fields option').length===3
+  );
+  const printSequenceOptions=await frame.locator('#fields option').allTextContents();
+  assert.match(printSequenceOptions[1],/^face · стр\./);
+  assert.match(printSequenceOptions[2],/^back · стр\./);
+  console.log('Distant [print1]/[print2] table defines field order:',JSON.stringify(printSequenceOptions));
 
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
