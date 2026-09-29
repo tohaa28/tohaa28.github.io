@@ -1,0 +1,56 @@
+{
+  "fixture": "7987235_12393.89.pdf",
+  "source": "real-gifts-template",
+  "sha256": "2095e577e7c512b6a21bd015ab32f78111bcbbc5663dceb11f2d98a8949a96c6",
+  "byteLength": 124741,
+  "order": "7987235",
+  "article": "12393.89",
+  "product": "Зонт-трость Standard, желтый неон",
+  "place": "купол, клин 1 [print1]",
+  "fieldSizeCm": [
+    20,
+    10
+  ],
+  "method": "B4: Шелкография на текстиль (3)",
+  "pdf": {
+    "producer": "Skia/PDF m124",
+    "pages": 1,
+    "pageRectPt": [
+      0,
+      0,
+      3006,
+      4295.0400390625
+    ],
+    "fillAlpha": 0.025,
+    "transparency": 0.975,
+    "extGStateObject": 9,
+    "drawingIndex": 201,
+    "drawingType": "fill",
+    "evenOdd": true,
+    "bboxPt": [
+      1960.18811,
+      1338.519409,
+      2561.520996,
+      1939.852539
+    ],
+    "polygonPt": [
+      [
+        2160.632324,
+        1338.519409
+      ],
+      [
+        2561.520996,
+        1739.408203
+      ],
+      [
+        2361.07666,
+        1939.852539
+      ],
+      [
+        1960.18811,
+        1538.963745
+      ]
+    ]
+  },
+  "regressionPurpose": "Canonical real-file signature for the 98% transparency fallback. Chromium/Skia stores the field as /ca .025, so the detector must include the floating-point upper boundary."
+}
