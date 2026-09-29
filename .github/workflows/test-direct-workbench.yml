@@ -415,7 +415,7 @@ jobs:
           }
           console.log("Fresh private basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
 
-          await frame.waitForSelector("#basketOrders .basket-order > button", {state:"attached", timeout:30000});
+          await frame.waitForSelector("#basketOrders .basket-order", {state:"attached", timeout:30000});
           await frame.waitForFunction(() => {
             const rows=[...document.querySelectorAll("#basketOrders .basket-method")].map(x=>x.textContent||"");
             return rows.some(x => /13317\.00/.test(x)) && rows.some(x => /99999/.test(x));
@@ -432,11 +432,14 @@ jobs:
           const basketGroupState = await frame.evaluate(() => {
             const orders=[...document.querySelectorAll("#basketOrders .basket-order")];
             return orders.map(order=>{
-              const button=order.querySelector(":scope > .basket-order-title");
+              const title=order.querySelector(":scope > .basket-order-title");
               const methods=[...order.querySelectorAll(":scope > .basket-methods > .basket-method")];
               const orderStyle=getComputedStyle(order);
               return {
-                title:button?.textContent?.trim()||"",
+                title:title?.textContent?.trim()||"",
+                role:order.getAttribute("role")||"",
+                tabIndex:order.tabIndex,
+                cursor:orderStyle.cursor,
                 articles:methods.map(x=>x.dataset.article||""),
                 articleCount:methods.length,
                 orderBorderTop:parseFloat(orderStyle.borderTopWidth)||0,
@@ -455,12 +458,19 @@ jobs:
               basketGroupState[1]?.title !== "Заказ №7920512" ||
               basketGroupState[1]?.articleCount !== 1 ||
               JSON.stringify(basketGroupState[1]?.articles) !== JSON.stringify(["99999"]) ||
-              !basketGroupState.every(x=>x.orderBorderTop>0) ||
+              !basketGroupState.every(x=>x.orderBorderTop>0 && x.role==="button" && x.tabIndex===0 && x.cursor==="pointer") ||
               basketGroupState.some(x=>x.itemBorders.some(b=>b.left>0||b.right>0||b.bottom>0))) {
             throw new Error("Basket articles are not compactly grouped by order: "+JSON.stringify(basketGroupState));
           }
           console.log("Basket articles grouped under one order frame:", JSON.stringify(basketGroupState));
-          await frame.locator("#basketOrders .basket-order > button").first().click();
+          const fullCardClickTarget = frame.locator("#basketOrders .basket-order").first();
+          const secondArticle = fullCardClickTarget.locator(".basket-method").nth(1);
+          await secondArticle.click();
+          await frame.waitForFunction(()=>document.getElementById("order")?.value==="7920509");
+          if ((await frame.locator("#order").inputValue()) !== "7920509") {
+            throw new Error("Clicking article area inside order frame did not open the order");
+          }
+          await frame.locator("#basketOrders .basket-order").first().click();
           try {
             await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
           } catch (error) {
