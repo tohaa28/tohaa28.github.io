@@ -93,21 +93,24 @@ function makeUnlabeledSingleFieldPdf() {
 function makeServiceZoneExclusionPdf() {
   const stream=[
     'q',
-    // Permanent upper-left service marker.
+    // Permanent upper-left service marker, like the green block in the
+    // user's screenshot.
     '0 0.72 0.2 RG',
     '2 w',
-    '30 320 100 40 re S',
-    // Coloured order/requirements table in the lower-right, matching the
-    // layout from the user's real constructor screenshot.
+    '30 315 100 55 re S',
+    // Coloured order/requirements table in the lower-right.
     '0.85 0.15 0.2 RG',
-    '360 30 210 130 re S',
-    // The only real application field, away from both service zones.
-    '0 0.55 0.85 RG',
+    '360 20 220 135 re S',
+    // Two genuine application fields in the same relative locations as the
+    // screenshot: one immediately to the right of the green marker and one
+    // below it. The top one proves that the corner exclusion is not too wide.
+    '0.95 0.7 0.05 RG',
     '2 w',
-    '230 190 120 100 re S',
+    '205 300 95 65 re S',
+    '205 165 95 65 re S',
     'Q',
-    'BT /F1 10 Tf 375 140 Td (Pantone) Tj ET',
-    'BT /F1 10 Tf 500 45 Td (300 dpi) Tj ET',
+    'BT /F1 10 Tf 375 145 Td (Pantone) Tj ET',
+    'BT /F1 10 Tf 510 35 Td (300 dpi) Tj ET',
     ''
   ].join('\n');
   const objects=[
@@ -278,15 +281,15 @@ export async function verifyPdfLabels(frame) {
   await frame.locator('#manualTemplate').setInputFiles({name:'service-zones.pdf',mimeType:'application/pdf',buffer:serviceZonePdf});
   await frame.waitForFunction(()=>
     document.getElementById('templateName')?.textContent==='service-zones.pdf' &&
-    document.querySelectorAll('#fields option').length===2
+    document.querySelectorAll('#fields option').length===3
   );
   const serviceZoneState=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
     dimensions:document.getElementById('dimensions')?.textContent||''
   }));
-  assert.equal(serviceZoneState.options.length,2);
-  assert.match(serviceZoneState.options[1],/42\.33 × 35\.28 мм/);
-  assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 14\.11|84\.67 × 17\.64/);
+  assert.equal(serviceZoneState.options.length,3);
+  assert.ok(serviceZoneState.options.slice(1).every(text=>/33\.51 × 22\.93 мм/.test(text)),JSON.stringify(serviceZoneState));
+  assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 19\.40|77\.61 × 47\.63/);
   console.log('Service header/table excluded from field search:',JSON.stringify(serviceZoneState));
 
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
