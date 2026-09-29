@@ -90,6 +90,46 @@ function makeUnlabeledSingleFieldPdf() {
 }
 
 
+function makeSelectedOrdinaryFieldsPdf() {
+  const mm=72/25.4;
+  const x1=80, y=80, selected=300*mm, nestedW=260*mm, nestedH=250*mm, gap=80, x2=x1+selected+gap;
+  const nestedY=y+(selected-nestedH)/2;
+  const nestedX1=x1+(selected-nestedW)/2;
+  const nestedX2=x2+(selected-nestedW)/2;
+  const stream=[
+    'q',
+    '0 0.65 0.85 RG',
+    '2 w',
+    `${x1} ${y} ${selected} ${selected} re S`,
+    `${x2} ${y} ${selected} ${selected} re S`,
+    '0.95 0.2 0.25 RG',
+    '1 w',
+    `${nestedX1} ${nestedY} ${nestedW} ${nestedH} re S`,
+    `${nestedX2} ${nestedY} ${nestedW} ${nestedH} re S`,
+    // Colorful technical/legend decoys like the real constructor contains.
+    '0.1 0.7 0.2 RG',
+    '30 980 116 18 re S',
+    '260 980 150 24 re S',
+    '520 980 92 14 re S',
+    'Q',
+    ''
+  ].join('\n');
+  const pageW=x2+selected+80, pageH=1080;
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << >> /Contents 4 0 R >>`,
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeOpacity98ArbitraryFieldPdf(fillOpacity = 0.02) {
   // Non-rectangular Bezier field. It has no colored stroke and no text label;
   // the only field marker is a 2% opaque fill (= 98% transparency).
@@ -125,7 +165,7 @@ function makeOpacity98ArbitraryFieldPdf(fillOpacity = 0.02) {
   return Buffer.from(pdf,'ascii');
 }
 
-function makeRealSignatureOpacityFieldPdf(signature) {
+function makeRealSignatureOpacityFieldPdf(signature,{opaqueDecoy=false}={}) {
   const pageHeight=Number(signature.pdf.pageRectPt[3]);
   const pts=signature.pdf.polygonPt.map(([x,y])=>[Number(x),pageHeight-Number(y)]);
   const path=[`${pts[0][0]} ${pts[0][1]} m`,...pts.slice(1).map(([x,y])=>`${x} ${y} l`),`${pts[0][0]} ${pts[0][1]} l`];
@@ -136,6 +176,13 @@ function makeRealSignatureOpacityFieldPdf(signature) {
     ...path,
     'f*',
     'Q',
+    ...(opaqueDecoy ? [
+      'q',
+      '0.9647 0.1216 0.1725 rg',
+      ...path,
+      'f*',
+      'Q'
+    ] : []),
     ''
   ].join('\n');
   const width=Number(signature.pdf.pageRectPt[2]);
@@ -429,6 +476,89 @@ export async function verifyPdfLabels(frame) {
   assert.match(annotationState.hint,/лицо/);
   assert.match(annotationState.hint,/оборот/);
   console.log('Annotation-only PDF uses order application-ID place names:',JSON.stringify(annotationState));
+
+  // Exact regression for the saved 7987235 basket structure supplied by the
+  // user: one article has two ordinary selected 30x30 cm applications, while
+  // the umbrella article has one 20x10 cm rotated 98%-transparent field.
+  const ordinary7987235=makeSelectedOrdinaryFieldsPdf();
+  const rotated7987235=makeRealSignatureOpacityFieldPdf(realOpacitySignature,{opaqueDecoy:true});
+  await frame.parentFrame().evaluate(({ordinary,rotated})=>{
+    window.__gwbTemplateOverrides={
+      ...(window.__gwbTemplateOverrides||{}),
+      '49312484':ordinary,
+      '49327474':rotated
+    };
+  },{ordinary:ordinary7987235.toString('base64'),rotated:rotated7987235.toString('base64')});
+
+  const api7987235=await frame.evaluate(async()=>{
+    const response=await fetch('/api/orders/7987235',{cache:'no-store'});
+    return {status:response.status,body:await response.json()};
+  });
+  assert.equal(api7987235.status,200);
+  assert.equal(api7987235.body?.items?.length,2);
+  const bag7987235=api7987235.body.items.find(item=>item.article==='16535.66');
+  const umbrella7987235=api7987235.body.items.find(item=>item.article==='12393.89');
+  assert.ok(bag7987235,'16535.66 missing from exact 7987235 parse');
+  assert.equal(bag7987235.quantity,30);
+  assert.deepEqual(bag7987235.drawTaskIds,['27164470','27164477']);
+  assert.deepEqual(bag7987235.places,[
+    'сторона b [черный(Black); белый(White)]',
+    'сторона а [черный(403/Black)]'
+  ]);
+  assert.deepEqual(bag7987235.applicationBindings.map(x=>x.applicationId),['1','2']);
+  assert.deepEqual(bag7987235.expectedFieldSizes.map(x=>[x.w,x.h]),[[300,300],[300,300]]);
+  assert.match(bag7987235.method,/D1: Шелкография с трансфером,1/);
+  assert.match(bag7987235.method,/F1: Флекс,2/);
+  assert.ok(umbrella7987235,'12393.89 missing from exact 7987235 parse');
+  assert.equal(umbrella7987235.quantity,5);
+  assert.deepEqual(umbrella7987235.drawTaskIds,['27173572']);
+  assert.deepEqual(umbrella7987235.applicationBindings.map(x=>x.applicationId),['3']);
+  assert.deepEqual(umbrella7987235.expectedFieldSizes.map(x=>[x.w,x.h]),[[200,100]]);
+  assert.deepEqual(umbrella7987235.places,['купол, клин 1 [подложка; черный(Black); желтый(106C)]']);
+  console.log('Exact 7987235 order parse:',JSON.stringify({
+    bag:{quantity:bag7987235.quantity,places:bag7987235.places,drawTaskIds:bag7987235.drawTaskIds,sizes:bag7987235.expectedFieldSizes},
+    umbrella:{quantity:umbrella7987235.quantity,places:umbrella7987235.places,drawTaskIds:umbrella7987235.drawTaskIds,sizes:umbrella7987235.expectedFieldSizes}
+  }));
+
+  await frame.evaluate(async()=>{
+    document.getElementById('order').value='7987235';
+    await document.getElementById('loadOrder').onclick();
+  });
+  await frame.waitForFunction(()=>document.getElementById('orderLoading')?.hidden===true && document.querySelectorAll('#orderTemplates option').length===3);
+
+  await frame.selectOption('#orderTemplates','0');
+  await frame.waitForFunction(()=>document.querySelectorAll('#orderFieldChoice option').length===3 && document.getElementById('orderEditor')?.hidden===false);
+  const ordinaryState7987235=await frame.evaluate(()=>({
+    options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
+    full:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
+    hint:document.getElementById('fieldChoiceHint')?.textContent||'',
+    unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
+  }));
+  assert.equal(ordinaryState7987235.options.length,3);
+  assert.match(ordinaryState7987235.options[1],/^сторона b .*D1: Шелкография с трансфером,1$/);
+  assert.match(ordinaryState7987235.options[2],/^сторона а .*F1: Флекс,2$/);
+  assert.equal(ordinaryState7987235.unmatched,false);
+  assert.ok(ordinaryState7987235.full.slice(1).every(text=>/300\.00 × 300\.00 мм/.test(text)),JSON.stringify(ordinaryState7987235));
+  console.log('Exact 7987235 ordinary fields resolved:',JSON.stringify(ordinaryState7987235));
+
+  await frame.selectOption('#orderTemplates','1');
+  await frame.waitForFunction(()=>document.querySelectorAll('#orderFieldChoice option').length===2 && document.getElementById('orderEditor')?.hidden===false);
+  const rotatedState7987235=await frame.evaluate(()=>({
+    options:[...document.querySelectorAll('#orderFieldChoice option')].map(o=>o.textContent||''),
+    full:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
+    fieldSize:document.getElementById('fieldSize')?.textContent||'',
+    selected:document.getElementById('orderFieldChoice')?.value||'',
+    hint:document.getElementById('fieldChoiceHint')?.textContent||'',
+    unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
+  }));
+  assert.equal(rotatedState7987235.options.length,2);
+  assert.match(rotatedState7987235.options[1],/^купол, клин 1 .*B4: Шелкография на текстиль,3$/);
+  assert.equal(rotatedState7987235.unmatched,false);
+  assert.match(rotatedState7987235.full[1],/200\.00 × 100\.00 мм/);
+  assert.doesNotMatch(rotatedState7987235.full[1],/212(?:[.,]\d+)? × 212/);
+  assert.match(rotatedState7987235.fieldSize,/200\.00 × 100\.00 мм/);
+  assert.match(rotatedState7987235.fieldSize,/по прозрачной заливке/);
+  console.log('Exact 7987235 rotated fallback beats opaque decoy:',JSON.stringify(rotatedState7987235));
 
   // Diagnostic against the real public 16535 constructor. Keep non-fatal while
   // diagnosing CDN/template variations; the output is used to build a local
