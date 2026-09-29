@@ -90,9 +90,9 @@ function makeUnlabeledSingleFieldPdf() {
 }
 
 
-function makeSelectedOrdinaryFieldsPdf() {
+function makeSelectedOrdinaryFieldsPdf(scale=0.1) {
   const mm=72/25.4;
-  const x1=80, y=80, selected=300*mm, nestedW=260*mm, nestedH=250*mm, gap=80, x2=x1+selected+gap;
+  const x1=80, y=80, selected=300*scale*mm, nestedW=260*scale*mm, nestedH=250*scale*mm, gap=80, x2=x1+selected+gap;
   const nestedY=y+(selected-nestedH)/2;
   const nestedX1=x1+(selected-nestedW)/2;
   const nestedX2=x2+(selected-nestedW)/2;
@@ -478,9 +478,10 @@ export async function verifyPdfLabels(frame) {
   console.log('Annotation-only PDF uses order application-ID place names:',JSON.stringify(annotationState));
 
   // Exact regression for the saved 7987235 basket structure supplied by the
-  // user: one article has two ordinary selected 30x30 cm applications, while
-  // the umbrella article has one 20x10 cm rotated 98%-transparent field.
-  const ordinary7987235=makeSelectedOrdinaryFieldsPdf();
+  // user. The ordinary constructor is deliberately drawn at 1:10, matching the
+  // real public 16535 constructor: selected 30x30 cm fields are 30x30 mm in PDF.
+  // The umbrella article has one 20x10 cm rotated 98%-transparent field.
+  const ordinary7987235=makeSelectedOrdinaryFieldsPdf(0.1);
   const rotated7987235=makeRealSignatureOpacityFieldPdf(realOpacitySignature,{opaqueDecoy:true});
   await frame.parentFrame().evaluate(({ordinary,rotated})=>{
     window.__gwbTemplateOverrides={
