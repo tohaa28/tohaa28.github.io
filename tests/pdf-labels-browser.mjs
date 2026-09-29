@@ -279,14 +279,13 @@ export async function verifyPdfLabels(frame) {
   // vector shapes just like real application frames.
   const serviceZonePdf=makeServiceZoneExclusionPdf();
   await frame.locator('#manualTemplate').setInputFiles({name:'service-zones.pdf',mimeType:'application/pdf',buffer:serviceZonePdf});
-  await frame.waitForFunction(()=>
-    document.getElementById('templateName')?.textContent==='service-zones.pdf' &&
-    document.querySelectorAll('#fields option').length===3
-  );
+  await frame.waitForFunction(()=>document.getElementById('templateName')?.textContent==='service-zones.pdf');
+  await frame.waitForTimeout(400);
   const serviceZoneState=await frame.evaluate(()=>({
     options:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
     dimensions:document.getElementById('dimensions')?.textContent||''
   }));
+  console.log('Screenshot-layout service-zone candidates:',JSON.stringify(serviceZoneState));
   assert.equal(serviceZoneState.options.length,3);
   assert.ok(serviceZoneState.options.slice(1).every(text=>/33\.51 × 22\.93 мм/.test(text)),JSON.stringify(serviceZoneState));
   assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 19\.40|77\.61 × 47\.63/);
