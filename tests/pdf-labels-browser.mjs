@@ -293,7 +293,10 @@ export async function verifyPdfLabels(frame) {
 
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
-  await frame.waitForFunction(()=>document.querySelectorAll('#fields option').length===3);
+  await frame.waitForFunction(()=>
+    document.getElementById('templateName')?.textContent==='reversed.pdf' &&
+    document.querySelectorAll('#fields option').length===3
+  );
   const options=await frame.locator('#fields option').allTextContents();
   assert.match(options[1],/^оборот · стр\./);
   assert.match(options[2],/^лицо · стр\./);
