@@ -125,6 +125,36 @@ function makeOpacity98ArbitraryFieldPdf(fillOpacity = 0.02) {
   return Buffer.from(pdf,'ascii');
 }
 
+function makeRealSignatureOpacityFieldPdf(signature) {
+  const pageHeight=Number(signature.pdf.pageRectPt[3]);
+  const pts=signature.pdf.polygonPt.map(([x,y])=>[Number(x),pageHeight-Number(y)]);
+  const path=[`${pts[0][0]} ${pts[0][1]} m`,...pts.slice(1).map(([x,y])=>`${x} ${y} l`),`${pts[0][0]} ${pts[0][1]} l`];
+  const stream=[
+    'q',
+    '/GS98 gs',
+    '0.9647 0.1216 0.1725 rg',
+    ...path,
+    'f*',
+    'Q',
+    ''
+  ].join('\n');
+  const width=Number(signature.pdf.pageRectPt[2]);
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${pageHeight}] /Resources << /ExtGState << /GS98 5 0 R >> >> /Contents 4 0 R >>`,
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    `<< /Type /ExtGState /ca ${signature.pdf.fillAlpha} /CA 1 >>`
+  ];
+  let pdf='%PDF-1.4\n',offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeAnnotationNumericPdf() {
   const stream = [
     'q',
@@ -287,6 +317,29 @@ export async function verifyPdfLabels(frame) {
   assert.equal(singleState.rows.some(r=>r.key==='Контроль мест'),false);
   assert.equal(singleState.rows.some(r=>r.key==='Подписи PDF'),false);
   console.log('98% transparent arbitrary field -> application 4 -> local print1:',JSON.stringify(singleState));
+
+  // Recreate the actual rotated 200 x 100 mm umbrella field from the recorded
+  // 7987235 template signature. This verifies that geometry is preserved rather
+  // than reduced to its ~212 x 212 mm axis-aligned bounding box.
+  const rotatedPdf=makeRealSignatureOpacityFieldPdf(realOpacitySignature);
+  await frame.parentFrame().evaluate(base64=>{window.__gwbTemplateOverride=base64;},rotatedPdf.toString('base64'));
+  await frame.evaluate(async()=>{
+    document.getElementById('order').value='7920515';
+    await document.getElementById('loadOrder').onclick();
+  });
+  await frame.waitForFunction(()=>document.getElementById('orderLoading').hidden && document.querySelectorAll('#orderFieldChoice option').length===2);
+  await frame.selectOption('#orderFieldChoice',{index:1});
+  await frame.waitForFunction(()=>/по прозрачной заливке/.test(document.getElementById('fieldSize')?.textContent||''));
+  const rotatedState=await frame.evaluate(()=>({
+    fieldSize:document.getElementById('fieldSize')?.textContent||'',
+    selected:document.getElementById('orderFieldChoice')?.value||'',
+    option:document.querySelector('#orderFieldChoice option:nth-child(2)')?.textContent||''
+  }));
+  assert.equal(rotatedState.selected,'0');
+  assert.match(rotatedState.fieldSize,/200(?:[.,]0+)? × 100(?:[.,]0+)? мм/);
+  assert.match(rotatedState.fieldSize,/по прозрачной заливке/);
+  assert.doesNotMatch(rotatedState.fieldSize,/212(?:[.,]\d+)? × 212/);
+  console.log('Real 7987235 rotated field geometry preserved:',JSON.stringify(rotatedState));
 
   // Same fallback, but the digits exist only as PDF FreeText annotations.
   const annotationPdf=makeAnnotationNumericPdf();
