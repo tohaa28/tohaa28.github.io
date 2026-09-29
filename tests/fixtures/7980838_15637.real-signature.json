@@ -1,0 +1,50 @@
+{
+  "fixture": "7980838_15637.pdf",
+  "source": "user-real-template",
+  "sha256": "78da1027e24d8dc54ff9a431f812c0347b6b65d7220c591ba673c0de8d77bd3c",
+  "byteLength": 75273,
+  "order": "7980838",
+  "article": "15637",
+  "product": "Брелок Tetta",
+  "pageRectPt": [0.0, 0.0, 549.119995, 568.080017],
+  "pageSizeMm": [193.7173, 200.406],
+  "places": [
+    {"index": 1, "name": "лицо", "printId": "print1", "sizeCm": [3.2, 3.2]},
+    {"index": 2, "name": "оборот", "printId": "print2", "sizeCm": [3.2, 3.2]}
+  ],
+  "fieldDrawings": [
+    {
+      "drawingIndex": 7,
+      "type": "f",
+      "fillRgb": [0.9647, 0.1216, 0.1725],
+      "fillOpacity": 0.025,
+      "bboxPt": [164.972, 181.328018, 255.677399, 272.033691],
+      "bboxMm": [58.1985, 63.9685, 90.1973, 95.9674]
+    },
+    {
+      "drawingIndex": 8,
+      "type": "f",
+      "fillRgb": [0.9647, 0.1216, 0.1725],
+      "fillOpacity": 1.0,
+      "bboxPt": [164.405075, 180.761108, 256.244293, 272.600616],
+      "bboxMm": [57.9985, 63.7685, 90.3973, 96.1674]
+    },
+    {
+      "drawingIndex": 9,
+      "type": "f",
+      "fillRgb": [0.0902, 0.2235, 0.6039],
+      "fillOpacity": 0.025,
+      "bboxPt": [293.967377, 181.328018, 384.672791, 272.033691],
+      "bboxMm": [103.7052, 63.9685, 135.704, 95.9674]
+    },
+    {
+      "drawingIndex": 10,
+      "type": "f",
+      "fillRgb": [0.0902, 0.2235, 0.6039],
+      "fillOpacity": 1.0,
+      "bboxPt": [293.400452, 180.761108, 385.239685, 272.600616],
+      "bboxMm": [103.5052, 63.7685, 135.904, 96.1674]
+    }
+  ],
+  "regressionPurpose": "Real template proving that [print1] is the first local field and [print2] is the second; semantic printN order is authoritative even when labels live in the lower application table."
+}
