@@ -1,13 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {extractFieldLabels,extractAnnotationFieldLabels,bindFieldLabels,auditFieldLabels} from '../assets/pdf-field-labels.mjs';
-const fields=[{x:20,y:20,w:30,h:20,page:0},{x:20,y:80,w:30,h:20,page:0}];
+const fields=[{x:20,y:20,w:30,h:20,page:0,pdfOrder:0},{x:20,y:80,w:30,h:20,page:0,pdfOrder:1}];
 const labels=[{x:22,y:74,w:20,h:4,text:'лицо [print1]',name:'лицо',printId:'print1'},{x:22,y:14,w:20,h:4,text:'оборот [print2]',name:'оборот',printId:'print2'}];
-test('PDF geometry wins over all array orders and print number order',()=>{
+test('complete printN sequence defines local field order regardless of label position or array order',()=>{
   for(const fs of [fields,[...fields].reverse()])for(const ls of [labels,[...labels].reverse()]){
     const result=bindFieldLabels(fs,ls);
-    assert.equal(result.find(f=>f.y===20).pdfPlace,'оборот');
-    assert.equal(result.find(f=>f.y===80).pdfPlace,'лицо');
+    assert.equal(result.find(f=>f.pdfOrder===0).pdfPlace,'лицо');
+    assert.equal(result.find(f=>f.pdfOrder===0).printId,'print1');
+    assert.equal(result.find(f=>f.pdfOrder===1).pdfPlace,'оборот');
+    assert.equal(result.find(f=>f.pdfOrder===1).printId,'print2');
     for(const places of [['лицо','оборот'],['оборот','лицо']])assert.equal(auditFieldLabels(result,{places}).ok,true);
   }
 });
@@ -115,6 +117,23 @@ test('standalone numeric items survive line merging and punctuation',()=>{
   const audit=auditFieldLabels(bound,{places:[],placeCount:0,placeCountReliable:false});
   assert.equal(audit.ok,true);
   assert.equal(audit.mode,'pdf-numbered-only');
+});
+
+test('distant print table alone numbers unlabeled fields by pdfOrder',()=>{
+  const boxes=[
+    {x:20,y:20,w:30,h:20,page:0,pdfOrder:4},
+    {x:80,y:20,w:30,h:20,page:0,pdfOrder:9}
+  ];
+  const table=[
+    {x:10,y:150,w:30,h:4,text:'лицо [print1]',name:'лицо',printId:'print1',confidence:3,source:'assembled-line'},
+    {x:50,y:150,w:30,h:4,text:'оборот [print2]',name:'оборот',printId:'print2',confidence:3,source:'assembled-line'}
+  ];
+  const bound=bindFieldLabels([...boxes].reverse(),[...table].reverse());
+  assert.equal(bound.find(f=>f.pdfOrder===4).pdfPlace,'лицо');
+  assert.equal(bound.find(f=>f.pdfOrder===4).fieldIndex,1);
+  assert.equal(bound.find(f=>f.pdfOrder===9).pdfPlace,'оборот');
+  assert.equal(bound.find(f=>f.pdfOrder===9).fieldIndex,2);
+  assert.ok(bound.every(f=>/print-sequence/.test(f.labelSource)));
 });
 
 test('numeric frame labels inherit semantic names from distant print table',()=>{
