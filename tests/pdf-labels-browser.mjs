@@ -90,6 +90,38 @@ function makeUnlabeledSingleFieldPdf() {
 }
 
 
+function makeServiceZoneExclusionPdf() {
+  const stream=[
+    'q',
+    '0 0.72 0.2 RG',
+    '2 w',
+    '30 320 100 40 re S',
+    '0.85 0.15 0.2 RG',
+    '220 300 240 50 re S',
+    '0 0.55 0.85 RG',
+    '2 w',
+    '250 100 120 100 re S',
+    'Q',
+    'BT /F1 10 Tf 30 370 Td (Pantone) Tj ET',
+    'BT /F1 10 Tf 320 350 Td (300 dpi) Tj ET',
+    ''
+  ].join('\n');
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 400] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+  let pdf='%PDF-1.4\n',offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeSelectedOrdinaryFieldsPdf(scale=0.1) {
   const mm=72/25.4;
   const x1=80, y=80, selected=300*scale*mm, nestedW=260*scale*mm, nestedH=250*scale*mm, gap=80, x2=x1+selected+gap;
@@ -234,6 +266,22 @@ function makeAnnotationNumericPdf() {
 }
 
 export async function verifyPdfLabels(frame) {
+  // Service areas in Gifts constructors are never application fields. The
+  // green marker in the upper-left and the order/technical-requirements table
+  // must be filtered before field ranking, even though they are saturated
+  // vector shapes just like real application frames.
+  const serviceZonePdf=makeServiceZoneExclusionPdf();
+  await frame.locator('#manualTemplate').setInputFiles({name:'service-zones.pdf',mimeType:'application/pdf',buffer:serviceZonePdf});
+  await frame.waitForFunction(()=>document.querySelectorAll('#fields option').length===2);
+  const serviceZoneState=await frame.evaluate(()=>({
+    options:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
+    dimensions:document.getElementById('dimensions')?.textContent||''
+  }));
+  assert.equal(serviceZoneState.options.length,2);
+  assert.match(serviceZoneState.options[1],/42\.33 × 35\.28 мм/);
+  assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 14\.11|84\.67 × 17\.64/);
+  console.log('Service header/table excluded from field search:',JSON.stringify(serviceZoneState));
+
   // Exercise real PDF.js text extraction, vector detection and the editor dropdown.
   await frame.locator('#manualTemplate').setInputFiles({name:'reversed.pdf',mimeType:'application/pdf',buffer:fs.readFileSync('tests/fixtures/reversed.pdf')});
   await frame.waitForFunction(()=>document.querySelectorAll('#fields option').length===3);
