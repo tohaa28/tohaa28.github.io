@@ -332,15 +332,35 @@ jobs:
           });
           if (twoPlaceOrder.items?.[0]?.placeCount !== 2 ||
               JSON.stringify(twoPlaceOrder.items[0].places) !== JSON.stringify(["лицо","оборот"]) ||
-              twoPlaceOrder.items[0].placeCountSignals?.drawTasks !== 2 ||
-              JSON.stringify((twoPlaceOrder.items[0].placeBindings || []).map(x => x.name)) !== JSON.stringify(["лицо","оборот"]) ||
-              JSON.stringify((twoPlaceOrder.items[0].placeBindings || []).map(x => String(x.applicationId ?? x.applicationIndex ?? ""))) !== JSON.stringify(["1","2"]) ||
-              (twoPlaceOrder.items[0].placeBindings || []).some(x => !x.templateIndex || !x.printId)) {
-            throw new Error("Two-place order names/bindings are invalid: "+JSON.stringify(twoPlaceOrder));
+              twoPlaceOrder.items[0].placeCountSignals?.drawTasks !== 2) {
+            throw new Error("Legacy two-place order audit is invalid: "+JSON.stringify(twoPlaceOrder));
           }
-          console.log("Two-place names/bindings:", JSON.stringify({
+          console.log("Legacy two-place names/count:", JSON.stringify({
             places: twoPlaceOrder.items[0].places,
-            bindings: twoPlaceOrder.items[0].placeBindings
+            drawTasks: twoPlaceOrder.items[0].placeCountSignals?.drawTasks
+          }));
+
+          const boundTwoPlaceOrder = await frame.evaluate(async () => {
+            const r = await fetch("/api/orders/7920514", {cache:"no-store"});
+            return await r.json();
+          });
+          const boundTwoPlaceItem = boundTwoPlaceOrder.items?.[0];
+          if (boundTwoPlaceItem?.article !== "15637" ||
+              boundTwoPlaceItem?.placeCount !== 2 ||
+              boundTwoPlaceItem?.placeCountReliable !== true ||
+              JSON.stringify(boundTwoPlaceItem?.places) !== JSON.stringify(["лицо","оборот"]) ||
+              JSON.stringify((boundTwoPlaceItem?.placeBindings || []).map(x => x.name)) !== JSON.stringify(["лицо","оборот"]) ||
+              JSON.stringify((boundTwoPlaceItem?.placeBindings || []).map(x => String(x.applicationId ?? x.applicationIndex ?? ""))) !== JSON.stringify(["1","2"]) ||
+              JSON.stringify((boundTwoPlaceItem?.placeBindings || []).map(x => x.templateIndex)) !== JSON.stringify([1,2]) ||
+              JSON.stringify((boundTwoPlaceItem?.placeBindings || []).map(x => x.printId)) !== JSON.stringify(["print1","print2"]) ||
+              JSON.stringify((boundTwoPlaceItem?.placeBindings || []).map(x => x.drawTaskId)) !== JSON.stringify(["27133550","27133564"]) ||
+              JSON.stringify(boundTwoPlaceItem?.templateApplicationIds) !== JSON.stringify(["1","2"])) {
+            throw new Error("Bound two-place order names/applications/PDF bindings are invalid: "+JSON.stringify(boundTwoPlaceOrder));
+          }
+          console.log("Bound two-place names/applications/PDF bindings:", JSON.stringify({
+            places: boundTwoPlaceItem.places,
+            bindings: boundTwoPlaceItem.placeBindings,
+            templateApplicationIds: boundTwoPlaceItem.templateApplicationIds
           }));
           if (orderData.items?.[0]?.productUrl !== "https://gifts.ru/id/228756") {
             throw new Error("Product URL was not captured for preview fallback: "+JSON.stringify(orderData.items?.[0]));
