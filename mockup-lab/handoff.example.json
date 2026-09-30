@@ -1,0 +1,26 @@
+{
+  "schema": "gifts-mockup-handoff/v1",
+  "order": "7980838",
+  "article": "15637",
+  "variant": "",
+  "place": "лицо",
+  "method": "LM1",
+  "photoCandidates": [
+    {
+      "name": "15637_7_200x200.jpg",
+      "url": ""
+    }
+  ],
+  "photoDataUrl": "",
+  "templateName": "constructor.pdf",
+  "constructorPreviewDataUrl": "",
+  "templateWidth": 1000,
+  "templateHeight": 1000,
+  "fieldRect": {
+    "x": 320,
+    "y": 410,
+    "w": 180,
+    "h": 180
+  },
+  "fieldCompositeDataUrl": ""
+}
