@@ -1,0 +1,69 @@
+name: Publish Mockup Lab
+
+on:
+  push:
+    branches:
+      - mockup-lab-source
+    paths:
+      - "mockup-lab/**"
+      - ".github/workflows/publish-mockup-lab.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify standalone editor
+        run: |
+          set -euo pipefail
+          test -f mockup-lab/index.html
+          grep -q "Mockup Lab" mockup-lab/index.html
+          grep -q "gifts.mockupLab.handoff.v1" mockup-lab/index.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("mockup-lab/index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script[^>]*>(.*?)</script>', html, flags=re.S)
+          assert scripts, "inline script not found"
+          Path("/tmp/mockup-lab.mjs").write_text("\n".join(scripts), encoding="utf-8")
+          PY
+          node --check /tmp/mockup-lab.mjs
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: source
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+      - name: Publish only Mockup Lab
+        run: |
+          set -euo pipefail
+          rm -rf site/mockup-lab
+          mkdir -p site/mockup-lab
+          cp source/mockup-lab/index.html site/mockup-lab/index.html
+      - name: Commit GitHub Pages
+        run: |
+          set -euo pipefail
+          cd site
+          git config user.name "mockup-lab-publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A mockup-lab
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Publish Mockup Lab"
+            git push origin main
+          fi
