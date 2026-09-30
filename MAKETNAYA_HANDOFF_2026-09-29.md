@@ -278,3 +278,5 @@ assets/logo-color.mjs добавляет проверки: все LM/LB/LC/LUV �
 
 Проверены 55 unit tests, включая 24 эталона оригинального Java alpha63. Browser regression покрывает реальные SVG/PDF/PNG, Worker, паузу жеста, отмену, кеш, размер и диагностику; прежние сценарии сохранены. Добавлена ссылка на источник в документации; публикация производится только через зелёный verify CI. Сгенерированный assets/index-BpU9kvz8.js не коммитить: интеграцию воспроизводит tools/patch-artwork-preflight.mjs.
 
+
+Подтверждённая публикация поиска мелких элементов: source 3a5b151a0b244de4857fef2e2101fab63c355f7b; test 36719938142 SUCCESS; publish 36719938350 SUCCESS; Pages 36720062447 SUCCESS (main c1c04e63dc1204b42ff9e2910f21d66b94f1b183). Полный browser suite повторён с опубликованными launcher/assets без локальной подмены: PASS, включая Worker и SVG/PDF/PNG. Хеши bundle и всех новых модулей совпали с проверенной локальной сборкой (LF, без BOM).
