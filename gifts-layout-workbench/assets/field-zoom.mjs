@@ -15,5 +15,9 @@ export function installFieldZoom({canvas,getState,render}){
  const end=()=>{drag=null;canvas.style.cursor=space?'grab':'';};window.addEventListener('keyup',e=>{if(e.code==='Space'){space=false;end();}});window.addEventListener('blur',()=>{space=false;end();});
  canvas.addEventListener('pointerdown',e=>{if(bar.hidden||!(space||e.button===1))return;const s=getState();if(s.busy)return;drag={x:e.clientX,y:e.clientY,view:{...s.view},rect:canvas.getBoundingClientRect()};canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';e.preventDefault();e.stopImmediatePropagation();},true);
  canvas.addEventListener('pointermove',e=>{if(!drag)return;const v=drag.view;owned={...v,x:v.x-(e.clientX-drag.x)/drag.rect.width*v.w,y:v.y-(e.clientY-drag.y)/drag.rect.height*v.h};getState().view=owned;schedule();e.preventDefault();e.stopImmediatePropagation();},true);
- canvas.addEventListener('pointerup',end,true);canvas.addEventListener('pointercancel',end,true);canvas.addEventListener('lostpointercapture',end,true);refresh();return {refresh};
+ canvas.addEventListener('pointerup',end,true);canvas.addEventListener('pointercancel',end,true);canvas.addEventListener('lostpointercapture',end,true);refresh();return {refresh,layout(width,height){
+  refresh();if(!base)return;const state=getState(),v=state.view,ratio=width/height;if(Math.abs(v.w/v.h-ratio)<1e-6)return;
+  const w=Math.max(v.w,v.h*ratio),h=Math.max(v.h,v.w/ratio);owned={x:v.x+(v.w-w)/2,y:v.y+(v.h-h)/2,w,h};state.view=owned;
+  const bw=w*factor,bh=h*factor;base={x:base.x+(base.w-bw)/2,y:base.y+(base.h-bh)/2,w:bw,h:bh};
+ }};
 }
