@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="add69a838985e1ef6d953dfcc484e97a1216ee0d95806b9f40905874fa13a998";
+const expected="3699fe498cf491acb3b2bcee456a2a5f001d4d05b5a4a44aade7c35ede29d9ca";
 const edits=[
   [
     "",
@@ -99,6 +99,22 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20260930-2",
     "./logo-preflight.mjs?v=20260930-3"
+  ],
+  [
+    "./field-zoom.mjs?v=20260930-1",
+    "./field-zoom.mjs?v=20260930-2"
+  ],
+  [
+    "async function zt(){const c=y.template;if(!c)return;const t=",
+    "async function zt(){const c=y.template;if(!c)return;const sc=v(\"stageScroll\"),cs=getComputedStyle(sc),fw=Math.max(96,sc.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)),fh=Math.max(96,sc.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom));gwbFieldZoom?.layout(fw,fh);const t="
+  ],
+  [
+    "i=Math.min(1e3,s,Math.max(96,(v(\"stageScroll\").clientHeight-36)*e));",
+    "i=y.view&&y.field?fw:Math.min(1e3,s,Math.max(96,(v(\"stageScroll\").clientHeight-36)*e));"
+  ],
+  [
+    "const sc=v(\"stageScroll\"),cs=getComputedStyle(sc)",
+    "gwbFieldZoom?.refresh();const sc=v(\"stageScroll\"),cs=getComputedStyle(sc)"
   ]
 ];
 export function applyLogoPreflight(){
