@@ -48,9 +48,9 @@ async function start(){
  }catch(error){if(token!==job)return;busy=false;e.state='error';e.error='Мелкие элементы не проверены: '+String(error.message||error);api.redraw();schedule();}
 }
 export function installDetailCheck({canvas,getState,redraw}){
- const panel=document.createElement('details');panel.id='logoDetailCheck';panel.open=true;panel.className='logo-detail-check';
+ const panel=document.createElement('details');panel.id='logoDetailCheck';panel.open=false;panel.className='logo-detail-check';
  panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><label>Маска <select id="detailMode"><option value="dark">Тёмное на светлом</option><option value="light">Светлое на тёмном</option><option value="alpha">Все непрозрачные элементы</option></select></label><label>Порог маски <input id="detailThreshold" type="number" min="1" max="254" value="245"></label><p id="detailStatus" role="status"></p><p class="help">Круги показывают порог: жёлтые — линии, голубые — пробелы, оранжевые — отдельные объекты. Нажмите область в списке, чтобы рассмотреть её крупнее.</p><div id="detailList"></div><canvas id="detailPreview" width="320" height="200" hidden></canvas>';
- document.getElementById('step4Box').append(panel);
+ const separate=document.createElement('section');separate.id='detailPanel';separate.className='panel';separate.append(panel);document.getElementById('step4Box').closest('.panel').after(separate);
  const layer=document.createElement('canvas');layer.id='detailOverlay';layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';canvas.parentElement.append(layer);
  const $=id=>panel.querySelector('#'+id);
  function preview(entry,box){const c=$('detailPreview');c.hidden=false;const ctx=c.getContext('2d'),image=entry.art.image,W=image.naturalWidth||image.width,H=image.naturalHeight||image.height;
@@ -58,7 +58,7 @@ export function installDetailCheck({canvas,getState,redraw}){
   ctx.fillStyle='#e9edf0';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle=entry.mode==='light'?'#222':'#fff';ctx.fillRect(ox,oy,w*zx,h*zy);ctx.drawImage(image,x*W,y*H,w*W,h*H,ox,oy,w*zx,h*zy);ctx.strokeStyle=colors[box.kind];ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(ox+(box.cx-x)*zx,oy+(box.cy-y)*zy,box.threshold/entry.wMm*zx/2,box.threshold/entry.hMm*zy/2,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#00529b';ctx.font='12px sans-serif';ctx.fillText('Диаметр '+box.threshold+' мм · измерено '+box.minWidthMm.toFixed(3)+' мм',8,192);
  }
  function refresh(){
-  const state=getState(),e=entries.get(placementKeys.get(state.placement));const keys=new Set(validEntries().map(e=>e.key));
+  const state=getState();separate.hidden=!state.art;const e=entries.get(placementKeys.get(state.placement));const keys=new Set(validEntries().map(e=>e.key));
   for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8)entries.delete(key);
   if(worker&&!validEntries().some(e=>e.state==='running'))cancel();
   if(currentKey!==e?.key){selected=-1;currentKey=e?.key||'';$('detailPreview').hidden=true;}

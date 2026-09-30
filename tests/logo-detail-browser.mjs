@@ -9,7 +9,7 @@ export async function verifyDetailCheck(frame){
  const done=()=>frame.waitForFunction(()=>{const d=window.gwbDetailCheck;return d?.entries.find(e=>e.key===d.selectedKey)?.state==='done';},{},{timeout:30000}).catch(async error=>{console.log("DETAIL TIMEOUT",await frame.evaluate(()=>window.gwbDetailCheck));throw error;});
  await done();let state=await frame.evaluate(()=>window.gwbDetailCheck),entry=state.entries.find(e=>e.key===state.selectedKey);
  assert.ok(entry.boxes.some(b=>b.kind==='positive'));assert.ok(entry.boxes.some(b=>b.kind==='negative'));
- await frame.locator('#detailList button').first().click();assert.equal(await frame.locator('#detailPreview').isVisible(),true);if(process.env.DETAIL_SCREENSHOT)await frame.page().screenshot({path:process.env.DETAIL_SCREENSHOT});
+ assert.equal(await frame.locator('#logoDetailCheck').getAttribute('open'),null);assert.equal(await frame.locator('#detailOverlay').isVisible(),true);await frame.locator('#logoDetailCheck summary').click();await frame.locator('#detailList button').first().click();assert.equal(await frame.locator('#detailPreview').isVisible(),true);if(process.env.DETAIL_SCREENSHOT)await frame.page().screenshot({path:process.env.DETAIL_SCREENSHOT});
  const before=state.runs;await frame.locator('#editorRotateRight').click();await frame.waitForTimeout(1200);assert.equal((await frame.evaluate(()=>window.gwbDetailCheck)).runs,before,'Rotation must reuse analysis');
  // Hold a real mouse gesture longer than the debounce interval.
  const overlay=await frame.locator('#overlay').boundingBox(),center=await frame.locator('#logoRotateHandle').evaluate(e=>({x:+e.dataset.centerX,y:+e.dataset.centerY}));

@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="7774b18f31fb1370d90804439169967582e0a1057e4c787c0cc4c0ddd9bb404a";
+const expected="add69a838985e1ef6d953dfcc484e97a1216ee0d95806b9f40905874fa13a998";
 const edits=[
   [
     "",
@@ -75,6 +75,30 @@ const edits=[
   [
     "gwbRotationTool=installLogoRotation({canvas:pt,getState:()=>y,redraw:X,toPoint:Wn});",
     "gwbRotationTool=installLogoRotation({canvas:pt,getState:()=>y,redraw:X,toPoint:Wn});\ngwbDetailTool=installDetailCheck({canvas:pt,getState:()=>y,redraw:X});"
+  ],
+  [
+    "",
+    "import {installFieldZoom} from \"./field-zoom.mjs?v=20260930-1\";\nlet gwbFieldZoom;\n"
+  ],
+  [
+    "gwbDetailTool?.refresh();return;",
+    "gwbDetailTool?.refresh();gwbFieldZoom?.refresh();return;"
+  ],
+  [
+    "gwbDetailTool?.refresh()}",
+    "gwbDetailTool?.refresh();gwbFieldZoom?.refresh()}"
+  ],
+  [
+    "gwbDetailTool=installDetailCheck({canvas:pt,getState:()=>y,redraw:X});",
+    "gwbDetailTool=installDetailCheck({canvas:pt,getState:()=>y,redraw:X});\ngwbFieldZoom=installFieldZoom({canvas:pt,getState:()=>y,render:zt});"
+  ],
+  [
+    "./logo-detail-check.mjs?v=20260930-1",
+    "./logo-detail-check.mjs?v=20260930-2"
+  ],
+  [
+    "./logo-preflight.mjs?v=20260930-2",
+    "./logo-preflight.mjs?v=20260930-3"
   ]
 ];
 export function applyLogoPreflight(){

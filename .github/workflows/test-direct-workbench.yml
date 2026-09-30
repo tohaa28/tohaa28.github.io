@@ -680,6 +680,8 @@ jobs:
           await verifyRotationAndColors(frame);
           const {verifyDetailCheck}=await import('./tests/logo-detail-browser.mjs');
           await verifyDetailCheck(frame);
+          const {verifyFieldZoom}=await import('./tests/field-zoom-browser.mjs');
+          await verifyFieldZoom(frame);
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
