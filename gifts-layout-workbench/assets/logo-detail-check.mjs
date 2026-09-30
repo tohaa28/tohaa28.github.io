@@ -12,7 +12,7 @@ function entryFor(art,placement,field,rule){
  return entry;
 }
 export function detailFindings({art,placement,field,rule}){
- if(!rule)return [];const e=entryFor(art,placement,field,rule);schedule();
+ if(!rule||rule.settings?.enabled===false||rule.settings?.checks.details===false||![rule.positive,rule.negative,rule.isolated].some(v=>v>0)){placementKeys.delete(placement);return [];}const e=entryFor(art,placement,field,rule);schedule();
  if(!enabled)return [{id:'detail-scan',status:'manual',text:'Поиск мелких элементов выключен.',source}];
  if(e.state!=='done')return [{id:'detail-scan',status:'manual',text:e.state==='error'?e.error:e.state==='running'?'Идёт фоновый поиск мелких элементов.':'Поиск мелких элементов начнётся после паузы в редактировании.',source}];
  const r=e.result;return [{id:'detail-scan',status:'manual',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм. Это кандидаты, а не доказанный брак.`,source,evidence:r.algorithm,candidates:r.boxes,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
@@ -62,7 +62,7 @@ export function installDetailCheck({canvas,getState,redraw}){
   for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8)entries.delete(key);
   if(worker&&!validEntries().some(e=>e.state==='running'))cancel();
   if(currentKey!==e?.key){selected=-1;currentKey=e?.key||'';$('detailPreview').hidden=true;}
-  $('detailStatus').textContent=!enabled?'Поиск выключен.':!e?'Выберите логотип.':holding?'Проверка приостановлена на время редактирования.':e.state==='done'?`Найдено областей: ${e.result.boxes.length}. Шаг ${e.result.step.toFixed(4)} мм.`:e.state==='error'?e.error:e.state==='running'?'Идёт фоновая проверка…':'Ожидание паузы в редактировании…';
+  $('detailStatus').textContent=!enabled?'Поиск выключен.':!e?(state.art?'Поиск отключён или пороги не заданы в настройках нанесения.':'Выберите логотип.'):holding?'Проверка приостановлена на время редактирования.':e.state==='done'?`Найдено областей: ${e.result.boxes.length}. Шаг ${e.result.step.toFixed(4)} мм.`:e.state==='error'?e.error:e.state==='running'?'Идёт фоновая проверка…':'Ожидание паузы в редактировании…';
   const panelKey=JSON.stringify([e?.key,e?.state,enabled]);if(lastPanelKey!==panelKey){lastPanelKey=panelKey;$('detailList').replaceChildren();if(enabled&&e?.state==='done'){
    for(const [i,b]of e.result.boxes.slice(0,750).entries()){const button=document.createElement('button');button.type='button';button.textContent=`${i+1}. ${labels[b.kind]} · порог ${b.threshold} мм`;button.onclick=()=>{selected=i;preview(e,b);refresh();};$('detailList').append(button);}
    if(e.result.boxes.length>750){const p=document.createElement('p');p.textContent='Показаны первые 750 областей.';$('detailList').append(p);}
