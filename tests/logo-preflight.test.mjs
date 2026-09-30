@@ -32,7 +32,7 @@ test('effective DPI recalculates at final dimensions including scaled templates'
 });
 test('unknown method is unresolved; product margins are never confused with print fields',()=>{
  assert.equal(run('UNKNOWN').status,'manual');
- const report=run('T1');assert.equal(report.findings.find(f=>f.id==='guard').status,'manual');
+ const report=run('T1');assert.equal(report.rule.guard,0);assert.equal(report.findings.find(f=>f.id==='guard'),undefined);
  assert.equal(report.productionApproved,false);
  assert.equal(run('T1',{margin:-2,placement:{w:25.4,h:25.4,clipToField:true}}).findings.find(f=>f.id==='field-boundary').status,'bad');
 });

@@ -1,4 +1,5 @@
-import {detailFindings} from './logo-detail-check.mjs?v=20260930-2';
+import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20260930-1';
+import {detailFindings} from './logo-detail-check.mjs?v=20260930-3';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20260929-2';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
@@ -258,8 +259,8 @@ export function sampleArtwork(image) {
 }
 
 export function checkLogo({art,placement,field,method,context={},margin,minDpi}) {
-  const match=resolveMethod(method),rule=effectiveRule(match.rule,context),facts=art.preflight||{};
-  const findings=[],scale=Number(field?.templateScale)||1,w=placement.w*scale,h=placement.h*scale;
+  const match=resolveMethod(method),rule=configureRule(effectiveRule(match.rule,context)),facts=art.preflight||{};
+  let findings=[];const scale=Number(field?.templateScale)||1,w=placement.w*scale,h=placement.h*scale;
   const sx=w/art.w,sy=h/art.h,sizeScale=Math.min(sx,sy);
   findings.push(issue('method',rule?'ok':'manual',rule?`${rule.code}: ${rule.name}.`:'Метод не определён однозначно: укажите код выбранного нанесения.',{method:method||'',reason:match.reason}));
   if(!art.preflight)findings.push(issue('analysis','manual','Анализ исходного логотипа недоступен.'));
@@ -267,6 +268,7 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
   if(facts.gradients||facts.transparency||facts.effects)findings.push(issue('effects','bad','Есть несведённые градиенты, прозрачность или эффекты: подготовьте их по требованиям нанесения.'));
   if(facts.hidden)findings.push(issue('hidden-content','manual','Проверьте скрытые объекты и слои исходного файла.'));
   if(facts.visual?.semiTransparent&&art.pixelW)findings.push(issue('raster-alpha','manual','Растр содержит полупрозрачные пиксели: проверьте края и эффект прозрачности.'));
+  if(!rule)detailFindings({art,placement,field,rule:null});
   if(rule) {
     for(const raster of facts.rasters||[]) {
       const dpi=Math.min(raster.pixelW/(raster.w*sx),raster.pixelH/(raster.h*sy))*25.4;
@@ -283,8 +285,9 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
     // explicitly unresolved; approximate silhouette analysis produces review requests.
     if(rule.positive)findings.push(issue('positive-coverage','manual',`Проверьте все позитивные элементы: от ${rule.positive} мм. Измерения обводок и простых фигур не заменяют проверку всех контуров.`));
     if(rule.negative)findings.push(issue('negative','manual',`Минимальный пробел ${rule.negativeRange?rule.negativeRange.join('–'):rule.negative} мм. Проверьте выворотку и расстояния между контурами.`));
-    findings.push(...detailFindings({art,placement,field,rule}));
-    if(rule.guard||rule.guardLong)findings.push(issue('guard','manual',rule.guard?`Охранное поле ${rule.guard} мм от ${rule.guardReference}. Граница изделия не определена автоматически.`:`Лента: отступ 2 мм по длинной стороне и 20 мм от линии реза. Граница изделия не определена автоматически.`));
+    findings.push(...detailFindings({art,placement,field,rule:detailRule(rule)}));
+    if(rule.guard>0)findings.push(issue('guard',Number.isFinite(margin)?(margin*scale+1e-7>=rule.guard?'ok':'bad'):'manual',`Охранное поле: отступ от границы нанесения ${Number.isFinite(margin)?num(margin*scale)+' мм':'не определён'}; требуется ${rule.guard} мм.`,{actual:Number.isFinite(margin)?num(margin*scale):null,required:rule.guard,unit:'mm'}));
+    if(rule.letter)findings.push(issue('letter','manual',`Проверьте высоту букв: не менее ${rule.letter} мм.`));
     if(rule.bleed)findings.push(issue('bleed','manual',`При печати в край нужен вылет ${rule.bleed} мм за линию реза. Обрезка по полю не подтверждает вылет.`));
     if(rule.noStrokes&&(facts.strokes||[]).length)findings.push(issue('strokes','bad','Для тиснения переведите обводки в замкнутые контуры.'));
     if(rule.closedContours)findings.push(issue('closed-contours',facts.hasOpenPaths?'bad':'manual',facts.hasOpenPaths?'Есть незамкнутые SVG-контуры.':'Проверьте замкнутость каждого контура.'));
@@ -296,6 +299,10 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
   if(Number.isFinite(margin))findings.push(issue('field-boundary',margin>-.001?'ok':'bad',margin>-.001?'Логотип расположен в выбранном поле.':`Выход за поле${field?.pathPoints?.length&&margin===-.001?": логотип пересекает контур":" "+num(-margin*scale)+" мм"}${placement.clipToField?'; выступающая часть будет обрезана':''}.`,{actual:num(margin*scale),unit:'mm'}));
   findings.push(issue('article-specific','manual','Сверьте дополнительные требования конструктора артикула, материал, подложку, белый цвет и цвета выбранного места заказа.',{source:SOURCES.problems}));
   for(const text of facts.limitations||[])findings.push(issue('coverage','manual',text));
+  findings=findings.filter(f=>checkEnabled(rule,f.id));
+  if(rule?.settings.enabled===false)findings.push(issue("settings-disabled","manual","Проверки этого нанесения отключены администратором."));
+  else if(rule?.settings.custom)findings.push(issue("settings-custom","manual","Применены пользовательские настройки нанесения."));
+  if(settingsProblem())findings.push(issue("settings-storage","manual",settingsProblem()));
   return {version:REQUIREMENTS_VERSION,method:match.code,methodInput:method||'',rule,dimensionsMm:{w:num(w),h:num(h)},templateScale:scale,format:art.ext,findings,status:findings.some(f=>f.status==='bad')?'bad':findings.some(f=>f.status==='manual')?'manual':'ok',productionApproved:false};
 }
 

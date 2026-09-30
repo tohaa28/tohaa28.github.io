@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="3699fe498cf491acb3b2bcee456a2a5f001d4d05b5a4a44aade7c35ede29d9ca";
+const expected="839a561f633ed12a1f5c641cf6354af233a63033219b32ab645ccae5552442c7";
 const edits=[
   [
     "",
@@ -115,6 +115,30 @@ const edits=[
   [
     "const sc=v(\"stageScroll\"),cs=getComputedStyle(sc)",
     "gwbFieldZoom?.refresh();const sc=v(\"stageScroll\"),cs=getComputedStyle(sc)"
+  ],
+  [
+    "",
+    "import {installMethodAdmin} from \"./method-admin.mjs?v=20260930-1\";\n"
+  ],
+  [
+    "const guard=v(\"guard\").value;if(guard!==\"\"){const actual=Math.min(...co(e.placement,e.field))*(e.field.templateScale||1),required=Number(guard);c.push({status:actual>=required?\"ok\":\"bad\",text:label+\": пользовательский отступ от поля \"+ft(actual)+\" / \"+ft(required)+\" мм.\"});}}",
+    "}"
+  ],
+  [
+    "minDpi:v(\"minDpi\").value,margin:",
+    "margin:"
+  ],
+  [
+    "gwbFieldZoom=installFieldZoom({canvas:pt,getState:()=>y,render:zt});",
+    "gwbFieldZoom=installFieldZoom({canvas:pt,getState:()=>y,render:zt});\ninstallMethodAdmin({redraw:X});"
+  ],
+  [
+    "./logo-preflight.mjs?v=20260930-3",
+    "./logo-preflight.mjs?v=20260930-4"
+  ],
+  [
+    "./logo-detail-check.mjs?v=20260930-2",
+    "./logo-detail-check.mjs?v=20260930-3"
   ]
 ];
 export function applyLogoPreflight(){
