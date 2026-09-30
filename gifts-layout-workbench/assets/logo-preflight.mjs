@@ -1,4 +1,5 @@
-import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs';
+import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
+import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20260929-2';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
 export function contextFromOrder(text='') {
   const s=String(text).toLowerCase();
@@ -27,7 +28,15 @@ export async function inspectArtwork(art, OPS) {
       facts.colorModel=rasterColorModel(art.bytes,art.ext);
       facts.limitations.push('Растр: шрифты и векторные эффекты уже сведены; исходные объекты недоступны.');
     }
-    if(art.image) facts.visual=sampleArtwork(art.image);
+    if(art.image) {
+      facts.visual=sampleArtwork(art.image);
+      const width=art.image.naturalWidth||art.image.width,height=art.image.naturalHeight||art.image.height;
+      const scale=Math.min(1,2048/Math.max(width,height));
+      const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(art.image,0,0,canvas.width,canvas.height);
+      facts.pixelColors=pixelColorEvidence(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height,{complete:scale===1&&!art.pdf&&!art.svg});
+      if(facts.vectorColors&&!facts.vectorColors.complete){facts.vectorColors.colored ||=facts.pixelColors.colored;facts.vectorColors.gray ||=facts.pixelColors.gray;}
+    }
   } catch(error) {facts.limitations.push('Неполный анализ: '+String(error?.message||error));}
   return facts;
 }
@@ -64,13 +73,13 @@ async function inspectSvg(art,facts) {
     facts.elements=[];
     const colors=new Set();
     for(const element of [root,...root.querySelectorAll('*')]) {
-const style=getComputedStyle(element);
+      const style=getComputedStyle(element);
       if(style.display==='none'||style.visibility==='hidden')facts.hidden=true;
       if([style.opacity,style.fillOpacity,style.strokeOpacity].some(v=>v!==''&&Number(v)<1))facts.transparency=true;
       if(style.filter!=='none'||style.maskImage&&style.maskImage!=='none')facts.effects=true;
       if(!element.matches('path,rect,circle,ellipse,line,polyline,polygon,text,image,use'))continue;
       if(element.closest('defs,clipPath,mask,pattern,marker'))continue;
-      if(style.display==='none'||style.visibility==='hidden')continue;
+      if(style.display==='none'||style.visibility==='hidden'||Number(style.opacity)===0)continue;
       const rect=element.getBoundingClientRect();
       const box={x:(rect.x-rootRect.x)*ux,y:(rect.y-rootRect.y)*uy,w:rect.width*ux,h:rect.height*uy};
       if(!Number.isFinite(box.x+box.y+box.w+box.h))continue;
@@ -81,7 +90,12 @@ const style=getComputedStyle(element);
         const width=Number.parseFloat(style.strokeWidth)*minScale(matrix);
         facts.strokes.push({width,box,uncertain:!uniform||style.vectorEffect==='non-scaling-stroke'||facts.hasClips});
       }
-      for(const color of [element.matches('line,polyline')?'none':style.fill,style.stroke])if(color!=='none'&&!color.startsWith('url('))colors.add(color);
+      let opacity=1,visible=true;
+      for(let node=element;node&&holder.contains(node);node=node.parentElement){const s=getComputedStyle(node);opacity*=Number(s.opacity);if(s.display==='none'||s.visibility==='hidden')visible=false;}
+      if(visible)for(const [color,alpha] of [[element.matches('line,image')?'none':style.fill,Number(style.fillOpacity)],[Number.parseFloat(style.strokeWidth)>0?style.stroke:'none',Number(style.strokeOpacity)]]){
+        if(color==='none'||color.startsWith('url(')||opacity*alpha===0)continue;
+        const paint=cssColor(color);colors.add(paint?`rgba(${paint.rgb.join(',')},${paint.alpha*opacity*alpha})`:color);
+      }
       if(element.localName==='path'&&!/[zZ]\s*$/.test(element.getAttribute('d')||''))facts.hasOpenPaths=true;
       if(element.matches('line,polyline'))facts.hasOpenPaths=true;
       if(element.matches('path,use,text,image')||element.getAttribute('transform')||facts.hasClips)facts.geometryComplete=false;
@@ -104,6 +118,7 @@ const style=getComputedStyle(element);
       }
     }
     facts.colors=[...colors];
+    facts.vectorColors=vectorColorEvidence(facts.colors,{complete:!facts.gradients&&!facts.effects&&!facts.transparency&&!facts.hasClips&&!facts.rasters.length&&!root.querySelector('use,image')});
     // Overlap may merge thin primitives into a thick visible silhouette.
     for(const a of [...facts.elements,...facts.strokes])if([...facts.elements,...facts.strokes].some(b=>b!==a&&b.box&&a.box&&a.box.x<b.box.x+b.box.w&&a.box.x+a.box.w>b.box.x&&a.box.y<b.box.y+b.box.h&&a.box.y+a.box.h>b.box.y))a.uncertain=true;
     facts.colorCountComplete=facts.geometryComplete&&!facts.gradients&&!facts.effects&&!facts.transparency&&!facts.rasters.length;
@@ -114,7 +129,7 @@ const style=getComputedStyle(element);
 async function inspectPdf(art,facts,OPS) {
   const list=await art.pdfPage.getOperatorList();
   const names=Object.fromEntries(Object.entries(OPS).map(([name,id])=>[id,name]));
-  let state={matrix:[1,0,0,1,0,0],lineWidth:1},stack=[];
+  let state={matrix:[1,0,0,1,0,0],lineWidth:1,fill:'#000000',stroke:'#000000'},stack=[];const painted=new Set();let colorIncomplete=false;
   for(let i=0;i<list.fnArray.length;i++) {
     const name=names[list.fnArray[i]],args=list.argsArray[i]||[];
     if(name==='save')stack.push({...state,matrix:[...state.matrix]});
@@ -123,6 +138,9 @@ async function inspectPdf(art,facts,OPS) {
     if(name==='paintFormXObjectBegin'){stack.push({...state,matrix:[...state.matrix]});if(args[0])state.matrix=multiply(state.matrix,args[0]);}
     if(name==='paintFormXObjectEnd')state=stack.pop()||state;
     if(name==='setLineWidth')state.lineWidth=args[0];
+    if(name==='setFillRGBColor')state.fill=args[0];
+    if(name==='setStrokeRGBColor')state.stroke=args[0];
+    if(name==='setFillColorN'||name==='setStrokeColorN')colorIncomplete=true;
     if(/showText|showSpacedText|nextLine.*ShowText/.test(name||''))facts.text=true;
     if(name==='shadingFill')facts.gradients=true;
     if(name==='setFillColorN'||name==='setStrokeColorN')facts.limitations.push('Паттерн или специальная краска PDF: проверьте заливку в исходнике.');
@@ -136,6 +154,9 @@ async function inspectPdf(art,facts,OPS) {
       }else a.forEach(visit);};visit(args);
     }
     const paint=name==='constructPath'?names[args[0]]:name;
+    if(/^(fill|eoFill|fillStroke|eoFillStroke|closeFillStroke|closeEOFillStroke)$/.test(paint||'')||/showText|showSpacedText|nextLine.*ShowText/.test(name||''))painted.add(state.fill);
+    if(/^(stroke|closeStroke|fillStroke|eoFillStroke|closeFillStroke|closeEOFillStroke)$/.test(paint||''))painted.add(state.stroke);
+    if(/paint.*Image/.test(name||''))colorIncomplete=true;
     if(/^(stroke|closeStroke|fillStroke|eoFillStroke|closeFillStroke|closeEOFillStroke)$/.test(paint||''))facts.strokes.push({width:Math.abs(state.lineWidth)*minScale(state.matrix)*mm,uncertain:true});
     if(name==='paintImageXObject'||name==='paintInlineImageXObject') {
       const img=name==='paintInlineImageXObject'?args[0]:{width:args[1],height:args[2]};
@@ -145,6 +166,9 @@ async function inspectPdf(art,facts,OPS) {
     } else if(/paint.*Image/.test(name||'')&&!/Mask/.test(name)) facts.limitations.push('Групповой растр PDF: разрешение требует проверки в исходнике.');
     if(name==='beginMarkedContentProps')facts.hidden=true; // Optional content may be omitted by the renderer.
   }
+  const css=[...painted].map(c=>typeof c==='string'&&/^#[a-f\d]{6}$/i.test(c)?`rgb(${[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)).join(', ')})`:c);
+  facts.vectorColors=vectorColorEvidence(css,{complete:!colorIncomplete&&!facts.effects&&!facts.transparency&&!facts.gradients&&css.length>0});
+  facts.vectorColors.separationsComplete=false; // Screen RGB cannot certify PDF spot-color separations.
   facts.limitations.push('PDF.js преобразует цвета для экрана: исходные CMYK, Pantone, профили, число красок и сумма красок требуют проверки цветоделений.');
   facts.limitations.push('Замкнутость и пересечения контуров PDF, скрытые слои и минимальная высота букв в кривых не подтверждаются рендерером.');
   if(art.pages>1)facts.limitations.push('Проверена только первая страница логотипа — именно она размещается и экспортируется.');
@@ -251,8 +275,7 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
     if(rule.palette)findings.push(issue('palette','manual',`Палитра: ${rule.palette}. Сверьте цветоделения и цвета заказа; экранные RGB не подтверждают соответствие.`,{observedColorModel:facts.colorModel||'unknown'}));
     if(/^CMYK/.test(rule.palette||'')&&(facts.colorModel==='RGB'||facts.originalColorModels?.includes('RGB')))findings.push(issue('rgb-color-model','bad','В исходнике обнаружен RGB, а выбранное нанесение требует CMYK. Подготовьте CMYK-файл в векторном редакторе.'));
     if(rule.inkMax){const sums=(facts.originalColors||[]).filter(c=>c.model==='CMYK').map(c=>c.values.reduce((a,b)=>a+b,0)*100);const maximum=Math.max(0,...sums);if(maximum>rule.inkMax+.01)findings.push(issue('ink-limit','bad',`Сумма CMYK в заливке ${num(maximum)}%; предел ${rule.inkMax}%.`,{actual:num(maximum),required:rule.inkMax}));}
-    if(rule.maxColors&&facts.colorCountComplete&&facts.colors.length>rule.maxColors)findings.push(issue('colors','bad',`В простом SVG ${facts.colors.length} цветов; допустимо ${rule.maxColors}.`,{actual:facts.colors.length,required:rule.maxColors}));
-    else if(rule.maxColors)findings.push(issue('colors','manual',`Проверьте число красок: не более ${rule.maxColors}.`));
+    findings.push(...colorFindings(rule,facts));
     const thin=[...(facts.strokes||[]),...(facts.elements||[])].filter(item=>item.width*sizeScale+1e-7<rule.positive);
     for(const item of thin.slice(0,12)) {const uncertain=item.uncertain||Math.abs(sx-sy)>1e-6;findings.push(issue('positive',uncertain?'manual':'bad',`${uncertain?'Возможна малая толщина; оценка':'Толщина элемента'} ${num(item.width*sizeScale)} мм; минимум ${rule.positive} мм.`,{actual:num(item.width*sizeScale),required:rule.positive,unit:'mm',box:item.box?{x:item.box.x/art.w,y:item.box.y/art.h,w:item.box.w/art.w,h:item.box.h/art.h}:null}));}
     // Even measured SVG primitives may overlap or be clipped. Full shape compliance is
