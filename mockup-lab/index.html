@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mockup Lab — привязка конструктора к фотографии</title>
+  <style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124;background:#f4f5f7;--border:#d9dde4;--panel:#fff;--accent:#1f6feb;--muted:#68707d}
+*{box-sizing:border-box}body{margin:0}.app{min-height:100vh}.topbar{height:72px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:18px}.topbar h1{font-size:22px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted);font-size:12px}.status{font-size:13px;background:#eef3fb;padding:8px 12px;border-radius:999px;white-space:nowrap}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:12px;border-right:1px solid var(--border);overflow:auto;max-height:calc(100vh - 72px)}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#4c5563;margin-bottom:9px}input,select,button{font:inherit}input[type=text],input:not([type]),select{width:100%;padding:8px 9px;border:1px solid #cfd5df;border-radius:8px;background:#fff}button,.fileButton{border:1px solid #cdd3dc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;color:#24292f}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.buttons{display:flex;gap:7px}.wrap{flex-wrap:wrap}.fileButton{display:inline-flex;flex-direction:row;align-items:center;margin:0}.fileButton input{display:none}.fileRow{border:1px dashed #cbd2dc;border-radius:8px;padding:8px;background:#fafbfc}.muted{font-size:11px;line-height:1.4;color:var(--muted);margin:7px 0}details summary{cursor:pointer;font-size:12px}.summary{white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;font-size:10px;background:#f7f8fa;padding:8px;border-radius:8px;margin:8px 0 0}.workspace{padding:12px;min-width:0}.workspaceGrid{display:grid;grid-template-columns:minmax(300px,.7fr) minmax(480px,1.3fr);gap:12px;height:calc(100vh - 132px)}.canvasPanel{background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}.canvasPanel header{height:44px;padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px}.canvasPanel header span{color:var(--muted)}.canvasWrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#e9edf2}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
+
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>Mockup Lab</h1>
+        <p>Отдельный экспериментальный модуль. «Макетная» не изменяется.</p>
+      </div>
+      <div class="status" id="status">Готово к работе</div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>1. Данные заказа</h2>
+          <div class="grid2">
+            <label>Артикул<input id="article" placeholder="15637"></label>
+            <label>Место нанесения<input id="place" placeholder="лицо"></label>
+            <label>Метод<input id="method" placeholder="LM1"></label>
+            <label>Вариант<input id="variant" placeholder="цвет / модификация"></label>
+          </div>
+          <div class="buttons wrap">
+            <button id="readHandoff" class="primary">Взять данные Макетной</button>
+            <label class="fileButton">Импорт handoff JSON<input id="handoffFile" type="file" accept="application/json,.json"></label>
+          </div>
+          <details>
+            <summary>Формат передачи</summary>
+            <p class="muted">Позже «Макетная» сможет положить данные в <code>localStorage</code> под ключом <code>gifts.mockupLab.handoff.v1</code> и открыть этот редактор. Сейчас это только читающая сторона — код «Макетной» не меняется.</p>
+          </details>
+        </section>
+
+        <section class="panel">
+          <h2>2. Исходники</h2>
+          <label class="fileRow">Фотография товара<input id="photoFile" type="file" accept="image/*"></label>
+          <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
+          <label class="fileRow">Макет / логотип<input id="artworkFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
+          <p class="muted">В рабочей интеграции сюда будут приходить фото, превью конструктора и отрендеренное содержимое выбранного поля из «Макетной».</p>
+        </section>
+
+        <section class="panel">
+          <h2>3. Привязка</h2>
+          <button id="selectField">Выделить поле на конструкторе</button>
+          <p class="muted">Нажмите кнопку и протяните рамку по полю нанесения на конструкторе. Если handoff уже содержит геометрию поля, шаг выполняется автоматически.</p>
+          <label>Поверхность
+            <select id="surface">
+              <option value="perspective">Плоская / перспектива</option>
+              <option value="cylinder">Цилиндр — экспериментально</option>
+              <option value="textile">Текстиль — пока как перспектива</option>
+            </select>
+          </label>
+          <label>Непрозрачность <span id="opacityValue">90%</span>
+            <input id="opacity" type="range" min="10" max="100" value="90">
+          </label>
+          <label>Смешивание
+            <select id="blend">
+              <option value="source-over">Обычное</option>
+              <option value="multiply">Умножение</option>
+              <option value="screen">Экран</option>
+              <option value="overlay">Перекрытие</option>
+              <option value="darken">Темнее</option>
+            </select>
+          </label>
+          <div class="buttons wrap">
+            <button id="resetQuad">Сбросить рамку на фото</button>
+            <button id="toggleArtwork">Скрыть нанесение</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>4. Профиль</h2>
+          <div class="buttons wrap">
+            <button id="saveProfile">Сохранить привязку JSON</button>
+            <label class="fileButton">Открыть привязку<input id="profileFile" type="file" accept="application/json,.json"></label>
+            <button id="exportPng" class="primary">Скачать мокап PNG</button>
+          </div>
+          <pre id="profileSummary" class="summary"></pre>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <div class="workspaceGrid">
+          <section class="canvasPanel">
+            <header><strong>Конструктор</strong><span>эталон поля</span></header>
+            <div class="canvasWrap checker"><canvas id="templateCanvas"></canvas><div id="templateEmpty" class="empty">Загрузите превью конструктора</div></div>
+          </section>
+          <section class="canvasPanel wide">
+            <header><strong>Фотография / мокап</strong><span>перетаскивайте 4 маркера области нанесения</span></header>
+            <div class="canvasWrap"><canvas id="photoCanvas"></canvas><div id="photoEmpty" class="empty">Загрузите фотографию товара</div></div>
+          </section>
+        </div>
+        <div class="helpbar">
+          <strong>Как настраивать:</strong> сначала сопоставьте поле конструктора, затем расставьте четыре угла на фотографии по реальной поверхности нанесения. Привязка сохраняется в нормализованных координатах, поэтому не зависит от разрешения фото.
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module">
+const $ = id => document.getElementById(id);
+const state = {
+  photo: null,
+  photoSource: { name: "", url: "" },
+  template: null,
+  templateSource: { name: "", url: "" },
+  artwork: null,
+  artworkSource: { name: "", url: "" },
+  fieldRect: { x: .3, y: .3, w: .4, h: .4 },
+  quad: [{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}],
+  selectingField: false,
+  fieldDragStart: null,
+  activeHandle: -1,
+  draggingQuad: false,
+  quadDragStart: null,
+  quadSnapshot: null,
+  showArtwork: true
+};
+
+const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
+const HANDLE_R = 9;
+
+function setStatus(text){ $("status").textContent = text; }
+function clamp(v,a=0,b=1){ return Math.max(a,Math.min(b,v)); }
+function fileToDataUrl(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); }
+function loadImage(src){ return new Promise((resolve,reject)=>{ const img=new Image(); img.onload=()=>resolve(img); img.onerror=reject; if(/^https?:/i.test(src)) img.crossOrigin="anonymous"; img.src=src; }); }
+function downloadBlob(name, blob){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function downloadJson(name,obj){ downloadBlob(name,new Blob([JSON.stringify(obj,null,2)],{type:"application/json"})); }
+function slug(v){ return String(v||"").trim().replace(/[^\p{L}\p{N}._-]+/gu,"-").replace(/^-+|-+$/g,"") || "profile"; }
+
+async function imageFromFile(file, target){
+  if(!file) return;
+  const src=await fileToDataUrl(file);
+  state[target]=await loadImage(src);
+  state[target+"Source"]={name:file.name,url:""};
+  if(target==="photo") resetQuad();
+  renderAll();
+}
+
+function fitCanvas(canvas,img){
+  const wrap=canvas.parentElement; const maxW=Math.max(200,wrap.clientWidth); const maxH=Math.max(200,wrap.clientHeight);
+  const scale=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const cssW=Math.max(1,Math.round(img.naturalWidth*scale)); const cssH=Math.max(1,Math.round(img.naturalHeight*scale));
+  canvas.style.width=cssW+"px"; canvas.style.height=cssH+"px"; canvas.width=Math.round(cssW*dpr); canvas.height=Math.round(cssH*dpr);
+  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w:cssW,h:cssH,dpr};
+}
+
+function renderTemplate(){
+  const c=$("templateCanvas"), empty=$("templateEmpty");
+  if(!state.template){ c.width=c.height=1; c.style.width=c.style.height="1px"; empty.hidden=false; return; }
+  empty.hidden=true; const {ctx,w,h}=fitCanvas(c,state.template); ctx.clearRect(0,0,w,h); ctx.drawImage(state.template,0,0,w,h);
+  const r=state.fieldRect; ctx.save(); ctx.lineWidth=2; ctx.strokeStyle="#e62929"; ctx.setLineDash([6,4]); ctx.strokeRect(r.x*w,r.y*h,r.w*w,r.h*h); ctx.setLineDash([]); ctx.fillStyle="rgba(230,41,41,.1)"; ctx.fillRect(r.x*w,r.y*h,r.w*w,r.h*h); ctx.fillStyle="#fff"; ctx.strokeStyle="#e62929"; ctx.lineWidth=1;
+  for(const p of [{x:r.x,y:r.y},{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h},{x:r.x,y:r.y+r.h}]){ctx.beginPath();ctx.arc(p.x*w,p.y*h,5,0,Math.PI*2);ctx.fill();ctx.stroke();}
+  ctx.restore();
+}
+
+function homographyForQuad(q){
+  const [p0,p1,p2,p3]=q;
+  const dx1=p1.x-p2.x, dx2=p3.x-p2.x, sx=p0.x-p1.x+p2.x-p3.x;
+  const dy1=p1.y-p2.y, dy2=p3.y-p2.y, sy=p0.y-p1.y+p2.y-p3.y;
+  let a,b,c=p0.x,d,e,f=p0.y,g,h;
+  if(Math.abs(sx)<1e-9 && Math.abs(sy)<1e-9){ g=h=0; a=p1.x-p0.x; b=p3.x-p0.x; d=p1.y-p0.y; e=p3.y-p0.y; }
+  else { const den=dx1*dy2-dx2*dy1 || 1e-9; g=(sx*dy2-dx2*sy)/den; h=(dx1*sy-sx*dy1)/den; a=p1.x-p0.x+g*p1.x; b=p3.x-p0.x+h*p3.x; d=p1.y-p0.y+g*p1.y; e=p3.y-p0.y+h*p3.y; }
+  return (u,v)=>{ const z=g*u+h*v+1; return {x:(a*u+b*v+c)/z,y:(d*u+e*v+f)/z}; };
+}
+
+function affineFromTriangles(s0,s1,s2,d0,d1,d2){
+  const x0=s0.x,y0=s0.y,x1=s1.x,y1=s1.y,x2=s2.x,y2=s2.y;
+  const den=x0*(y1-y2)+x1*(y2-y0)+x2*(y0-y1); if(Math.abs(den)<1e-9) return null;
+  const solve=(v0,v1,v2)=>({
+    a:(v0*(y1-y2)+v1*(y2-y0)+v2*(y0-y1))/den,
+    b:(v0*(x2-x1)+v1*(x0-x2)+v2*(x1-x0))/den,
+    c:(v0*(x1*y2-x2*y1)+v1*(x2*y0-x0*y2)+v2*(x0*y1-x1*y0))/den
+  });
+  const X=solve(d0.x,d1.x,d2.x), Y=solve(d0.y,d1.y,d2.y); return [X.a,Y.a,X.b,Y.b,X.c,Y.c];
+}
+
+function drawTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
+  const m=affineFromTriangles(s0,s1,s2,d0,d1,d2); if(!m) return;
+  ctx.save(); ctx.beginPath(); ctx.moveTo(d0.x,d0.y); ctx.lineTo(d1.x,d1.y); ctx.lineTo(d2.x,d2.y); ctx.closePath(); ctx.clip(); ctx.setTransform(...m); ctx.drawImage(img,0,0); ctx.restore();
+}
+
+function drawWarped(ctx,img,q,surface){
+  const map=homographyForQuad(q); const n=surface==="cylinder"?28:18; const iw=img.naturalWidth, ih=img.naturalHeight;
+  const warpU=u=> surface==="cylinder" ? .5 + Math.asin(clamp((u-.5)*1.8,-.98,.98))/Math.PI : u;
+  for(let y=0;y<n;y++) for(let x=0;x<n;x++){
+    const u0=x/n,u1=(x+1)/n,v0=y/n,v1=(y+1)/n;
+    const a=map(warpU(u0),v0), b=map(warpU(u1),v0), c=map(warpU(u1),v1), d=map(warpU(u0),v1);
+    const sA={x:u0*iw,y:v0*ih}, sB={x:u1*iw,y:v0*ih}, sC={x:u1*iw,y:v1*ih}, sD={x:u0*iw,y:v1*ih};
+    drawTriangle(ctx,img,sA,sB,sC,a,b,c); drawTriangle(ctx,img,sA,sC,sD,a,c,d);
+  }
+}
+
+function photoGeometry(){
+  const c=$("photoCanvas"); const cssW=parseFloat(c.style.width)||1, cssH=parseFloat(c.style.height)||1;
+  return {w:cssW,h:cssH};
+}
+
+function quadPixels(){ const {w,h}=photoGeometry(); return state.quad.map(p=>({x:p.x*w,y:p.y*h})); }
+
+function renderPhoto(){
+  const c=$("photoCanvas"), empty=$("photoEmpty");
+  if(!state.photo){ c.width=c.height=1; c.style.width=c.style.height="1px"; empty.hidden=false; return; }
+  empty.hidden=true; const {ctx,w,h}=fitCanvas(c,state.photo); ctx.clearRect(0,0,w,h); ctx.drawImage(state.photo,0,0,w,h);
+  const qp=state.quad.map(p=>({x:p.x*w,y:p.y*h}));
+  if(state.artwork && state.showArtwork){ ctx.save(); ctx.globalAlpha=Number($("opacity").value)/100; ctx.globalCompositeOperation=$("blend").value; drawWarped(ctx,state.artwork,qp,$("surface").value); ctx.restore(); }
+  ctx.save(); ctx.lineWidth=2; ctx.strokeStyle="#1677ff"; ctx.fillStyle="rgba(22,119,255,.06)"; ctx.beginPath(); qp.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  qp.forEach((p,i)=>{ctx.beginPath();ctx.fillStyle="#fff";ctx.strokeStyle="#1677ff";ctx.lineWidth=2;ctx.arc(p.x,p.y,HANDLE_R,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle="#1677ff";ctx.font="11px system-ui";ctx.fillText(String(i+1),p.x-3,p.y+4);}); ctx.restore();
+}
+
+function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); }
+function updateSummary(){
+  const profile=buildProfile(); $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${profile.surface}`].join("\n");
+}
+
+function resetQuad(){ state.quad=[{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}]; renderPhoto(); updateSummary(); }
+function normalizedPoint(canvas,e){ const r=canvas.getBoundingClientRect(); return {x:clamp((e.clientX-r.left)/r.width),y:clamp((e.clientY-r.top)/r.height)}; }
+function pointInQuad(p,q){ let sign=0; for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4]; const cross=(b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x); if(Math.abs(cross)<1e-7) continue; const s=Math.sign(cross); if(sign && s!==sign) return false; sign=s;} return true; }
+
+$("photoCanvas").addEventListener("pointerdown",e=>{
+  if(!state.photo) return; const c=e.currentTarget,p=normalizedPoint(c,e),r=c.getBoundingClientRect();
+  let best=-1,bestD=Infinity; state.quad.forEach((q,i)=>{const dx=(q.x-p.x)*r.width,dy=(q.y-p.y)*r.height,d=Math.hypot(dx,dy); if(d<bestD){bestD=d;best=i;}});
+  if(bestD<20){state.activeHandle=best;c.setPointerCapture(e.pointerId);return;}
+  if(pointInQuad(p,state.quad)){state.draggingQuad=true;state.quadDragStart=p;state.quadSnapshot=state.quad.map(q=>({...q}));c.setPointerCapture(e.pointerId);}
+});
+$("photoCanvas").addEventListener("pointermove",e=>{
+  const c=e.currentTarget,p=normalizedPoint(c,e);
+  if(state.activeHandle>=0){state.quad[state.activeHandle]=p;renderPhoto();updateSummary();return;}
+  if(state.draggingQuad){const dx=p.x-state.quadDragStart.x,dy=p.y-state.quadDragStart.y; let minX=Math.min(...state.quadSnapshot.map(q=>q.x+dx)),maxX=Math.max(...state.quadSnapshot.map(q=>q.x+dx)),minY=Math.min(...state.quadSnapshot.map(q=>q.y+dy)),maxY=Math.max(...state.quadSnapshot.map(q=>q.y+dy)); const adx=dx+(minX<0?-minX:0)+(maxX>1?1-maxX:0), ady=dy+(minY<0?-minY:0)+(maxY>1?1-maxY:0); state.quad=state.quadSnapshot.map(q=>({x:q.x+adx,y:q.y+ady})); renderPhoto();updateSummary();}
+});
+function endPhotoDrag(){state.activeHandle=-1;state.draggingQuad=false;state.quadDragStart=null;state.quadSnapshot=null;}
+$("photoCanvas").addEventListener("pointerup",endPhotoDrag); $("photoCanvas").addEventListener("pointercancel",endPhotoDrag);
+
+$("templateCanvas").addEventListener("pointerdown",e=>{ if(!state.template||!state.selectingField) return; const p=normalizedPoint(e.currentTarget,e); state.fieldDragStart=p; e.currentTarget.setPointerCapture(e.pointerId); });
+$("templateCanvas").addEventListener("pointermove",e=>{ if(!state.fieldDragStart) return; const p=normalizedPoint(e.currentTarget,e),s=state.fieldDragStart; state.fieldRect={x:Math.min(s.x,p.x),y:Math.min(s.y,p.y),w:Math.abs(p.x-s.x),h:Math.abs(p.y-s.y)}; renderTemplate();updateSummary(); });
+$("templateCanvas").addEventListener("pointerup",()=>{ if(state.fieldDragStart){state.fieldDragStart=null;state.selectingField=false;$("selectField").textContent="Выделить поле на конструкторе";setStatus("Поле конструктора сохранено");} });
+
+$("selectField").onclick=()=>{ if(!state.template){setStatus("Сначала загрузите конструктор");return;} state.selectingField=!state.selectingField; $("selectField").textContent=state.selectingField?"Отмена выделения":"Выделить поле на конструкторе"; };
+$("resetQuad").onclick=resetQuad;
+$("toggleArtwork").onclick=()=>{state.showArtwork=!state.showArtwork;$("toggleArtwork").textContent=state.showArtwork?"Скрыть нанесение":"Показать нанесение";renderPhoto();};
+$("opacity").oninput=()=>{$("opacityValue").textContent=$("opacity").value+"%";renderPhoto();updateSummary();};
+$("blend").onchange=renderPhoto; $("surface").onchange=()=>{renderPhoto();updateSummary();};
+["article","place","method","variant"].forEach(id=>$(id).addEventListener("input",updateSummary));
+$("photoFile").onchange=e=>imageFromFile(e.target.files[0],"photo").catch(()=>setStatus("Не удалось открыть фотографию"));
+$("templateFile").onchange=e=>imageFromFile(e.target.files[0],"template").catch(()=>setStatus("Не удалось открыть конструктор"));
+$("artworkFile").onchange=e=>imageFromFile(e.target.files[0],"artwork").catch(()=>setStatus("Не удалось открыть макет"));
+
+function buildProfile(){
+  return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface:$("surface").value,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:$("surface").value==="cylinder"?28:18}};
+}
+
+$("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки сохранён");};
+$("profileFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{applyProfile(JSON.parse(await f.text()));setStatus("Профиль загружен");}catch(err){setStatus("Ошибка профиля: "+err.message);}};
+function applyProfile(p){ if(p.schema!=="gifts-mockup-profile/v1") throw new Error("неподдерживаемый формат"); $("article").value=p.article||"";$("variant").value=p.variant||"";$("place").value=p.place||"";$("method").value=p.method||""; if(p.fieldRect)state.fieldRect={...p.fieldRect};if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));$("surface").value=p.surface||"perspective";$("opacity").value=Math.round((p.render?.opacity??.9)*100);$("opacityValue").textContent=$("opacity").value+"%";$("blend").value=p.render?.blend||"source-over";renderAll(); }
+
+async function setImageFromSource(target, src, name=""){
+  if(!src) return false; try{state[target]=await loadImage(src);state[target+"Source"]={name,url:/^https?:/i.test(src)?src:""};if(target==="photo")resetQuad();return true;}catch{return false;}
+}
+function fieldRectFromAny(v,baseW,baseH){
+  if(!v) return null; let x=Number(v.x??v.left),y=Number(v.y??v.top),w=Number(v.w??v.width),h=Number(v.h??v.height); if(![x,y,w,h].every(Number.isFinite)) return null; if((x>1||y>1||w>1||h>1)&&baseW>0&&baseH>0){x/=baseW;y/=baseH;w/=baseW;h/=baseH;} return {x:clamp(x),y:clamp(y),w:clamp(w,0,1),h:clamp(h,0,1)};
+}
+async function applyHandoff(payload){
+  const item=payload.item||payload.selectedItem||payload.items?.[0]||payload;
+  $("article").value=item.article||payload.article||""; $("variant").value=item.variant||item.color||payload.variant||""; $("place").value=item.placeName||item.place||payload.placeName||payload.place||""; $("method").value=item.method||item.methodType||payload.method||"";
+  const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||payload.photoCandidates?.[0]?.url||item.photoCandidates?.[0]?.url||"";
+  const template=payload.constructorPreviewDataUrl||payload.templatePreviewDataUrl||item.constructorPreviewDataUrl||item.templatePreviewDataUrl||"";
+  const artwork=payload.fieldCompositeDataUrl||payload.artworkDataUrl||item.fieldCompositeDataUrl||item.artworkDataUrl||"";
+  const tW=Number(payload.templateWidth||item.templateWidth||payload.template?.width||0), tH=Number(payload.templateHeight||item.templateHeight||payload.template?.height||0);
+  const fr=fieldRectFromAny(payload.fieldRect||item.fieldRect||payload.selectedField?.bounds||item.selectedField?.bounds,tW,tH); if(fr)state.fieldRect=fr;
+  await Promise.all([setImageFromSource("photo",photo,payload.photoName||""),setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
+  renderAll(); setStatus("Данные handoff загружены");
+}
+
+$("readHandoff").onclick=async()=>{const raw=localStorage.getItem(HANDOFF_KEY);if(!raw){setStatus("Передача из Макетной пока не найдена");return;}try{await applyHandoff(JSON.parse(raw));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
+$("handoffFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyHandoff(JSON.parse(await f.text()));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
+
+$("exportPng").onclick=()=>{
+  if(!state.photo){setStatus("Сначала загрузите фотографию");return;}
+  try{
+    const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
+    if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value);ctx.restore();}
+    c.toBlob(blob=>{if(blob){const p=buildProfile();downloadBlob(`mockup-${slug(p.article)}-${slug(p.place)}.png`,blob);setStatus("Мокап PNG сохранён");}},"image/png");
+  }catch(err){setStatus("Экспорт заблокирован CORS. Передайте фото в handoff как data URL или загрузите файл локально.");}
+};
+
+window.addEventListener("resize",()=>requestAnimationFrame(renderAll));
+renderAll();
+
+</script>
+</body>
+</html>
