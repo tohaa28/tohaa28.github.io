@@ -8,6 +8,9 @@
 :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124;background:#f4f5f7;--border:#d9dde4;--panel:#fff;--accent:#1f6feb;--muted:#68707d}
 *{box-sizing:border-box}body{margin:0}.app{min-height:100vh}.topbar{height:72px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:18px}.topbar h1{font-size:22px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted);font-size:12px}.status{font-size:13px;background:#eef3fb;padding:8px 12px;border-radius:999px;white-space:nowrap}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:12px;border-right:1px solid var(--border);overflow:auto;max-height:calc(100vh - 72px)}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#4c5563;margin-bottom:9px}input,select,button{font:inherit}input[type=text],input:not([type]),select{width:100%;padding:8px 9px;border:1px solid #cfd5df;border-radius:8px;background:#fff}button,.fileButton{border:1px solid #cdd3dc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;color:#24292f}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.buttons{display:flex;gap:7px}.wrap{flex-wrap:wrap}.fileButton{display:inline-flex;flex-direction:row;align-items:center;margin:0}.fileButton input{display:none}.fileRow{border:1px dashed #cbd2dc;border-radius:8px;padding:8px;background:#fafbfc}.muted{font-size:11px;line-height:1.4;color:var(--muted);margin:7px 0}details summary{cursor:pointer;font-size:12px}.summary{white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;font-size:10px;background:#f7f8fa;padding:8px;border-radius:8px;margin:8px 0 0}.workspace{padding:12px;min-width:0}.workspaceGrid{display:grid;grid-template-columns:minmax(300px,.7fr) minmax(480px,1.3fr);gap:12px;height:calc(100vh - 132px)}.canvasPanel{background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}.canvasPanel header{height:44px;padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px}.canvasPanel header span{color:var(--muted)}.canvasWrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#e9edf2}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
 
+.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px}.libraryItem button{padding:4px 7px}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
+.fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
+
 </style>
 </head>
 <body>
@@ -41,11 +44,16 @@
         </section>
 
         <section class="panel">
-          <h2>2. Исходники</h2>
-          <label class="fileRow">Фотография товара<input id="photoFile" type="file" accept="image/*"></label>
+          <h2>2. Найденные данные</h2>
+          <div class="candidateHead"><strong>Фотографии артикула</strong><span id="photoCandidateCount">0</span></div>
+          <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
+          <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
+
+          <div class="candidateHead"><strong>Поля конструктора</strong><span id="fieldCandidateCount">0</span></div>
+          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
           <label class="fileRow">Макет / логотип<input id="artworkFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
-          <p class="muted">В рабочей интеграции сюда будут приходить фото, превью конструктора и отрендеренное содержимое выбранного поля из «Макетной».</p>
+          <p class="muted">В будущей передаче из «Макетной» редактор получит все найденные фотографии артикула и все распознанные поля конструктора. Здесь выбирается правильная пара «фото ↔ поле».</p>
         </section>
 
         <section class="panel">
@@ -80,11 +88,14 @@
         <section class="panel">
           <h2>4. Профиль</h2>
           <div class="buttons wrap">
-            <button id="saveProfile">Сохранить привязку JSON</button>
+            <button id="saveToLibrary" class="primary">Запомнить сопоставление</button>
+            <button id="saveProfile">Скачать привязку JSON</button>
             <label class="fileButton">Открыть привязку<input id="profileFile" type="file" accept="application/json,.json"></label>
-            <button id="exportPng" class="primary">Скачать мокап PNG</button>
+            <button id="exportPng">Скачать мокап PNG</button>
           </div>
           <pre id="profileSummary" class="summary"></pre>
+          <div class="candidateHead libraryHead"><strong>Сохранённые сопоставления</strong><button id="clearLibrary" class="tiny danger">очистить</button></div>
+          <div id="profileLibrary" class="profileLibrary"><div class="candidateEmpty">Библиотека пуста</div></div>
         </section>
       </aside>
 
@@ -122,12 +133,67 @@ const state = {
   draggingQuad: false,
   quadDragStart: null,
   quadSnapshot: null,
-  showArtwork: true
+  showArtwork: true,
+  photoCandidates: [],
+  fieldCandidates: [],
+  activePhotoCandidate: -1,
+  activeFieldCandidate: -1
 };
 
 const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
+const PROFILE_LIBRARY_KEY = "gifts.mockupLab.profiles.v1";
 const HANDLE_R = 9;
 
+
+function htmlEscape(v){ return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
+function sourceIdentity(v={}){ return String(v.id||v.photoId||v.name||v.url||v.src||"").trim(); }
+function normalizedPhotoCandidate(raw,index=0){
+  if(typeof raw==="string") raw={url:raw}; raw=raw||{};
+  return {id:String(raw.id||raw.photoId||raw.imageId||sourceIdentity(raw)||`photo-${index+1}`),name:String(raw.name||raw.filename||raw.title||`Фото ${index+1}`),url:String(raw.url||raw.src||raw.imageUrl||""),dataUrl:String(raw.dataUrl||raw.photoDataUrl||""),kind:String(raw.kind||raw.type||"photo")};
+}
+function normalizedFieldCandidate(raw,index=0,baseW=0,baseH=0){
+  raw=raw||{}; const bounds=fieldRectFromAny(raw.fieldRect||raw.bounds||raw.rect||raw,baseW,baseH);
+  return {id:String(raw.id||raw.printId||raw.applicationId||`field-${index+1}`),printId:String(raw.printId||raw.localPrintId||((raw.index||raw.templateIndex)?`print${raw.index||raw.templateIndex}`:"")),applicationId:String(raw.applicationId||""),place:String(raw.place||raw.placeName||raw.name||raw.label||`Поле ${index+1}`),method:String(raw.method||raw.methodType||""),bounds};
+}
+function getProfileLibrary(){ try{const v=JSON.parse(localStorage.getItem(PROFILE_LIBRARY_KEY)||"[]");return Array.isArray(v)?v:[];}catch{return [];} }
+function setProfileLibrary(v){ localStorage.setItem(PROFILE_LIBRARY_KEY,JSON.stringify(v)); renderProfileLibrary(); }
+function profileKey(p){ return [p.article,p.variant,p.place,p.photo?.id||p.photo?.name||p.photo?.url,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLocaleLowerCase("ru-RU")).join("|"); }
+
+async function activatePhotoCandidate(index){
+  const c=state.photoCandidates[index]; if(!c)return; const src=c.dataUrl||c.url;
+  state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok)setStatus(`Не удалось загрузить ${c.name}`); }
+  state.photoSource={id:c.id,name:c.name,url:c.url}; renderPhotoCandidates(); renderAll(); autoApplySavedProfile();
+}
+function activateFieldCandidate(index){
+  const c=state.fieldCandidates[index]; if(!c)return; state.activeFieldCandidate=index;
+  if(c.place)$("place").value=c.place; if(c.method)$("method").value=c.method; if(c.bounds)state.fieldRect={...c.bounds};
+  renderFieldCandidates(); renderAll(); autoApplySavedProfile();
+}
+function renderPhotoCandidates(){
+  const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
+  if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет фотографий из заказа</div>';return;}
+  box.innerHTML=state.photoCandidates.map((c,i)=>`<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}">${c.dataUrl||c.url?`<img class="candidateThumb" src="${htmlEscape(c.dataUrl||c.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(c.name)}</strong><span>${htmlEscape(c.id)}</span></span><span class="candidateTag">${i+1}</span></button>`).join("");
+  box.querySelectorAll("[data-photo-index]").forEach(b=>b.onclick=()=>activatePhotoCandidate(Number(b.dataset.photoIndex)));
+}
+function renderFieldCandidates(){
+  const box=$("fieldCandidates"); $("fieldCandidateCount").textContent=state.fieldCandidates.length;
+  if(!state.fieldCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет полей из конструктора</div>';return;}
+  box.innerHTML=state.fieldCandidates.map((c,i)=>`<button type="button" class="candidate ${i===state.activeFieldCandidate?'active':''}" data-field-index="${i}"><span class="candidateThumb fieldMini">${htmlEscape(c.printId||String(i+1))}</span><span class="candidateMeta"><strong>${htmlEscape(c.place)}</strong><span>${htmlEscape(c.method||c.applicationId||'поле конструктора')}</span></span><span class="candidateTag">${c.bounds?'✓':'?'}</span></button>`).join("");
+  box.querySelectorAll("[data-field-index]").forEach(b=>b.onclick=()=>activateFieldCandidate(Number(b.dataset.fieldIndex)));
+}
+function renderProfileLibrary(){
+  const box=$("profileLibrary"), lib=getProfileLibrary();
+  if(!lib.length){box.innerHTML='<div class="candidateEmpty">Библиотека пуста</div>';return;}
+  box.innerHTML=lib.map((p,i)=>`<div class="libraryItem"><div class="libraryItemText"><strong>${htmlEscape(p.article||'—')} · ${htmlEscape(p.place||'—')}</strong>${htmlEscape(p.photo?.name||p.photo?.url||'фото')} · ${htmlEscape(p.field?.printId||p.field?.id||'поле')}</div><button type="button" data-profile-index="${i}">Открыть</button></div>`).join("");
+  box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=getProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus("Сопоставление загружено из библиотеки");}});
+}
+function autoApplySavedProfile(){
+  const probe=buildProfile(), key=profileKey(probe); if(!probe.article||!probe.place||!probe.photo?.id&&!probe.photo?.name&&!probe.photo?.url)return false;
+  const saved=getProfileLibrary().find(p=>profileKey(p)===key); if(!saved)return false;
+  if(Array.isArray(saved.targetQuad)&&saved.targetQuad.length===4)state.quad=saved.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));
+  if(saved.surface)$("surface").value=saved.surface; if(saved.render?.opacity!=null){$("opacity").value=Math.round(saved.render.opacity*100);$("opacityValue").textContent=$("opacity").value+"%";} if(saved.render?.blend)$("blend").value=saved.render.blend;
+  renderAll(); setStatus("Найдена сохранённая привязка — применена автоматически"); return true;
+}
 function setStatus(text){ $("status").textContent = text; }
 function clamp(v,a=0,b=1){ return Math.max(a,Math.min(b,v)); }
 function fileToDataUrl(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); }
@@ -140,7 +206,7 @@ async function imageFromFile(file, target){
   if(!file) return;
   const src=await fileToDataUrl(file);
   state[target]=await loadImage(src);
-  state[target+"Source"]={name:file.name,url:""};
+  state[target+"Source"]={id:`local:${file.name}:${file.size}`,name:file.name,url:""};
   if(target==="photo") resetQuad();
   renderAll();
 }
@@ -218,7 +284,7 @@ function renderPhoto(){
 
 function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); }
 function updateSummary(){
-  const profile=buildProfile(); $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${profile.surface}`].join("\n");
+  const profile=buildProfile(); const saved=getProfileLibrary().some(p=>profileKey(p)===profileKey(profile)); $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||"ручное"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${profile.surface}`,`Библиотека: ${saved?"сопоставление сохранено":"новое сопоставление"}`].join("\n");
 }
 
 function resetQuad(){ state.quad=[{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}]; renderPhoto(); updateSummary(); }
@@ -249,20 +315,22 @@ $("toggleArtwork").onclick=()=>{state.showArtwork=!state.showArtwork;$("toggleAr
 $("opacity").oninput=()=>{$("opacityValue").textContent=$("opacity").value+"%";renderPhoto();updateSummary();};
 $("blend").onchange=renderPhoto; $("surface").onchange=()=>{renderPhoto();updateSummary();};
 ["article","place","method","variant"].forEach(id=>$(id).addEventListener("input",updateSummary));
-$("photoFile").onchange=e=>imageFromFile(e.target.files[0],"photo").catch(()=>setStatus("Не удалось открыть фотографию"));
+$("photoFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await imageFromFile(f,"photo");const c={id:`local:${f.name}:${f.size}`,name:f.name,url:"",dataUrl:await fileToDataUrl(f),kind:"manual"};state.photoCandidates.push(c);state.activePhotoCandidate=state.photoCandidates.length-1;state.photoSource={id:c.id,name:c.name,url:""};renderPhotoCandidates();renderAll();}catch{setStatus("Не удалось открыть фотографию");}};
 $("templateFile").onchange=e=>imageFromFile(e.target.files[0],"template").catch(()=>setStatus("Не удалось открыть конструктор"));
 $("artworkFile").onchange=e=>imageFromFile(e.target.files[0],"artwork").catch(()=>setStatus("Не удалось открыть макет"));
 
 function buildProfile(){
-  return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface:$("surface").value,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:$("surface").value==="cylinder"?28:18}};
+  const fc=state.fieldCandidates[state.activeFieldCandidate]||null; return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{id:state.photoSource.id||"",name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},field:fc?{id:fc.id,printId:fc.printId,applicationId:fc.applicationId,place:fc.place}:{id:"manual",printId:"",applicationId:"",place:$("place").value.trim()},constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface:$("surface").value,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:$("surface").value==="cylinder"?28:18}};
 }
 
-$("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки сохранён");};
-$("profileFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{applyProfile(JSON.parse(await f.text()));setStatus("Профиль загружен");}catch(err){setStatus("Ошибка профиля: "+err.message);}};
-function applyProfile(p){ if(p.schema!=="gifts-mockup-profile/v1") throw new Error("неподдерживаемый формат"); $("article").value=p.article||"";$("variant").value=p.variant||"";$("place").value=p.place||"";$("method").value=p.method||""; if(p.fieldRect)state.fieldRect={...p.fieldRect};if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));$("surface").value=p.surface||"perspective";$("opacity").value=Math.round((p.render?.opacity??.9)*100);$("opacityValue").textContent=$("opacity").value+"%";$("blend").value=p.render?.blend||"source-over";renderAll(); }
+$("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки скачан");};
+$("saveToLibrary").onclick=()=>{const p=buildProfile();if(!p.article||!p.place||(!p.photo.id&&!p.photo.name&&!p.photo.url)){setStatus("Для библиотеки нужны артикул, место и выбранная фотография");return;}const lib=getProfileLibrary(),key=profileKey(p),i=lib.findIndex(x=>profileKey(x)===key);p.updatedAt=new Date().toISOString();if(i>=0)lib[i]=p;else lib.unshift(p);setProfileLibrary(lib.slice(0,500));setStatus(i>=0?"Сопоставление обновлено":"Сопоставление запомнено");updateSummary();};
+$("clearLibrary").onclick=()=>{if(!confirm("Очистить локальную библиотеку сопоставлений Mockup Lab?"))return;setProfileLibrary([]);setStatus("Библиотека очищена");updateSummary();};
+$("profileFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyProfile(JSON.parse(await f.text()));setStatus("Профиль загружен");}catch(err){setStatus("Ошибка профиля: "+err.message);}};
+async function applyProfile(p){ if(p.schema!=="gifts-mockup-profile/v1") throw new Error("неподдерживаемый формат"); $("article").value=p.article||"";$("variant").value=p.variant||"";$("place").value=p.place||"";$("method").value=p.method||""; if(p.fieldRect)state.fieldRect={...p.fieldRect};if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));$("surface").value=p.surface||"perspective";$("opacity").value=Math.round((p.render?.opacity??.9)*100);$("opacityValue").textContent=$("opacity").value+"%";$("blend").value=p.render?.blend||"source-over"; const wanted=[p.photo?.id,p.photo?.name,p.photo?.url].filter(Boolean); const pi=state.photoCandidates.findIndex(c=>[c.id,c.name,c.url].filter(Boolean).some(v=>wanted.includes(v))); if(pi>=0){state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;if(src)await setImageFromSource("photo",src,c.name);state.photoSource={id:c.id,name:c.name,url:c.url};} const fi=state.fieldCandidates.findIndex(c=>c.id===(p.field?.id||"")||c.printId===(p.field?.printId||"")||c.applicationId===(p.field?.applicationId||""));if(fi>=0)state.activeFieldCandidate=fi;renderPhotoCandidates();renderFieldCandidates();renderAll(); }
 
 async function setImageFromSource(target, src, name=""){
-  if(!src) return false; try{state[target]=await loadImage(src);state[target+"Source"]={name,url:/^https?:/i.test(src)?src:""};if(target==="photo")resetQuad();return true;}catch{return false;}
+  if(!src) return false; try{state[target]=await loadImage(src);state[target+"Source"]={id:state[target+"Source"]?.id||name||src,name,url:/^https?:/i.test(src)?src:""};if(target==="photo")resetQuad();return true;}catch{return false;}
 }
 function fieldRectFromAny(v,baseW,baseH){
   if(!v) return null; let x=Number(v.x??v.left),y=Number(v.y??v.top),w=Number(v.w??v.width),h=Number(v.h??v.height); if(![x,y,w,h].every(Number.isFinite)) return null; if((x>1||y>1||w>1||h>1)&&baseW>0&&baseH>0){x/=baseW;y/=baseH;w/=baseW;h/=baseH;} return {x:clamp(x),y:clamp(y),w:clamp(w,0,1),h:clamp(h,0,1)};
@@ -270,13 +338,29 @@ function fieldRectFromAny(v,baseW,baseH){
 async function applyHandoff(payload){
   const item=payload.item||payload.selectedItem||payload.items?.[0]||payload;
   $("article").value=item.article||payload.article||""; $("variant").value=item.variant||item.color||payload.variant||""; $("place").value=item.placeName||item.place||payload.placeName||payload.place||""; $("method").value=item.method||item.methodType||payload.method||"";
-  const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||payload.photoCandidates?.[0]?.url||item.photoCandidates?.[0]?.url||"";
+  const rawPhotos=[...(payload.photoCandidates||[]),...(item.photoCandidates||[])];
+  if(item.imageUrl)rawPhotos.unshift({id:"order-main",name:item.imageName||"Фото из заказа",url:item.imageUrl});
+  if(payload.photoUrl)rawPhotos.unshift({id:"handoff-main",name:payload.photoName||"Фото handoff",url:payload.photoUrl});
+  if(payload.photoDataUrl)rawPhotos.unshift({id:"handoff-data",name:payload.photoName||"Фото handoff",dataUrl:payload.photoDataUrl});
+  const seen=new Set(); state.photoCandidates=rawPhotos.map(normalizedPhotoCandidate).filter(c=>{const k=c.id+"|"+c.url+"|"+c.dataUrl.slice(0,80);if(seen.has(k))return false;seen.add(k);return c.url||c.dataUrl;});
+
+  const tW=Number(payload.templateWidth||item.templateWidth||payload.template?.width||0), tH=Number(payload.templateHeight||item.templateHeight||payload.template?.height||0);
+  let rawFields=[...(payload.fieldCandidates||[]),...(item.fieldCandidates||[]),...(payload.fields||[]),...(item.fields||[])];
+  if(!rawFields.length){
+    const bindings=item.placeBindings||item.templatePlaceBindings||payload.placeBindings||[];
+    rawFields=bindings.map((b,i)=>({...b,place:b.name||b.place||b.placeName,printId:b.printId||((b.index||b.templateIndex)?`print${b.index||b.templateIndex}`:""),bounds:b.bounds||b.fieldRect}));
+  }
+  const single=payload.fieldRect||item.fieldRect||payload.selectedField?.bounds||item.selectedField?.bounds;
+  if(single&&!rawFields.length)rawFields=[{place:$("place").value,method:$("method").value,printId:payload.printId||item.printId||"",bounds:single}];
+  const fieldSeen=new Set(); state.fieldCandidates=rawFields.map((f,i)=>normalizedFieldCandidate(f,i,tW,tH)).filter(f=>{const k=[f.id,f.printId,f.applicationId,f.place].join("|");if(fieldSeen.has(k))return false;fieldSeen.add(k);return true;});
+
   const template=payload.constructorPreviewDataUrl||payload.templatePreviewDataUrl||item.constructorPreviewDataUrl||item.templatePreviewDataUrl||"";
   const artwork=payload.fieldCompositeDataUrl||payload.artworkDataUrl||item.fieldCompositeDataUrl||item.artworkDataUrl||"";
-  const tW=Number(payload.templateWidth||item.templateWidth||payload.template?.width||0), tH=Number(payload.templateHeight||item.templateHeight||payload.template?.height||0);
-  const fr=fieldRectFromAny(payload.fieldRect||item.fieldRect||payload.selectedField?.bounds||item.selectedField?.bounds,tW,tH); if(fr)state.fieldRect=fr;
-  await Promise.all([setImageFromSource("photo",photo,payload.photoName||""),setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
-  renderAll(); setStatus("Данные handoff загружены");
+  if(state.fieldCandidates.length){const wanted=$("place").value.trim().toLocaleLowerCase("ru-RU");let fi=state.fieldCandidates.findIndex(f=>f.place.trim().toLocaleLowerCase("ru-RU")===wanted);if(fi<0)fi=0;state.activeFieldCandidate=fi;const fc=state.fieldCandidates[fi];if(fc.bounds)state.fieldRect={...fc.bounds};if(fc.place)$("place").value=fc.place;if(fc.method)$("method").value=fc.method;} else state.activeFieldCandidate=-1;
+  renderFieldCandidates(); renderPhotoCandidates();
+  await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
+  if(state.photoCandidates.length){await activatePhotoCandidate(0);} else {const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||"";if(photo)await setImageFromSource("photo",photo,payload.photoName||"");}
+  renderAll(); autoApplySavedProfile(); setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
 }
 
 $("readHandoff").onclick=async()=>{const raw=localStorage.getItem(HANDOFF_KEY);if(!raw){setStatus("Передача из Макетной пока не найдена");return;}try{await applyHandoff(JSON.parse(raw));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
@@ -292,7 +376,7 @@ $("exportPng").onclick=()=>{
 };
 
 window.addEventListener("resize",()=>requestAnimationFrame(renderAll));
-renderAll();
+renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll();
 
 </script>
 </body>
