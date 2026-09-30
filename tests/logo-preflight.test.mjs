@@ -65,3 +65,8 @@ test('CMYK JPEG is not misclassified from its RGB browser preview',()=>{
  const png=new Uint8Array(26);png[25]=6;assert.equal(rasterColorModel(png,'png'),'RGB');
  png[25]=0;assert.equal(rasterColorModel(png,'png'),'Gray');
 });
+
+test('exact contour crossing sentinel is an error, including clipped placement',()=>{
+ for(const clipToField of [false,true])assert.equal(run('LM1',{margin:-.001,field:{pathPoints:[[0,0],[10,0],[10,10]]},placement:{w:10,h:10,clipToField}}).findings.find(f=>f.id==='field-boundary').status,'bad');
+ assert.equal(run('LM1',{margin:0}).findings.find(f=>f.id==='field-boundary').status,'ok');
+});

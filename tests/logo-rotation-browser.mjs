@@ -38,6 +38,22 @@ export async function verifyRotationAndColors(frame){
  });
  assert.equal(evidence.black.status,'ok');assert.equal(evidence.gray.status,'bad');assert.equal(evidence.red.status,'bad');
  assert.equal(evidence.pdfBlack.finding.status,'ok',JSON.stringify(evidence.pdfBlack));assert.equal(evidence.pdfRed.finding.status,'bad',JSON.stringify(evidence.pdfRed));
+ // Regression: dragging across an exact field contour must update the visible check.
+ await frame.locator('#editorAngle').fill('0');await frame.locator('#editorAngle').dispatchEvent('input');
+ await frame.locator('#editorFit').click();
+ const fitted=Number(await frame.locator('#width').inputValue());
+ await frame.locator('#width').evaluate((el,w)=>{el.value=String(w/2);el.dispatchEvent(new Event('input',{bubbles:true}));},fitted);
+ await frame.locator('#editorCenter').click();
+ const boundary=()=>frame.evaluate(()=>window.gwbLogoPreflight.find(r=>r.fieldIndex===1).findings.find(f=>f.id==='field-boundary'));
+ assert.equal((await boundary()).status,'ok');
+ const canvas=await frame.locator('#overlay').boundingBox();const center=await handle.evaluate(el=>({x:Number(el.dataset.centerX),y:Number(el.dataset.centerY)}));
+ const mouse=frame.page().mouse;await mouse.move(canvas.x+center.x,canvas.y+center.y);await mouse.down();await mouse.move(canvas.x+center.x+canvas.width*.38,canvas.y+center.y,{steps:12});
+ assert.equal((await boundary()).status,'bad','Crossing must be detected while pointer is still down');await mouse.up();
+ assert.match(await frame.locator('#simpleChecks').textContent(),/Выход за поле/);
+ assert.equal(await frame.locator('#simpleExport').isDisabled(),true);
+ await frame.locator('#editorClip').check();assert.equal((await boundary()).status,'bad');
+ await frame.locator('#editorCenter').click();assert.equal((await boundary()).status,'ok');
+ console.log('Boundary drag regression: live crossing, export block, clipping and return inside passed');
  if(process.env.ROTATION_SCREENSHOT)await frame.page().screenshot({path:process.env.ROTATION_SCREENSHOT});
  console.log('Mouse rotation: quarter turn, Shift snap, Escape, keyboard, unchanged dimensions; SVG/PDF laser colors passed');
 }

@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="7917d1daa53def89d911563d52708c7958827de7f43d414e112d9ced74e590a9";
+const expected="51edb25af3fb5896af1cd0cccb21fbbbdad814b4a61a4403321de962323f713d";
 const edits=[
   [
     "",
@@ -51,6 +51,10 @@ const edits=[
   [
     "=atob(e.bytes);e.bytes=Uint8Array.from(s,i=>i.charCodeAt(0)).buffer}er(t).catch(It)}catch(t){It(t)}}",
     "=atob(e.bytes);e.bytes=Uint8Array.from(s,i=>i.charCodeAt(0)).buffer}er(t).catch(It)}catch(t){It(t)}}\ngwbRotationTool=installLogoRotation({canvas:pt,getState:()=>y,redraw:X,toPoint:Wn});\n"
+  ],
+  [
+    "logo-preflight.mjs?v=20260929-2",
+    "logo-preflight.mjs?v=20260930-1"
   ]
 ];
 export function applyLogoPreflight(){
