@@ -566,3 +566,5 @@ html[data-static-mode="true"] #orderIntro{
 }
 
 .logo-preflight{margin-top:12px;font-size:13px;line-height:1.45;overflow-wrap:anywhere}.logo-preflight section{margin:12px 0}.logo-preflight p{margin:7px 0}.logo-preflight .bad{color:#a82036}.logo-preflight .manual{color:#785b16}.logo-preflight .ok{color:#16706a}.logo-preflight a{display:block;margin-top:8px}
+
+#stage .logo-rotate-handle{position:absolute;z-index:5;transform:translate(-50%,-50%);width:26px;height:26px;min-width:26px;min-height:26px;padding:0;border:2px solid #087d88;border-radius:50%;background:#fff;color:#087d88;font:22px/20px system-ui;box-shadow:0 1px 5px #0003;cursor:grab;touch-action:none;user-select:none}#stage .logo-rotate-handle.dragging{cursor:grabbing;background:#d9f3ef}#stage .logo-rotate-handle:focus-visible{outline:3px solid #ee913c;outline-offset:3px}#stage .logo-rotate-handle[hidden]{display:none}

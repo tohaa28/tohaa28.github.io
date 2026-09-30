@@ -1,6 +1,6 @@
 // Gifts.ru requirements, verified 2026-09-29. Units: mm at final production size.
 // Null/absent thresholds mean unspecified, never a successful check.
-export const REQUIREMENTS_VERSION = '2026-09-29.1';
+export const REQUIREMENTS_VERSION = '2026-09-29.2';
 export const SOURCES = Object.freeze({specifications:'https://gifts.ru/nanesenie-logotipa/specifications', problems:'https://gifts.ru/maket-problems'});
 const rules = {};
 function add(codes, name, values) {
@@ -38,6 +38,12 @@ add('DTF-F','Печать DTF с эффектами',{positive:1.2,negative:1.2,
 add('UV-DTF1 UV-DTF2','УФ-DTF печать',{positive:.6,negative:.6,isolated:2,tintMin:15,palette:'CMYK (+ White)'});
 add('MS1 MS2','Металстикер',{positive:.1,negative:.2,palette:'чёрный — глянец; серый — матовая поверхность',notes:['Элементы менее 3 мм соединяются с соседними линией до 0,1 мм.']});
 add('RP1 RP2 RP3','Печать на лентах (1 цвет)',{positive:.25,negative:.3,maxColors:1,guardLong:2,guardShort:20,guardReference:'край ленты / линия реза'});
+// The strict laser mask policy is the project owner's explicit requirement.
+// Gifts states that the resulting engraving color depends on the material.
+for(const code of 'LM1 LM2 LM3 LB1 LB2 LB3 LB4 LRM LSM LC1 LC2 LC3 LRC LSP LSC LUV1 LUV2 LUV3 LRUV'.split(' '))rules[code]=Object.freeze({...rules[code],colorPolicy:'black-white',colorPolicySource:'project:laser-black-white-user-requirement'});
+for(const [code,rule] of Object.entries(rules))if(rule.maxColors)rules[code]=Object.freeze({...rule,colorPolicy:'single-color'});
+for(const code of ['T1','T2'])rules[code]=Object.freeze({...rules[code],colorPolicy:'single-color',maxColors:1,colorPolicySource:'project:single-embossing-separation'});
+for(const code of ['MS1','MS2'])rules[code]=Object.freeze({...rules[code],colorPolicy:'black-gray'});
 export const PRINT_REQUIREMENTS = Object.freeze(rules);
 export const CONDITION_LABELS = Object.freeze({underbase:'печать с подложкой',foilOrPuff:'фольга или вспенивающаяся краска',puff:'пуфф',specialThread:'специальные нитки',pantone:'палитра Pantone',leatherFleeceNeoprene:'натуральная кожа, флис или неопрен',customTexture:'индивидуальная текстура',softTouch:'покрытие Soft Touch',fineDetail:'мелкие элементы',paperCardboard:'бумага или картон',combinedDtf:'совмещение с полноцветной DTF'});
 export function resolveMethod(value) {

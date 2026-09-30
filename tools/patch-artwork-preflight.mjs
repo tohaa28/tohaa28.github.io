@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="7b4c65cdbdd7f455fe4153f55507129de3c509a272e68b7c9bd5f59bcd5d03c3";
+const expected="7917d1daa53def89d911563d52708c7958827de7f43d414e112d9ced74e590a9";
 const edits=[
   [
     "",
@@ -31,6 +31,26 @@ const edits=[
   [
     "checks:pe(),productionApproved:!1",
     "checks:pe(),logoPreflight:window.gwbLogoPreflight||[],productionApproved:!1"
+  ],
+  [
+    "",
+    "import {installLogoRotation} from \"./logo-rotation.mjs?v=20260929-2\";\nlet gwbRotationTool;\n"
+  ],
+  [
+    "logo-preflight.mjs?v=20260929-1",
+    "logo-preflight.mjs?v=20260929-2"
+  ],
+  [
+    "if(H.clearRect(0,0,pt.width,pt.height),!c)return;",
+    "if(H.clearRect(0,0,pt.width,pt.height),!c){gwbRotationTool?.refresh();return;}"
+  ],
+  [
+    "yi()}function co(c,t)",
+    "yi();gwbRotationTool?.refresh()}function co(c,t)"
+  ],
+  [
+    "=atob(e.bytes);e.bytes=Uint8Array.from(s,i=>i.charCodeAt(0)).buffer}er(t).catch(It)}catch(t){It(t)}}",
+    "=atob(e.bytes);e.bytes=Uint8Array.from(s,i=>i.charCodeAt(0)).buffer}er(t).catch(It)}catch(t){It(t)}}\ngwbRotationTool=installLogoRotation({canvas:pt,getState:()=>y,redraw:X,toPoint:Wn});\n"
   ]
 ];
 export function applyLogoPreflight(){

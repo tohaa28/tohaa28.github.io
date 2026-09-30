@@ -474,7 +474,7 @@ jobs:
           if ((await frame.locator("#order").inputValue()) !== "7920509") {
             throw new Error("Clicking article area inside order frame did not open the order");
           }
-          await frame.locator("#basketOrders .basket-order").first().click();
+          // Article click above already opens this order; the basket is now hidden.
           try {
             await frame.waitForSelector("#orderEditor:not([hidden])", {timeout:30000});
           } catch (error) {
@@ -675,6 +675,8 @@ jobs:
           await verifyPdfLabels(frame);
           const {verifyLogoPreflight} = await import("./tests/logo-preflight-browser.mjs");
           await verifyLogoPreflight(frame);
+          const {verifyRotationAndColors}=await import('./tests/logo-rotation-browser.mjs');
+          await verifyRotationAndColors(frame);
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
