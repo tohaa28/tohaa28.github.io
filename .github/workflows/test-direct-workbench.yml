@@ -37,8 +37,9 @@ jobs:
           import { chromium } from "playwright";
           import fs from "node:fs";
           const browser = await chromium.launch({headless:true});
-          const page = await browser.newPage();
-          await page.route("https://tohaa28.github.io/gifts-layout-workbench/**", async route => {
+          const browserContext = await browser.newContext();
+          const page = await browserContext.newPage();
+          await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench/**", async route => {
             const pathname = new URL(route.request().url()).pathname;
             const relative = pathname.replace("/gifts-layout-workbench/", "");
             if (!/^(assets|vendor)\//.test(relative) || relative.includes("..")) return route.abort();
@@ -677,6 +678,8 @@ jobs:
           await verifyLogoPreflight(frame);
           const {verifyRotationAndColors}=await import('./tests/logo-rotation-browser.mjs');
           await verifyRotationAndColors(frame);
+          const {verifyDetailCheck}=await import('./tests/logo-detail-browser.mjs');
+          await verifyDetailCheck(frame);
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");

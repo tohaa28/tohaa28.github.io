@@ -1,3 +1,4 @@
+import {detailFindings} from './logo-detail-check.mjs?v=20260930-1';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20260929-2';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
@@ -29,7 +30,7 @@ export async function inspectArtwork(art, OPS) {
       facts.limitations.push('Растр: шрифты и векторные эффекты уже сведены; исходные объекты недоступны.');
     }
     if(art.image) {
-      facts.visual=sampleArtwork(art.image);
+      // Morphological analysis runs asynchronously after editing pauses.
       const width=art.image.naturalWidth||art.image.width,height=art.image.naturalHeight||art.image.height;
       const scale=Math.min(1,2048/Math.max(width,height));
       const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
@@ -282,13 +283,7 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
     // explicitly unresolved; approximate silhouette analysis produces review requests.
     if(rule.positive)findings.push(issue('positive-coverage','manual',`Проверьте все позитивные элементы: от ${rule.positive} мм. Измерения обводок и простых фигур не заменяют проверку всех контуров.`));
     if(rule.negative)findings.push(issue('negative','manual',`Минимальный пробел ${rule.negativeRange?rule.negativeRange.join('–'):rule.negative} мм. Проверьте выворотку и расстояния между контурами.`));
-    if(rule.isolated) {
-      const small=(facts.visual?.features||[]).filter(b=>Math.max(b.w*w,b.h*h)<rule.isolated);
-      findings.push(issue('isolated','manual',small.length?`Возможно мелких отдельных элементов: ${small.length}; минимум ${rule.isolated} мм. Проверьте выделенные места.`:`Одиночные элементы: от ${rule.isolated} мм; визуальная оценка не подтверждает векторную геометрию.`,{required:rule.isolated,boxes:small.slice(0,20),evidence:'render-estimate'}));
-    }
-    const narrow=(facts.visual?.narrow||[]).filter(b=>{const value=b.axis?b.h*h:b.w*w;return value<(rule[b.kind]||0)*.8;});
-    if(narrow.length)findings.push(issue('thin-estimate','manual','Возможны тонкие линии или пробелы. Выделенные участки — оценка по изображению, проверьте исходные контуры.',{boxes:narrow.filter((_,i)=>i%Math.max(1,Math.floor(narrow.length/30))===0).slice(0,30),evidence:'render-estimate'}));
-    for(const [key,label] of [['letter','Высота букв'],['round','Диаметр округлых элементов'],['textureElement','Элемент для текстуры'],['textureGap','Пробел текстуры'],['textureBoundary','Граница текстур'],['textureInset','Отступ текстуры']])if(rule[key])findings.push(issue(key,'manual',`${label}: минимум ${rule[key]} мм.`));
+    findings.push(...detailFindings({art,placement,field,rule}));
     if(rule.guard||rule.guardLong)findings.push(issue('guard','manual',rule.guard?`Охранное поле ${rule.guard} мм от ${rule.guardReference}. Граница изделия не определена автоматически.`:`Лента: отступ 2 мм по длинной стороне и 20 мм от линии реза. Граница изделия не определена автоматически.`));
     if(rule.bleed)findings.push(issue('bleed','manual',`При печати в край нужен вылет ${rule.bleed} мм за линию реза. Обрезка по полю не подтверждает вылет.`));
     if(rule.noStrokes&&(facts.strokes||[]).length)findings.push(issue('strokes','bad','Для тиснения переведите обводки в замкнутые контуры.'));
@@ -309,11 +304,11 @@ export function renderDiagnostics(reports) {
   if(!details){details=document.createElement('details');details.id='logoPreflight';details.className='logo-preflight';const summary=document.createElement('summary');summary.textContent='Проверка логотипов по требованиям';details.append(summary);document.getElementById('step4Box')?.append(details);}
   const key=JSON.stringify(reports);
   if(details.dataset.report===key)return;details.dataset.report=key;
-  details.querySelectorAll(':scope > :not(summary)').forEach(el=>el.remove());
+  details.querySelectorAll(':scope > section').forEach(el=>el.remove());
   for(const report of reports){const section=document.createElement('section');const title=document.createElement('strong');title.textContent=`${report.label} · ${report.method||'метод не определён'}`;section.append(title);
     for(const f of report.findings){const p=document.createElement('p');p.className=f.status;p.textContent=({ok:'✓ ',bad:'! ',manual:'· '}[f.status])+f.text;section.append(p);}details.append(section);}
-  const download=document.createElement('button');download.type='button';download.textContent='Скачать диагностику JSON';download.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({version:REQUIREMENTS_VERSION,reports},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='logo-preflight.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};details.append(download);
-  for(const [label,url] of [['Требования gifts.ru',SOURCES.specifications],['Проблемы макетов',SOURCES.problems]]){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener';details.append(a);}
+  let download=details.querySelector('button');if(!download){download=document.createElement('button');download.type='button';download.textContent='Скачать диагностику JSON';download.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({version:REQUIREMENTS_VERSION,reports:JSON.parse(details.dataset.report),detail:window.gwbDetailCheck},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='logo-preflight.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};details.append(download);
+  for(const [label,url] of [['Требования gifts.ru',SOURCES.specifications],['Проблемы макетов',SOURCES.problems]]){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener';details.append(a);}}
   window.gwbLogoPreflight=JSON.parse(key); // Read-only snapshot; no state-changing test API.
 }
 
