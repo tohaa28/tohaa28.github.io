@@ -142,6 +142,8 @@ const state = {
 
 const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
 const PROFILE_LIBRARY_KEY = "gifts.mockupLab.profiles.v1";
+const PROFILE_REGISTRY_URL = "https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup-profiles.json";
+let serverProfileRegistry={schema:"gifts-mockup-profile-registry/v1",version:1,profiles:[],candidates:[],articleSources:[]};
 const HANDLE_R = 9;
 
 
@@ -158,6 +160,29 @@ function normalizedFieldCandidate(raw,index=0,baseW=0,baseH=0){
 function getProfileLibrary(){ try{const v=JSON.parse(localStorage.getItem(PROFILE_LIBRARY_KEY)||"[]");return Array.isArray(v)?v:[];}catch{return [];} }
 function setProfileLibrary(v){ localStorage.setItem(PROFILE_LIBRARY_KEY,JSON.stringify(v)); renderProfileLibrary(); }
 function profileKey(p){ return [p.article,p.variant,p.place,p.photo?.id||p.photo?.name||p.photo?.url,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLocaleLowerCase("ru-RU")).join("|"); }
+function serverProfiles(){return Array.isArray(serverProfileRegistry?.profiles)?serverProfileRegistry.profiles:[];}
+function combinedProfileLibrary(){
+  const out=[],seen=new Set();
+  for(const p of [...getProfileLibrary().map(x=>({...x,storage:x.storage||"local"})),...serverProfiles().map(x=>({...x,storage:"git"}))]){
+    const k=profileKey(p); if(!k||seen.has(k))continue; seen.add(k); out.push(p);
+  }
+  return out;
+}
+async function loadServerProfileRegistry(){
+  try{
+    const r=await fetch(PROFILE_REGISTRY_URL+"?v="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw Error("HTTP "+r.status);
+    const data=await r.json();
+    if(data?.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(data.profiles))throw Error("неверный формат реестра");
+    serverProfileRegistry=data;
+    renderProfileLibrary();
+    autoApplySavedProfile();
+    return true;
+  }catch(err){
+    console.warn("Mockup Git registry:",err);
+    return false;
+  }
+}
 
 async function activatePhotoCandidate(index){
   const c=state.photoCandidates[index]; if(!c)return; const src=c.dataUrl||c.url;
@@ -182,14 +207,14 @@ function renderFieldCandidates(){
   box.querySelectorAll("[data-field-index]").forEach(b=>b.onclick=()=>activateFieldCandidate(Number(b.dataset.fieldIndex)));
 }
 function renderProfileLibrary(){
-  const box=$("profileLibrary"), lib=getProfileLibrary();
+  const box=$("profileLibrary"), lib=combinedProfileLibrary();
   if(!lib.length){box.innerHTML='<div class="candidateEmpty">Библиотека пуста</div>';return;}
-  box.innerHTML=lib.map((p,i)=>`<div class="libraryItem"><div class="libraryItemText"><strong>${htmlEscape(p.article||'—')} · ${htmlEscape(p.place||'—')}</strong>${htmlEscape(p.photo?.name||p.photo?.url||'фото')} · ${htmlEscape(p.field?.printId||p.field?.id||'поле')}</div><button type="button" data-profile-index="${i}">Открыть</button></div>`).join("");
-  box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=getProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus("Сопоставление загружено из библиотеки");}});
+  box.innerHTML=lib.map((p,i)=>`<div class="libraryItem"><div class="libraryItemText"><strong>${htmlEscape(p.article||'—')} · ${htmlEscape(p.place||'—')}</strong>${htmlEscape(p.photo?.name||p.photo?.url||'фото')} · ${htmlEscape(p.field?.printId||p.field?.id||'поле')} · ${p.storage==="git"?"Git":"локально"}${p.status?" · "+htmlEscape(p.status):""}</div><button type="button" data-profile-index="${i}">Открыть</button></div>`).join("");
+  box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=combinedProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus(p.storage==="git"?"Сопоставление загружено из Git":"Сопоставление загружено из локального кэша");}});
 }
 function autoApplySavedProfile(){
   const probe=buildProfile(), key=profileKey(probe); if(!probe.article||!probe.place||!probe.photo?.id&&!probe.photo?.name&&!probe.photo?.url)return false;
-  const saved=getProfileLibrary().find(p=>profileKey(p)===key); if(!saved)return false;
+  const saved=combinedProfileLibrary().find(p=>profileKey(p)===key && (p.storage!=="git" || p.status==="confirmed")); if(!saved)return false;
   if(Array.isArray(saved.targetQuad)&&saved.targetQuad.length===4)state.quad=saved.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));
   if(saved.surface)$("surface").value=saved.surface; if(saved.render?.opacity!=null){$("opacity").value=Math.round(saved.render.opacity*100);$("opacityValue").textContent=$("opacity").value+"%";} if(saved.render?.blend)$("blend").value=saved.render.blend;
   renderAll(); setStatus("Найдена сохранённая привязка — применена автоматически"); return true;
@@ -400,7 +425,7 @@ $("exportPng").onclick=()=>{
 
 window.addEventListener("resize",()=>requestAnimationFrame(renderAll));
 requestParentHandoff();
-renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll();
+renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
 </body>

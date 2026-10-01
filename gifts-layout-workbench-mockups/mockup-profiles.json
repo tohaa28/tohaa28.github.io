@@ -1,0 +1,64 @@
+{
+  "schema": "gifts-mockup-profile-registry/v1",
+  "version": 1,
+  "updatedAt": "2026-10-01T20:42:00Z",
+  "source": "git",
+  "profiles": [],
+  "candidates": [],
+  "articleSources": [
+    {
+      "article": "15637",
+      "product": "Брелок Tetta",
+      "productUrl": "https://gifts.ru/id/228756",
+      "constructorUrl": "https://files.gifts.ru/reviewer/constructor/15637_1.pdf",
+      "places": [
+        {
+          "printId": "print1",
+          "place": "лицо",
+          "fieldSizeCm": [
+            3.2,
+            3.2
+          ]
+        },
+        {
+          "printId": "print2",
+          "place": "оборот",
+          "fieldSizeCm": [
+            3.2,
+            3.2
+          ]
+        }
+      ],
+      "sourceStatus": "verified-public-page"
+    },
+    {
+      "article": "16535.66",
+      "product": "Сумка для покупок Cottonica Recycle, неокрашенная",
+      "productUrl": "https://gifts.ru/id/242994",
+      "places": [
+        {
+          "place": "сторона а"
+        },
+        {
+          "place": "сторона b"
+        }
+      ],
+      "sourceStatus": "verified-public-page"
+    },
+    {
+      "article": "12393.89",
+      "product": "Зонт-трость Standard, желтый неон",
+      "places": [
+        {
+          "printId": "print1",
+          "place": "купол, клин 1",
+          "fieldSizeCm": [
+            20,
+            10
+          ]
+        }
+      ],
+      "sourceStatus": "verified-real-template"
+    }
+  ]
+}
