@@ -21,6 +21,16 @@ export async function verifyDetailCheck(frame){
  await resize(2000);await frame.waitForFunction(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey)?.state==='error';});assert.match(await frame.locator('#detailStatus').textContent(),/слишком велика/);
  await resize(10);await done();assert.equal(await frame.locator('#detailOverlay').isVisible(),true);
 
+
+ // Dense logo: later rows used to be discarded by the per-kind prefix cap.
+ const cells=Array.from({length:400},(_,i)=>'<rect x="'+(i%20*20+4)+'" y="'+(Math.floor(i/20)*20+4)+'" width="2" height="14"/>').join('');
+ await frame.locator('#artwork').setInputFiles({name:'detail-full-grid.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="40mm" viewBox="0 0 404 404">'+cells+'</svg>')});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-full-grid.svg'));await resize(40);await frame.locator('#editorCenter').click();await done();
+ const grid=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});assert.equal(grid.boxes.filter(b=>b.kind==='positive').length,400);assert.ok(grid.boxes.some(b=>b.kind==='positive'&&b.cx>.9&&b.cy>.9));
+ assert.ok(await frame.locator('#detailList button').count()<=101,'Only one list page should be built initially');
+ while(await frame.locator('#detailList button').filter({hasText:'Показать ещё'}).count())await frame.locator('#detailList button').filter({hasText:'Показать ещё'}).click();
+ assert.equal(await frame.locator('#detailList button').count(),grid.boxes.length);await frame.locator('#detailList button').last().click();assert.equal(await frame.locator('#detailPreview').isVisible(),true);
+ if(process.env.COVERAGE_SCREENSHOT)await frame.page().screenshot({path:process.env.COVERAGE_SCREENSHOT});
  // Exercise PDF.js rerender and native PNG decoding through real upload controls.
  const files=await frame.evaluate(async()=>{const doc=await PDFLib.PDFDocument.create();const page=doc.addPage([100,100]);page.drawRectangle({x:10,y:10,width:2,height:70});const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillRect(10,10,2,70);return {pdf:Array.from(await doc.save()),png:canvas.toDataURL().split(',')[1]};});
  for(const [ext,buffer]of [['pdf',Buffer.from(files.pdf)],['png',Buffer.from(files.png,'base64')]]){

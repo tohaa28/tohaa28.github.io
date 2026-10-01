@@ -1,4 +1,4 @@
-import {scanPlan} from './logo-detail-engine.mjs?v=20260930-1';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261001-1';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
 let enabled=true,mode='dark',threshold=245,show=true,selected=-1,currentKey='',lastPanelKey='';
@@ -15,7 +15,7 @@ export function detailFindings({art,placement,field,rule}){
  if(!rule||rule.settings?.enabled===false||rule.settings?.checks.details===false||![rule.positive,rule.negative,rule.isolated].some(v=>v>0)){placementKeys.delete(placement);return [];}const e=entryFor(art,placement,field,rule);schedule();
  if(!enabled)return [{id:'detail-scan',status:'manual',text:'Поиск мелких элементов выключен.',source}];
  if(e.state!=='done')return [{id:'detail-scan',status:'manual',text:e.state==='error'?e.error:e.state==='running'?'Идёт фоновый поиск мелких элементов.':'Поиск мелких элементов начнётся после паузы в редактировании.',source}];
- const r=e.result;return [{id:'detail-scan',status:'manual',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм. Это кандидаты, а не доказанный брак.`,source,evidence:r.algorithm,candidates:r.boxes,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
+ const r=e.result;return [{id:'detail-scan',status:'manual',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм. Это кандидаты, а не доказанный брак.`,source,evidence:r.algorithm,candidateCount:r.boxes.length,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
 }
 function validEntries(){if(!api)return [];return [...new Set(api.getState().placements.filter(p=>p.art&&p.placement).map(p=>entries.get(placementKeys.get(p.placement))).filter(Boolean))];}
 function cancel(){clearTimeout(watchdog);clearTimeout(timer);timer=0;if(idle){(window.cancelIdleCallback||clearTimeout)(idle);idle=0;}job++;if(worker){worker.terminate();worker=null;cancellations++;}renderTask?.cancel();renderTask=null;busy=false;for(const e of entries.values())if(e.state==='running')e.state='pending';}
@@ -34,22 +34,22 @@ async function start(){
  if(plan.skip){e.state='error';e.error=plan.skip;busy=false;api.redraw();schedule();return;}
  try{
   const data=await raster(e,plan,token);if(token!==job)return;
-  const workerUrl=new URL('./logo-detail-worker.mjs?v=20260930-1',import.meta.url).href;
+  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261001-1',import.meta.url).href;
   const blobUrl=URL.createObjectURL(new Blob([`import ${JSON.stringify(workerUrl)};`],{type:'application/javascript'}));
   try{worker=new Worker(blobUrl,{type:'module'});}finally{URL.revokeObjectURL(blobUrl);}
   runs++;watchdog=setTimeout(()=>complete(null,'Проверка заняла слишком много времени. Мелкие элементы не проверены.'),20000);
-  function complete(result,error){clearTimeout(watchdog);if(token!==job)return;worker?.terminate();worker=null;busy=false;if(!validEntries().includes(e)){schedule();return;}
-   if(error){e.state='error';e.error=error;}else{e.state='done';e.result=result;if(plan.lowResolution)e.result.notes.push('Недостаточно пикселей на минимальную деталь; мелкие дефекты могут быть пропущены.');
+  function complete(result,error,overlay,overlayRect){clearTimeout(watchdog);if(token!==job){overlay?.close();return;}worker?.terminate();worker=null;busy=false;if(!validEntries().includes(e)){overlay?.close();schedule();return;}
+   if(error){e.state='error';e.error=error;}else{e.state='done';e.result=result;e.overlay?.close();e.overlay=overlay;e.overlayRect=overlayRect;if(plan.lowResolution)e.result.notes.push('Недостаточно пикселей на минимальную деталь; мелкие дефекты могут быть пропущены.');
     if(!e.art.svg&&!e.art.pdfPage&&(e.art.pixelW<plan.width||e.art.pixelH<plan.height))e.result.notes.push('Разрешение исходного растра ниже разрешения анализа: увеличение не восстанавливает детали.');
    }api.redraw();schedule();
   }
-  worker.onmessage=event=>{if(event.data.id===token)complete(event.data.result,event.data.error);};worker.onerror=event=>{event.preventDefault();complete(null,'Фоновая проверка недоступна: '+event.message);};
+  worker.onmessage=event=>{if(event.data.id===token)complete(event.data.result,event.data.error,event.data.overlay,event.data.overlayRect);};worker.onerror=event=>{event.preventDefault();complete(null,'Фоновая проверка недоступна: '+event.message);};
   worker.postMessage({id:token,rgba:data.buffer,width:plan.width,height:plan.height,wMm:e.wMm,hMm:e.hMm,rule:e.rule,mode:e.mode,threshold:e.threshold},[data.buffer]);
  }catch(error){if(token!==job)return;busy=false;e.state='error';e.error='Мелкие элементы не проверены: '+String(error.message||error);api.redraw();schedule();}
 }
 export function installDetailCheck({canvas,getState,redraw}){
  const panel=document.createElement('details');panel.id='logoDetailCheck';panel.open=false;panel.className='logo-detail-check';
- panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><label>Маска <select id="detailMode"><option value="dark">Тёмное на светлом</option><option value="light">Светлое на тёмном</option><option value="alpha">Все непрозрачные элементы</option></select></label><label>Порог маски <input id="detailThreshold" type="number" min="1" max="254" value="245"></label><p id="detailStatus" role="status"></p><p class="help">Круги показывают порог: жёлтые — линии, голубые — пробелы, оранжевые — отдельные объекты. Нажмите область в списке, чтобы рассмотреть её крупнее.</p><div id="detailList"></div><canvas id="detailPreview" width="320" height="200" hidden></canvas>';
+ panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><label>Маска <select id="detailMode"><option value="dark">Тёмное на светлом</option><option value="light">Светлое на тёмном</option><option value="alpha">Все непрозрачные элементы</option></select></label><label>Порог маски <input id="detailThreshold" type="number" min="1" max="254" value="245"></label><p id="detailStatus" role="status"></p><p class="help">Каждый кружок отмечает один найденный участок. Круги показывают порог: жёлтые — линии, голубые — пробелы, оранжевые — отдельные объекты. Нажмите область в списке, чтобы рассмотреть её крупнее.</p><div id="detailList"></div><canvas id="detailPreview" width="320" height="200" hidden></canvas>';
  const separate=document.createElement('section');separate.id='detailPanel';separate.className='panel';separate.append(panel);document.getElementById('step4Box').closest('.panel').after(separate);
  const layer=document.createElement('canvas');layer.id='detailOverlay';layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';canvas.parentElement.append(layer);
  const $=id=>panel.querySelector('#'+id);
@@ -59,22 +59,20 @@ export function installDetailCheck({canvas,getState,redraw}){
  }
  function refresh(){
   const state=getState();separate.hidden=!state.art;const e=entries.get(placementKeys.get(state.placement));const keys=new Set(validEntries().map(e=>e.key));
-  for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8)entries.delete(key);
+  for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8){value.overlay?.close();entries.delete(key);}
   if(worker&&!validEntries().some(e=>e.state==='running'))cancel();
   if(currentKey!==e?.key){selected=-1;currentKey=e?.key||'';$('detailPreview').hidden=true;}
   $('detailStatus').textContent=!enabled?'Поиск выключен.':!e?(state.art?'Поиск отключён или пороги не заданы в настройках нанесения.':'Выберите логотип.'):holding?'Проверка приостановлена на время редактирования.':e.state==='done'?`Найдено областей: ${e.result.boxes.length}. Шаг ${e.result.step.toFixed(4)} мм.`:e.state==='error'?e.error:e.state==='running'?'Идёт фоновая проверка…':'Ожидание паузы в редактировании…';
   const panelKey=JSON.stringify([e?.key,e?.state,enabled]);if(lastPanelKey!==panelKey){lastPanelKey=panelKey;$('detailList').replaceChildren();if(enabled&&e?.state==='done'){
-   for(const [i,b]of e.result.boxes.slice(0,750).entries()){const button=document.createElement('button');button.type='button';button.textContent=`${i+1}. ${labels[b.kind]} · порог ${b.threshold} мм`;button.onclick=()=>{selected=i;preview(e,b);refresh();};$('detailList').append(button);}
-   if(e.result.boxes.length>750){const p=document.createElement('p');p.textContent='Показаны первые 750 областей.';$('detailList').append(p);}
+   let offset=0;const more=document.createElement('button');more.type='button';more.textContent='Показать ещё';const appendPage=()=>{more.remove();const end=Math.min(offset+100,e.result.boxes.length),fragment=document.createDocumentFragment();for(;offset<end;offset++){const i=offset,b=e.result.boxes[i],button=document.createElement('button');button.type='button';button.textContent=`${i+1}. ${labels[b.kind]} · порог ${b.threshold} мм`;button.onclick=()=>{selected=i;preview(e,b);refresh();};fragment.append(button);}$('detailList').append(fragment);if(offset<e.result.boxes.length)$('detailList').append(more);};more.onclick=appendPage;appendPage();
    for(const note of e.result.notes){const p=document.createElement('p');p.textContent=note;$('detailList').append(p);}
   }}
   if(layer.width!==canvas.width)layer.width=canvas.width;if(layer.height!==canvas.height)layer.height=canvas.height;const ctx=layer.getContext('2d');ctx.clearRect(0,0,layer.width,layer.height);
   if(enabled&&show&&state.template){const view=state.view||{x:0,y:0,w:state.template.w,h:state.template.h},sx=layer.width/view.w,sy=layer.height/view.h,ratio=canvas.width/Math.max(1,canvas.clientWidth);
-   for(const p of state.placements){if(p.page!==state.page||!p.placement)continue;const entry=entries.get(placementKeys.get(p.placement));if(entry?.state!=='done')continue;const a=p.placement;ctx.save();ctx.scale(sx,sy);ctx.translate(a.x+a.w/2-view.x,a.y+a.h/2-view.y);ctx.rotate((a.rotation||0)*Math.PI/180);ctx.strokeStyle='#ed8b00';ctx.lineWidth=2*ratio/sx;const placed={positive:[],negative:[],isolated:[]};
-    for(const [i,b]of entry.result.boxes.slice(0,750).entries()){const diameter=b.threshold/entry.wMm*a.w,cx=(b.cx-.5)*a.w,cy=(b.cy-.5)*a.h,minDistance=Math.max(diameter*.55,4*ratio/sx);if(placed[b.kind].some(p=>Math.hypot(cx-p[0],cy-p[1])<minDistance))continue;placed[b.kind].push([cx,cy]);const stroke=Math.max(.8*ratio/sx,Math.min(2.8*ratio/sx,diameter*.18));ctx.lineWidth=stroke;ctx.strokeStyle=colors[b.kind];ctx.beginPath();ctx.arc((b.cx-.5)*a.w,(b.cy-.5)*a.h,Math.max(.4*ratio/sx,(diameter-stroke)/2),0,Math.PI*2);ctx.stroke();}ctx.restore();
+   for(const p of state.placements){if(p.page!==state.page||!p.placement)continue;const entry=entries.get(placementKeys.get(p.placement));if(entry?.state!=='done')continue;const a=p.placement;ctx.save();ctx.scale(sx,sy);ctx.translate(a.x+a.w/2-view.x,a.y+a.h/2-view.y);ctx.rotate((a.rotation||0)*Math.PI/180);ctx.strokeStyle='#ed8b00';ctx.lineWidth=2*ratio/sx;if(entry.overlay){const r=entry.overlayRect;ctx.drawImage(entry.overlay,(r.x-.5)*a.w,(r.y-.5)*a.h,r.w*a.w,r.h*a.h);}ctx.restore();
    }
   }
-  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes.map(b=>({...b}))||[],notes:v.result?.notes||[],error:v.error}))};schedule();
+  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],error:v.error}))};schedule();
  }
  api={getState,redraw,refresh};
  $('detailEnabled').onchange=event=>{enabled=event.target.checked;activity();lastPanelKey='';redraw();};$('detailShow').onchange=event=>{show=event.target.checked;refresh();};
@@ -84,6 +82,6 @@ export function installDetailCheck({canvas,getState,redraw}){
  document.addEventListener('input',event=>{if(!panel.contains(event.target)){activity();}},true);
  document.addEventListener('keydown',event=>{if(event.target.closest('#stage,#fieldLogoTools')||event.key==='Escape')activity();},true);
  document.addEventListener('visibilitychange',()=>{if(document.hidden){holding=true;cancel();}else{holding=false;activity();}});
- window.addEventListener('pagehide',()=>cancel());lastAction=Date.now();refresh();return {refresh};
+ window.addEventListener('pagehide',()=>{cancel();for(const e of entries.values())e.overlay?.close();});lastAction=Date.now();refresh();return {refresh};
 }
 

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 export async function verifyErrorOverlay(frame){
  const panel=frame.locator('#logoErrorOverlay');
- const expected=await frame.evaluate(()=>window.gwbLogoPreflight.flatMap(r=>r.findings.filter(f=>f.status==='bad'||f.status==='ok'&&f.id!=='method').map(f=>({status:f.status,text:r.label+': '+f.text}))).sort((a,b)=>(a.status==='bad'?0:1)-(b.status==='bad'?0:1)).map(f=>(f.status==='ok'?'✓ ':'! ')+f.text));
- assert.deepEqual(await panel.locator('li').allTextContents(),expected);
+ const expected=await frame.evaluate(()=>window.gwbLogoPreflight.filter(r=>r.fieldIndex===1).flatMap(r=>r.findings.filter(f=>f.status==='bad'||f.status==='ok'&&f.id!=='method').map(f=>({status:f.status,text:f.text}))).sort((a,b)=>(a.status==='bad'?0:1)-(b.status==='bad'?0:1)).map(f=>(f.status==='ok'?'✓ ':'! ')+f.text));
+ assert.deepEqual(await panel.locator('li').allTextContents(),expected);assert.ok((await panel.locator('li').allTextContents()).every(text=>!/^.[ ]Поле .*стр\./.test(text)));
  assert.equal(await panel.isVisible(),expected.length>0);
  if(expected.length){
   assert.equal(await panel.locator('button,input,select,a').count(),0);
