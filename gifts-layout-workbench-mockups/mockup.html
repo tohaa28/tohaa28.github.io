@@ -163,9 +163,15 @@ function getProfileLibrary(){ try{const v=JSON.parse(localStorage.getItem(PROFIL
 function setProfileLibrary(v){ localStorage.setItem(PROFILE_LIBRARY_KEY,JSON.stringify(v)); renderProfileLibrary(); }
 function profileKey(p){ return [p.article,p.variant,p.place,p.photo?.id||p.photo?.name||p.photo?.url,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLocaleLowerCase("ru-RU")).join("|"); }
 function serverProfiles(){return Array.isArray(serverProfileRegistry?.profiles)?serverProfileRegistry.profiles:[];}
+function serverCandidates(){return Array.isArray(serverProfileRegistry?.candidates)?serverProfileRegistry.candidates:[];}
 function combinedProfileLibrary(){
   const out=[],seen=new Set();
-  for(const p of [...getProfileLibrary().map(x=>({...x,storage:x.storage||"local"})),...serverProfiles().map(x=>({...x,storage:"git"}))]){
+  const source=[
+    ...serverProfiles().map(x=>({...x,storage:"git"})),
+    ...serverCandidates().map(x=>({...x,storage:"git-candidate"})),
+    ...getProfileLibrary().map(x=>({...x,storage:x.storage||"local"}))
+  ];
+  for(const p of source){
     const k=profileKey(p); if(!k||seen.has(k))continue; seen.add(k); out.push(p);
   }
   return out;
@@ -211,8 +217,8 @@ function renderFieldCandidates(){
 function renderProfileLibrary(){
   const box=$("profileLibrary"), lib=combinedProfileLibrary();
   if(!lib.length){box.innerHTML='<div class="candidateEmpty">Библиотека пуста</div>';return;}
-  box.innerHTML=lib.map((p,i)=>`<div class="libraryItem"><div class="libraryItemText"><strong>${htmlEscape(p.article||'—')} · ${htmlEscape(p.place||'—')}</strong>${htmlEscape(p.photo?.name||p.photo?.url||'фото')} · ${htmlEscape(p.field?.printId||p.field?.id||'поле')} · ${p.storage==="git"?"Git":"локально"}${p.status?" · "+htmlEscape(p.status):""}</div><button type="button" data-profile-index="${i}">Открыть</button></div>`).join("");
-  box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=combinedProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus(p.storage==="git"?"Сопоставление загружено из Git":"Сопоставление загружено из локального кэша");}});
+  box.innerHTML=lib.map((p,i)=>`<div class="libraryItem"><div class="libraryItemText"><strong>${htmlEscape(p.article||'—')} · ${htmlEscape(p.place||'—')}</strong>${htmlEscape(p.photo?.name||p.photo?.url||'фото')} · ${htmlEscape(p.field?.printId||p.field?.id||'поле')} · ${p.storage==="git"?"Git-профиль":p.storage==="git-candidate"?"Git-кандидат":"локальный черновик"}${p.status?" · "+htmlEscape(p.status):""}</div><button type="button" data-profile-index="${i}">Открыть</button></div>`).join("");
+  box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=combinedProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus(p.storage==="git"?"Git-профиль загружен":p.storage==="git-candidate"?"Git-кандидат открыт для проверки":"Локальный черновик загружен");}});
 }
 function lookupText(v){return String(v||"").trim().toLocaleLowerCase("ru-RU").replace(/ё/g,"е").replace(/\s+/g," ");}
 function placeLookupKey(v){return lookupText(v).replace(/\s*\[[^\]]*\]\s*$/,"").replace(/\s*\([^)]*(?:pantone|black|white|cmyk|rgb)[^)]*\)\s*$/i,"").trim();}
