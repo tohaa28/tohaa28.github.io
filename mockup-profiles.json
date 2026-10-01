@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-01T21:12:36.228Z",
+  "updatedAt": "2026-10-01T21:14:49.706Z",
   "source": "git",
   "profiles": [
     {
@@ -562,7 +562,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "",
+      "place": "сторона b",
       "method": "",
       "photo": {
         "id": "16535.66_77",
@@ -574,8 +574,11 @@
         "id": "field-4",
         "printId": "",
         "applicationId": "",
-        "place": "",
-        "sizeCm": null
+        "place": "сторона b",
+        "sizeCm": [
+          26,
+          25
+        ]
       },
       "targetQuad": [
         {

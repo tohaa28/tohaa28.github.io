@@ -2,7 +2,7 @@
   "article": "16535.66",
   "product": "Сумка для покупок Cottonica Recycle, неокрашенная",
   "productUrl": "https://gifts.ru/id/242994",
-  "scannedAt": "2026-10-01T21:12:27.940Z",
+  "scannedAt": "2026-10-01T21:14:41.061Z",
   "tabs": {
     "Фото": {
       "clicked": true,
@@ -2377,7 +2377,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "",
+      "place": "сторона b",
       "method": "",
       "photo": {
         "id": "16535.66_77",
@@ -2389,8 +2389,11 @@
         "id": "field-4",
         "printId": "",
         "applicationId": "",
-        "place": "",
-        "sizeCm": null
+        "place": "сторона b",
+        "sizeCm": [
+          26,
+          25
+        ]
       },
       "targetQuad": [
         {
@@ -2582,6 +2585,13 @@
         30
       ],
       "place": "сторона b"
+    },
+    {
+      "sizeCm": [
+        26,
+        25
+      ],
+      "place": "сторона b"
     }
   ],
   "svgFields": [
@@ -2689,7 +2699,13 @@
         "w": 0.6842121879871249,
         "h": 0.36496407083227234
       },
-      "meta": null
+      "meta": {
+        "sizeCm": [
+          26,
+          25
+        ],
+        "place": "сторона b"
+      }
     }
   ],
   "photoAnalyses": [
