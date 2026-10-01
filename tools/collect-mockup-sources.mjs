@@ -1,4 +1,4 @@
-// collector-version: 4
+// collector-version: 5
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -226,7 +226,7 @@ async function buildSvgSilhouetteBindings(ctx,article,photoUrls,probes,fieldMeta
   for(const g of groups){
     const match=groupPhoto.get(g);if(!match)continue;
     for(const f of g.fields){
-      const meta=f.meta||{},expected=(specPlaces||[]).find(x=>x.place&&meta.place&&String(x.place).toLocaleLowerCase("ru-RU")===String(meta.place).toLocaleLowerCase("ru-RU"))||{};
+      const meta=f.meta||{},expected=(specPlaces||[]).find(x=>x.place&&meta.place&&String(x.place).toLocaleLowerCase("ru-RU")===String(meta.place).toLocaleLowerCase("ru-RU"))||(specPlaces||[])[f.index]||{};
       const rect=transferField(f.normalized,match.p.box),q=quadFromBbox(rect);
       const inside=f.normalized.x>=-.05&&f.normalized.y>=-.05&&f.normalized.x+f.normalized.w<=1.05&&f.normalized.y+f.normalized.h<=1.05;
       const confidence=Math.max(0,Math.min(1,match.score*(inside?1:.7)*match.p.confidence));
@@ -257,13 +257,14 @@ for(const spec of specs){
     result.title=await page.title();
     result.constructors=await page.locator("a[href]").evaluateAll(nodes=>nodes.map(a=>({text:(a.textContent||"").replace(/\s+/g," ").trim(),context:(a.parentElement?.textContent||"").replace(/\s+/g," ").trim().slice(0,500),href:a.href})).filter(x=>/конструктор/i.test(x.text+" "+x.context)&&/\.(?:pdf|cdr)(?:$|[?#])/i.test(x.href)));
     result.places=(await page.locator("select option").allTextContents()).map(x=>x.replace(/\s+/g," ").trim()).filter(x=>x&&x.length<120);
-    result.placeHostText=await page.locator("#j_dc_places_host").innerText().catch(()=>"");
+    result.placeHostText="";
     const shotDir=path.join(OUTDIR,"screenshots"); fs.mkdirSync(shotDir,{recursive:true});
     for(const label of ["Фото","Нанесение","Примеры"]){
       const clicked=await clickExact(page,label);
       const images=await visibleArticleImages(page,spec.article);
       const probes=await page.locator("[class*='print'],[class*='draw'],[class*='place'],[class*='maket'],[class*='logo'],svg rect,svg polygon,svg path").evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return r.width>2&&r.height>2&&s.display!=="none"&&s.visibility!=="hidden"}).slice(0,250).map(n=>{const r=n.getBoundingClientRect();return{tag:n.tagName,class:String(n.className?.baseVal??n.className??"").slice(0,200),id:n.id||"",text:(n.textContent||"").replace(/\s+/g," ").trim().slice(0,200),attrs:[...n.attributes].filter(a=>/^data-|^(x|y|width|height|points|d|fill|stroke)$/i.test(a.name)).slice(0,20).map(a=>[a.name,a.value]),box:{x:r.x,y:r.y,w:r.width,h:r.height}}}));
       result.tabs[label]={clicked,images,probes};
+      if(label==="Нанесение") result.placeHostText=await page.locator("#j_dc_places_host").innerText().catch(()=>"");
       try{await page.screenshot({path:path.join(shotDir,String(spec.article).replace(/[^A-Za-z0-9._-]+/g,"_")+"-"+label+".png"),fullPage:false});}catch{}
     }
     const allPhotoTab=[...new Set((result.tabs["Фото"]?.images||[]).map(x=>cleanUrl(x.url)).filter(Boolean))];
