@@ -19,11 +19,31 @@ permissions:
   contents: write
 
 jobs:
-  verify:
-    uses: ./.github/workflows/test-direct-workbench.yml
+  precheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit and syntax checks
+        run: |
+          set -euo pipefail
+          node --test tests/*.test.mjs
+          node tools/build-launcher.mjs
+          test -f launcher.js
+          test -f mockup.html
+          node --check direct-mode.js
+          node --check assets/index-BpU9kvz8.js
+          node --check launcher.js
+          grep -q "gifts-layout-workbench-mockups" launcher.js
+          grep -q 'id="mockupModeButton"' editor.html
+          grep -q 'id="mockupShell"' editor.html
 
   publish:
-    needs: verify
+    needs: precheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,26 +51,13 @@ jobs:
           ref: ${{ github.sha }}
           path: source
           fetch-depth: 0
-
       - name: Build independent launcher
-        run: |
-          set -euo pipefail
-          node source/tools/build-launcher.mjs
-          test -f source/launcher.js
-          test -f source/mockup.html
-          node --check source/direct-mode.js
-          node --check source/assets/index-BpU9kvz8.js
-          node --check source/launcher.js
-          grep -q "gifts-layout-workbench-mockups" source/launcher.js
-          grep -q 'id="mockupModeButton"' source/editor.html
-          grep -q 'id="mockupShell"' source/editor.html
-
+        run: node source/tools/build-launcher.mjs
       - uses: actions/checkout@v4
         with:
           ref: main
           path: site
           fetch-depth: 0
-
       - name: Publish independent Maketnaya with Mockups
         run: |
           set -euo pipefail
@@ -63,7 +70,6 @@ jobs:
           cp source/launcher.js site/gifts-layout-workbench-mockups/launcher.js
           cp -R source/assets site/gifts-layout-workbench-mockups/assets
           cp -R source/vendor site/gifts-layout-workbench-mockups/vendor
-
       - name: Commit GitHub Pages
         run: |
           set -euo pipefail
@@ -77,3 +83,7 @@ jobs:
             git commit -m "Publish independent Maketnaya with Mockups"
             git push origin main
           fi
+
+  browser_verify:
+    needs: publish
+    uses: ./.github/workflows/test-direct-workbench.yml
