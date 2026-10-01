@@ -2,7 +2,7 @@
   "article": "15637",
   "product": "Брелок Tetta",
   "productUrl": "https://gifts.ru/id/228756",
-  "scannedAt": "2026-10-01T21:03:18.541Z",
+  "scannedAt": "2026-10-01T21:12:17.771Z",
   "tabs": {
     "Фото": {
       "clicked": true,
@@ -1493,7 +1493,7 @@
   "errors": [],
   "finalUrl": "https://gifts.ru/id/228756",
   "title": "Брелок Tetta (артикул 15637) оптом — Проект 111",
-  "placeHostText": "Добавить нанесение",
+  "placeHostText": "Добавить нанесениеВыберите место нанесенияLM1: Лазерная гравировка3.2×3.2 лицо3.2×3.2 оборотРасчет минимальной стоимости нанесенияПредложений нет",
   "photoUrls": [
     "https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2",
     "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
@@ -1608,7 +1608,22 @@
       }
     }
   ],
-  "fieldMeta": [],
+  "fieldMeta": [
+    {
+      "sizeCm": [
+        3.2,
+        3.2
+      ],
+      "place": "лицо"
+    },
+    {
+      "sizeCm": [
+        3.2,
+        3.2
+      ],
+      "place": "оборот"
+    }
+  ],
   "svgFields": [
     {
       "index": 0,
@@ -1630,7 +1645,13 @@
         "w": 0.888888521824472,
         "h": 0.4157922900326287
       },
-      "meta": null
+      "meta": {
+        "sizeCm": [
+          3.2,
+          3.2
+        ],
+        "place": "лицо"
+      }
     },
     {
       "index": 1,
@@ -1652,7 +1673,13 @@
         "w": 0.8888887126979571,
         "h": 0.4157922900326287
       },
-      "meta": null
+      "meta": {
+        "sizeCm": [
+          3.2,
+          3.2
+        ],
+        "place": "оборот"
+      }
     }
   ],
   "photoAnalyses": [

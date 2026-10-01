@@ -2,7 +2,7 @@
   "article": "16535.66",
   "product": "Сумка для покупок Cottonica Recycle, неокрашенная",
   "productUrl": "https://gifts.ru/id/242994",
-  "scannedAt": "2026-10-01T21:03:28.614Z",
+  "scannedAt": "2026-10-01T21:12:27.940Z",
   "tabs": {
     "Фото": {
       "clicked": true,
@@ -2156,7 +2156,10 @@
         "printId": "",
         "applicationId": "",
         "place": "сторона а",
-        "sizeCm": null
+        "sizeCm": [
+          30,
+          30
+        ]
       },
       "targetQuad": [
         {
@@ -2218,7 +2221,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "сторона b",
+      "place": "сторона а",
       "method": "",
       "photo": {
         "id": "16535.66_76",
@@ -2230,8 +2233,11 @@
         "id": "field-2",
         "printId": "",
         "applicationId": "",
-        "place": "сторона b",
-        "sizeCm": null
+        "place": "сторона а",
+        "sizeCm": [
+          26,
+          25
+        ]
       },
       "targetQuad": [
         {
@@ -2293,7 +2299,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "",
+      "place": "сторона b",
       "method": "",
       "photo": {
         "id": "16535.66_77",
@@ -2305,8 +2311,11 @@
         "id": "field-3",
         "printId": "",
         "applicationId": "",
-        "place": "",
-        "sizeCm": null
+        "place": "сторона b",
+        "sizeCm": [
+          30,
+          30
+        ]
       },
       "targetQuad": [
         {
@@ -2443,7 +2452,7 @@
   "errors": [],
   "finalUrl": "https://gifts.ru/id/242994",
   "title": "Сумка для покупок Cottonica Recycle, неокрашенная (артикул 16535.66) оптом — Проект 111",
-  "placeHostText": "Добавить нанесение",
+  "placeHostText": "Добавить нанесениеВыберите место нанесенияпо виду нанесенияD1: Шелкография с трансферомDTF1: Печать DTFDTF-F: Печать DTF с эффектамиDTG1: Печать DTGF1: ФлексF2: Флекс30×30 сторона а26×25 сторона а30×30 сторона b26×25 сторона bКастомизация Металлические шильдики Лейблы из ПВХ Лейблы и шильды Тканевые лейблы Светоотражающие лейблы КнопкиРасчет минимальной стоимости нанесенияПредложений нет",
   "photoUrls": [
     "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
     "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
@@ -2552,7 +2561,29 @@
       }
     }
   ],
-  "fieldMeta": [],
+  "fieldMeta": [
+    {
+      "sizeCm": [
+        30,
+        30
+      ],
+      "place": "сторона а"
+    },
+    {
+      "sizeCm": [
+        26,
+        25
+      ],
+      "place": "сторона а"
+    },
+    {
+      "sizeCm": [
+        30,
+        30
+      ],
+      "place": "сторона b"
+    }
+  ],
   "svgFields": [
     {
       "index": 0,
@@ -2574,7 +2605,13 @@
         "w": 0.7894734033653849,
         "h": 0.4379566383192941
       },
-      "meta": null
+      "meta": {
+        "sizeCm": [
+          30,
+          30
+        ],
+        "place": "сторона а"
+      }
     },
     {
       "index": 1,
@@ -2596,7 +2633,13 @@
         "w": 0.6842105497195513,
         "h": 0.36496407083227234
       },
-      "meta": null
+      "meta": {
+        "sizeCm": [
+          26,
+          25
+        ],
+        "place": "сторона а"
+      }
     },
     {
       "index": 2,
@@ -2618,7 +2661,13 @@
         "w": 0.7894753107761293,
         "h": 0.4379566383192941
       },
-      "meta": null
+      "meta": {
+        "sizeCm": [
+          30,
+          30
+        ],
+        "place": "сторона b"
+      }
     },
     {
       "index": 3,

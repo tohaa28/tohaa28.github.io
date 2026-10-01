@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-01T21:10:52.950Z",
+  "updatedAt": "2026-10-01T21:12:36.228Z",
   "source": "git",
   "profiles": [
     {
@@ -341,7 +341,10 @@
         "printId": "",
         "applicationId": "",
         "place": "сторона а",
-        "sizeCm": null
+        "sizeCm": [
+          30,
+          30
+        ]
       },
       "targetQuad": [
         {
@@ -403,7 +406,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "сторона b",
+      "place": "сторона а",
       "method": "",
       "photo": {
         "id": "16535.66_76",
@@ -415,8 +418,11 @@
         "id": "field-2",
         "printId": "",
         "applicationId": "",
-        "place": "сторона b",
-        "sizeCm": null
+        "place": "сторона а",
+        "sizeCm": [
+          26,
+          25
+        ]
       },
       "targetQuad": [
         {
@@ -478,7 +484,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "",
+      "place": "сторона b",
       "method": "",
       "photo": {
         "id": "16535.66_77",
@@ -490,8 +496,11 @@
         "id": "field-3",
         "printId": "",
         "applicationId": "",
-        "place": "",
-        "sizeCm": null
+        "place": "сторона b",
+        "sizeCm": [
+          30,
+          30
+        ]
       },
       "targetQuad": [
         {
@@ -622,6 +631,780 @@
         },
         "photoPixelRatio": 0.1297,
         "photoScore": 0.6667
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "по периметру",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-1",
+        "printId": "",
+        "applicationId": "",
+        "place": "по периметру",
+        "sizeCm": [
+          22,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.21825273333229364,
+          "y": 0.7623069729163131
+        },
+        {
+          "x": 0.7827001302638257,
+          "y": 0.7623069729163131
+        },
+        {
+          "x": 0.7827001302638257,
+          "y": 0.9565723812185256
+        },
+        {
+          "x": 0.21825273333229364,
+          "y": 0.9565723812185256
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 211.8555145263672,
+          "y": 750.8095703125,
+          "w": 268.74285888671875,
+          "h": 103.832275390625
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 370.0909729003906,
+          "w": 433.8399963378906,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.19079708321618305,
+          "y": 0.7759335216953301,
+          "w": 0.6194515516209157,
+          "h": 0.21161809183247546
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "слева от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-2",
+        "printId": "",
+        "applicationId": "",
+        "place": "слева от ручки",
+        "sizeCm": [
+          5,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.5281296715847972,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.6820179870292458,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.6820179870292458,
+          "y": 0.6309222447921861
+        },
+        {
+          "x": 0.5281296715847972,
+          "y": 0.6309222447921861
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 393.2569580078125,
+          "y": 576.7534790039062,
+          "w": 61.077972412109375,
+          "h": 103.83270263671875
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 370.0909729003906,
+          "w": 361.655517578125,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.5308708460779793,
+          "y": 0.42119394023115075,
+          "w": 0.1688843925875271,
+          "h": 0.21161896259258123
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "напротив ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-3",
+        "printId": "",
+        "applicationId": "",
+        "place": "напротив ручки",
+        "sizeCm": [
+          5,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.40401890939361024,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.5959809946926307,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.5959809946926307,
+          "y": 0.6309222447921861
+        },
+        {
+          "x": 0.40401890939361024,
+          "y": 0.6309222447921861
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 315.6879577636719,
+          "y": 576.7534790039062,
+          "w": 61.077972412109375,
+          "h": 103.83270263671875
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 370.0909729003906,
+          "w": 289.92474365234375,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.394665763673266,
+          "y": 0.42119394023115075,
+          "w": 0.21066836739312444,
+          "h": 0.21161896259258123
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "справа от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-4",
+        "printId": "",
+        "applicationId": "",
+        "place": "справа от ручки",
+        "sizeCm": [
+          5,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3187802286089118,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.47247572965292683,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.47247572965292683,
+          "y": 0.6309222447921861
+        },
+        {
+          "x": 0.3187802286089118,
+          "y": 0.6309222447921861
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 238.11871337890625,
+          "y": 576.7534790039062,
+          "w": 61.077972412109375,
+          "h": 103.83270263671875
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 370.0909729003906,
+          "w": 362.1092224121094,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.30112076132718163,
+          "y": 0.42119394023115075,
+          "w": 0.1686727888487682,
+          "h": 0.21161896259258123
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, справа от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-5",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, справа от ручки",
+        "sizeCm": [
+          5,
+          1
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.6395454446193019,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.7872920000220416,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.7872920000220416,
+          "y": 0.10252721886045227
+        },
+        {
+          "x": 0.6395454446193019,
+          "y": 0.10252721886045227
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 437.4776611328125,
+          "y": 412.74444580078125,
+          "w": 58.64031982421875,
+          "h": 19.300567626953125
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 406.0260925292969,
+          "w": 361.655517578125,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.6531438406146863,
+          "y": 0.014774584683550123,
+          "w": 0.16214413156727586,
+          "h": 0.04244460797489461
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, на стороне с ручкой",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-6",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, на стороне с ручкой",
+        "sizeCm": [
+          5,
+          1
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.6364745261533378,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.7903629184880056,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.7903629184880056,
+          "y": 0.038210350537922336
+        },
+        {
+          "x": 0.6364745261533378,
+          "y": 0.038210350537922336
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 436.2588195800781,
+          "y": 387.9705810546875,
+          "w": 61.0780029296875,
+          "h": 12.215606689453125
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 406.0260925292969,
+          "w": 361.655517578125,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.6497736679130599,
+          "y": -0.03970655791779877,
+          "w": 0.16888447697052872,
+          "h": 0.026863802512485414
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, слева от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-7",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, слева от ручки",
+        "sizeCm": [
+          5,
+          1
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.4078491294514052,
+          "y": 0.1298026846404821
+        },
+        {
+          "x": 0.5921499114110033,
+          "y": 0.1298026846404821
+        },
+        {
+          "x": 0.5921499114110033,
+          "y": 0.16591315834828502
+        },
+        {
+          "x": 0.4078491294514052,
+          "y": 0.16591315834828502
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 316.9066467285156,
+          "y": 412.74444580078125,
+          "w": 58.64031982421875,
+          "h": 19.300567626953125
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 370.0909729003906,
+          "w": 289.92474365234375,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.3988692302332127,
+          "y": 0.08693102902013303,
+          "w": 0.20226048693013893,
+          "h": 0.03933602800414258
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, дно",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-8",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, дно",
+        "sizeCm": [
+          3.5,
+          3.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3204044810471492,
+          "y": 0.08345192393512416
+        },
+        {
+          "x": 0.49686488765468406,
+          "y": 0.08345192393512416
+        },
+        {
+          "x": 0.49686488765468406,
+          "y": 0.10630676181918457
+        },
+        {
+          "x": 0.3204044810471492,
+          "y": 0.10630676181918457
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 271.3291931152344,
+          "y": 387.9705810546875,
+          "w": 61.077972412109375,
+          "h": 12.215606689453125
+        },
+        "svgObjectBox": {
+          "x": 175.79530334472656,
+          "y": 370.0909729003906,
+          "w": 315.39402770996094,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.3029032935853865,
+          "y": 0.03644000428662761,
+          "w": 0.19365608428158698,
+          "h": 0.024896337564335954
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-9",
+        "printId": "",
+        "applicationId": "",
+        "place": "",
+        "sizeCm": null
+      },
+      "targetQuad": [
+        {
+          "x": 0.20942989090599992,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.36312543034695477,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.36312543034695477,
+          "y": 0.038210350537922336
+        },
+        {
+          "x": 0.20942989090599992,
+          "y": 0.038210350537922336
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 194.663330078125,
+          "y": 387.9705810546875,
+          "w": 61.07798767089844,
+          "h": 12.215606689453125
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 406.0260925292969,
+          "w": 362.1092224121094,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.18111447424254748,
+          "y": -0.03970655791779877,
+          "w": 0.16867283098740518,
+          "h": 0.026863802512485414
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-10",
+        "printId": "",
+        "applicationId": "",
+        "place": "",
+        "sizeCm": null
+      },
+      "targetQuad": [
+        {
+          "x": 0.2124966544884432,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.36005805241347455,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.36005805241347455,
+          "y": 0.10252721886045227
+        },
+        {
+          "x": 0.2124966544884432,
+          "y": 0.10252721886045227
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 195.88204956054688,
+          "y": 412.74444580078125,
+          "w": 58.64030456542969,
+          "h": 19.300567626953125
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 406.0260925292969,
+          "w": 362.1092224121094,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.18448008717641215,
+          "y": 0.014774584683550123,
+          "w": 0.1619409309014845,
+          "h": 0.04244460797489461
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
       }
     }
   ],
