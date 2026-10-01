@@ -355,8 +355,8 @@ async function applyHandoff(payload){
   const item=payload.item||payload.selectedItem||payload.items?.[0]||payload;
   $("article").value=item.article||payload.article||""; $("variant").value=item.variant||item.color||payload.variant||""; $("place").value=item.placeName||item.place||payload.placeName||payload.place||""; $("method").value=item.method||item.methodType||payload.method||"";
   const rawPhotos=[...(payload.photoCandidates||[]),...(item.photoCandidates||[])];
-  if(item.imageUrl)rawPhotos.unshift({id:"order-main",name:item.imageName||"Фото из заказа",url:item.imageUrl});
-  if(payload.photoUrl)rawPhotos.unshift({id:"handoff-main",name:payload.photoName||"Фото handoff",url:payload.photoUrl});
+  if(!rawPhotos.length&&item.imageUrl)rawPhotos.unshift({id:"order-main",name:item.imageName||"Фото из заказа",url:item.imageUrl});
+  if(!rawPhotos.length&&payload.photoUrl)rawPhotos.unshift({id:"handoff-main",name:payload.photoName||"Фото handoff",url:payload.photoUrl});
   if(payload.photoDataUrl)rawPhotos.unshift({id:"handoff-data",name:payload.photoName||"Фото handoff",dataUrl:payload.photoDataUrl});
   const seen=new Set(); state.photoCandidates=rawPhotos.map(normalizedPhotoCandidate).filter(c=>{const k=c.id+"|"+c.url+"|"+c.dataUrl.slice(0,80);if(seen.has(k))return false;seen.add(k);return c.url||c.dataUrl;});
 
