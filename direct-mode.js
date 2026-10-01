@@ -211,22 +211,68 @@
     return "";
   }
 
-  function imageFromProductHtml(html, article) {
+  function productPhotoUrlsFromHtml(html, article) {
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const candidates = imageUrlCandidates(doc, article); return candidates.find(url => imageMatchesArticle(url, article)) || candidates[0] || "";
+    const articleCandidates = imageUrlCandidates(doc, article)
+      .filter(url => imageMatchesArticle(url, article));
+    const productGallery = articleCandidates.filter(url => {
+      try {
+        const u = new URL(url);
+        return u.hostname === "files.gifts.ru" && /\/reviewer\/webp\//i.test(u.pathname);
+      } catch {
+        return false;
+      }
+    });
+    const fallback = articleCandidates.filter(url => !/\/reviewer\/tb\//i.test(url));
+    const pool = productGallery.length ? productGallery : fallback;
+    const bestByPhoto = new Map();
+    for (const url of pool) {
+      let key = url;
+      let size = 0;
+      try {
+        const u = new URL(url);
+        const filename = decodeURIComponent(u.pathname.split("/").pop() || "");
+        const match = filename.match(/^(.*)_([0-9]{2,4})(\.(?:jpe?g|png|webp|gif))$/i);
+        if (match) {
+          key = match[1].toLowerCase() + match[3].toLowerCase();
+          size = Number(match[2]) || 0;
+        } else {
+          key = filename.toLowerCase();
+        }
+      } catch {}
+      const prev = bestByPhoto.get(key);
+      if (!prev || size > prev.size) bestByPhoto.set(key, { url, size });
+    }
+    return [...bestByPhoto.values()].map(entry => entry.url).slice(0, 30);
+  }
+
+  function imageFromProductHtml(html, article) {
+    const photos = productPhotoUrlsFromHtml(html, article);
+    if (photos.length) return photos[0];
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const candidates = imageUrlCandidates(doc, article);
+    return candidates.find(url => imageMatchesArticle(url, article)) || candidates[0] || "";
+  }
+
+  async function resolveItemPhotos(item) {
+    if (Array.isArray(item?.productPhotos) && item.productPhotos.length) return item.productPhotos;
+    const photos = [];
+    if (item?.productUrl) {
+      try {
+        const { html } = await getHtml(item.productUrl);
+        photos.push(...productPhotoUrlsFromHtml(html, item.article));
+      } catch {}
+    }
+    if (!photos.length && item?.imageUrl) photos.push(item.imageUrl);
+    item.productPhotos = [...new Set(photos)].slice(0, 30);
+    if (!item.imageUrl && item.productPhotos[0]) item.imageUrl = item.productPhotos[0];
+    return item.productPhotos;
   }
 
   async function resolveItemImage(item) {
     if (item?.imageUrl) return item.imageUrl;
-    if (!item?.productUrl) return "";
-    try {
-      const { html } = await getHtml(item.productUrl);
-      const imageUrl = imageFromProductHtml(html, item.article);
-      if (imageUrl) item.imageUrl = imageUrl;
-      return imageUrl;
-    } catch {
-      return "";
-    }
+    const photos = await resolveItemPhotos(item);
+    return photos[0] || "";
   }
 
   function removeArticlePrefix(value, article) {
@@ -1348,6 +1394,62 @@
     }
   }
 
+  async function apiProductPhotos(order, itemId) {
+    try {
+      const parsed = await getOrder(order);
+      const item = parsed.orderItems.find(x => String(x.itemId) === String(itemId));
+      if (!item) return json({ error: "Артикул заказа не найден." }, 404);
+      const urls = await resolveItemPhotos(item);
+      return json({
+        order: String(order),
+        itemId: String(itemId),
+        article: String(item.article || ""),
+        product: String(item.product || ""),
+        productUrl: String(item.productUrl || ""),
+        count: urls.length,
+        photos: urls.map((url, index) => ({
+          index,
+          id: String(item.article || "photo") + "-" + String(index + 1),
+          name: "Фото " + String(index + 1) + " · арт. " + String(item.article || ""),
+          url
+        }))
+      });
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, 502);
+    }
+  }
+
+  async function apiProductPhoto(order, itemId, photoIndex) {
+    try {
+      const parsed = await getOrder(order);
+      const item = parsed.orderItems.find(x => String(x.itemId) === String(itemId));
+      if (!item) return json({ error: "Артикул заказа не найден." }, 404);
+      const urls = await resolveItemPhotos(item);
+      const index = Number(photoIndex);
+      if (!Number.isInteger(index) || index < 0 || index >= urls.length) {
+        return json({ error: "Фотография артикула не найдена." }, 404);
+      }
+      const res = await nativeFetch(urls[index], {
+        credentials: "include",
+        cache: "no-store",
+        headers: { accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8" }
+      });
+      const contentType = res.headers.get("content-type") || "image/jpeg";
+      if (!res.ok || !/^image\//i.test(contentType)) {
+        return json({ error: "Фотография артикула недоступна." }, 502);
+      }
+      return new Response(await res.arrayBuffer(), {
+        status: 200,
+        headers: {
+          "content-type": contentType,
+          "cache-control": "private, max-age=1800"
+        }
+      });
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, 502);
+    }
+  }
+
   async function apiPreview(order, itemId) {
     try {
       const parsed = await getOrder(order);
@@ -1410,6 +1512,12 @@
 
         let m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\.pdf$/);
         if (m && method === "GET") return apiPdf(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/photos$/);
+        if (m && method === "GET") return apiProductPhotos(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/photos\/(\d{1,2})$/);
+        if (m && method === "GET") return apiProductPhoto(m[1], m[2], m[3]);
 
         m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/preview$/);
         if (m && method === "GET") return apiPreview(m[1], m[2]);
