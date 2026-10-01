@@ -336,16 +336,16 @@ export function renderErrorOverlay(checks) {
  let panel=document.getElementById('logoErrorOverlay');
  if(!panel){
   panel=document.createElement('aside');panel.id='logoErrorOverlay';panel.className='logo-error-overlay';panel.hidden=true;
-  panel.setAttribute('aria-label','Обнаруженные ошибки');panel.setAttribute('aria-live','polite');panel.setAttribute('aria-atomic','true');
+  panel.setAttribute('aria-label','Результаты проверки');panel.setAttribute('aria-live','polite');panel.setAttribute('aria-atomic','true');
   workspace.append(panel);
   const position=()=>{const area=workspace.getBoundingClientRect(),view=stage.getBoundingClientRect();panel.style.top=Math.max(0,view.top-area.top+workspace.scrollTop+12)+'px';panel.style.maxHeight=Math.max(80,view.height*.45)+'px';};
   new ResizeObserver(position).observe(workspace);new ResizeObserver(position).observe(stage);position();
  }
- const errors=checks.filter(f=>f.status==='bad').map(f=>f.text),key=JSON.stringify(errors);
+ const errors=checks.filter(f=>f.status==='bad'||f.status==='ok'&&!f.hidden&&f.id!=='method').map(f=>({status:f.status,text:f.text})).sort((a,b)=>(a.status==='bad'?0:1)-(b.status==='bad'?0:1)),key=JSON.stringify(errors);
  if(panel.dataset.errors===key)return;panel.dataset.errors=key;panel.replaceChildren();panel.hidden=!errors.length;
  if(!errors.length)return;
- const title=document.createElement('strong');title.textContent='Ошибки · '+errors.length;panel.append(title);
+ const title=document.createElement('strong');title.textContent='Проверки · ошибок: '+errors.filter(f=>f.status==='bad').length+' · успешно: '+errors.filter(f=>f.status==='ok').length;panel.append(title);
  const list=document.createElement('ul');
- for(const text of errors){const row=document.createElement('li');row.textContent=text;list.append(row);}
+ for(const finding of errors){const row=document.createElement('li');row.className=finding.status;row.textContent=(finding.status==='ok'?'✓ ':'! ')+finding.text;list.append(row);}
  panel.append(list);
 }
