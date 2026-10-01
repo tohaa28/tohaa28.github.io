@@ -115,22 +115,42 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
   }catch{}
   const order=String(entry?.order||v("order")?.value||""), article=String(entry?.article||v("article")?.value||"");
   const photoCandidates=[];
-  if(entry?.imageUrl)photoCandidates.push({id:article+"-main",name:"Фото артикула "+article,url:String(entry.imageUrl)});
   if(order&&entry?.itemId){
     try{
-      const res=await fetch("/api/orders/"+encodeURIComponent(order)+"/items/"+encodeURIComponent(String(entry.itemId))+"/preview",{cache:"no-store"});
-      if(res.ok&&/^image\//i.test(res.headers.get("content-type")||"")){
-        const blob=await res.blob(),dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader;r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
-        if(dataUrl)photoCandidates.unshift({id:article+"-order-preview",name:"Фото из заказа "+article,dataUrl});
+      const base="/api/orders/"+encodeURIComponent(order)+"/items/"+encodeURIComponent(String(entry.itemId));
+      const listRes=await fetch(base+"/photos",{cache:"no-store"});
+      const list=await listRes.json().catch(()=>null);
+      if(listRes.ok&&Array.isArray(list?.photos)){
+        const queue=list.photos.slice(0,20);
+        let cursor=0;
+        async function loadNextPhoto(){
+          while(cursor<queue.length){
+            const meta=queue[cursor++];
+            try{
+              const res=await fetch(base+"/photos/"+encodeURIComponent(String(meta.index)),{cache:"no-store"});
+              if(!res.ok||!/^image\//i.test(res.headers.get("content-type")||""))continue;
+              const blob=await res.blob();
+              const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader;r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
+              if(dataUrl)photoCandidates.push({id:String(meta.id||article+"-"+(Number(meta.index)+1)),name:String(meta.name||"Фото "+(Number(meta.index)+1)+" · арт. "+article),url:String(meta.url||""),dataUrl,kind:"product-photo"});
+            }catch{}
+          }
+        }
+        await Promise.all(Array.from({length:Math.min(4,queue.length)},()=>loadNextPhoto()));
+        photoCandidates.sort((a,b)=>{
+          const ai=Number((a.id.match(/-(\d+)$/)||[])[1]||999),bi=Number((b.id.match(/-(\d+)$/)||[])[1]||999);
+          return ai-bi;
+        });
       }
     }catch{}
   }
+  if(!photoCandidates.length&&entry?.imageUrl)photoCandidates.push({id:article+"-main",name:"Фото артикула "+article,url:String(entry.imageUrl),kind:"order-preview"});
   return {
     schema:"gifts-mockup-handoff/v1",
     source:"maketnaya-mockups",
     order,
     article,
     product:String(entry?.product||""),
+    productUrl:String(entry?.productUrl||""),
     variant:String(entry?.variant||entry?.color||""),
     place:String(activeField?.place||entry?.place||(Array.isArray(entry?.places)&&entry.places[0])||""),
     method:String(activeField?.method||entry?.method||v("method")?.value||""),
@@ -139,6 +159,7 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
       order,
       article,
       product:String(entry?.product||""),
+      productUrl:String(entry?.productUrl||""),
       quantity:Number(entry?.quantity||0)||0,
       imageUrl:String(entry?.imageUrl||""),
       placeBindings:Array.isArray(entry?.placeBindings)?entry.placeBindings.map(b=>({
