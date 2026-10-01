@@ -154,8 +154,10 @@ function normalizedPhotoCandidate(raw,index=0){
   return {id:String(raw.id||raw.photoId||raw.imageId||sourceIdentity(raw)||`photo-${index+1}`),name:String(raw.name||raw.filename||raw.title||`Фото ${index+1}`),url:String(raw.url||raw.src||raw.imageUrl||""),dataUrl:String(raw.dataUrl||raw.photoDataUrl||""),kind:String(raw.kind||raw.type||"photo")};
 }
 function normalizedFieldCandidate(raw,index=0,baseW=0,baseH=0){
-  raw=raw||{}; const bounds=fieldRectFromAny(raw.fieldRect||raw.bounds||raw.rect||raw,baseW,baseH);
-  return {id:String(raw.id||raw.printId||raw.applicationId||`field-${index+1}`),printId:String(raw.printId||raw.localPrintId||((raw.index||raw.templateIndex)?`print${raw.index||raw.templateIndex}`:"")),applicationId:String(raw.applicationId||""),place:String(raw.place||raw.placeName||raw.name||raw.label||`Поле ${index+1}`),method:String(raw.method||raw.methodType||""),bounds};
+  raw=raw||{}; const sourceRect=raw.fieldRect||raw.bounds||raw.rect||raw, bounds=fieldRectFromAny(sourceRect,baseW,baseH);
+  const rawW=Number(raw.fieldW||raw.nominalW||sourceRect?.w||sourceRect?.width||0),rawH=Number(raw.fieldH||raw.nominalH||sourceRect?.h||sourceRect?.height||0);
+  const sizeMm=(rawW>1&&rawH>1)?[rawW,rawH]:null;
+  return {id:String(raw.id||raw.printId||raw.applicationId||`field-${index+1}`),printId:String(raw.printId||raw.localPrintId||((raw.index||raw.templateIndex)?`print${raw.index||raw.templateIndex}`:"")),applicationId:String(raw.applicationId||""),place:String(raw.place||raw.placeName||raw.name||raw.label||`Поле ${index+1}`),method:String(raw.method||raw.methodType||""),bounds,sizeMm};
 }
 function getProfileLibrary(){ try{const v=JSON.parse(localStorage.getItem(PROFILE_LIBRARY_KEY)||"[]");return Array.isArray(v)?v:[];}catch{return [];} }
 function setProfileLibrary(v){ localStorage.setItem(PROFILE_LIBRARY_KEY,JSON.stringify(v)); renderProfileLibrary(); }
@@ -176,7 +178,7 @@ async function loadServerProfileRegistry(){
     if(data?.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(data.profiles))throw Error("неверный формат реестра");
     serverProfileRegistry=data;
     renderProfileLibrary();
-    autoApplySavedProfile();
+    void autoApplySavedProfile();
     return true;
   }catch(err){
     console.warn("Mockup Git registry:",err);
@@ -187,12 +189,12 @@ async function loadServerProfileRegistry(){
 async function activatePhotoCandidate(index){
   const c=state.photoCandidates[index]; if(!c)return; const src=c.dataUrl||c.url;
   state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok)setStatus(`Не удалось загрузить ${c.name}`); }
-  state.photoSource={id:c.id,name:c.name,url:c.url}; renderPhotoCandidates(); renderAll(); autoApplySavedProfile();
+  state.photoSource={id:c.id,name:c.name,url:c.url}; renderPhotoCandidates(); renderAll(); void autoApplySavedProfile();
 }
 function activateFieldCandidate(index){
   const c=state.fieldCandidates[index]; if(!c)return; state.activeFieldCandidate=index;
   if(c.place)$("place").value=c.place; if(c.method)$("method").value=c.method; if(c.bounds)state.fieldRect={...c.bounds};
-  renderFieldCandidates(); renderAll(); autoApplySavedProfile();
+  renderFieldCandidates(); renderAll(); void autoApplySavedProfile();
 }
 function renderPhotoCandidates(){
   const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
@@ -212,12 +214,56 @@ function renderProfileLibrary(){
   box.innerHTML=lib.map((p,i)=>`<div class="libraryItem"><div class="libraryItemText"><strong>${htmlEscape(p.article||'—')} · ${htmlEscape(p.place||'—')}</strong>${htmlEscape(p.photo?.name||p.photo?.url||'фото')} · ${htmlEscape(p.field?.printId||p.field?.id||'поле')} · ${p.storage==="git"?"Git":"локально"}${p.status?" · "+htmlEscape(p.status):""}</div><button type="button" data-profile-index="${i}">Открыть</button></div>`).join("");
   box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=combinedProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus(p.storage==="git"?"Сопоставление загружено из Git":"Сопоставление загружено из локального кэша");}});
 }
-function autoApplySavedProfile(){
-  const probe=buildProfile(), key=profileKey(probe); if(!probe.article||!probe.place||!probe.photo?.id&&!probe.photo?.name&&!probe.photo?.url)return false;
-  const saved=combinedProfileLibrary().find(p=>profileKey(p)===key && (p.storage!=="git" || p.status==="confirmed")); if(!saved)return false;
-  if(Array.isArray(saved.targetQuad)&&saved.targetQuad.length===4)state.quad=saved.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));
-  if(saved.surface)$("surface").value=saved.surface; if(saved.render?.opacity!=null){$("opacity").value=Math.round(saved.render.opacity*100);$("opacityValue").textContent=$("opacity").value+"%";} if(saved.render?.blend)$("blend").value=saved.render.blend;
-  renderAll(); setStatus("Найдена сохранённая привязка — применена автоматически"); return true;
+function lookupText(v){return String(v||"").trim().toLocaleLowerCase("ru-RU").replace(/ё/g,"е").replace(/\s+/g," ");}
+function methodCode(v){return (String(v||"").match(/^\s*([A-Za-zА-Яа-я0-9-]+)/)||[])[1]?.toUpperCase()||"";}
+function photoLookupKey(v){
+  const raw=String(v||""); if(!raw)return "";
+  try{return decodeURIComponent(new URL(raw,location.href).pathname.split("/").pop()||"").replace(/_(?:200x200|300x300|400|500)(?=\.)/i,"").replace(/\.[^.]+$/,"").toLowerCase();}
+  catch{return raw.toLowerCase();}
+}
+function serverProfileScore(p){
+  if(!["confirmed","confirmed-auto"].includes(String(p.status||"")))return -1;
+  if(lookupText(p.article)!==lookupText($("article").value))return -1;
+  const current=state.fieldCandidates[state.activeFieldCandidate]||null;
+  const wantedPlace=lookupText(current?.place||$("place").value),profilePlace=lookupText(p.place||p.field?.place);
+  if(profilePlace&&wantedPlace&&profilePlace!==wantedPlace)return -1;
+  let score=50;
+  const currentPrint=lookupText(current?.printId),profilePrint=lookupText(p.field?.printId);
+  if(profilePrint&&currentPrint){if(profilePrint!==currentPrint)return -1;score+=35;}
+  const pc=methodCode(p.method),cc=methodCode(current?.method||$("method").value);
+  if(pc&&cc){if(pc!==cc)return -1;score+=15;}
+  const sizeCm=p.field?.sizeCm,currentMm=current?.sizeMm;
+  if(Array.isArray(sizeCm)&&sizeCm.length===2&&Array.isArray(currentMm)&&currentMm.length===2){
+    const dw=Math.abs(Number(sizeCm[0])*10-currentMm[0])/Math.max(1,Number(sizeCm[0])*10);
+    const dh=Math.abs(Number(sizeCm[1])*10-currentMm[1])/Math.max(1,Number(sizeCm[1])*10);
+    if(Math.min(dw+dh,Math.abs(Number(sizeCm[1])*10-currentMm[0])/Math.max(1,Number(sizeCm[1])*10)+Math.abs(Number(sizeCm[0])*10-currentMm[1])/Math.max(1,Number(sizeCm[0])*10))>.25)return -1;
+    score+=20;
+  }
+  score+=Math.max(0,Math.min(10,Number(p.confidence||0)*10));
+  return score;
+}
+function findServerProfile(){
+  let best=null;
+  for(const p of serverProfiles()){
+    const score=serverProfileScore(p);
+    if(score>=0&&(!best||score>best.score))best={p:{...p,storage:"git"},score};
+  }
+  return best?.p||null;
+}
+async function autoApplySavedProfile(){
+  const server=findServerProfile();
+  if(server){
+    await applyProfile(server);
+    setStatus("Git-привязка найдена — мокап размещён автоматически");
+    return true;
+  }
+  const probe=buildProfile(),key=profileKey(probe);
+  if(!probe.article||!probe.place||(!probe.photo?.id&&!probe.photo?.name&&!probe.photo?.url))return false;
+  const saved=getProfileLibrary().find(p=>profileKey(p)===key);
+  if(!saved)return false;
+  await applyProfile(saved);
+  setStatus("Локальная привязка применена автоматически");
+  return true;
 }
 function setStatus(text){ $("status").textContent = text; }
 function clamp(v,a=0,b=1){ return Math.max(a,Math.min(b,v)); }
@@ -368,7 +414,27 @@ $("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug
 $("saveToLibrary").onclick=()=>{const p=buildProfile();if(!p.article||!p.place||(!p.photo.id&&!p.photo.name&&!p.photo.url)){setStatus("Для библиотеки нужны артикул, место и выбранная фотография");return;}const lib=getProfileLibrary(),key=profileKey(p),i=lib.findIndex(x=>profileKey(x)===key);p.updatedAt=new Date().toISOString();if(i>=0)lib[i]=p;else lib.unshift(p);setProfileLibrary(lib.slice(0,500));setStatus(i>=0?"Сопоставление обновлено":"Сопоставление запомнено");updateSummary();};
 $("clearLibrary").onclick=()=>{if(!confirm("Очистить локальную библиотеку сопоставлений Mockup Lab?"))return;setProfileLibrary([]);setStatus("Библиотека очищена");updateSummary();};
 $("profileFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyProfile(JSON.parse(await f.text()));setStatus("Профиль загружен");}catch(err){setStatus("Ошибка профиля: "+err.message);}};
-async function applyProfile(p){ if(p.schema!=="gifts-mockup-profile/v1") throw new Error("неподдерживаемый формат"); $("article").value=p.article||"";$("variant").value=p.variant||"";$("place").value=p.place||"";$("method").value=p.method||""; if(p.fieldRect)state.fieldRect={...p.fieldRect};if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));$("surface").value=p.surface||"perspective";$("opacity").value=Math.round((p.render?.opacity??.9)*100);$("opacityValue").textContent=$("opacity").value+"%";$("blend").value=p.render?.blend||"source-over"; const wanted=[p.photo?.id,p.photo?.name,p.photo?.url].filter(Boolean); const pi=state.photoCandidates.findIndex(c=>[c.id,c.name,c.url].filter(Boolean).some(v=>wanted.includes(v))); if(pi>=0){state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;if(src)await setImageFromSource("photo",src,c.name);state.photoSource={id:c.id,name:c.name,url:c.url};} const fi=state.fieldCandidates.findIndex(c=>c.id===(p.field?.id||"")||c.printId===(p.field?.printId||"")||c.applicationId===(p.field?.applicationId||""));if(fi>=0)state.activeFieldCandidate=fi;renderPhotoCandidates();renderFieldCandidates();renderAll(); }
+async function applyProfile(p){
+  if(p.schema!=="gifts-mockup-profile/v1")throw new Error("неподдерживаемый формат");
+  if(p.article)$("article").value=p.article;if(p.variant!=null)$("variant").value=p.variant||"";if(p.place)$("place").value=p.place;if(p.method)$("method").value=p.method;
+  let fi=state.fieldCandidates.findIndex(c=>(p.field?.printId&&c.printId===p.field.printId)||(p.field?.applicationId&&c.applicationId===p.field.applicationId)||(p.field?.id&&c.id===p.field.id));
+  if(fi<0&&p.field?.place)fi=state.fieldCandidates.findIndex(c=>lookupText(c.place)===lookupText(p.field.place));
+  if(fi>=0){state.activeFieldCandidate=fi;const fc=state.fieldCandidates[fi];if(fc.bounds)state.fieldRect={...fc.bounds};}
+  else if(p.fieldRect)state.fieldRect={...p.fieldRect};
+  const wantedKeys=new Set([p.photo?.id,p.photo?.url,p.photo?.sourceUrl].filter(Boolean).map(photoLookupKey));
+  let pi=state.photoCandidates.findIndex(c=>[c.id,c.url].filter(Boolean).some(v=>wantedKeys.has(photoLookupKey(v))));
+  if(pi<0&&p.photo?.id)pi=state.photoCandidates.findIndex(c=>photoLookupKey(c.id)===photoLookupKey(p.photo.id));
+  if(pi>=0){
+    state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;
+    if(src)await setImageFromSource("photo",src,c.name);
+    state.photoSource={id:c.id,name:c.name,url:c.url};
+  }
+  if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));
+  $("surface").value=p.surface||"perspective";
+  $("opacity").value=Math.round((p.render?.opacity??.9)*100);$("opacityValue").textContent=$("opacity").value+"%";
+  $("blend").value=p.render?.blend||"source-over";
+  renderPhotoCandidates();renderFieldCandidates();renderAll();
+}
 
 async function setImageFromSource(target, src, name=""){
   if(!src) return false; try{state[target]=await loadImage(src);state[target+"Source"]={id:state[target+"Source"]?.id||name||src,name,url:/^https?:/i.test(src)?src:""};if(target==="photo")resetQuad();return true;}catch{return false;}
@@ -401,7 +467,9 @@ async function applyHandoff(payload){
   renderFieldCandidates(); renderPhotoCandidates();
   await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
   if(state.photoCandidates.length){await activatePhotoCandidate(0);} else {const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||"";if(photo)await setImageFromSource("photo",photo,payload.photoName||"");}
-  renderAll(); autoApplySavedProfile(); setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
+  renderAll();
+  const applied=await autoApplySavedProfile();
+  if(!applied)setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
 }
 
 let bridgedHandoff=null;
