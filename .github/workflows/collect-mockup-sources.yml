@@ -31,7 +31,7 @@ jobs:
         run: |
           npm init -y
           npm install playwright sharp
-          npx playwright install --with-deps chromium
+          google-chrome --version
       - name: Collect public gifts.ru mockup sources
         run: node tools/collect-mockup-sources.mjs
       - name: Commit discovery and candidates
