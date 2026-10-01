@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "editor.html"
       - "mockup.html"
+      - "mockup-profiles.json"
       - "direct-mode.js"
       - "tools/**"
       - "assets/**"
