@@ -2,7 +2,7 @@
   "article": "15637",
   "product": "Брелок Tetta",
   "productUrl": "https://gifts.ru/id/228756",
-  "scannedAt": "2026-10-01T21:00:06.797Z",
+  "scannedAt": "2026-10-01T21:03:18.541Z",
   "tabs": {
     "Фото": {
       "clicked": true,
@@ -1337,7 +1337,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "15637",
       "variant": "",
-      "place": "",
+      "place": "лицо",
       "method": "",
       "photo": {
         "id": "15637_4",
@@ -1346,11 +1346,14 @@
         "sourceUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2"
       },
       "field": {
-        "id": "field-1",
-        "printId": "",
+        "id": "print1",
+        "printId": "print1",
         "applicationId": "",
-        "place": "",
-        "sizeCm": null
+        "place": "лицо",
+        "sizeCm": [
+          3.2,
+          3.2
+        ]
       },
       "targetQuad": [
         {
@@ -1412,7 +1415,7 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "15637",
       "variant": "",
-      "place": "",
+      "place": "оборот",
       "method": "",
       "photo": {
         "id": "15637_1",
@@ -1421,11 +1424,14 @@
         "sourceUrl": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2"
       },
       "field": {
-        "id": "field-2",
-        "printId": "",
+        "id": "print2",
+        "printId": "print2",
         "applicationId": "",
-        "place": "",
-        "sizeCm": null
+        "place": "оборот",
+        "sizeCm": [
+          3.2,
+          3.2
+        ]
       },
       "targetQuad": [
         {
