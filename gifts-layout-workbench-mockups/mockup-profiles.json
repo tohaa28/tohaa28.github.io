@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-01T21:15:56.328Z",
+  "updatedAt": "2026-10-01T21:17:15.202Z",
   "source": "git",
   "profiles": [
     {
@@ -838,7 +838,7 @@
           "y": 0.9565723812185256
         }
       ],
-      "surface": "perspective",
+      "surface": "cylinder",
       "render": {
         "opacity": 0.9,
         "blend": "source-over",
@@ -916,7 +916,7 @@
           "y": 0.6309222447921861
         }
       ],
-      "surface": "perspective",
+      "surface": "cylinder",
       "render": {
         "opacity": 0.9,
         "blend": "source-over",
@@ -994,7 +994,7 @@
           "y": 0.6309222447921861
         }
       ],
-      "surface": "perspective",
+      "surface": "cylinder",
       "render": {
         "opacity": 0.9,
         "blend": "source-over",
@@ -1072,7 +1072,7 @@
           "y": 0.6309222447921861
         }
       ],
-      "surface": "perspective",
+      "surface": "cylinder",
       "render": {
         "opacity": 0.9,
         "blend": "source-over",
@@ -1150,7 +1150,7 @@
           "y": 0.10252721886045227
         }
       ],
-      "surface": "perspective",
+      "surface": "cylinder",
       "render": {
         "opacity": 0.9,
         "blend": "source-over",
@@ -1306,7 +1306,7 @@
           "y": 0.16591315834828502
         }
       ],
-      "surface": "perspective",
+      "surface": "cylinder",
       "render": {
         "opacity": 0.9,
         "blend": "source-over",
