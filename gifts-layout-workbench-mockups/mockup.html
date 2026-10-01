@@ -382,6 +382,8 @@ async function applyHandoff(payload){
 let bridgedHandoff=null;
 const allowedParentOrigins=new Set(["https://gifts.ru","https://tohaa28.github.io"]);
 async function acceptBridgedHandoff(payload){bridgedHandoff=payload;try{await applyHandoff(payload);}catch(err){setStatus("Ошибка handoff: "+err.message);}}
+window.gwbApplyMockupHandoff=acceptBridgedHandoff;
+window.gwbSetMockupStatus=setStatus;
 function requestParentHandoff(){if(parent!==window)parent.postMessage({type:"gifts-mockup-handoff-request"},"*");}
 window.addEventListener("message",event=>{if(event.source!==parent||!allowedParentOrigins.has(event.origin))return;const data=event.data||{};if(data.type==="gifts-mockup-handoff"&&data.payload)acceptBridgedHandoff(data.payload);else if(data.type==="gifts-mockup-handoff-error")setStatus(data.message||"Передача из Макетной недоступна");});
 $("readHandoff").onclick=async()=>{if(bridgedHandoff){await acceptBridgedHandoff(bridgedHandoff);return;}const raw=localStorage.getItem(HANDOFF_KEY);if(raw){try{await applyHandoff(JSON.parse(raw));return;}catch(err){setStatus("Ошибка handoff: "+err.message);return;}}if(parent!==window){setStatus("Запрашиваю данные из Макетной…");requestParentHandoff();return;}setStatus("Передача из Макетной пока не найдена");};
