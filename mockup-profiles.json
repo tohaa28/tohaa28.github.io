@@ -1,9 +1,172 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-01T21:03:33.825Z",
+  "updatedAt": "2026-10-01T21:08:36.095Z",
   "source": "git",
-  "profiles": [],
+  "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "",
+      "photo": {
+        "id": "15637_4",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2"
+      },
+      "field": {
+        "id": "print1",
+        "printId": "print1",
+        "applicationId": "",
+        "place": "лицо",
+        "sizeCm": [
+          3.2,
+          3.2
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3025568486280597,
+          "y": 0.5809135340207194
+        },
+        {
+          "x": 0.6954455752744764,
+          "y": 0.5809135340207194
+        },
+        {
+          "x": 0.6954455752744764,
+          "y": 0.9659371945909336
+        },
+        {
+          "x": 0.3025568486280597,
+          "y": 0.9659371945909336
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-auto",
+      "confidence": 0.985,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 97.388916015625,
+          "y": 646.2135620117188,
+          "w": 205.28280639648438,
+          "h": 205.283447265625
+        },
+        "svgObjectBox": {
+          "x": 84.55805969238281,
+          "y": 370.6102600097656,
+          "w": 230.94325256347656,
+          "h": 493.7163391113281
+        },
+        "normalizedField": {
+          "x": 0.055558481058958525,
+          "y": 0.5582219589856582,
+          "w": 0.888888521824472,
+          "h": 0.4157922900326287
+        },
+        "photoObjectBox": {
+          "x": 0.278,
+          "y": 0.064,
+          "w": 0.442,
+          "h": 0.926
+        },
+        "photoPixelRatio": 0.2409,
+        "photoScore": 0.985,
+        "validation": "print polygon from gifts.ru application SVG; article place/printId from canonical template relation"
+      },
+      "confirmedAt": "2026-10-01T21:08:36.095Z",
+      "confirmedBy": "official-gifts-svg-zone+photo-silhouette"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "оборот",
+      "method": "",
+      "photo": {
+        "id": "15637_1",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2"
+      },
+      "field": {
+        "id": "print2",
+        "printId": "print2",
+        "applicationId": "",
+        "place": "оборот",
+        "sizeCm": [
+          3.2,
+          3.2
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.2848216745042825,
+          "y": 0.5575232954778303
+        },
+        {
+          "x": 0.7192683050458197,
+          "y": 0.5575232954778303
+        },
+        {
+          "x": 0.7192683050458197,
+          "y": 0.9683260780300674
+        },
+        {
+          "x": 0.2848216745042825,
+          "y": 0.9683260780300674
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-auto",
+      "confidence": 0.9592,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 389.32891845703125,
+          "y": 646.2135620117188,
+          "w": 205.2828369140625,
+          "h": 205.283447265625
+        },
+        "svgObjectBox": {
+          "x": 376.49871826171875,
+          "y": 370.6102600097656,
+          "w": 230.9432373046875,
+          "h": 493.7163391113281
+        },
+        "normalizedField": {
+          "x": 0.05555564365102144,
+          "y": 0.5582219589856582,
+          "w": 0.8888887126979571,
+          "h": 0.4157922900326287
+        },
+        "photoObjectBox": {
+          "x": 0.25766871165644173,
+          "y": 0.006,
+          "w": 0.4887525562372188,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.2761,
+        "photoScore": 0.9592,
+        "validation": "print polygon from gifts.ru application SVG; article place/printId from canonical template relation"
+      },
+      "confirmedAt": "2026-10-01T21:08:36.095Z",
+      "confirmedBy": "official-gifts-svg-zone+photo-silhouette"
+    }
+  ],
   "candidates": [
     {
       "schema": "gifts-mockup-profile/v1",
