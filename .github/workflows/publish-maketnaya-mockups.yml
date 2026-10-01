@@ -43,6 +43,13 @@ jobs:
           node --check assets/index-BpU9kvz8.js
           node --check launcher.js
           grep -q "gifts-layout-workbench-mockups" launcher.js
+          grep -q "Mockup Lab" launcher.js
+          grep -q "const targetOrigin=location.origin" launcher.js
+          if grep -q 'src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"' launcher.js; then
+            echo "launcher must embed Mockup Lab as srcdoc, not remote iframe" >&2
+            exit 1
+          fi
+          grep -q 'corsImg.onerror=()=>direct()' mockup.html
           grep -q 'id="mockupModeButton"' editor.html
           grep -q 'id="mockupShell"' editor.html
 
