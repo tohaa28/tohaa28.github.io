@@ -39,7 +39,7 @@
           </div>
           <details>
             <summary>Формат передачи</summary>
-            <p class="muted">Позже «Макетная» сможет положить данные в <code>localStorage</code> под ключом <code>gifts.mockupLab.handoff.v1</code> и открыть этот редактор. Сейчас это только читающая сторона — код «Макетной» не меняется.</p>
+            <p class="muted">Во встроенном режиме данные передаются напрямую из «Макетной»: заказ, артикул, фотография, найденные поля конструктора и текущее нанесение. <code>localStorage</code> оставлен только как резервный способ импорта.</p>
           </details>
         </section>
 
@@ -363,7 +363,12 @@ async function applyHandoff(payload){
   renderAll(); autoApplySavedProfile(); setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
 }
 
-$("readHandoff").onclick=async()=>{const raw=localStorage.getItem(HANDOFF_KEY);if(!raw){setStatus("Передача из Макетной пока не найдена");return;}try{await applyHandoff(JSON.parse(raw));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
+let bridgedHandoff=null;
+const allowedParentOrigins=new Set(["https://gifts.ru","https://tohaa28.github.io"]);
+async function acceptBridgedHandoff(payload){bridgedHandoff=payload;try{await applyHandoff(payload);}catch(err){setStatus("Ошибка handoff: "+err.message);}}
+function requestParentHandoff(){if(parent!==window)parent.postMessage({type:"gifts-mockup-handoff-request"},"*");}
+window.addEventListener("message",event=>{if(event.source!==parent||!allowedParentOrigins.has(event.origin))return;const data=event.data||{};if(data.type==="gifts-mockup-handoff"&&data.payload)acceptBridgedHandoff(data.payload);else if(data.type==="gifts-mockup-handoff-error")setStatus(data.message||"Передача из Макетной недоступна");});
+$("readHandoff").onclick=async()=>{if(bridgedHandoff){await acceptBridgedHandoff(bridgedHandoff);return;}const raw=localStorage.getItem(HANDOFF_KEY);if(raw){try{await applyHandoff(JSON.parse(raw));return;}catch(err){setStatus("Ошибка handoff: "+err.message);return;}}if(parent!==window){setStatus("Запрашиваю данные из Макетной…");requestParentHandoff();return;}setStatus("Передача из Макетной пока не найдена");};
 $("handoffFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyHandoff(JSON.parse(await f.text()));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
 
 $("exportPng").onclick=()=>{
@@ -376,6 +381,7 @@ $("exportPng").onclick=()=>{
 };
 
 window.addEventListener("resize",()=>requestAnimationFrame(renderAll));
+requestParentHandoff();
 renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll();
 
 </script>
