@@ -45,4 +45,5 @@ jobs:
             exit 0
           fi
           git commit -m "Update automatic mockup source discovery"
+          git pull --rebase origin gifts-layout-workbench-mockups-source
           git push origin HEAD:gifts-layout-workbench-mockups-source
