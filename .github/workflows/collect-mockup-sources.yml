@@ -1,0 +1,48 @@
+name: Collect Mockup Sources
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-mockups-source
+    paths:
+      - "tools/collect-mockup-sources.mjs"
+      - ".github/workflows/collect-mockup-sources.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gifts-mockup-source-collector
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install collector dependencies
+        run: |
+          npm init -y
+          npm install playwright sharp
+          npx playwright install --with-deps chromium
+      - name: Collect public gifts.ru mockup sources
+        run: node tools/collect-mockup-sources.mjs
+      - name: Commit discovery and candidates
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mockup-profiles.json mockup-discovery
+          if git diff --cached --quiet; then
+            echo "No discovery changes"
+            exit 0
+          fi
+          git commit -m "Update automatic mockup source discovery"
+          git push origin HEAD:gifts-layout-workbench-mockups-source
