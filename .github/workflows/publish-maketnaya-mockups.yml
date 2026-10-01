@@ -18,6 +18,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: gifts-layout-workbench-mockups-publish
+  cancel-in-progress: true
+
 jobs:
   precheck:
     runs-on: ubuntu-latest
