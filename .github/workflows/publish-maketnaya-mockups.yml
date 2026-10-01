@@ -1,0 +1,79 @@
+name: Publish Maketnaya with Mockups
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-mockups-source
+    paths:
+      - "index.html"
+      - "editor.html"
+      - "mockup.html"
+      - "direct-mode.js"
+      - "tools/**"
+      - "assets/**"
+      - "vendor/**"
+      - ".github/workflows/publish-maketnaya-mockups.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    uses: ./.github/workflows/test-direct-workbench.yml
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: source
+          fetch-depth: 0
+
+      - name: Build independent launcher
+        run: |
+          set -euo pipefail
+          node source/tools/build-launcher.mjs
+          test -f source/launcher.js
+          test -f source/mockup.html
+          node --check source/direct-mode.js
+          node --check source/assets/index-BpU9kvz8.js
+          node --check source/launcher.js
+          grep -q "gifts-layout-workbench-mockups" source/launcher.js
+          grep -q 'id="mockupModeButton"' source/editor.html
+          grep -q 'id="mockupShell"' source/editor.html
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+
+      - name: Publish independent Maketnaya with Mockups
+        run: |
+          set -euo pipefail
+          rm -rf site/gifts-layout-workbench-mockups
+          mkdir -p site/gifts-layout-workbench-mockups
+          cp source/index.html site/gifts-layout-workbench-mockups/index.html
+          cp source/editor.html site/gifts-layout-workbench-mockups/editor.html
+          cp source/mockup.html site/gifts-layout-workbench-mockups/mockup.html
+          cp source/direct-mode.js site/gifts-layout-workbench-mockups/direct-mode.js
+          cp source/launcher.js site/gifts-layout-workbench-mockups/launcher.js
+          cp -R source/assets site/gifts-layout-workbench-mockups/assets
+          cp -R source/vendor site/gifts-layout-workbench-mockups/vendor
+
+      - name: Commit GitHub Pages
+        run: |
+          set -euo pipefail
+          cd site
+          git config user.name "maketnaya-mockups-publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A gifts-layout-workbench-mockups
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Publish independent Maketnaya with Mockups"
+            git push origin main
+          fi
