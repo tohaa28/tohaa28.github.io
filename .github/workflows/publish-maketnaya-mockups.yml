@@ -39,6 +39,8 @@ jobs:
           node tools/build-launcher.mjs
           test -f launcher.js
           test -f mockup.html
+          test -f mockup-profiles.json
+          node -e 'const x=require("./mockup-profiles.json"); if(x.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(x.profiles)) process.exit(1)'
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
           node --check launcher.js
@@ -77,6 +79,7 @@ jobs:
           cp source/index.html site/gifts-layout-workbench-mockups/index.html
           cp source/editor.html site/gifts-layout-workbench-mockups/editor.html
           cp source/mockup.html site/gifts-layout-workbench-mockups/mockup.html
+          cp source/mockup-profiles.json site/gifts-layout-workbench-mockups/mockup-profiles.json
           cp source/direct-mode.js site/gifts-layout-workbench-mockups/direct-mode.js
           cp source/launcher.js site/gifts-layout-workbench-mockups/launcher.js
           cp -R source/assets site/gifts-layout-workbench-mockups/assets
