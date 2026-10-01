@@ -88,13 +88,13 @@
         <section class="panel">
           <h2>4. Профиль</h2>
           <div class="buttons wrap">
-            <button id="saveToLibrary" class="primary">Запомнить сопоставление</button>
+            <button id="saveToLibrary" class="primary">Сохранить локальный черновик</button>
             <button id="saveProfile">Скачать привязку JSON</button>
             <label class="fileButton">Открыть привязку<input id="profileFile" type="file" accept="application/json,.json"></label>
             <button id="exportPng">Скачать мокап PNG</button>
           </div>
           <pre id="profileSummary" class="summary"></pre>
-          <div class="candidateHead libraryHead"><strong>Сохранённые сопоставления</strong><button id="clearLibrary" class="tiny danger">очистить</button></div>
+          <div class="candidateHead libraryHead"><strong>Git-профили и локальные черновики</strong><button id="clearLibrary" class="tiny danger">очистить локальные</button></div>
           <div id="profileLibrary" class="profileLibrary"><div class="candidateEmpty">Библиотека пуста</div></div>
         </section>
       </aside>
@@ -215,6 +215,7 @@ function renderProfileLibrary(){
   box.querySelectorAll("[data-profile-index]").forEach(b=>b.onclick=async()=>{const p=combinedProfileLibrary()[Number(b.dataset.profileIndex)];if(p){await applyProfile(p);setStatus(p.storage==="git"?"Сопоставление загружено из Git":"Сопоставление загружено из локального кэша");}});
 }
 function lookupText(v){return String(v||"").trim().toLocaleLowerCase("ru-RU").replace(/ё/g,"е").replace(/\s+/g," ");}
+function placeLookupKey(v){return lookupText(v).replace(/\s*\[[^\]]*\]\s*$/,"").replace(/\s*\([^)]*(?:pantone|black|white|cmyk|rgb)[^)]*\)\s*$/i,"").trim();}
 function methodCode(v){return (String(v||"").match(/^\s*([A-Za-zА-Яа-я0-9-]+)/)||[])[1]?.toUpperCase()||"";}
 function photoLookupKey(v){
   const raw=String(v||""); if(!raw)return "";
@@ -225,7 +226,7 @@ function serverProfileScore(p){
   if(!["confirmed","confirmed-auto"].includes(String(p.status||"")))return -1;
   if(lookupText(p.article)!==lookupText($("article").value))return -1;
   const current=state.fieldCandidates[state.activeFieldCandidate]||null;
-  const wantedPlace=lookupText(current?.place||$("place").value),profilePlace=lookupText(p.place||p.field?.place);
+  const wantedPlace=placeLookupKey(current?.place||$("place").value),profilePlace=placeLookupKey(p.place||p.field?.place);
   if(profilePlace&&wantedPlace&&profilePlace!==wantedPlace)return -1;
   let score=50;
   const currentPrint=lookupText(current?.printId),profilePrint=lookupText(p.field?.printId);
