@@ -6,6 +6,12 @@ const base = "https://tohaa28.github.io/gifts-layout-workbench-mockups/";
 const assetStamp = Date.now().toString(36);
 let app = fs.readFileSync(new URL("../editor.html", import.meta.url), "utf8");
 let direct = fs.readFileSync(new URL("../direct-mode.js", import.meta.url), "utf8");
+const mockup = fs.readFileSync(new URL("../mockup.html", import.meta.url), "utf8");
+const htmlAttr = value => value
+  .replaceAll("&", "&amp;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;");
 const parentWord = ["par","ent"].join("");
 const fetchPatch = "const nativeFetch = " + parentWord + ".fetch.bind(" + parentWord + ");";
 direct = direct.replace("const nativeFetch = window.fetch.bind(window);", fetchPatch);
@@ -13,6 +19,14 @@ direct = direct.replaceAll("</scr" + "ipt", "<\\/scr" + "ipt");
 
 app = app
   .replace("<head>", '<head><base href="https://gifts.ru/">')
+  .replace(
+    'src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"',
+    'srcdoc="' + htmlAttr(mockup) + '"'
+  )
+  .replace(
+    'const targetOrigin="https://tohaa28.github.io";',
+    'const targetOrigin=location.origin;'
+  )
   .replaceAll('src="./vendor/', 'src="' + base + 'vendor/')
   .replaceAll('src="./assets/', 'src="' + base + 'assets/')
   .replaceAll('href="./assets/', 'href="' + base + 'assets/')
