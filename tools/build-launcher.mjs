@@ -2,7 +2,7 @@ import {applyLogoPreflight} from './patch-artwork-preflight.mjs';
 applyLogoPreflight();
 import fs from "node:fs";
 
-const base = "https://tohaa28.github.io/gifts-layout-workbench/";
+const base = "https://tohaa28.github.io/gifts-layout-workbench-mockups/";
 const assetStamp = Date.now().toString(36);
 let app = fs.readFileSync(new URL("../editor.html", import.meta.url), "utf8");
 let direct = fs.readFileSync(new URL("../direct-mode.js", import.meta.url), "utf8");
@@ -31,7 +31,7 @@ const source = `(() => {
   }
 
   if (location.hostname !== "gifts.ru") {
-    alert("Откройте gifts.ru и запустите закладку «Макетная» там.");
+    alert("Откройте gifts.ru и запустите закладку «Макетная + мокапы» там.");
     return;
   }
 
@@ -40,7 +40,7 @@ const source = `(() => {
   host.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#fff";
 
   const frame = document.createElement("iframe");
-  frame.title = "Макетная gifts.ru";
+  frame.title = "Макетная + мокапы";
   frame.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff";
 
   const close = document.createElement("button");
