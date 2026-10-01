@@ -1,4 +1,4 @@
-// collector-version: 6
+// collector-version: 7
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -11,7 +11,7 @@ const registry=JSON.parse(fs.readFileSync(REGISTRY,"utf8"));
 fs.mkdirSync(OUTDIR,{recursive:true});
 
 const specs=(registry.articleSources||[]).filter(x=>x.productUrl);
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({viewport:{width:1440,height:1200},userAgent:"Mozilla/5.0 MockupCollector/1.0"});
 
 const cleanUrl=u=>{try{return new URL(u).href}catch{return""}};
