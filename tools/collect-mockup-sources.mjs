@@ -1,4 +1,4 @@
-// collector-version: 5
+// collector-version: 6
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -264,7 +264,7 @@ for(const spec of specs){
       const images=await visibleArticleImages(page,spec.article);
       const probes=await page.locator("[class*='print'],[class*='draw'],[class*='place'],[class*='maket'],[class*='logo'],svg rect,svg polygon,svg path").evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return r.width>2&&r.height>2&&s.display!=="none"&&s.visibility!=="hidden"}).slice(0,250).map(n=>{const r=n.getBoundingClientRect();return{tag:n.tagName,class:String(n.className?.baseVal??n.className??"").slice(0,200),id:n.id||"",text:(n.textContent||"").replace(/\s+/g," ").trim().slice(0,200),attrs:[...n.attributes].filter(a=>/^data-|^(x|y|width|height|points|d|fill|stroke)$/i.test(a.name)).slice(0,20).map(a=>[a.name,a.value]),box:{x:r.x,y:r.y,w:r.width,h:r.height}}}));
       result.tabs[label]={clicked,images,probes};
-      if(label==="Нанесение") result.placeHostText=await page.locator("#j_dc_places_host").innerText().catch(()=>"");
+      if(label==="Нанесение") result.placeHostText=(await page.locator("#j_dc_places_host").textContent().catch(()=>""))||"";
       try{await page.screenshot({path:path.join(shotDir,String(spec.article).replace(/[^A-Za-z0-9._-]+/g,"_")+"-"+label+".png"),fullPage:false});}catch{}
     }
     const allPhotoTab=[...new Set((result.tabs["Фото"]?.images||[]).map(x=>cleanUrl(x.url)).filter(Boolean))];
