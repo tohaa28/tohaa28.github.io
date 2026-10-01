@@ -121,17 +121,24 @@ for(const spec of specs){
     await page.waitForTimeout(1200);
     result.finalUrl=page.url();
     result.title=await page.title();
-    result.constructors=await page.locator("a[href]").evaluateAll(nodes=>nodes.map(a=>({text:(a.textContent||"").replace(/\s+/g," ").trim(),href:a.href})).filter(x=>/конструктор/i.test(x.text)&&/\.(?:pdf|cdr)(?:$|[?#])/i.test(x.href)));
+    result.constructors=await page.locator("a[href]").evaluateAll(nodes=>nodes.map(a=>({text:(a.textContent||"").replace(/\s+/g," ").trim(),context:(a.parentElement?.textContent||"").replace(/\s+/g," ").trim().slice(0,500),href:a.href})).filter(x=>/конструктор/i.test(x.text+" "+x.context)&&/\.(?:pdf|cdr)(?:$|[?#])/i.test(x.href)));
     result.places=(await page.locator("select option").allTextContents()).map(x=>x.replace(/\s+/g," ").trim()).filter(x=>x&&x.length<120);
+    const shotDir=path.join(OUTDIR,"screenshots"); fs.mkdirSync(shotDir,{recursive:true});
     for(const label of ["Фото","Нанесение","Примеры"]){
       const clicked=await clickExact(page,label);
-      result.tabs[label]={clicked,images:await visibleArticleImages(page,spec.article)};
+      const images=await visibleArticleImages(page,spec.article);
+      const probes=await page.locator("[class*='print'],[class*='draw'],[class*='place'],[class*='maket'],[class*='logo'],svg rect,svg polygon,svg path").evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return r.width>2&&r.height>2&&s.display!=="none"&&s.visibility!=="hidden"}).slice(0,250).map(n=>{const r=n.getBoundingClientRect();return{tag:n.tagName,class:String(n.className?.baseVal??n.className??"").slice(0,200),id:n.id||"",text:(n.textContent||"").replace(/\s+/g," ").trim().slice(0,200),attrs:[...n.attributes].filter(a=>/^data-|^(x|y|width|height|points|d|fill|stroke)$/i.test(a.name)).slice(0,20).map(a=>[a.name,a.value]),box:{x:r.x,y:r.y,w:r.width,h:r.height}}}));
+      result.tabs[label]={clicked,images,probes};
+      try{await page.screenshot({path:path.join(shotDir,String(spec.article).replace(/[^A-Za-z0-9._-]+/g,"_")+"-"+label+".png"),fullPage:false});}catch{}
     }
-    const photoUrls=[...new Set((result.tabs["Фото"]?.images||[]).map(x=>cleanUrl(x.url)).filter(Boolean))];
-    const applicationUrls=[...new Set((result.tabs["Нанесение"]?.images||[]).map(x=>cleanUrl(x.url)).filter(Boolean))];
+    const allPhotoTab=[...new Set((result.tabs["Фото"]?.images||[]).map(x=>cleanUrl(x.url)).filter(Boolean))];
+    const photoUrls=allPhotoTab.filter(u=>/\/reviewer\/webp\//i.test(u));
+    const exampleUrls=[...new Set((result.tabs["Примеры"]?.images||[]).map(x=>cleanUrl(x.url)).filter(u=>/\/reviewer\/tb\//i.test(u)))];
+    const known=new Set([...photoUrls,...exampleUrls]);
+    const applicationUrls=[...new Set((result.tabs["Нанесение"]?.images||[]).map(x=>cleanUrl(x.url)).filter(u=>u&&!known.has(u)))];
     result.photoUrls=photoUrls;
     result.applicationUrls=applicationUrls;
-    result.matches=await bestDiff(context,photoUrls,applicationUrls);
+    result.matches=applicationUrls.length?await bestDiff(context,photoUrls,applicationUrls):[];
     const expectedPlaces=(spec.places||[]);
     result.autoBindings=result.matches.map((m,i)=>{
       const place=expectedPlaces[i]||{};
