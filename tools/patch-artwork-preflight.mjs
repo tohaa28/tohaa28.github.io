@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="839a561f633ed12a1f5c641cf6354af233a63033219b32ab645ccae5552442c7";
+const expected="f3940a411a565e67b069929fb177a3493515167eaac5e511a01206dc8894409b";
 const edits=[
   [
     "",
@@ -139,6 +139,22 @@ const edits=[
   [
     "./logo-detail-check.mjs?v=20260930-2",
     "./logo-detail-check.mjs?v=20260930-3"
+  ],
+  [
+    "inspectArtwork,checkLogo,renderDiagnostics,contextFromOrder",
+    "inspectArtwork,checkLogo,renderDiagnostics,renderErrorOverlay,contextFromOrder"
+  ],
+  [
+    "const t=pe(),r=t.filter(s=>!s.hidden);",
+    "const t=pe(),r=t.filter(s=>!s.hidden);renderErrorOverlay(t);"
+  ],
+  [
+    "\"Найдены проблемы: \"+e.map(s=>s.text).join(\" \")",
+    "\"Найдено ошибок: \"+e.length+\". Список — справа над макетом.\""
+  ],
+  [
+    "./logo-preflight.mjs?v=20260930-4",
+    "./logo-preflight.mjs?v=20261001-1"
   ]
 ];
 export function applyLogoPreflight(){

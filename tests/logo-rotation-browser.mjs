@@ -49,7 +49,7 @@ export async function verifyRotationAndColors(frame){
  const canvas=await frame.locator('#overlay').boundingBox();const center=await handle.evaluate(el=>({x:Number(el.dataset.centerX),y:Number(el.dataset.centerY)}));
  const mouse=frame.page().mouse;await mouse.move(canvas.x+center.x,canvas.y+center.y);await mouse.down();await mouse.move(canvas.x+center.x+canvas.width*.38,canvas.y+center.y,{steps:12});
  assert.equal((await boundary()).status,'bad','Crossing must be detected while pointer is still down');await mouse.up();
- assert.match(await frame.locator('#simpleChecks').textContent(),/Выход за поле/);
+ assert.match(await frame.locator('#logoErrorOverlay').textContent(),/Выход за поле/);
  assert.equal(await frame.locator('#simpleExport').isDisabled(),true);
  await frame.locator('#editorClip').check();assert.equal((await boundary()).status,'bad');
  await frame.locator('#editorCenter').click();assert.equal((await boundary()).status,'ok');
