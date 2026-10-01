@@ -126,13 +126,15 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
         async function loadNextPhoto(){
           while(cursor<queue.length){
             const meta=queue[cursor++];
+            const candidate={id:String(meta.id||article+"-"+(Number(meta.index)+1)),name:String(meta.name||"Фото "+(Number(meta.index)+1)+" · арт. "+article),url:String(meta.url||""),dataUrl:"",kind:"product-photo"};
             try{
               const res=await fetch(base+"/photos/"+encodeURIComponent(String(meta.index)),{cache:"no-store"});
-              if(!res.ok||!/^image\//i.test(res.headers.get("content-type")||""))continue;
-              const blob=await res.blob();
-              const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader;r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
-              if(dataUrl)photoCandidates.push({id:String(meta.id||article+"-"+(Number(meta.index)+1)),name:String(meta.name||"Фото "+(Number(meta.index)+1)+" · арт. "+article),url:String(meta.url||""),dataUrl,kind:"product-photo"});
+              if(res.ok&&/^image\//i.test(res.headers.get("content-type")||"")){
+                const blob=await res.blob();
+                candidate.dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader;r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
+              }
             }catch{}
+            if(candidate.url||candidate.dataUrl)photoCandidates.push(candidate);
           }
         }
         await Promise.all(Array.from({length:Math.min(4,queue.length)},()=>loadNextPhoto()));
