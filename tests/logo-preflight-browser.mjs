@@ -35,7 +35,7 @@ export async function verifyLogoPreflight(frame) {
   let state=await frame.evaluate(()=>({reports:window.gwbLogoPreflight,disabled:document.getElementById('simpleExport').disabled,field:document.getElementById('fieldSize').textContent}));
   assert.equal(state.reports[0].method,'B4');assert.equal(state.reports[0].rule.positive,.4);assert.equal(state.disabled,true);
   assert.match(state.field,/200\.00 × 100\.00/);
-  await frame.locator('#preflightMarkers').check();
+  assert.equal(await frame.locator('#preflightMarkers').isChecked(),true);assert.equal(await frame.locator('#preflightMarkers').isVisible(),false);
   await frame.locator('#logoPreflight summary').click();
   if(process.env.PREFLIGHT_SCREENSHOT)await frame.page().screenshot({path:process.env.PREFLIGHT_SCREENSHOT,fullPage:false});
   await frame.locator('#confirmErrors').check();

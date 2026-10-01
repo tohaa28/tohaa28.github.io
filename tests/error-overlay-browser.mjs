@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 export async function verifyErrorOverlay(frame){
  const panel=frame.locator('#logoErrorOverlay');
- const expected=await frame.evaluate(()=>window.gwbLogoPreflight.flatMap(r=>r.findings.filter(f=>f.status==='bad').map(f=>r.label+': '+f.text)));
+ const expected=await frame.evaluate(()=>window.gwbLogoPreflight.flatMap(r=>r.findings.filter(f=>f.status==='bad'||f.status==='ok'&&f.id!=='method').map(f=>({status:f.status,text:r.label+': '+f.text}))).sort((a,b)=>(a.status==='bad'?0:1)-(b.status==='bad'?0:1)).map(f=>(f.status==='ok'?'✓ ':'! ')+f.text));
  assert.deepEqual(await panel.locator('li').allTextContents(),expected);
  assert.equal(await panel.isVisible(),expected.length>0);
  if(expected.length){
