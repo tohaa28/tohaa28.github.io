@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="f8c86ee9390b7bcb7873426c737f9d6105853b10a868aa8ba6e234f3b0e62e1d";
-const expected="0f5f68c44c15875a22475e4f6205d21900856208e14c752f7c36fa53307d5a24";
+const expected="106e4e5946e673417b40e85758de12be4eafc636b1dc533d17e68a89fce14e10";
 const edits=[
   [
     "",
@@ -179,6 +179,34 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261001-3",
     "./logo-preflight.mjs?v=20261001-4"
+  ],
+  [
+    "",
+    "import {installArtworkView} from \"./logo-artwork-view.mjs?v=20261001-1\";\nlet gwbArtworkView;\n"
+  ],
+  [
+    "H.drawImage(p.art.image,-f.w/2,-f.h/2,f.w,f.h)",
+    "!gwbArtworkView&&H.drawImage(p.art.image,-f.w/2,-f.h/2,f.w,f.h)"
+  ],
+  [
+    "gwbFieldZoom?.refresh();return;}const t=y.view",
+    "gwbFieldZoom?.refresh();gwbArtworkView?.refresh();return;}const t=y.view"
+  ],
+  [
+    "gwbDetailTool?.refresh();gwbFieldZoom?.refresh()}function co",
+    "gwbDetailTool?.refresh();gwbFieldZoom?.refresh();gwbArtworkView?.refresh()}function co"
+  ],
+  [
+    "installMethodAdmin({redraw:X});",
+    "installMethodAdmin({redraw:X});\ngwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});"
+  ],
+  [
+    "./logo-detail-check.mjs?v=20261001-2",
+    "./logo-detail-check.mjs?v=20261001-3"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261001-4",
+    "./logo-preflight.mjs?v=20261001-5"
   ]
 ];
 export function applyLogoPreflight(){

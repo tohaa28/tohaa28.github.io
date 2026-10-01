@@ -1,3 +1,4 @@
+import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
 import {scanPlan} from './logo-detail-engine.mjs?v=20261001-1';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
@@ -49,19 +50,17 @@ async function start(){
 }
 export function installDetailCheck({canvas,getState,redraw}){
  const panel=document.createElement('details');panel.id='logoDetailCheck';panel.open=false;panel.className='logo-detail-check';
- panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><label>Маска <select id="detailMode"><option value="dark">Тёмное на светлом</option><option value="light">Светлое на тёмном</option><option value="alpha">Все непрозрачные элементы</option></select></label><label>Порог маски <input id="detailThreshold" type="number" min="1" max="254" value="245"></label><p id="detailStatus" role="status"></p><p class="help">Каждый кружок отмечает один найденный участок. Круги показывают порог: жёлтые — линии, голубые — пробелы, оранжевые — отдельные объекты. Нажмите область в списке, чтобы рассмотреть её крупнее.</p><div id="detailList"></div><canvas id="detailPreview" width="320" height="200" hidden></canvas>';
+ panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><label>Маска <select id="detailMode"><option value="dark">Тёмное на светлом</option><option value="light">Светлое на тёмном</option><option value="alpha">Все непрозрачные элементы</option></select></label><label>Порог маски <input id="detailThreshold" type="number" min="1" max="254" value="245"></label><p id="detailStatus" role="status"></p><p class="help">Каждый кружок отмечает один найденный участок. Круги показывают порог: жёлтые — линии, голубые — пробелы, оранжевые — отдельные объекты. Нажмите область в списке, чтобы рассмотреть её крупнее.</p><div id="detailList"></div><div id="detailPreview" style="width:320px;max-width:100%" hidden></div>';
  const separate=document.createElement('section');separate.id='detailPanel';separate.className='panel';separate.append(panel);document.getElementById('step4Box').closest('.panel').after(separate);
  const layer=document.createElement('canvas');layer.id='detailOverlay';layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';canvas.parentElement.append(layer);
  const $=id=>panel.querySelector('#'+id);
- function preview(entry,box){const c=$('detailPreview');c.hidden=false;const ctx=c.getContext('2d'),image=entry.art.image,W=image.naturalWidth||image.width,H=image.naturalHeight||image.height;
-  const pw=Math.max(box.w,box.threshold/entry.wMm)*.8,ph=Math.max(box.h,box.threshold/entry.hMm)*.8,x=Math.max(0,box.x-pw),y=Math.max(0,box.y-ph),w=Math.min(1-x,box.w+pw*2),h=Math.min(1-y,box.h+ph*2),z=Math.min(c.width/(w*W),(c.height-25)/(h*H)),zx=z*W,zy=z*H,ox=(c.width-w*zx)/2,oy=(c.height-25-h*zy)/2;
-  ctx.fillStyle='#e9edf0';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle=entry.mode==='light'?'#222':'#fff';ctx.fillRect(ox,oy,w*zx,h*zy);ctx.drawImage(image,x*W,y*H,w*W,h*H,ox,oy,w*zx,h*zy);ctx.strokeStyle=colors[box.kind];ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(ox+(box.cx-x)*zx,oy+(box.cy-y)*zy,box.threshold/entry.wMm*zx/2,box.threshold/entry.hMm*zy/2,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#00529b';ctx.font='12px sans-serif';ctx.fillText('Диаметр '+box.threshold+' мм · измерено '+box.minWidthMm.toFixed(3)+' мм',8,192);
- }
+ let cancelPreview=null;
+ function preview(entry,box){cancelPreview?.();const c=$('detailPreview');c.hidden=false;cancelPreview=renderArtworkPreview(c,{art:entry.art,box,wMm:entry.wMm,hMm:entry.hMm,mode:entry.mode,color:colors[box.kind]});}
  function refresh(){
   const state=getState();separate.hidden=!state.art;const e=entries.get(placementKeys.get(state.placement));const keys=new Set(validEntries().map(e=>e.key));
   for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8)entries.delete(key);
   if(worker&&!validEntries().some(e=>e.state==='running'))cancel();
-  if(currentKey!==e?.key){selected=-1;currentKey=e?.key||'';$('detailPreview').hidden=true;}
+  if(currentKey!==e?.key){cancelPreview?.();cancelPreview=null;selected=-1;currentKey=e?.key||'';$('detailPreview').hidden=true;}
   $('detailStatus').textContent=!enabled?'Поиск выключен.':!e?(state.art?'Поиск отключён или пороги не заданы в настройках нанесения.':'Выберите логотип.'):holding?'Проверка приостановлена на время редактирования.':e.state==='done'?`Найдено областей: ${e.result.boxes.length}. Шаг ${e.result.step.toFixed(4)} мм.`:e.state==='error'?e.error:e.state==='running'?'Идёт фоновая проверка…':'Ожидание паузы в редактировании…';
   const panelKey=JSON.stringify([e?.key,e?.state,enabled]);if(lastPanelKey!==panelKey){lastPanelKey=panelKey;$('detailList').replaceChildren();if(enabled&&e?.state==='done'){
    let offset=0;const more=document.createElement('button');more.type='button';more.textContent='Показать ещё';const appendPage=()=>{more.remove();const end=Math.min(offset+100,e.result.boxes.length),fragment=document.createDocumentFragment();for(;offset<end;offset++){const i=offset,b=e.result.boxes[i],button=document.createElement('button');button.type='button';button.textContent=`${i+1}. ${labels[b.kind]} · порог ${b.threshold} мм`;button.onclick=()=>{selected=i;preview(e,b);refresh();};fragment.append(button);}$('detailList').append(fragment);if(offset<e.result.boxes.length)$('detailList').append(more);};more.onclick=appendPage;appendPage();
@@ -93,6 +92,6 @@ export function installDetailCheck({canvas,getState,redraw}){
  document.addEventListener('input',event=>{if(!panel.contains(event.target)){activity();}},true);
  document.addEventListener('keydown',event=>{if(event.target.closest('#stage,#fieldLogoTools')||event.key==='Escape')activity();},true);
  document.addEventListener('visibilitychange',()=>{if(document.hidden){holding=true;cancel();}else{holding=false;activity();}});
- window.addEventListener('pagehide',()=>cancel());lastAction=Date.now();refresh();return {refresh};
+ window.addEventListener('pagehide',()=>{cancelPreview?.();cancel();});lastAction=Date.now();refresh();return {refresh};
 }
 
