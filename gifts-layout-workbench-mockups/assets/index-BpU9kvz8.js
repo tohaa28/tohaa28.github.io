@@ -74,3 +74,96 @@ gwbDetailTool=installDetailCheck({canvas:pt,getState:()=>y,redraw:X});
 gwbFieldZoom=installFieldZoom({canvas:pt,getState:()=>y,render:zt});
 installMethodAdmin({redraw:X});
 gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
+;window.gwbBuildMockupHandoff=async function(){
+  const entry=y.selectedEntry||null, template=y.template||null;
+  if(!entry&&!template)return null;
+  const fields=(template?.fieldOptions||[]).map((field,index)=>{
+    const meta=oo(index)||{}, binding=(entry?.placeBindings||[]).find(b=>Number(b.templateIndex||b.index)===index+1)||{};
+    return {
+      id:String(binding.applicationId||field.applicationId||meta.code||field.printId||("field-"+(index+1))),
+      printId:String(meta.code||field.printId||binding.printId||("print"+(index+1))),
+      applicationId:String(binding.applicationId||field.applicationId||""),
+      place:String(meta.name||binding.name||field.orderPlace||field.pdfPlace||field.pdfLabel||("Поле "+(index+1))),
+      method:String(meta.method||binding.method||entry?.method||v("method").value||""),
+      page:Number(field.page||0),
+      bounds:{x:Number(field.x),y:Number(field.y),w:Number(field.w),h:Number(field.h)}
+    };
+  });
+  let activeIndex=Number(v("orderFieldChoice")?.value);
+  if(!Number.isInteger(activeIndex)||activeIndex<0||activeIndex>=fields.length){
+    const activePlacement=y.placements?.[y.active];
+    if(Number.isInteger(activePlacement?.fieldIndex))activeIndex=activePlacement.fieldIndex;
+    else activeIndex=(template?.fieldOptions||[]).findIndex(f=>y.field&&f.page===y.page&&Math.abs(f.x-y.field.x)+Math.abs(f.y-y.field.y)+Math.abs(f.w-y.field.w)+Math.abs(f.h-y.field.h)<.3);
+  }
+  const activeField=activeIndex>=0?fields[activeIndex]:null;
+  const placement=(y.placements||[]).find(p=>p.fieldIndex===activeIndex&&p.art&&p.placement)||(y.placements||[]).find(p=>p.art&&p.placement)||null;
+  const art=placement?.art||y.art||null;
+  let fieldCompositeDataUrl=art?.src||"";
+  try{
+    if(placement?.field&&placement?.placement&&art?.image){
+      const field=placement.field,p=placement.placement,W=1000,H=Math.max(1,Math.round(W*field.h/field.w)),canvas=document.createElement("canvas");
+      canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext("2d"),scale=W/field.w;
+      ctx.clearRect(0,0,W,H);
+      ctx.save();
+      ctx.translate((p.x-field.x+p.w/2)*scale,(p.y-field.y+p.h/2)*scale);
+      ctx.rotate((Number(p.rotation)||0)*Math.PI/180);
+      ctx.drawImage(art.image,-p.w*scale/2,-p.h*scale/2,p.w*scale,p.h*scale);
+      ctx.restore();
+      fieldCompositeDataUrl=canvas.toDataURL("image/png");
+    }
+  }catch{}
+  const order=String(entry?.order||v("order")?.value||""), article=String(entry?.article||v("article")?.value||"");
+  const photoCandidates=[];
+  if(entry?.imageUrl)photoCandidates.push({id:article+"-main",name:"Фото артикула "+article,url:String(entry.imageUrl)});
+  if(order&&entry?.itemId){
+    try{
+      const res=await fetch("/api/orders/"+encodeURIComponent(order)+"/items/"+encodeURIComponent(String(entry.itemId))+"/preview",{cache:"no-store"});
+      if(res.ok&&/^image\//i.test(res.headers.get("content-type")||"")){
+        const blob=await res.blob(),dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader;r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
+        if(dataUrl)photoCandidates.unshift({id:article+"-order-preview",name:"Фото из заказа "+article,dataUrl});
+      }
+    }catch{}
+  }
+  return {
+    schema:"gifts-mockup-handoff/v1",
+    source:"maketnaya-mockups",
+    order,
+    article,
+    product:String(entry?.product||""),
+    variant:String(entry?.variant||entry?.color||""),
+    place:String(activeField?.place||entry?.place||(Array.isArray(entry?.places)&&entry.places[0])||""),
+    method:String(activeField?.method||entry?.method||v("method")?.value||""),
+    item:{
+      itemId:String(entry?.itemId||""),
+      order,
+      article,
+      product:String(entry?.product||""),
+      quantity:Number(entry?.quantity||0)||0,
+      imageUrl:String(entry?.imageUrl||""),
+      placeBindings:Array.isArray(entry?.placeBindings)?entry.placeBindings.map(b=>({
+        applicationId:String(b.applicationId||""),
+        name:String(b.name||b.place||""),
+        method:String(b.method||""),
+        printId:String(b.printId||""),
+        index:Number(b.index||0)||undefined,
+        templateIndex:Number(b.templateIndex||0)||undefined,
+        fieldW:Number(b.fieldW||0)||undefined,
+        fieldH:Number(b.fieldH||0)||undefined
+      })):[],
+      fieldCandidates:fields
+    },
+    photoCandidates,
+    fieldCandidates:fields,
+    selectedField:activeField?{...activeField}:null,
+    templateWidth:Number(template?.w||0),
+    templateHeight:Number(template?.h||0),
+    templateName:String(template?.name||""),
+    constructorPreviewDataUrl:String(template?.src||""),
+    artworkName:String(art?.name||""),
+    artworkDataUrl:String(art?.src||""),
+    fieldCompositeDataUrl:String(fieldCompositeDataUrl||"")
+  };
+};
+window.dispatchEvent(new CustomEvent("gwb-mockup-handoff-ready"));
+
