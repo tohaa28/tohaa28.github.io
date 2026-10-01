@@ -2,7 +2,7 @@
   "article": "16535.66",
   "product": "Сумка для покупок Cottonica Recycle, неокрашенная",
   "productUrl": "https://gifts.ru/id/242994",
-  "scannedAt": "2026-10-01T20:54:44.595Z",
+  "scannedAt": "2026-10-01T21:00:44.112Z",
   "tabs": {
     "Фото": {
       "clicked": true,
@@ -2143,35 +2143,37 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "сторона а",
+      "place": "",
       "method": "",
       "photo": {
-        "id": "16535.66_77_200x200.webp",
+        "id": "16535.66_76",
         "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2"
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
       },
       "field": {
         "id": "field-1",
         "printId": "",
         "applicationId": "",
-        "place": "сторона а"
+        "place": "",
+        "sizeCm": null
       },
       "targetQuad": [
         {
-          "x": 0,
-          "y": 0
+          "x": 0.3057893513410458,
+          "y": 0.49278825512351637
         },
         {
-          "x": 1,
-          "y": 0
+          "x": 0.6942102657968151,
+          "y": 0.49278825512351637
         },
         {
-          "x": 1,
-          "y": 1
+          "x": 0.6942102657968151,
+          "y": 0.925489413782979
         },
         {
-          "x": 0,
-          "y": 1
+          "x": 0.3057893513410458,
+          "y": 0.925489413782979
         }
       ],
       "surface": "perspective",
@@ -2180,54 +2182,73 @@
         "blend": "source-over",
         "mesh": 18
       },
-      "status": "candidate",
-      "confidence": 0,
-      "generatedBy": "github-actions-image-diff-v1",
+      "status": "candidate-high",
+      "confidence": 0.9232,
+      "generatedBy": "github-actions-svg-silhouette-v1",
       "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/98/16535.66_93_200x200.jpg",
-        "meanDiff": 94.667,
-        "changedRatio": 0.9996,
-        "bbox": {
-          "x": 0,
-          "y": 0,
-          "w": 1,
-          "h": 1
-        }
+        "svgPrintBox": {
+          "x": 82.98279571533203,
+          "y": 613.8558959960938,
+          "w": 216.72463989257812,
+          "h": 216.724609375
+        },
+        "svgObjectBox": {
+          "x": 54.08623504638672,
+          "y": 370.0409851074219,
+          "w": 274.5179748535156,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.10526290922976786,
+          "y": 0.49270066308048216,
+          "w": 0.7894734033653849,
+          "h": 0.4379566383192941
+        },
+        "photoObjectBox": {
+          "x": 0.254,
+          "y": 0.006,
+          "w": 0.492,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.13,
+        "photoScore": 0.9232
       }
     },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
       "variant": "",
-      "place": "сторона b",
+      "place": "",
       "method": "",
       "photo": {
-        "id": "16535.66_77_200x200.webp",
+        "id": "16535.66_76",
         "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2"
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
       },
       "field": {
         "id": "field-2",
         "printId": "",
         "applicationId": "",
-        "place": "сторона b"
+        "place": "",
+        "sizeCm": null
       },
       "targetQuad": [
         {
-          "x": 0,
-          "y": 0
+          "x": 0.33168421844263823,
+          "y": 0.5288460350937261
         },
         {
-          "x": 1,
-          "y": 0
+          "x": 0.6683158089046575,
+          "y": 0.5288460350937261
         },
         {
-          "x": 1,
-          "y": 1
+          "x": 0.6683158089046575,
+          "y": 0.8894305370760112
         },
         {
-          "x": 0,
-          "y": 1
+          "x": 0.33168421844263823,
+          "y": 0.8894305370760112
         }
       ],
       "surface": "perspective",
@@ -2236,19 +2257,36 @@
         "blend": "source-over",
         "mesh": 18
       },
-      "status": "candidate",
-      "confidence": 0.1593,
-      "generatedBy": "github-actions-image-diff-v1",
+      "status": "candidate-high",
+      "confidence": 0.9232,
+      "generatedBy": "github-actions-svg-silhouette-v1",
       "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/97/16535.66_92_200x200.jpg",
-        "meanDiff": 57.133,
-        "changedRatio": 0.7964,
-        "bbox": {
-          "x": 0,
-          "y": 0,
-          "w": 1,
-          "h": 1
-        }
+        "svgPrintBox": {
+          "x": 97.43118286132812,
+          "y": 631.9159545898438,
+          "w": 187.82809448242188,
+          "h": 180.60394287109375
+        },
+        "svgObjectBox": {
+          "x": 54.08623504638672,
+          "y": 370.0409851074219,
+          "w": 274.5179748535156,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.1578947529321915,
+          "y": 0.5291963917952693,
+          "w": 0.6842105497195513,
+          "h": 0.36496407083227234
+        },
+        "photoObjectBox": {
+          "x": 0.254,
+          "y": 0.006,
+          "w": 0.492,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.13,
+        "photoScore": 0.9232
       }
     },
     {
@@ -2258,32 +2296,34 @@
       "place": "",
       "method": "",
       "photo": {
-        "id": "16535.66_77_200x200.webp",
+        "id": "16535.66_77",
         "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2"
+        "url": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2"
       },
       "field": {
         "id": "field-3",
         "printId": "",
         "applicationId": "",
-        "place": ""
+        "place": "",
+        "sizeCm": null
       },
       "targetQuad": [
         {
-          "x": 0.52,
-          "y": 0.04
+          "x": 0.157156395581644,
+          "y": 0.49270066308048216
         },
         {
-          "x": 0.54,
-          "y": 0.04
+          "x": 0.9008421383327577,
+          "y": 0.49270066308048216
         },
         {
-          "x": 0.54,
-          "y": 0.06
+          "x": 0.9008421383327577,
+          "y": 0.9306573013997763
         },
         {
-          "x": 0.52,
-          "y": 0.06
+          "x": 0.157156395581644,
+          "y": 0.9306573013997763
         }
       ],
       "surface": "perspective",
@@ -2293,18 +2333,35 @@
         "mesh": 18
       },
       "status": "candidate",
-      "confidence": 0.5327,
-      "generatedBy": "github-actions-image-diff-v1",
+      "confidence": 0.5,
+      "generatedBy": "github-actions-svg-silhouette-v1",
       "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/0/16535.66_91_200x200.jpg",
-        "meanDiff": 8.97,
-        "changedRatio": 0.0004,
-        "bbox": {
-          "x": 0.52,
-          "y": 0.04,
-          "w": 0.02,
-          "h": 0.02
-        }
+        "svgPrintBox": {
+          "x": 392.2926025390625,
+          "y": 613.8558959960938,
+          "w": 216.724609375,
+          "h": 216.724609375
+        },
+        "svgObjectBox": {
+          "x": 363.396484375,
+          "y": 370.0409851074219,
+          "w": 274.51727294921875,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.10526156643486624,
+          "y": 0.49270066308048216,
+          "w": 0.7894753107761293,
+          "h": 0.4379566383192941
+        },
+        "photoObjectBox": {
+          "x": 0.058,
+          "y": 0,
+          "w": 0.942,
+          "h": 1
+        },
+        "photoPixelRatio": 0.1297,
+        "photoScore": 0.6667
       }
     },
     {
@@ -2314,32 +2371,34 @@
       "place": "",
       "method": "",
       "photo": {
-        "id": "16535.66_77_200x200.webp",
+        "id": "16535.66_77",
         "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2"
+        "url": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2"
       },
       "field": {
         "id": "field-4",
         "printId": "",
         "applicationId": "",
-        "place": ""
+        "place": "",
+        "sizeCm": null
       },
       "targetQuad": [
         {
-          "x": 0,
-          "y": 0.16
+          "x": 0.20673480281326573,
+          "y": 0.5291963917952693
         },
         {
-          "x": 0.58,
-          "y": 0.16
+          "x": 0.8512626838971373,
+          "y": 0.5291963917952693
         },
         {
-          "x": 0.58,
-          "y": 1
+          "x": 0.8512626838971373,
+          "y": 0.8941604626275417
         },
         {
-          "x": 0,
-          "y": 1
+          "x": 0.20673480281326573,
+          "y": 0.8941604626275417
         }
       ],
       "surface": "perspective",
@@ -2349,83 +2408,45 @@
         "mesh": 18
       },
       "status": "candidate",
-      "confidence": 0.5738,
-      "generatedBy": "github-actions-image-diff-v1",
+      "confidence": 0.5,
+      "generatedBy": "github-actions-svg-silhouette-v1",
       "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/99/16535.66_90_200x200.jpg",
-        "meanDiff": 13.076,
-        "changedRatio": 0.05,
-        "bbox": {
-          "x": 0,
-          "y": 0.16,
-          "w": 0.58,
-          "h": 0.84
-        }
-      }
-    },
-    {
-      "schema": "gifts-mockup-profile/v1",
-      "article": "16535.66",
-      "variant": "",
-      "place": "",
-      "method": "",
-      "photo": {
-        "id": "16535.66_77_200x200.webp",
-        "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2"
-      },
-      "field": {
-        "id": "field-5",
-        "printId": "",
-        "applicationId": "",
-        "place": ""
-      },
-      "targetQuad": [
-        {
-          "x": 0,
-          "y": 0.26
+        "svgPrintBox": {
+          "x": 406.74072265625,
+          "y": 631.9159545898438,
+          "w": 187.82806396484375,
+          "h": 180.60394287109375
         },
-        {
-          "x": 1,
-          "y": 0.26
+        "svgObjectBox": {
+          "x": 363.396484375,
+          "y": 370.0409851074219,
+          "w": 274.51727294921875,
+          "h": 494.8540344238281
         },
-        {
-          "x": 1,
-          "y": 1
+        "normalizedField": {
+          "x": 0.15789257198860482,
+          "y": 0.5291963917952693,
+          "w": 0.6842121879871249,
+          "h": 0.36496407083227234
         },
-        {
-          "x": 0,
-          "y": 1
-        }
-      ],
-      "surface": "perspective",
-      "render": {
-        "opacity": 0.9,
-        "blend": "source-over",
-        "mesh": 18
-      },
-      "status": "candidate",
-      "confidence": 0.579,
-      "generatedBy": "github-actions-image-diff-v1",
-      "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/98/16535.66_89_200x200.jpg",
-        "meanDiff": 11.738,
-        "changedRatio": 0.0604,
-        "bbox": {
-          "x": 0,
-          "y": 0.26,
-          "w": 1,
-          "h": 0.74
-        }
+        "photoObjectBox": {
+          "x": 0.058,
+          "y": 0,
+          "w": 0.942,
+          "h": 1
+        },
+        "photoPixelRatio": 0.1297,
+        "photoScore": 0.6667
       }
     }
   ],
   "errors": [],
   "finalUrl": "https://gifts.ru/id/242994",
   "title": "Сумка для покупок Cottonica Recycle, неокрашенная (артикул 16535.66) оптом — Проект 111",
+  "placeHostText": "Добавить нанесение",
   "photoUrls": [
-    "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/59/16535.66_76_200x200.webp?v=2"
+    "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
   ],
   "applicationUrls": [
     "https://files.gifts.ru/size/50/reviewer/thumbnails/98/16535.66_93_200x200.jpg",
@@ -2436,10 +2457,10 @@
   ],
   "matches": [
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/98/16535.66_93_200x200.jpg",
       "diff": {
-        "meanDiff": 94.667,
+        "meanDiff": 94.949,
         "changedRatio": 0.9996,
         "bbox": {
           "x": 0,
@@ -2455,18 +2476,18 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/97/16535.66_92_200x200.jpg",
       "diff": {
-        "meanDiff": 57.133,
-        "changedRatio": 0.7964,
+        "meanDiff": 57.416,
+        "changedRatio": 0.7972,
         "bbox": {
           "x": 0,
           "y": 0,
           "w": 1,
           "h": 1
         },
-        "confidence": 0.1593,
+        "confidence": 0.1574,
         "size": [
           50,
           50
@@ -2474,18 +2495,18 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/0/16535.66_91_200x200.jpg",
       "diff": {
-        "meanDiff": 8.97,
-        "changedRatio": 0.0004,
+        "meanDiff": 8.981,
+        "changedRatio": 0.0016,
         "bbox": {
           "x": 0.52,
-          "y": 0.04,
-          "w": 0.02,
-          "h": 0.02
+          "y": 0,
+          "w": 0.38,
+          "h": 0.08
         },
-        "confidence": 0.5327,
+        "confidence": 0.5934,
         "size": [
           50,
           50
@@ -2493,18 +2514,18 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/99/16535.66_90_200x200.jpg",
       "diff": {
-        "meanDiff": 13.076,
-        "changedRatio": 0.05,
+        "meanDiff": 13.045,
+        "changedRatio": 0.0504,
         "bbox": {
           "x": 0,
-          "y": 0.16,
-          "w": 0.58,
-          "h": 0.84
+          "y": 0,
+          "w": 0.9,
+          "h": 1
         },
-        "confidence": 0.5738,
+        "confidence": 0.5604,
         "size": [
           50,
           50
@@ -2512,23 +2533,156 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/60/16535.66_77_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/98/16535.66_89_200x200.jpg",
       "diff": {
-        "meanDiff": 11.738,
-        "changedRatio": 0.0604,
+        "meanDiff": 11.732,
+        "changedRatio": 0.0612,
         "bbox": {
           "x": 0,
-          "y": 0.26,
+          "y": 0,
           "w": 1,
-          "h": 0.74
+          "h": 1
         },
-        "confidence": 0.579,
+        "confidence": 0.573,
         "size": [
           50,
           50
         ]
       }
+    }
+  ],
+  "fieldMeta": [],
+  "svgFields": [
+    {
+      "index": 0,
+      "printBox": {
+        "x": 82.98279571533203,
+        "y": 613.8558959960938,
+        "w": 216.72463989257812,
+        "h": 216.724609375
+      },
+      "objectBox": {
+        "x": 54.08623504638672,
+        "y": 370.0409851074219,
+        "w": 274.5179748535156,
+        "h": 494.8540344238281
+      },
+      "normalized": {
+        "x": 0.10526290922976786,
+        "y": 0.49270066308048216,
+        "w": 0.7894734033653849,
+        "h": 0.4379566383192941
+      },
+      "meta": null
+    },
+    {
+      "index": 1,
+      "printBox": {
+        "x": 97.43118286132812,
+        "y": 631.9159545898438,
+        "w": 187.82809448242188,
+        "h": 180.60394287109375
+      },
+      "objectBox": {
+        "x": 54.08623504638672,
+        "y": 370.0409851074219,
+        "w": 274.5179748535156,
+        "h": 494.8540344238281
+      },
+      "normalized": {
+        "x": 0.1578947529321915,
+        "y": 0.5291963917952693,
+        "w": 0.6842105497195513,
+        "h": 0.36496407083227234
+      },
+      "meta": null
+    },
+    {
+      "index": 2,
+      "printBox": {
+        "x": 392.2926025390625,
+        "y": 613.8558959960938,
+        "w": 216.724609375,
+        "h": 216.724609375
+      },
+      "objectBox": {
+        "x": 363.396484375,
+        "y": 370.0409851074219,
+        "w": 274.51727294921875,
+        "h": 494.8540344238281
+      },
+      "normalized": {
+        "x": 0.10526156643486624,
+        "y": 0.49270066308048216,
+        "w": 0.7894753107761293,
+        "h": 0.4379566383192941
+      },
+      "meta": null
+    },
+    {
+      "index": 3,
+      "printBox": {
+        "x": 406.74072265625,
+        "y": 631.9159545898438,
+        "w": 187.82806396484375,
+        "h": 180.60394287109375
+      },
+      "objectBox": {
+        "x": 363.396484375,
+        "y": 370.0409851074219,
+        "w": 274.51727294921875,
+        "h": 494.8540344238281
+      },
+      "normalized": {
+        "x": 0.15789257198860482,
+        "y": 0.5291963917952693,
+        "w": 0.6842121879871249,
+        "h": 0.36496407083227234
+      },
+      "meta": null
+    }
+  ],
+  "photoAnalyses": [
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+      "stem": "16535.66_77",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.058,
+        "y": 0,
+        "w": 0.942,
+        "h": 1
+      },
+      "pixelRatio": 0.1297,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 0.75
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+      "stem": "16535.66_76",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.254,
+        "y": 0.006,
+        "w": 0.492,
+        "h": 0.988
+      },
+      "pixelRatio": 0.13,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
     }
   ]
 }

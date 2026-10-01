@@ -2,7 +2,7 @@
   "article": "15637",
   "product": "Брелок Tetta",
   "productUrl": "https://gifts.ru/id/228756",
-  "scannedAt": "2026-10-01T20:54:36.670Z",
+  "scannedAt": "2026-10-01T21:00:06.797Z",
   "tabs": {
     "Фото": {
       "clicked": true,
@@ -1337,35 +1337,37 @@
       "schema": "gifts-mockup-profile/v1",
       "article": "15637",
       "variant": "",
-      "place": "лицо",
+      "place": "",
       "method": "",
       "photo": {
-        "id": "15637_3_200x200.webp",
+        "id": "15637_4",
         "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/52/15637_3_200x200.webp?v=2"
+        "url": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2"
       },
       "field": {
-        "id": "print1",
-        "printId": "print1",
+        "id": "field-1",
+        "printId": "",
         "applicationId": "",
-        "place": "лицо"
+        "place": "",
+        "sizeCm": null
       },
       "targetQuad": [
         {
-          "x": 0,
-          "y": 0
+          "x": 0.3025568486280597,
+          "y": 0.5809135340207194
         },
         {
-          "x": 1,
-          "y": 0
+          "x": 0.6954455752744764,
+          "y": 0.5809135340207194
         },
         {
-          "x": 1,
-          "y": 0.86
+          "x": 0.6954455752744764,
+          "y": 0.9659371945909336
         },
         {
-          "x": 0,
-          "y": 0.86
+          "x": 0.3025568486280597,
+          "y": 0.9659371945909336
         }
       ],
       "surface": "perspective",
@@ -1374,75 +1376,36 @@
         "blend": "source-over",
         "mesh": 18
       },
-      "status": "candidate",
-      "confidence": 0.5004,
-      "generatedBy": "github-actions-image-diff-v1",
+      "status": "candidate-high",
+      "confidence": 0.985,
+      "generatedBy": "github-actions-svg-silhouette-v1",
       "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/85/15637_15_200x200.jpg",
-        "meanDiff": 28.66,
-        "changedRatio": 0.3188,
-        "bbox": {
-          "x": 0,
-          "y": 0,
-          "w": 1,
-          "h": 0.86
-        }
-      }
-    },
-    {
-      "schema": "gifts-mockup-profile/v1",
-      "article": "15637",
-      "variant": "",
-      "place": "оборот",
-      "method": "",
-      "photo": {
-        "id": "15637_4_200x200.webp",
-        "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2"
-      },
-      "field": {
-        "id": "print2",
-        "printId": "print2",
-        "applicationId": "",
-        "place": "оборот"
-      },
-      "targetQuad": [
-        {
-          "x": 0.28,
-          "y": 0.04
+        "svgPrintBox": {
+          "x": 97.388916015625,
+          "y": 646.2135620117188,
+          "w": 205.28280639648438,
+          "h": 205.283447265625
         },
-        {
-          "x": 0.72,
-          "y": 0.04
+        "svgObjectBox": {
+          "x": 84.55805969238281,
+          "y": 370.6102600097656,
+          "w": 230.94325256347656,
+          "h": 493.7163391113281
         },
-        {
-          "x": 0.72,
-          "y": 0.98
+        "normalizedField": {
+          "x": 0.055558481058958525,
+          "y": 0.5582219589856582,
+          "w": 0.888888521824472,
+          "h": 0.4157922900326287
         },
-        {
-          "x": 0.28,
-          "y": 0.98
-        }
-      ],
-      "surface": "perspective",
-      "render": {
-        "opacity": 0.9,
-        "blend": "source-over",
-        "mesh": 18
-      },
-      "status": "candidate",
-      "confidence": 0.5959,
-      "generatedBy": "github-actions-image-diff-v1",
-      "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/47/15637_16_200x200.jpg",
-        "meanDiff": 19.715,
-        "changedRatio": 0.1664,
-        "bbox": {
-          "x": 0.28,
-          "y": 0.04,
-          "w": 0.44,
-          "h": 0.94
-        }
+        "photoObjectBox": {
+          "x": 0.278,
+          "y": 0.064,
+          "w": 0.442,
+          "h": 0.926
+        },
+        "photoPixelRatio": 0.2409,
+        "photoScore": 0.985
       }
     },
     {
@@ -1452,32 +1415,34 @@
       "place": "",
       "method": "",
       "photo": {
-        "id": "15637_1_200x200.webp",
+        "id": "15637_1",
         "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/50/15637_1_200x200.webp?v=2"
+        "url": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2"
       },
       "field": {
-        "id": "field-3",
+        "id": "field-2",
         "printId": "",
         "applicationId": "",
-        "place": ""
+        "place": "",
+        "sizeCm": null
       },
       "targetQuad": [
         {
-          "x": 0.061224489795918366,
-          "y": 0
+          "x": 0.2848216745042825,
+          "y": 0.5575232954778303
         },
         {
-          "x": 0.9591836734693877,
-          "y": 0
+          "x": 0.7192683050458197,
+          "y": 0.5575232954778303
         },
         {
-          "x": 0.9591836734693877,
-          "y": 1
+          "x": 0.7192683050458197,
+          "y": 0.9683260780300674
         },
         {
-          "x": 0.061224489795918366,
-          "y": 1
+          "x": 0.2848216745042825,
+          "y": 0.9683260780300674
         }
       ],
       "surface": "perspective",
@@ -1486,146 +1451,52 @@
         "blend": "source-over",
         "mesh": 18
       },
-      "status": "candidate",
-      "confidence": 0.4819,
-      "generatedBy": "github-actions-image-diff-v1",
+      "status": "candidate-high",
+      "confidence": 0.9592,
+      "generatedBy": "github-actions-svg-silhouette-v1",
       "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/49/15637_18_200x200.jpg",
-        "meanDiff": 30.897,
-        "changedRatio": 0.34653,
-        "bbox": {
-          "x": 0.061224489795918366,
-          "y": 0,
-          "w": 0.8979591836734694,
-          "h": 1
-        }
-      }
-    },
-    {
-      "schema": "gifts-mockup-profile/v1",
-      "article": "15637",
-      "variant": "",
-      "place": "",
-      "method": "",
-      "photo": {
-        "id": "15637_4_200x200.webp",
-        "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2"
-      },
-      "field": {
-        "id": "field-4",
-        "printId": "",
-        "applicationId": "",
-        "place": ""
-      },
-      "targetQuad": [
-        {
-          "x": 0.28,
-          "y": 0.02
+        "svgPrintBox": {
+          "x": 389.32891845703125,
+          "y": 646.2135620117188,
+          "w": 205.2828369140625,
+          "h": 205.283447265625
         },
-        {
-          "x": 0.72,
-          "y": 0.02
+        "svgObjectBox": {
+          "x": 376.49871826171875,
+          "y": 370.6102600097656,
+          "w": 230.9432373046875,
+          "h": 493.7163391113281
         },
-        {
-          "x": 0.72,
-          "y": 0.98
+        "normalizedField": {
+          "x": 0.05555564365102144,
+          "y": 0.5582219589856582,
+          "w": 0.8888887126979571,
+          "h": 0.4157922900326287
         },
-        {
-          "x": 0.28,
-          "y": 0.98
-        }
-      ],
-      "surface": "perspective",
-      "render": {
-        "opacity": 0.9,
-        "blend": "source-over",
-        "mesh": 18
-      },
-      "status": "candidate",
-      "confidence": 0.5769,
-      "generatedBy": "github-actions-image-diff-v1",
-      "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/21/15637_19_200x200.jpg",
-        "meanDiff": 26.507,
-        "changedRatio": 0.2568,
-        "bbox": {
-          "x": 0.28,
-          "y": 0.02,
-          "w": 0.44,
-          "h": 0.96
-        }
-      }
-    },
-    {
-      "schema": "gifts-mockup-profile/v1",
-      "article": "15637",
-      "variant": "",
-      "place": "",
-      "method": "",
-      "photo": {
-        "id": "15637_4_200x200.webp",
-        "name": "Фото gifts.ru",
-        "url": "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2"
-      },
-      "field": {
-        "id": "field-5",
-        "printId": "",
-        "applicationId": "",
-        "place": ""
-      },
-      "targetQuad": [
-        {
-          "x": 0.061224489795918366,
-          "y": 0.06
+        "photoObjectBox": {
+          "x": 0.25766871165644173,
+          "y": 0.006,
+          "w": 0.4887525562372188,
+          "h": 0.988
         },
-        {
-          "x": 0.8979591836734694,
-          "y": 0.06
-        },
-        {
-          "x": 0.8979591836734694,
-          "y": 0.98
-        },
-        {
-          "x": 0.061224489795918366,
-          "y": 0.98
-        }
-      ],
-      "surface": "perspective",
-      "render": {
-        "opacity": 0.9,
-        "blend": "source-over",
-        "mesh": 18
-      },
-      "status": "candidate",
-      "confidence": 0.2437,
-      "generatedBy": "github-actions-image-diff-v1",
-      "evidence": {
-        "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/48/15637_17_200x200.jpg",
-        "meanDiff": 39.897,
-        "changedRatio": 0.35224,
-        "bbox": {
-          "x": 0.061224489795918366,
-          "y": 0.06,
-          "w": 0.8367346938775511,
-          "h": 0.92
-        }
+        "photoPixelRatio": 0.2761,
+        "photoScore": 0.9592
       }
     }
   ],
   "errors": [],
   "finalUrl": "https://gifts.ru/id/228756",
   "title": "Брелок Tetta (артикул 15637) оптом — Проект 111",
+  "placeHostText": "Добавить нанесение",
   "photoUrls": [
     "https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/50/15637_1_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/52/15637_3_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/54/15637_5_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/55/15637_6_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/25/15637_20_200x200.webp?v=2",
-    "https://files.gifts.ru/size/50/reviewer/webp/26/15637_21_200x200.webp?v=2"
+    "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/52/15637_3_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/54/15637_5_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/55/15637_6_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/25/15637_20_500.webp?v=2",
+    "https://files.gifts.ru/reviewer/webp/26/15637_21_500.webp?v=2"
   ],
   "applicationUrls": [
     "https://files.gifts.ru/size/50/reviewer/thumbnails/85/15637_15_200x200.jpg",
@@ -1636,18 +1507,18 @@
   ],
   "matches": [
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/52/15637_3_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/52/15637_3_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/85/15637_15_200x200.jpg",
       "diff": {
-        "meanDiff": 28.66,
-        "changedRatio": 0.3188,
+        "meanDiff": 28.867,
+        "changedRatio": 0.312,
         "bbox": {
           "x": 0,
           "y": 0,
           "w": 1,
           "h": 0.86
         },
-        "confidence": 0.5004,
+        "confidence": 0.4966,
         "size": [
           50,
           50
@@ -1655,18 +1526,18 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/47/15637_16_200x200.jpg",
       "diff": {
-        "meanDiff": 19.715,
-        "changedRatio": 0.1664,
+        "meanDiff": 19.79,
+        "changedRatio": 0.166,
         "bbox": {
           "x": 0.28,
-          "y": 0.04,
+          "y": 0.06,
           "w": 0.44,
-          "h": 0.94
+          "h": 0.92
         },
-        "confidence": 0.5959,
+        "confidence": 0.5972,
         "size": [
           50,
           50
@@ -1674,37 +1545,18 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/50/15637_1_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/49/15637_18_200x200.jpg",
       "diff": {
-        "meanDiff": 30.897,
-        "changedRatio": 0.34653,
+        "meanDiff": 31.102,
+        "changedRatio": 0.3476,
         "bbox": {
-          "x": 0.061224489795918366,
+          "x": 0.06,
           "y": 0,
-          "w": 0.8979591836734694,
+          "w": 0.9,
           "h": 1
         },
-        "confidence": 0.4819,
-        "size": [
-          49,
-          50
-        ]
-      }
-    },
-    {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2",
-      "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/21/15637_19_200x200.jpg",
-      "diff": {
-        "meanDiff": 26.507,
-        "changedRatio": 0.2568,
-        "bbox": {
-          "x": 0.28,
-          "y": 0.02,
-          "w": 0.44,
-          "h": 0.96
-        },
-        "confidence": 0.5769,
+        "confidence": 0.4799,
         "size": [
           50,
           50
@@ -1712,23 +1564,251 @@
       }
     },
     {
-      "photoUrl": "https://files.gifts.ru/size/50/reviewer/webp/53/15637_4_200x200.webp?v=2",
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+      "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/21/15637_19_200x200.jpg",
+      "diff": {
+        "meanDiff": 26.658,
+        "changedRatio": 0.2556,
+        "bbox": {
+          "x": 0.28,
+          "y": 0.06,
+          "w": 0.44,
+          "h": 0.92
+        },
+        "confidence": 0.5808,
+        "size": [
+          50,
+          50
+        ]
+      }
+    },
+    {
+      "photoUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
       "applicationUrl": "https://files.gifts.ru/size/50/reviewer/thumbnails/48/15637_17_200x200.jpg",
       "diff": {
-        "meanDiff": 39.897,
-        "changedRatio": 0.35224,
+        "meanDiff": 39.98,
+        "changedRatio": 0.35469,
         "bbox": {
           "x": 0.061224489795918366,
           "y": 0.06,
           "w": 0.8367346938775511,
           "h": 0.92
         },
-        "confidence": 0.2437,
+        "confidence": 0.2435,
         "size": [
           49,
           50
         ]
       }
+    }
+  ],
+  "fieldMeta": [],
+  "svgFields": [
+    {
+      "index": 0,
+      "printBox": {
+        "x": 97.388916015625,
+        "y": 646.2135620117188,
+        "w": 205.28280639648438,
+        "h": 205.283447265625
+      },
+      "objectBox": {
+        "x": 84.55805969238281,
+        "y": 370.6102600097656,
+        "w": 230.94325256347656,
+        "h": 493.7163391113281
+      },
+      "normalized": {
+        "x": 0.055558481058958525,
+        "y": 0.5582219589856582,
+        "w": 0.888888521824472,
+        "h": 0.4157922900326287
+      },
+      "meta": null
+    },
+    {
+      "index": 1,
+      "printBox": {
+        "x": 389.32891845703125,
+        "y": 646.2135620117188,
+        "w": 205.2828369140625,
+        "h": 205.283447265625
+      },
+      "objectBox": {
+        "x": 376.49871826171875,
+        "y": 370.6102600097656,
+        "w": 230.9432373046875,
+        "h": 493.7163391113281
+      },
+      "normalized": {
+        "x": 0.05555564365102144,
+        "y": 0.5582219589856582,
+        "w": 0.8888887126979571,
+        "h": 0.4157922900326287
+      },
+      "meta": null
+    }
+  ],
+  "photoAnalyses": [
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2",
+      "stem": "15637_7",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.314,
+        "y": 0.004,
+        "w": 0.37,
+        "h": 0.99
+      },
+      "pixelRatio": 0.2144,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+      "stem": "15637_1",
+      "width": 489,
+      "height": 500,
+      "box": {
+        "x": 0.25766871165644173,
+        "y": 0.006,
+        "w": 0.4887525562372188,
+        "h": 0.988
+      },
+      "pixelRatio": 0.2761,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/52/15637_3_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/52/15637_3_500.webp?v=2",
+      "stem": "15637_3",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.006,
+        "y": 0.158,
+        "w": 0.988,
+        "h": 0.686
+      },
+      "pixelRatio": 0.2567,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+      "stem": "15637_4",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.278,
+        "y": 0.064,
+        "w": 0.442,
+        "h": 0.926
+      },
+      "pixelRatio": 0.2409,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/54/15637_5_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/54/15637_5_500.webp?v=2",
+      "stem": "15637_5",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.354,
+        "y": 0.008,
+        "w": 0.29,
+        "h": 0.986
+      },
+      "pixelRatio": 0.2136,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/55/15637_6_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/55/15637_6_500.webp?v=2",
+      "stem": "15637_6",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0.004,
+        "y": 0.206,
+        "w": 0.99,
+        "h": 0.588
+      },
+      "pixelRatio": 0.3018,
+      "background": [
+        255,
+        255,
+        255
+      ],
+      "confidence": 1
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/25/15637_20_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/25/15637_20_500.webp?v=2",
+      "stem": "15637_20",
+      "width": 667,
+      "height": 500,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "pixelRatio": 0.7749,
+      "background": [
+        71,
+        71,
+        69
+      ],
+      "confidence": 0.75
+    },
+    {
+      "url": "https://files.gifts.ru/reviewer/webp/26/15637_21_500.webp?v=2",
+      "sourceUrl": "https://files.gifts.ru/reviewer/webp/26/15637_21_500.webp?v=2",
+      "stem": "15637_21",
+      "width": 500,
+      "height": 500,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "pixelRatio": 0.2913,
+      "background": [
+        17,
+        17,
+        17
+      ],
+      "confidence": 0.75
     }
   ]
 }
