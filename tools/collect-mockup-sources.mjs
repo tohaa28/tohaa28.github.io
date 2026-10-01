@@ -1,4 +1,4 @@
-// collector-version: 7
+// collector-version: 8
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -132,7 +132,7 @@ function unionBoxes(boxes){
 }
 function parsePlaceFields(text){
   const flat=String(text||"").replace(/\s+/g," ").trim(),out=[];
-  const re=/(\d+(?:[.,]\d+)?)\s*[×x]\s*(\d+(?:[.,]\d+)?)\s+(.+?)(?=(?:\d+(?:[.,]\d+)?)\s*[×x]|Расчет|$)/gi;
+  const re=/(\d+(?:[.,]\d+)?)\s*[×x]\s*(\d+(?:[.,]\d+)?)\s+(.+?)(?=(?:\d+(?:[.,]\d+)?)\s*[×x]|Кастомизация|Расчет|Предложений|$)/gi;
   for(const m of flat.matchAll(re)){
     const place=m[3].replace(/(?:по виду нанесения|Предложений нет).*$/i,"").trim();
     if(place&&place.length<100)out.push({sizeCm:[Number(m[1].replace(",",".")),Number(m[2].replace(",","."))],place});
@@ -236,7 +236,7 @@ async function buildSvgSilhouetteBindings(ctx,article,photoUrls,probes,fieldMeta
         place:meta.place||expected.place||"",method:"",
         photo:{id:match.p.stem,name:"Фото gifts.ru",url:match.p.url,sourceUrl:match.p.sourceUrl},
         field:{id:expected.printId||("field-"+(f.index+1)),printId:expected.printId||"",applicationId:"",place:meta.place||expected.place||"",sizeCm:meta.sizeCm||expected.fieldSizeCm||null},
-        targetQuad:q,surface:"perspective",render:{opacity:.9,blend:"source-over",mesh:18},
+        targetQuad:q,surface:/круж|бутыл|термо/i.test(String(article)+" "+String(meta.place||expected.place||""))&&/по периметру|слева от ручки|напротив ручки|справа от ручки/i.test(String(meta.place||expected.place||""))?"cylinder":"perspective",render:{opacity:.9,blend:"source-over",mesh:18},
         status:confidence>=.82?"candidate-high":"candidate",
         confidence:Number(confidence.toFixed(4)),
         generatedBy:"github-actions-svg-silhouette-v1",
