@@ -1387,7 +1387,23 @@
       const url = new URL(raw, document.baseURI || (GIFTS_ORIGIN + "/"));
       const method = String(init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
 
-      if (url.origin === GIFTS_ORIGIN && url.pathname.startsWith("/api/")) {
+      const isLocalApi = url.pathname.startsWith("/api/") &&
+        (url.origin === GIFTS_ORIGIN || url.origin === location.origin);
+      if (isLocalApi) {
+        if (url.origin !== GIFTS_ORIGIN) {
+          if (url.pathname === "/api/session" && method === "GET") {
+            return json({
+              active: false,
+              direct: true,
+              source: "requires-gifts-origin",
+              note: "Для чтения заказов запустите «Макетную + мокапы» поверх gifts.ru."
+            });
+          }
+          return json({
+            error: "Эта отдельная страница не может читать защищённые заказы gifts.ru напрямую. Откройте gifts.ru и запустите независимую «Макетную + мокапы» через её launcher."
+          }, 409);
+        }
+
         if (url.pathname === "/api/session" && method === "GET") return apiSession();
         if (url.pathname === "/api/login") return apiLogin({ ...init, method });
         if (url.pathname === "/api/basket" && method === "GET") return apiBasket();
