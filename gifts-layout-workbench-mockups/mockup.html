@@ -441,6 +441,9 @@ async function applyProfile(p){
     state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;
     if(src)await setImageFromSource("photo",src,c.name);
     state.photoSource={id:c.id,name:c.name,url:c.url};
+  }else if(p.photo?.url){
+    const ok=await setImageFromSource("photo",p.photo.url,p.photo.name||"Фото Gifts");
+    if(ok)state.photoSource={id:p.photo.id||photoLookupKey(p.photo.url),name:p.photo.name||"Фото Gifts",url:p.photo.url};
   }
   if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));
   $("surface").value=p.surface||"perspective";
