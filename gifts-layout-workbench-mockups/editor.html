@@ -17,7 +17,7 @@
   if(!open||!combo||!shell||!back||!frame)return;
   const targetOrigin="https://tohaa28.github.io";
   const registryUrls=["https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json","https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup-profiles.json"];
-  let registry={profiles:[]},registryPromise=null,lastProfile=null,busy=false;
+  let registry={profiles:[]},registryPromise=null,lastProfiles=[],busy=false;
 
   const placeKey=v=>String(v||"").trim().toLocaleLowerCase("ru-RU").replace(/ё/g,"е").replace(/\s+/g," ").replace(/\s*\[[^\]]*\]\s*$/,"").replace(/\s*\([^)]*(?:pantone|black|white|cmyk|rgb)[^)]*\)\s*$/i,"").trim();
   const sizeScore=(profile,state)=>{
@@ -27,11 +27,19 @@
     const e=Math.min(err(a,b),err([a[1],a[0]],b));
     return e<=.12?20-Math.round(e*50):-1000;
   };
-  const findProfile=state=>{
-    if(!state?.article)return null;let best=null;
+  const photoKey=p=>{
+    const raw=String(p?.photo?.id||p?.photo?.url||p?.photo?.name||"").trim().toLowerCase();
+    if(!raw)return "";
+    try{return decodeURIComponent(new URL(raw,location.href).pathname.split("/").pop()||raw).replace(/_(?:200x200|300x300|400|500)(?=\.)/i,"").replace(/\.[^.]+$/,"").toLowerCase()}catch{return raw}
+  };
+  const findProfiles=state=>{
+    if(!state?.article)return [];
+    const matches=[];
     for(const p of registry.profiles||[]){
-      if(!["confirmed","confirmed-auto"].includes(String(p.status||"")))continue;
+      if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))continue;
       if(String(p.article||"").trim()!==String(state.article||"").trim())continue;
+      const pv=String(p.variant||"").trim().toLowerCase(),sv=String(state.variant||"").trim().toLowerCase();
+      if(pv&&sv&&pv!==sv)continue;
       const pp=placeKey(p.place||p.field?.place),sp=placeKey(state.place);
       if(pp&&sp&&pp!==sp)continue;
       const pi=String(p.field?.printId||"").trim().toLowerCase(),si=String(state.printId||"").trim().toLowerCase();
@@ -39,10 +47,18 @@
       const ss=sizeScore(p,state);if(ss<0)continue;
       let score=50+ss+Math.round(Number(p.confidence||0)*10);
       if(pi&&si&&pi===si)score+=30;if(pp&&sp&&pp===sp)score+=20;
-      if(!best||score>best.score)best={profile:p,score};
+      if(p.status==="confirmed-manual")score+=5;
+      matches.push({profile:p,score});
     }
-    return best?.profile||null;
+    matches.sort((a,b)=>b.score-a.score||String(b.profile.updatedAt||b.profile.confirmedAt||"").localeCompare(String(a.profile.updatedAt||a.profile.confirmedAt||"")));
+    const out=[],seen=new Set();
+    for(const m of matches){
+      const k=photoKey(m.profile)||JSON.stringify([m.profile.photo?.id,m.profile.photo?.url,m.profile.photo?.name]);
+      if(seen.has(k))continue;seen.add(k);out.push(m.profile);
+    }
+    return out;
   };
+  const mockupWord=n=>{const a=Math.abs(Number(n))%100,b=a%10;return a>10&&a<20?"мокапов":b===1?"мокап":b>=2&&b<=4?"мокапа":"мокапов"};
   const currentState=()=>{
     try{if(typeof window.gwbGetMockupState==="function")return window.gwbGetMockupState()}catch{}
     const count=Number((document.getElementById("placementCount")?.textContent.match(/Добавлено логотипов:\s*(\d+)/i)||[])[1]||0);
@@ -69,9 +85,11 @@
   function refresh(){
     const state=currentState(),eligible=!!state?.hasSelectedArticle&&Number(state.logoCount)>0;
     const hideOpen=!eligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
-    lastProfile=eligible?findProfile(state):null;
-    const hideCombo=!(eligible&&lastProfile);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
-    const disableCombo=busy||!!state?.exportDisabled||!lastProfile;if(combo.disabled!==disableCombo)combo.disabled=disableCombo;
+    lastProfiles=eligible?findProfiles(state):[];
+    const count=lastProfiles.length,hideCombo=!(eligible&&count);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
+    const disableCombo=busy||!!state?.exportDisabled||!count;if(combo.disabled!==disableCombo)combo.disabled=disableCombo;
+    if(count)combo.textContent=count===1?"Скачать макет и мокап":`Скачать макет и ${count} ${mockupWord(count)}`;
+    else combo.textContent="Скачать макет и мокап";
     if(eligible&&!registryPromise)loadRegistry();
     if(!eligible&&!shell.hidden)hide();
   }
@@ -83,24 +101,32 @@
   const safeName=v=>String(v||"макет").replace(/[^\p{L}\p{N}._-]+/gu,"_").replace(/^_+|_+$/g,"").slice(0,120)||"макет";
 
   combo.addEventListener("click",async()=>{
-    if(busy)return;const state=currentState(),profile=findProfile(state);if(!profile)return refresh();
+    if(busy)return;const state=currentState(),profiles=findProfiles(state);if(!profiles.length)return refresh();
     if(typeof window.gwbBuildMockupHandoff!=="function"||typeof window.gwbCreateReadyLayoutPdf!=="function"){if(status)status.textContent="Экспорт ещё загружается. Повторите через секунду.";return}
-    busy=true;refresh();if(status)status.textContent="Собираю PDF и мокап…";
+    busy=true;refresh();if(status)status.textContent=`Собираю PDF и ${profiles.length} ${mockupWord(profiles.length)}…`;
     try{
       const payload=await window.gwbBuildMockupHandoff();if(!payload)throw new Error("Нет данных выбранного логотипа.");
       await deliver(payload);
       const child=await waitForChild();
-      await child.gwbApplyMockupProfile(profile);
       const pdf=await window.gwbCreateReadyLayoutPdf();
-      const png=await child.gwbCreateMockupPng();
       const zip=new JSZip();
       zip.file(pdf.filename,new Uint8Array(await pdf.blob.arrayBuffer()));
-      zip.file(png.filename,new Uint8Array(await png.blob.arrayBuffer()));
+      for(let i=0;i<profiles.length;i++){
+        const profile=profiles[i];
+        if(status)status.textContent=`Создаю мокап ${i+1} из ${profiles.length}…`;
+        await child.gwbApplyMockupProfile(profile);
+        const png=await child.gwbCreateMockupPng();
+        const photo=safeName(profile.photo?.id||profile.photo?.name||String(i+1));
+        const place=safeName(profile.place||profile.field?.place||state.place||"place");
+        const name=safeName([state.article,place,`mockup_${String(i+1).padStart(2,"0")}`,photo].filter(Boolean).join("_"))+".png";
+        zip.file(name,new Uint8Array(await png.blob.arrayBuffer()));
+      }
+      if(profiles[0])await child.gwbApplyMockupProfile(profiles[0]);
       const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
       const a=document.createElement("a"),url=URL.createObjectURL(blob);
-      a.href=url;a.download=safeName([state.order,state.article,"макет_и_мокап"].filter(Boolean).join("_"))+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
-      if(status)status.textContent="Скачан ZIP: готовый PDF-макет и PNG-мокап.";
-    }catch(error){if(status)status.textContent="Не удалось скачать макет и мокап: "+(error?.message||String(error));console.error(error)}
+      a.href=url;a.download=safeName([state.order,state.article,`макет_и_${profiles.length}_мокапов`].filter(Boolean).join("_"))+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
+      if(status)status.textContent=`Скачан ZIP: PDF-макет и ${profiles.length} ${mockupWord(profiles.length)}.`;
+    }catch(error){if(status)status.textContent="Не удалось скачать макет и мокапы: "+(error?.message||String(error));console.error(error)}
     finally{busy=false;refresh()}
   });
 
