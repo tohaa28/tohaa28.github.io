@@ -96,7 +96,6 @@
       const zip=new JSZip();
       zip.file(pdf.filename,new Uint8Array(await pdf.blob.arrayBuffer()));
       zip.file(png.filename,new Uint8Array(await png.blob.arrayBuffer()));
-      zip.file("mockup-profile.json",JSON.stringify(profile,null,2));
       const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
       const a=document.createElement("a"),url=URL.createObjectURL(blob);
       a.href=url;a.download=safeName([state.order,state.article,"макет_и_мокап"].filter(Boolean).join("_"))+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
