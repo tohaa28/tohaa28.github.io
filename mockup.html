@@ -504,6 +504,7 @@ async function createMockupPngBlob(){
   return{blob,filename:`mockup-${slug(p.article)}-${slug(p.place)}.png`,profile:p};
 }
 window.gwbCreateMockupPng=createMockupPngBlob;
+window.gwbApplyMockupProfile=applyProfile;
 $("exportPng").onclick=async()=>{
   try{const out=await createMockupPngBlob();downloadBlob(out.filename,out.blob);setStatus("Мокап PNG сохранён");}
   catch(err){setStatus("Экспорт мокапа не выполнен: "+(err?.message||err));}
