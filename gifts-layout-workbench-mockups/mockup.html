@@ -433,6 +433,10 @@ async function applyProfile(p){
   const wantedKeys=new Set([p.photo?.id,p.photo?.url,p.photo?.sourceUrl].filter(Boolean).map(photoLookupKey));
   let pi=state.photoCandidates.findIndex(c=>[c.id,c.url].filter(Boolean).some(v=>wantedKeys.has(photoLookupKey(v))));
   if(pi<0&&p.photo?.id)pi=state.photoCandidates.findIndex(c=>photoLookupKey(c.id)===photoLookupKey(p.photo.id));
+  if(pi<0&&p.photo?.url){
+    const c=normalizedPhotoCandidate({id:p.photo.id||p.photo.url,name:p.photo.name||"Фото Git-профиля",url:p.photo.url},state.photoCandidates.length);
+    state.photoCandidates.push(c);pi=state.photoCandidates.length-1;
+  }
   if(pi>=0){
     state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;
     if(src)await setImageFromSource("photo",src,c.name);
@@ -491,13 +495,19 @@ window.addEventListener("message",event=>{if(event.source!==parent||!allowedPare
 $("readHandoff").onclick=async()=>{if(bridgedHandoff){await acceptBridgedHandoff(bridgedHandoff);return;}const raw=localStorage.getItem(HANDOFF_KEY);if(raw){try{await applyHandoff(JSON.parse(raw));return;}catch(err){setStatus("Ошибка handoff: "+err.message);return;}}if(parent!==window){setStatus("Запрашиваю данные из Макетной…");requestParentHandoff();return;}setStatus("Передача из Макетной пока не найдена");};
 $("handoffFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyHandoff(JSON.parse(await f.text()));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
 
-$("exportPng").onclick=()=>{
-  if(!state.photo){setStatus("Сначала загрузите фотографию");return;}
-  try{
-    const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
-    if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value);ctx.restore();}
-    c.toBlob(blob=>{if(blob){const p=buildProfile();downloadBlob(`mockup-${slug(p.article)}-${slug(p.place)}.png`,blob);setStatus("Мокап PNG сохранён");}},"image/png");
-  }catch(err){setStatus("Экспорт заблокирован CORS. Передайте фото в handoff как data URL или загрузите файл локально.");}
+async function createMockupPngBlob(){
+  if(!state.photo)throw new Error("Сначала загрузите фотографию");
+  const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
+  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value);ctx.restore();}
+  const blob=await new Promise((resolve,reject)=>{try{c.toBlob(b=>b?resolve(b):reject(new Error("Не удалось сформировать PNG")),"image/png")}catch(err){reject(err)}});
+  const p=buildProfile();
+  return{blob,filename:`mockup-${slug(p.article)}-${slug(p.place)}.png`,profile:p};
+}
+window.gwbCreateMockupPng=createMockupPngBlob;
+window.gwbApplyMockupProfile=applyProfile;
+$("exportPng").onclick=async()=>{
+  try{const out=await createMockupPngBlob();downloadBlob(out.filename,out.blob);setStatus("Мокап PNG сохранён");}
+  catch(err){setStatus("Экспорт мокапа не выполнен: "+(err?.message||err));}
 };
 
 window.addEventListener("resize",()=>requestAnimationFrame(renderAll));
