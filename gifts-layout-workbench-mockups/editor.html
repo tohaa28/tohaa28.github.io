@@ -68,10 +68,10 @@
 
   function refresh(){
     const state=currentState(),eligible=!!state?.hasSelectedArticle&&Number(state.logoCount)>0;
-    open.hidden=!eligible;
+    const hideOpen=!eligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
     lastProfile=eligible?findProfile(state):null;
-    combo.hidden=!(eligible&&lastProfile);
-    combo.disabled=busy||!!state?.exportDisabled||!lastProfile;
+    const hideCombo=!(eligible&&lastProfile);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
+    const disableCombo=busy||!!state?.exportDisabled||!lastProfile;if(combo.disabled!==disableCombo)combo.disabled=disableCombo;
     if(eligible&&!registryPromise)loadRegistry();
     if(!eligible&&!shell.hidden)hide();
   }
@@ -109,9 +109,12 @@
   window.addEventListener("gwb-mockup-handoff-ready",()=>{sendHandoff();refresh()});
   window.addEventListener("message",event=>{if(event.source===frame.contentWindow&&event.data?.type==="gifts-mockup-handoff-request")sendHandoff()});
   window.addEventListener("keydown",e=>{if(e.key==="Escape"&&!shell.hidden)hide()});
-  new MutationObserver(refresh).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["hidden","disabled","class"]});
+  const watch=(node,options)=>{if(node)new MutationObserver(refresh).observe(node,options)};
+  watch(document.getElementById("placementCount"),{subtree:true,childList:true,characterData:true});
+  watch(document.getElementById("orderTemplateSummaryText"),{subtree:true,childList:true,characterData:true});
+  watch(simpleExport,{attributes:true,attributeFilter:["disabled"]});
   document.addEventListener("change",refresh,true);document.addEventListener("input",refresh,true);
-  setInterval(refresh,400);loadRegistry();refresh();
+  setInterval(refresh,500);loadRegistry();refresh();
 })();
 </script><script>
 (()=>{if(!/github\.io$/i.test(location.hostname))return;const n=document.getElementById("directGithubNotice");if(n)n.hidden=false;const intro=document.getElementById("orderIntro");if(intro)intro.textContent="Для заказов gifts.ru эта независимая версия должна быть запущена поверх gifts.ru. Здесь можно вручную открыть шаблон или перейти в редактор мокапов.";const status=document.getElementById("loginStatus");if(status)status.textContent="Прямой вход с GitHub Pages отключён: браузер не даёт этой странице читать защищённые заказы gifts.ru.";})();
