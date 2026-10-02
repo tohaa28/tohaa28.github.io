@@ -44,6 +44,8 @@ jobs:
           node -e 'const x=require("./mockup-profiles.json"); if(x.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(x.profiles)) process.exit(1)'
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
+          grep -q 'background:"rgba(0,0,0,0)"' assets/index-BpU9kvz8.js
+          grep -q 'ctx.drawImage(compositeImage' assets/index-BpU9kvz8.js
           node --check launcher.js
           grep -q "gifts-layout-workbench-mockups" launcher.js
           grep -q "Mockup Lab" launcher.js
