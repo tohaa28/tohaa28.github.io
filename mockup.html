@@ -432,6 +432,7 @@ function validateProfileForGit(p){
   if(!p.place)return "Не указано место нанесения";
   if(!p.field?.printId&&!p.field?.applicationId&&!p.field?.id)return "Не определено поле конструктора";
   if(!p.photo?.id&&!p.photo?.url&&!p.photo?.name)return "Не выбрана фотография";
+  if(!/^https:\/\/(?:files\.)?gifts\.ru\//i.test(String(p.photo?.url||"")))return "Для сохранения на сайт выберите фотографию артикула с gifts.ru";
   if(!Array.isArray(p.targetQuad)||p.targetQuad.length!==4)return "Не размечены четыре угла на фотографии";
   return "";
 }
@@ -453,7 +454,7 @@ window.addEventListener("message",event=>{
     serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
     renderProfileLibrary();updateSummary();
     setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
-    try{event.source?.close()}catch{}
+    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
   }else if(data.type==="gifts-mockup-profile-save-error"){
     setStatus("Не удалось сохранить сопоставление: "+String(data.message||"ошибка Git"));
   }
