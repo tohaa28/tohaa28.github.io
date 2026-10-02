@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Сохранение привязки мокапа</title>
+<style>
+:root{font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#152025;background:#f3f6f7}body{margin:0;padding:24px}.card{max-width:620px;margin:auto;background:#fff;border:1px solid #d7e0e3;border-radius:14px;padding:20px;box-shadow:0 8px 30px #0001}h1{font-size:20px;margin:0 0 8px}p{margin:8px 0;color:#536168}.summary{white-space:pre-wrap;background:#f7f9fa;border-radius:9px;padding:12px;margin:16px 0;color:#263238}label{display:block;font-weight:600;margin:14px 0 6px}input{box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid #bdc9cd;border-radius:8px;font:inherit}button{border:0;border-radius:8px;padding:11px 16px;background:#087d88;color:white;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:default}.muted{font-size:12px;color:#69787e}.status{margin-top:14px;font-weight:600}.ok{color:#14723a}.err{color:#ad2635}a{color:#087d88}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Сохранить сопоставление в Git</h1>
+<p>Профиль будет записан в <code>mockup-profiles.json</code> ветки <code>gifts-layout-workbench-mockups-source</code>.</p>
+<div id="summary" class="summary"></div>
+<label for="token">GitHub fine-grained token</label>
+<input id="token" type="password" autocomplete="off" placeholder="github_pat_…">
+<p class="muted">Нужен доступ только к репозиторию <strong>tohaa28/tohaa28.github.io</strong> с разрешением <strong>Contents: Read and write</strong>. Токен хранится только в sessionStorage этого домена до закрытия браузерной сессии и не передаётся gifts.ru.</p>
+<button id="save">Сохранить на сайт</button>
+<div id="status" class="status"></div>
+</div>
+<script>
+const OWNER="tohaa28",REPO="tohaa28.github.io",BRANCH="gifts-layout-workbench-mockups-source",PATH="mockup-profiles.json";
+const $=id=>document.getElementById(id);
+function decodeProfile(){
+  try{
+    let s=location.hash.slice(1).replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";
+    const bin=atob(s),bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }catch{return null}
+}
+function key(p){return [p.article,p.variant,p.place,p.photo?.id||p.photo?.name||p.photo?.url,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLocaleLowerCase("ru-RU")).join("|")}
+function b64utf8(text){const bytes=new TextEncoder().encode(text);let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s)}
+function headers(token){return{Accept:"application/vnd.github+json",Authorization:"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28","Content-Type":"application/json"}}
+async function readRegistry(token){
+  const url=`https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}?ref=${encodeURIComponent(BRANCH)}&t=${Date.now()}`;
+  const r=await fetch(url,{headers:headers(token),cache:"no-store"});if(!r.ok)throw Error("GitHub GET "+r.status);
+  const meta=await r.json(),raw=atob(String(meta.content||"").replace(/\s/g,"")),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+  return{sha:meta.sha,data:JSON.parse(new TextDecoder().decode(bytes))};
+}
+async function writeRegistry(token,profile){
+  for(let attempt=0;attempt<2;attempt++){
+    const current=await readRegistry(token),reg=current.data,now=new Date().toISOString();
+    const saved={...profile,status:"confirmed-manual",updatedAt:now,confirmedAt:now,confirmedBy:"mockup-editor-manual",generatedBy:"mockup-editor-manual"};
+    const k=key(saved),profiles=Array.isArray(reg.profiles)?reg.profiles:[];
+    const i=profiles.findIndex(p=>key(p)===k);
+    if(i>=0)profiles[i]=saved;else profiles.unshift(saved);
+    reg.profiles=profiles;
+    reg.candidates=(Array.isArray(reg.candidates)?reg.candidates:[]).filter(p=>key(p)!==k);
+    reg.updatedAt=now;reg.version=Math.max(1,Number(reg.version)||1);
+    const body={message:`Save manual mockup mapping ${saved.article} · ${saved.place} · ${saved.photo?.id||saved.photo?.name||"photo"}`,content:b64utf8(JSON.stringify(reg,null,2)+"\n"),branch:BRANCH,sha:current.sha};
+    const url=`https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
+    const r=await fetch(url,{method:"PUT",headers:headers(token),body:JSON.stringify(body)});
+    if(r.ok){const out=await r.json();return{profile:saved,commit:out.commit?.sha||""}}
+    if(r.status!==409&&r.status!==422)throw Error("GitHub PUT "+r.status+" · "+await r.text());
+  }
+  throw Error("Файл изменился одновременно. Повторите сохранение.");
+}
+const profile=decodeProfile();
+if(!profile){$("summary").textContent="Профиль не передан или повреждён.";$("save").disabled=true}
+else $("summary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||profile.field?.id||"—"}`,`Фото: ${profile.photo?.name||profile.photo?.id||profile.photo?.url||"—"}`].join("\n");
+$("token").value=sessionStorage.getItem("gifts.mockup.gitToken")||"";
+async function save(){
+  if(!profile)return;const token=$("token").value.trim();if(!token){$("status").textContent="Введите GitHub token";$("status").className="status err";return}
+  $("save").disabled=true;$("status").textContent="Сохраняю в Git…";$("status").className="status";
+  try{
+    sessionStorage.setItem("gifts.mockup.gitToken",token);
+    const result=await writeRegistry(token,profile);
+    $("status").textContent="Сохранено. Commit "+String(result.commit).slice(0,7);$("status").className="status ok";
+    try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"https://gifts.ru")}catch{try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"*")}catch{}}
+    setTimeout(()=>window.close(),700);
+  }catch(e){
+    $("status").textContent="Ошибка: "+(e?.message||e);$("status").className="status err";$("save").disabled=false;
+    try{window.opener?.postMessage({type:"gifts-mockup-profile-save-error",message:e?.message||String(e)},"*")}catch{}
+  }
+}
+$("save").onclick=save;
+$("token").addEventListener("keydown",e=>{if(e.key==="Enter")save()});
+if($("token").value&&profile)setTimeout(save,120);
+</script>
+</body></html>
