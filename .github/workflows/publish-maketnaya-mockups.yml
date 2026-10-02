@@ -59,6 +59,12 @@ jobs:
           grep -q 'corsImg.onerror=()=>direct()' mockup.html
           grep -q 'id="mockupModeButton"' editor.html
           grep -q 'id="mockupShell"' editor.html
+          grep -q 'findProfiles=state' editor.html
+          grep -q 'profiles.length' editor.html
+          grep -q 'id="saveToGit"' mockup.html
+          grep -q 'confirmed-manual' mockup.html
+          grep -q 'gifts-mockup-profile-registry-changed' mockup.html
+          grep -q 'Contents: Read and write' save-profile.html
 
   publish:
     needs: precheck
