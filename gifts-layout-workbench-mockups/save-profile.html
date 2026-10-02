@@ -67,8 +67,8 @@ async function save(){
     sessionStorage.setItem("gifts.mockup.gitToken",token);
     const result=await writeRegistry(token,profile);
     $("status").textContent="Сохранено. Commit "+String(result.commit).slice(0,7);$("status").className="status ok";
-    try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"https://gifts.ru")}catch{try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"*")}catch{}}
-    setTimeout(()=>window.close(),700);
+    try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"*")}catch{}
+    $("status").textContent="Сохранено. Commit "+String(result.commit).slice(0,7)+". Оставьте это окно открытым — следующие сопоставления сохранятся без повторного ввода токена.";
   }catch(e){
     $("status").textContent="Ошибка: "+(e?.message||e);$("status").className="status err";$("save").disabled=false;
     try{window.opener?.postMessage({type:"gifts-mockup-profile-save-error",message:e?.message||String(e)},"*")}catch{}
