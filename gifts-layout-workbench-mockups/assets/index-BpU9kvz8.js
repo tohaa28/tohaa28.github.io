@@ -102,7 +102,18 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
   const art=placement?.art||y.art||null;
   let fieldCompositeDataUrl=art?.src||"";
   try{
-    if(placement?.field&&placement?.placement&&art?.image){
+    let compositeImage=art?.image||null;
+    if(art?.pdf){
+      try{
+        const page=art.pdfPage||await art.pdf.getPage(1),baseViewport=page.getViewport({scale:1}),renderScale=Math.min(4,1600/Math.max(1,baseViewport.width,baseViewport.height)),viewport=page.getViewport({scale:renderScale}),transparent=document.createElement("canvas");
+        transparent.width=Math.max(1,Math.ceil(viewport.width));transparent.height=Math.max(1,Math.ceil(viewport.height));
+        const transparentCtx=transparent.getContext("2d");
+        transparentCtx.clearRect(0,0,transparent.width,transparent.height);
+        await page.render({canvasContext:transparentCtx,viewport,background:"rgba(0,0,0,0)"}).promise;
+        compositeImage=transparent;
+      }catch{}
+    }
+    if(placement?.field&&placement?.placement&&compositeImage){
       const field=placement.field,p=placement.placement,W=1000,H=Math.max(1,Math.round(W*field.h/field.w)),canvas=document.createElement("canvas");
       canvas.width=W;canvas.height=H;
       const ctx=canvas.getContext("2d"),scale=W/field.w;
@@ -110,7 +121,7 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
       ctx.save();
       ctx.translate((p.x-field.x+p.w/2)*scale,(p.y-field.y+p.h/2)*scale);
       ctx.rotate((Number(p.rotation)||0)*Math.PI/180);
-      ctx.drawImage(art.image,-p.w*scale/2,-p.h*scale/2,p.w*scale,p.h*scale);
+      ctx.drawImage(compositeImage,-p.w*scale/2,-p.h*scale/2,p.w*scale,p.h*scale);
       ctx.restore();
       fieldCompositeDataUrl=canvas.toDataURL("image/png");
     }
