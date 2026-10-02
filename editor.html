@@ -132,7 +132,18 @@
 
   open.addEventListener("click",show);back.addEventListener("click",hide);frame.addEventListener("load",()=>{sendHandoff();refresh()});
   window.addEventListener("gwb-mockup-handoff-ready",()=>{sendHandoff();refresh()});
-  window.addEventListener("message",event=>{if(event.source===frame.contentWindow&&event.data?.type==="gifts-mockup-handoff-request")sendHandoff()});
+  window.addEventListener("message",event=>{
+    if(event.source!==frame.contentWindow)return;
+    if(event.data?.type==="gifts-mockup-handoff-request"){sendHandoff();return}
+    if(event.data?.type==="gifts-mockup-profile-registry-changed"&&event.data.profile){
+      const saved=event.data.profile;
+      const id=p=>[p.article,p.variant,p.place,p.photo?.id||p.photo?.url||p.photo?.name,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLowerCase()).join("|");
+      registry.profiles=(registry.profiles||[]).filter(p=>id(p)!==id(saved));
+      registry.profiles.unshift(saved);
+      refresh();
+      if(status)status.textContent="Новое сопоставление сохранено в Git и уже доступно для мокапов.";
+    }
+  });
   window.addEventListener("keydown",e=>{if(e.key==="Escape"&&!shell.hidden)hide()});
   const watch=(node,options)=>{if(node)new MutationObserver(refresh).observe(node,options)};
   watch(document.getElementById("placementCount"),{subtree:true,childList:true,characterData:true});
