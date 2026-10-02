@@ -86,7 +86,9 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
       place:String(meta.name||binding.name||field.orderPlace||field.pdfPlace||field.pdfLabel||("Поле "+(index+1))),
       method:String(meta.method||binding.method||entry?.method||v("method").value||""),
       page:Number(field.page||0),
-      bounds:{x:Number(field.x),y:Number(field.y),w:Number(field.w),h:Number(field.h)}
+      bounds:{x:Number(field.x),y:Number(field.y),w:Number(field.w),h:Number(field.h)},
+      fieldW:Number(field.nominalW||field.w||0),
+      fieldH:Number(field.nominalH||field.h||0)
     };
   });
   let activeIndex=Number(v("orderFieldChoice")?.value);
@@ -187,6 +189,33 @@ gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
     artworkDataUrl:String(art?.src||""),
     fieldCompositeDataUrl:String(fieldCompositeDataUrl||"")
   };
+};
+window.gwbGetMockupState=function(){
+  Ft();
+  const filled=(y.placements||[]).filter(p=>p?.art&&p?.placement&&p?.field);
+  const active=y.active>=0?y.placements[y.active]:null, placement=active?.art&&active?.placement&&active?.field?active:(filled[0]||null);
+  const index=Number.isInteger(placement?.fieldIndex)?placement.fieldIndex:null, meta=index!==null?(oo(index)||{}):{}, field=placement?.field||null, entry=y.selectedEntry||null;
+  return {
+    hasSelectedArticle:!!entry?.article,
+    article:String(entry?.article||v("article")?.value||""),
+    order:String(entry?.order||v("order")?.value||""),
+    logoCount:filled.length,
+    fieldIndex:index,
+    printId:String(meta.code||field?.printId||""),
+    place:String(meta.name||field?.orderPlace||entry?.place||(Array.isArray(entry?.places)&&entry.places[0])||""),
+    method:String(meta.method||entry?.method||v("method")?.value||""),
+    fieldW:Number(field?.nominalW||field?.w||0),
+    fieldH:Number(field?.nominalH||field?.h||0),
+    exportDisabled:!!v("simpleExport")?.disabled
+  };
+};
+window.gwbCreateReadyLayoutPdf=async function(){
+  if(y.busy||!y.template)throw new Error("Макет пока не готов к экспорту.");
+  y.busy=!0;X();
+  try{
+    const placements=Qn(),bytes=await hn({template:y.template,placements},PDFLib,Jn),filename=Hn([v("order").value,v("article").value,"макет"].filter(Boolean).join("_"))+".pdf";
+    return {blob:new Blob([bytes],{type:"application/pdf"}),filename};
+  }finally{y.busy=!1;X()}
 };
 window.dispatchEvent(new CustomEvent("gwb-mockup-handoff-ready"));
 
