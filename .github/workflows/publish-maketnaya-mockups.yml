@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "editor.html"
       - "mockup.html"
+      - "save-profile.html"
       - "mockup-profiles.json"
       - "direct-mode.js"
       - "tools/**"
@@ -40,6 +41,7 @@ jobs:
           node tools/build-launcher.mjs
           test -f launcher.js
           test -f mockup.html
+          test -f save-profile.html
           test -f mockup-profiles.json
           node -e 'const x=require("./mockup-profiles.json"); if(x.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(x.profiles)) process.exit(1)'
           node --check direct-mode.js
@@ -62,10 +64,12 @@ jobs:
           grep -q 'id="saveToGit"' mockup.html
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
-          grep -q 'github.com/tohaa28/tohaa28.github.io/issues/new' mockup.html
-          grep -q 'GIFTS_MOCKUP_PROFILE_V1' mockup.html
-          if grep -q 'PROFILE_SAVE_URL\|TOKEN_KEY\|github_pat_' mockup.html; then
-            echo "mockup.html must not contain client-side GitHub token storage" >&2
+          grep -q 'Contents: Read and write' save-profile.html
+          grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
+          grep -q 'authMustBeReplaced' save-profile.html
+          grep -q 'Забыть токен' save-profile.html
+          if grep -q 'sessionStorage' save-profile.html; then
+            echo "save-profile.html must persist token beyond the browser session" >&2
             exit 1
           fi
 
@@ -93,6 +97,7 @@ jobs:
           cp source/index.html site/gifts-layout-workbench-mockups/index.html
           cp source/editor.html site/gifts-layout-workbench-mockups/editor.html
           cp source/mockup.html site/gifts-layout-workbench-mockups/mockup.html
+          cp source/save-profile.html site/gifts-layout-workbench-mockups/save-profile.html
           cp source/mockup-profiles.json site/gifts-layout-workbench-mockups/mockup-profiles.json
           cp source/direct-mode.js site/gifts-layout-workbench-mockups/direct-mode.js
           cp source/launcher.js site/gifts-layout-workbench-mockups/launcher.js
