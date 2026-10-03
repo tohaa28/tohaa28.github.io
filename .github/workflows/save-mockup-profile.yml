@@ -1,0 +1,121 @@
+name: Save Mockup Profile
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: mockup-profile-git-writes
+  cancel-in-progress: false
+
+jobs:
+  save:
+    if: ${{ github.event.issue.user.login == 'tohaa28' && startsWith(github.event.issue.title, '[mockup-profile]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save profile to source registry
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = "gifts-layout-workbench-mockups-source";
+            const path = "mockup-profiles.json";
+            const body = context.payload.issue.body || "";
+            const marker = body.match(/<!--\s*GIFTS_MOCKUP_PROFILE_V1:([A-Za-z0-9_-]+)\s*-->/);
+            if (!marker) core.setFailed("Mockup profile payload marker not found.");
+
+            let encoded = marker[1].replace(/-/g, "+").replace(/_/g, "/");
+            while (encoded.length % 4) encoded += "=";
+            let profile;
+            try {
+              profile = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+            } catch (error) {
+              core.setFailed("Mockup profile payload is not valid JSON.");
+              return;
+            }
+
+            const clean = v => String(v ?? "").trim();
+            const validQuad = q => Array.isArray(q) && q.length === 4 && q.every(p =>
+              Number.isFinite(Number(p?.x)) && Number.isFinite(Number(p?.y)) &&
+              Number(p.x) >= 0 && Number(p.x) <= 1 && Number(p.y) >= 0 && Number(p.y) <= 1
+            );
+            if (profile?.schema !== "gifts-mockup-profile/v1") return core.setFailed("Unsupported mockup profile schema.");
+            if (!clean(profile.article) || !clean(profile.place)) return core.setFailed("Article/place missing.");
+            if (!validQuad(profile.targetQuad)) return core.setFailed("Invalid targetQuad.");
+            if (!/^https:\/\/(?:files\.)?gifts\.ru\//i.test(clean(profile?.photo?.url))) return core.setFailed("Photo must be hosted on gifts.ru.");
+            if (!(clean(profile?.field?.printId) || clean(profile?.field?.applicationId) || clean(profile?.field?.id))) return core.setFailed("Field identity missing.");
+
+            const key = p => [
+              p.article,
+              p.variant,
+              p.place,
+              p?.photo?.id || p?.photo?.name || p?.photo?.url,
+              p?.field?.printId || p?.field?.applicationId || p?.field?.id
+            ].map(x => String(x ?? "").trim().toLocaleLowerCase("ru-RU")).join("|");
+
+            let savedProfile = null;
+            let commitSha = "";
+            for (let attempt = 0; attempt < 4; attempt++) {
+              const current = await github.rest.repos.getContent({
+                ...context.repo,
+                path,
+                ref: branch
+              });
+              if (Array.isArray(current.data) || current.data.type !== "file") {
+                core.setFailed("mockup-profiles.json is not a file.");
+                return;
+              }
+
+              const registry = JSON.parse(Buffer.from(current.data.content, "base64").toString("utf8"));
+              const now = new Date().toISOString();
+              savedProfile = {
+                ...profile,
+                status: "confirmed-manual",
+                updatedAt: now,
+                confirmedAt: now,
+                confirmedBy: "mockup-editor-github-issue",
+                generatedBy: "mockup-editor-github-issue"
+              };
+
+              const k = key(savedProfile);
+              const profiles = Array.isArray(registry.profiles) ? registry.profiles : [];
+              const index = profiles.findIndex(p => key(p) === k);
+              if (index >= 0) profiles[index] = savedProfile;
+              else profiles.unshift(savedProfile);
+              registry.profiles = profiles;
+              registry.candidates = (Array.isArray(registry.candidates) ? registry.candidates : []).filter(p => key(p) !== k);
+              registry.updatedAt = now;
+              registry.version = Math.max(1, Number(registry.version) || 1);
+
+              try {
+                const result = await github.rest.repos.createOrUpdateFileContents({
+                  ...context.repo,
+                  path,
+                  branch,
+                  sha: current.data.sha,
+                  message: `Save manual mockup mapping ${savedProfile.article} · ${savedProfile.place} · ${savedProfile.photo?.id || savedProfile.photo?.name || "photo"}`,
+                  content: Buffer.from(JSON.stringify(registry, null, 2) + "\n", "utf8").toString("base64")
+                });
+                commitSha = result.data.commit.sha;
+                break;
+              } catch (error) {
+                if (error.status !== 409 || attempt === 3) throw error;
+                await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+              }
+            }
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: `Сопоставление сохранено в Git. Commit: \`${commitSha.slice(0, 7)}\`.`
+            });
+            await github.rest.issues.update({
+              ...context.repo,
+              issue_number: context.issue.number,
+              state: "closed",
+              body: `Служебная запись обработана автоматически.\n\nАртикул: **${savedProfile.article}**  \nМесто: **${savedProfile.place}**  \nCommit: \`${commitSha.slice(0, 7)}\`.`
+            });
