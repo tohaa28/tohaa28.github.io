@@ -143,7 +143,7 @@ const state = {
 const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
 const PROFILE_LIBRARY_KEY = "gifts.mockupLab.profiles.v1";
 const PROFILE_REGISTRY_URLS = ["https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json","https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup-profiles.json"];
-const PROFILE_SAVE_URL = "https://tohaa28.github.io/gifts-layout-workbench-mockups/save-profile.html";
+const PROFILE_ISSUE_URL = "https://github.com/tohaa28/tohaa28.github.io/issues/new";
 let serverProfileRegistry={schema:"gifts-mockup-profile-registry/v1",version:1,profiles:[],candidates:[],articleSources:[]};
 const HANDLE_R = 9;
 
@@ -436,29 +436,47 @@ function validateProfileForGit(p){
   if(!Array.isArray(p.targetQuad)||p.targetQuad.length!==4)return "Не размечены четыре угла на фотографии";
   return "";
 }
+function issueSaveUrl(profile){
+  const encoded=encodeProfileForSave(profile);
+  const photo=profile.photo?.id||profile.photo?.name||"photo";
+  const title=`[mockup-profile] ${profile.article} · ${profile.place} · ${photo}`;
+  const body=[
+    "Служебная запись Макетной. После отправки GitHub Action сохранит привязку в mockup-profiles.json и автоматически закроет эту запись.",
+    "",
+    "<!-- GIFTS_MOCKUP_PROFILE_V1:"+encoded+" -->",
+    "",
+    "Нажмите **Submit new issue**. Ничего редактировать не нужно."
+  ].join("\n");
+  return PROFILE_ISSUE_URL+"?title="+encodeURIComponent(title)+"&body="+encodeURIComponent(body);
+}
+async function waitForGitProfile(profile,timeoutMs=180000){
+  const key=profileKey(profile),started=Date.now();
+  while(Date.now()-started<timeoutMs){
+    await new Promise(r=>setTimeout(r,3500));
+    for(const url of PROFILE_REGISTRY_URLS){
+      try{
+        const r=await fetch(url+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)continue;
+        const data=await r.json(),saved=(data.profiles||[]).find(p=>profileKey(p)===key&&["confirmed-manual","confirmed","confirmed-auto"].includes(String(p.status||"")));
+        if(!saved)continue;
+        serverProfileRegistry=data;
+        renderProfileLibrary();updateSummary();
+        setStatus("Сопоставление сохранено в Git и уже доступно для мокапов.");
+        try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:{...saved,storage:"git"}},"*")}catch{}
+        return true;
+      }catch{}
+    }
+  }
+  setStatus("Ожидание сохранения завершено. Если служебная запись уже отправлена, обновите редактор через несколько секунд.");
+  return false;
+}
 $("saveToGit").onclick=()=>{
   const p=buildProfile(),problem=validateProfileForGit(p);
   if(problem){setStatus(problem);return;}
-  const encoded=encodeProfileForSave(p);
-  const popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
-  if(!popup){setStatus("Браузер заблокировал окно сохранения в Git");return;}
-  setStatus("Открыто окно сохранения сопоставления в Git…");
+  const popup=window.open(issueSaveUrl(p),"_blank","noopener");
+  if(!popup){setStatus("Браузер заблокировал открытие GitHub");return;}
+  setStatus("В GitHub нажмите Submit new issue. После этого привязка сохранится автоматически.");
+  void waitForGitProfile(p);
 };
-window.addEventListener("message",event=>{
-  if(event.origin!=="https://tohaa28.github.io")return;
-  const data=event.data||{};
-  if(data.type==="gifts-mockup-profile-saved"&&data.profile){
-    const saved={...data.profile,storage:"git"};
-    serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    serverProfileRegistry.profiles.unshift(saved);
-    serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    renderProfileLibrary();updateSummary();
-    setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
-    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
-  }else if(data.type==="gifts-mockup-profile-save-error"){
-    setStatus("Не удалось сохранить сопоставление: "+String(data.message||"ошибка Git"));
-  }
-});
 $("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки скачан");};
 $("saveToLibrary").onclick=()=>{const p=buildProfile();if(!p.article||!p.place||(!p.photo.id&&!p.photo.name&&!p.photo.url)){setStatus("Для библиотеки нужны артикул, место и выбранная фотография");return;}const lib=getProfileLibrary(),key=profileKey(p),i=lib.findIndex(x=>profileKey(x)===key);p.updatedAt=new Date().toISOString();if(i>=0)lib[i]=p;else lib.unshift(p);setProfileLibrary(lib.slice(0,500));setStatus(i>=0?"Сопоставление обновлено":"Сопоставление запомнено");updateSummary();};
 $("clearLibrary").onclick=()=>{if(!confirm("Очистить локальную библиотеку сопоставлений Mockup Lab?"))return;setProfileLibrary([]);setStatus("Библиотека очищена");updateSummary();};
