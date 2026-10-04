@@ -216,7 +216,7 @@ const edits=[
 export function applyLogoPreflight(){
  let source=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
  if(hash(source)===expected)return;
- if(hash(source)!==baseline)throw Error('Editor baseline changed; review and update the preflight integration patch.');
+ if(hash(source)!==baseline)throw Error('Editor baseline changed; actual='+hash(source)+' baseline='+baseline);
  for(const [from,to] of edits){
   if(from&&source.split(from).length!==2)throw Error('Preflight integration target is not unique');
   source=from?source.replace(from,to):to+source;
