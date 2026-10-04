@@ -12,11 +12,27 @@ function entryFor(art,placement,field,rule){
  let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated},mode,threshold,state:'pending'};entries.set(key,entry);}
  return entry;
 }
+const compactNames={positive:'линии',negative:'пробелы',isolated:'отдельные'};
+const mm=v=>Number(v).toFixed(2).replace(/0+$/,'').replace(/[.,]$/,'').replace('.',',');
+export function compactDetailSummary(result,rule={}){
+ const boxes=Array.isArray(result?.boxes)?result.boxes:[],counts=result?.counts||{};
+ if(!boxes.length)return 'PrintCheck · мелкие элементы: не найдены.';
+ const parts=[];
+ for(const kind of ['positive','negative','isolated']){
+  const count=Number(counts[kind]||boxes.filter(b=>b.kind===kind).length);
+  if(!count)continue;
+  const own=boxes.filter(b=>b.kind===kind&&Number.isFinite(Number(b.minWidthMm))),minimum=own.length?Math.min(...own.map(b=>Number(b.minWidthMm))):null,required=Number(rule[kind]||own[0]?.threshold||0);
+  let text=`${compactNames[kind]} ${count}`;
+  if(minimum!==null&&required>0)text+=` (${mm(minimum)}<${mm(required)} мм)`;
+  parts.push(text);
+ }
+ return `PrintCheck · мелкие элементы: ${boxes.length}${parts.length?' — '+parts.join(', '):''}.`;
+}
 export function detailFindings({art,placement,field,rule}){
  if(!rule||rule.settings?.enabled===false||rule.settings?.checks.details===false||![rule.positive,rule.negative,rule.isolated].some(v=>v>0)){placementKeys.delete(placement);return [];}const e=entryFor(art,placement,field,rule);schedule();
  if(!enabled)return [{id:'detail-scan',status:'manual',text:'Поиск мелких элементов выключен.',source}];
  if(e.state!=='done')return [{id:'detail-scan',status:'manual',text:e.state==='error'?e.error:e.state==='running'?'Идёт фоновый поиск мелких элементов.':'Поиск мелких элементов начнётся после паузы в редактировании.',source}];
- const r=e.result;return [{id:'detail-scan',status:'manual',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм. Это кандидаты, а не доказанный брак.`,source,evidence:r.algorithm,candidateCount:r.boxes.length,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
+ const r=e.result,found=r.boxes.length>0;return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм. ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
 }
 function validEntries(){if(!api)return [];return [...new Set(api.getState().placements.filter(p=>p.art&&p.placement).map(p=>entries.get(placementKeys.get(p.placement))).filter(Boolean))];}
 function cancel(){clearTimeout(watchdog);clearTimeout(timer);timer=0;if(idle){(window.cancelIdleCallback||clearTimeout)(idle);idle=0;}job++;if(worker){worker.terminate();worker=null;cancellations++;}renderTask?.cancel();renderTask=null;busy=false;for(const e of entries.values())if(e.state==='running')e.state='pending';}
