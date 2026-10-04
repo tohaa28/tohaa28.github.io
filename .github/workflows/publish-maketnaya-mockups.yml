@@ -77,11 +77,18 @@ jobs:
           grep -q 'corsImg.onerror=()=>direct()' mockup.html
           grep -q 'id="mockupModeButton"' editor.html
           grep -q 'id="mockupShell"' editor.html
-          grep -q 'class="giftsWordmark"' mockup.html
-          grep -q '<h1>Редактор мокапов</h1>' mockup.html
-          grep -q -- '--gifts-green:#82b515' mockup.html
-          grep -q -- '--accent:var(--gifts-green)' mockup.html
-          if grep -q '<h1>Mockup Lab</h1>' mockup.html; then echo "Mockup editor must use the gifts.ru styled header"; exit 1; fi
+          grep -q 'shared Maketnaya visual system' mockup.html
+          grep -q 'class="brand"><span class="mark"' mockup.html
+          grep -q 'РЕДАКТОР МОКАПОВ' mockup.html
+          grep -q -- '--green:#81b315' mockup.html
+          grep -q -- '--charcoal:#435159' mockup.html
+          grep -q -- '--header-h:106px' mockup.html
+          grep -q 'html.embedded .site-header{display:none!important}' mockup.html
+          grep -q 'class="mockup-shell-brand"' editor.html
+          grep -q 'class="mockup-shell-mark"' editor.html
+          grep -q 'grid-template-rows:106px 1fr' editor.html
+          if grep -q 'class="giftsWordmark"' mockup.html; then echo "Mockup editor must use the same Maketnaya brand header"; exit 1; fi
+          if grep -q '<h1>Mockup Lab</h1>' mockup.html; then echo "Technical Mockup Lab header must stay removed"; exit 1; fi
           grep -q 'findProfiles=state' editor.html
           grep -q 'jobs.length' editor.html
           grep -q 'id="mappingSave"' mockup.html
