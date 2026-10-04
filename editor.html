@@ -118,9 +118,21 @@
   };
   const mockupWord=n=>{const a=Math.abs(Number(n))%100,b=a%10;return a>10&&a<20?"мокапов":b===1?"мокап":b>=2&&b<=4?"мокапа":"мокапов"};
   const currentState=()=>{
-    try{if(typeof window.gwbGetMockupState==="function")return window.gwbGetMockupState()}catch{}
+    try{
+      if(typeof window.gwbGetMockupState==="function"){
+        const state=window.gwbGetMockupState()||{};
+        const readiness=typeof window.gwbGetEditorReadiness==="function"?window.gwbGetEditorReadiness():null;
+        if(readiness&&typeof readiness==="object"){
+          state.templateReady=!!readiness.templateReady;
+          state.templateFieldCount=Number(readiness.templateFieldCount||0);
+        }
+        return state;
+      }
+    }catch{}
     const count=Number((document.getElementById("placementCount")?.textContent.match(/Добавлено логотипов:\s*(\d+)/i)||[])[1]||0);
-    return{hasSelectedArticle:!!document.getElementById("article")?.value,article:document.getElementById("article")?.value||"",logoCount:count,exportDisabled:!!simpleExport?.disabled};
+    const fields=document.getElementById("orderFieldChoice");
+    const fieldCount=fields?[...fields.options].filter(option=>String(option.value||"").trim()!=="").length:0;
+    return{hasSelectedArticle:!!document.getElementById("article")?.value,article:document.getElementById("article")?.value||"",logoCount:count,templateReady:fieldCount>0,templateFieldCount:fieldCount,exportDisabled:!!simpleExport?.disabled};
   };
   const currentTargets=()=>{
     try{
@@ -156,22 +168,22 @@
     return false;
   };
   const deliverError=message=>{const child=frame.contentWindow;if(!child)return;try{if(typeof child.gwbSetMockupStatus==="function"){child.gwbSetMockupStatus(message);return}}catch{}try{child.postMessage({type:"gifts-mockup-handoff-error",message},"*")}catch{}};
-  const sendHandoff=async()=>{try{const build=window.gwbBuildMockupHandoff,payload=typeof build==="function"?await build():null;if(payload)await deliver(payload);else deliverError("Сначала выберите артикул и добавьте логотип в поле.")}catch(error){deliverError(error?.message||String(error))}};
+  const sendHandoff=async()=>{try{const build=window.gwbBuildMockupHandoff,payload=typeof build==="function"?await build():null;if(payload)await deliver(payload);else deliverError("Сначала выберите артикул и загрузите шаблон с полями.")}catch(error){deliverError(error?.message||String(error))}};
   const show=()=>{if(open.hidden)return;shell.hidden=false;document.documentElement.style.overflow="hidden";document.body.style.overflow="hidden";setTimeout(sendHandoff,0)};
   const hide=()=>{shell.hidden=true;document.documentElement.style.overflow="";document.body.style.overflow="";window.dispatchEvent(new Event("resize"))};
 
   function refresh(){
     decorateMockupMappingBadges();
-    const state=currentState(),eligible=!!state?.hasSelectedArticle&&Number(state.logoCount)>0;
-    const hideOpen=!eligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
-    const jobs=eligible?collectProfileJobs():[];
+    const state=currentState(),editorEligible=!!state?.hasSelectedArticle&&!!state?.templateReady&&Number(state.templateFieldCount)>0,mockupEligible=editorEligible&&Number(state.logoCount)>0;
+    const hideOpen=!editorEligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
+    const jobs=mockupEligible?collectProfileJobs():[];
     lastProfiles=jobs.map(job=>job.profile);
-    const count=jobs.length,hideCombo=!(eligible&&count);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
+    const count=jobs.length,hideCombo=!(mockupEligible&&count);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
     const disableCombo=busy||!!state?.exportDisabled||!count;if(combo.disabled!==disableCombo)combo.disabled=disableCombo;
     if(count)combo.textContent=count===1?"Скачать макет и мокап":`Скачать макет и ${count} ${mockupWord(count)}`;
     else combo.textContent="Скачать макет и мокап";
-    if(eligible&&!registryPromise)loadRegistry();
-    if(!eligible&&!shell.hidden)hide();
+    if(editorEligible&&!registryPromise)loadRegistry();
+    if(!editorEligible&&!shell.hidden)hide();
   }
 
   const waitForChild=async()=>{
@@ -254,8 +266,8 @@
 </script><script>
 (()=>{
   const $=id=>document.getElementById(id);
-  const templateButtons=["simpleDraw","drawField","clearField","prevPage","nextPage","zoomPage","editorAddLogo"];
-  const logoButtons=["rotateLeft","rotateRight","simpleFit","simpleCenter","simpleFill","fit","center","fillEmpty","removePlacement","editorFit","editorCenter","editorRotateLeft","editorRotateRight","editorRemoveLogo","simpleExport","downloadLayoutMockup","export","saveProject","prepareOrderPdf","mockupModeButton"];
+  const templateButtons=["simpleDraw","drawField","clearField","prevPage","nextPage","zoomPage","editorAddLogo","mockupModeButton"];
+  const logoButtons=["rotateLeft","rotateRight","simpleFit","simpleCenter","simpleFill","fit","center","fillEmpty","removePlacement","editorFit","editorCenter","editorRotateLeft","editorRotateRight","editorRemoveLogo","simpleExport","downloadLayoutMockup","export","saveProject","prepareOrderPdf"];
   let templateRequested=false,logoRequested=false,lastTemplateReady=false,lastLogoReady=false;
 
   function editorReadiness(){
