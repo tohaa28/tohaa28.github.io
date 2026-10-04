@@ -65,6 +65,15 @@ jobs:
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
+          grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
+          grep -q 'authMustBeReplaced' save-profile.html
+          grep -q 'github-authentication-token-expiration' save-profile.html
+          grep -q 'Забыть токен' save-profile.html
+          grep -q 'LEGACY_SESSION_KEY' save-profile.html
+          if grep -q 'sessionStorage.setItem' save-profile.html; then
+            echo "save-profile.html must not store active token only in sessionStorage" >&2
+            exit 1
+          fi
 
   publish:
     needs: precheck
