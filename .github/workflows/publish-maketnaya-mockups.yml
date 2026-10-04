@@ -61,7 +61,7 @@ jobs:
           grep -q 'id="mockupShell"' editor.html
           grep -q 'findProfiles=state' editor.html
           grep -q 'jobs.length' editor.html
-          grep -q 'id="saveToGit"' mockup.html
+          grep -q 'id="mappingToggle"' mockup.html
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
@@ -84,15 +84,21 @@ jobs:
           grep -q 'photoByField' mockup.html
           grep -q 'profilesForField' mockup.html
           grep -q 'autoApplySavedProfile(true)' mockup.html
-          grep -q 'id="removeMapping"' mockup.html
+          grep -q 'requestGitBridgeMutation' mockup.html
           grep -q 'openProfileLibraryIndex' mockup.html
           grep -q 'class="libraryItem" data-profile-index=' mockup.html
           grep -q '.candidate:not(:disabled){cursor:pointer}' mockup.html
-          grep -q 'encodeProfileForSave(saved,"delete")' mockup.html
+          grep -q 'save-profile.html?bridge=1' mockup.html
           grep -q 'gifts-mockup-profile-deleted' mockup.html
           grep -q 'gifts-mockup-profile-registry-deleted' editor.html
           grep -q 'async function deleteRegistry' save-profile.html
           grep -q 'const action=decoded?.action==="delete"?"delete":"save"' save-profile.html
+          grep -q 'BRIDGE_MODE' save-profile.html
+          grep -q 'gifts-mockup-git-token-required' save-profile.html
+          grep -q 'gifts-mockup-git-bridge-ready' save-profile.html
+          grep -q 'handleGitBridgeMessage' mockup.html
+          if grep -q 'id="saveToGit"' mockup.html; then echo "Git bind action must stay in photo section"; exit 1; fi
+          if grep -q 'id="removeMapping"' mockup.html; then echo "Git unbind action must stay in photo section"; exit 1; fi
           grep -q 'Both filled fields must become mockup export targets' tests/logo-preflight-browser.mjs
           grep -q 'window.gwbRefreshEditorState=function' tools/patch-artwork-preflight.mjs
           grep -q 'gwb-editor-readiness-changed' editor.html
