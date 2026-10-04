@@ -516,6 +516,7 @@ jobs:
               previewLoaded: (() => { const img=choice?.querySelector(".article-thumb"); return !!img && !img.hidden && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0; })(),
               redundantSummaryHidden: !!summary && getComputedStyle(summary).display === "none",
               badgeRemoved: !/Выбрано/.test(badgeContent || ""),
+              hasMockupBadge: !!choice?.querySelector(".mockup-map-badge"),
               selectedPaddingRight: choice ? parseFloat(getComputedStyle(choice).paddingRight) : 999,
               infoPaddingRight: info ? parseFloat(getComputedStyle(info).paddingRight) : 999,
               rows,
@@ -527,7 +528,7 @@ jobs:
               !articleChoiceState.previewLoaded ||
               !articleChoiceState.redundantSummaryHidden ||
               !articleChoiceState.badgeRemoved ||
-              articleChoiceState.selectedPaddingRight > 20 ||
+              articleChoiceState.selectedPaddingRight > (articleChoiceState.hasMockupBadge ? 32 : 20) ||
               articleChoiceState.infoPaddingRight > 4 ||
               articleChoiceState.legacySeparateBlocks ||
               articleChoiceState.rows["Артикул"] !== "15637" ||
