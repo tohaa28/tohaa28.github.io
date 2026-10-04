@@ -178,13 +178,15 @@ function updateAssetReadiness(){
   const photoReady=!!state.photo&&!state.loading.photo;
   const templateReady=!!state.template&&!state.loading.template;
   const artworkReady=!!state.artwork&&!state.loading.artwork;
-  const complete=photoReady&&templateReady&&artworkReady;
+  const mappingReady=photoReady&&templateReady;
+  const mockupReady=mappingReady&&artworkReady;
   if($("selectField"))$("selectField").disabled=!templateReady;
   if($("resetQuad"))$("resetQuad").disabled=!photoReady;
   if($("toggleArtwork"))$("toggleArtwork").disabled=!(photoReady&&artworkReady);
-  for(const id of ["saveToLibrary","saveProfile","exportPng"]){
-    if($(id))$(id).disabled=!complete;
+  for(const id of ["saveToLibrary","saveProfile"]){
+    if($(id))$(id).disabled=!mappingReady;
   }
+  if($("exportPng"))$("exportPng").disabled=!mockupReady;
   updateMappingToggle();
 }
 function updateMappingToggle(){
@@ -194,7 +196,7 @@ function updateMappingToggle(){
   button.textContent=mapped?"Отвязать выбранное фото от поля":"Привязать выбранное фото к полю";
   button.classList.toggle("danger",!!mapped);
   button.classList.toggle("primary",!mapped);
-  button.disabled=!(photoReady&&fieldReady&&(mapped||!!state.template&&!!state.artwork));
+  button.disabled=!(photoReady&&fieldReady&&(mapped||!!state.template));
   button.title=mapped?"Удалить только эту пару поле → фотография":"Сохранить текущую разметку выбранной фотографии для выбранного поля";
 }
 function setAssetLoading(target,value){
@@ -558,7 +560,6 @@ function encodeProfileForSave(profile,action="save"){
 }
 function validateProfileForGit(p){
   if(!state.template)return "Сначала загрузите шаблон / конструктор";
-  if(!state.artwork)return "Сначала загрузите логотип";
   if(!state.photo)return "Сначала загрузите фотографию товара";
   if(!p.article)return "Не указан артикул";
   if(!p.place)return "Не указано место нанесения";
