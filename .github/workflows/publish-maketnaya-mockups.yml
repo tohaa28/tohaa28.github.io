@@ -71,6 +71,10 @@ jobs:
           grep -q 'id="photoProgress"' mockup.html
           grep -q 'id="templateProgress"' mockup.html
           grep -q 'id="artworkProgress"' mockup.html
+          grep -q 'mockup-map-badge' editor.html
+          grep -q 'decorateMockupMappingBadges' editor.html
+          grep -q 'data-mockup-mapped' editor.html
+          grep -q 'dataset.article=String(t.article' assets/index-BpU9kvz8.js
           grep -q 'updateAssetReadiness' mockup.html
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
