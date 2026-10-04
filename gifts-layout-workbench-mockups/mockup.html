@@ -101,7 +101,7 @@
         <section class="panel">
           <h2>4. Профиль</h2>
           <div class="buttons wrap">
-            <button id="saveToGit" class="primary" disabled>Сохранить сопоставление на сайт</button><button id="saveToLibrary" disabled>Сохранить локальный черновик</button>
+            <button id="saveToGit" class="primary" disabled>Сохранить сопоставление на сайт</button><button id="removeMapping" class="danger" disabled>Отвязать фото от поля</button><button id="saveToLibrary" disabled>Сохранить локальный черновик</button>
             <button id="saveProfile" disabled>Скачать привязку JSON</button>
             <label class="fileButton">Открыть привязку<input id="profileFile" type="file" accept="application/json,.json"></label>
             <button id="exportPng" disabled>Скачать мокап PNG</button>
@@ -184,6 +184,7 @@ function updateAssetReadiness(){
   for(const id of ["saveToGit","saveToLibrary","saveProfile","exportPng"]){
     if($(id))$(id).disabled=!complete;
   }
+  if($("removeMapping"))$("removeMapping").disabled=!(photoReady&&state.activeFieldCandidate>=0&&findServerProfile(true));
 }
 function setAssetLoading(target,value){
   state.loading[target]=!!value;
@@ -529,8 +530,9 @@ function buildProfile(){
   return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{id:state.photoSource.id||"",name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},field,constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface:$("surface").value,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:$("surface").value==="cylinder"?28:18}};
 }
 
-function encodeProfileForSave(profile){
-  const bytes=new TextEncoder().encode(JSON.stringify(profile));
+function encodeProfileForSave(profile,action="save"){
+  const payload=action==="save"?profile:{action,profile};
+  const bytes=new TextEncoder().encode(JSON.stringify(payload));
   let binary="";for(const b of bytes)binary+=String.fromCharCode(b);
   return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
@@ -554,6 +556,16 @@ $("saveToGit").onclick=()=>{
   if(!popup){setStatus("Браузер заблокировал окно сохранения в Git");return;}
   setStatus("Открыто окно сохранения сопоставления в Git…");
 };
+$("removeMapping").onclick=()=>{
+  const saved=findServerProfile(true);
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+  if(!saved||!field||!photo){setStatus("Для выбранной пары поле → фото нет сохранённой привязки.");updateAssetReadiness();return;}
+  if(!confirm(`Отвязать фото «${photo.name||photo.id||"фото"}» от поля «${field.place||field.printId||"поле"}»? Другие привязки этого поля останутся.`))return;
+  const encoded=encodeProfileForSave(saved,"delete");
+  const popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
+  if(!popup){setStatus("Браузер заблокировал окно удаления привязки из Git");return;}
+  setStatus("Открыто окно удаления выбранной привязки…");
+};
 window.addEventListener("message",event=>{
   if(event.origin!=="https://tohaa28.github.io")return;
   const data=event.data||{};
@@ -562,9 +574,19 @@ window.addEventListener("message",event=>{
     serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
     serverProfileRegistry.profiles.unshift(saved);
     serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();
+    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
     setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
     try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
+  }else if(data.type==="gifts-mockup-profile-deleted"&&data.profile){
+    const removed=data.profile,key=profileKey(removed);
+    serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==key);
+    serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==key);
+    const local=getProfileLibrary().filter(p=>profileKey(p)!==key);setProfileLibrary(local);
+    const field=state.fieldCandidates[state.activeFieldCandidate]||null;
+    if(field)delete state.photoByField[fieldSelectionKey(field,state.activeFieldCandidate)];
+    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
+    setStatus("Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
+    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
   }else if(data.type==="gifts-mockup-profile-save-error"){
     setStatus("Не удалось сохранить сопоставление: "+String(data.message||"ошибка Git"));
   }
