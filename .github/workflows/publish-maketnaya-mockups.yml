@@ -100,6 +100,12 @@ jobs:
           if grep -q 'id="saveToGit"' mockup.html; then echo "Git bind action must stay in photo section"; exit 1; fi
           if grep -q 'id="removeMapping"' mockup.html; then echo "Git unbind action must stay in photo section"; exit 1; fi
           grep -q 'Both filled fields must become mockup export targets' tests/logo-preflight-browser.mjs
+          grep -q 'editorEligible=!!state?.templateReady&&Number(state.templateFieldCount)>0' editor.html
+          grep -q 'templateButtons=.*mockupModeButton' editor.html
+          if grep -q 'logoButtons=.*mockupModeButton' editor.html; then echo "Mockup Lab button must not depend on logo readiness"; exit 1; fi
+          grep -q 'mappingReady=photoReady&&templateReady' mockup.html
+          if grep -q 'if(!state.artwork)return "Сначала загрузите логотип"' mockup.html; then echo "Field photo mapping must not require artwork"; exit 1; fi
+          grep -q 'Mockup Lab handoff must expose template fields before a logo is added' tests/logo-preflight-browser.mjs
           grep -q 'window.gwbRefreshEditorState=function' tools/patch-artwork-preflight.mjs
           grep -q 'gwb-editor-readiness-changed' editor.html
           grep -q 'window.gwbGetEditorReadiness=function' tools/patch-artwork-preflight.mjs
