@@ -12,7 +12,7 @@
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
 
 
-.assetReadiness{display:grid;gap:8px}.assetProgressRow{display:grid;grid-template-columns:82px minmax(110px,1fr) minmax(92px,auto);gap:8px;align-items:center;font-size:10px;color:var(--muted)}.assetProgressRow strong{font-size:10px;color:#39434c}.assetProgressRow progress{width:100%;height:8px;accent-color:var(--accent)}.assetProgressRow[data-state="ready"] span{color:#24713a;font-weight:700}.assetProgressRow[data-state="loading"] span{color:#8a5c00;font-weight:700}button:disabled{opacity:.48;cursor:not-allowed}.panel.disabledHint{background:#fbfcfd}@media(max-width:580px){.assetProgressRow{grid-template-columns:68px 1fr}.assetProgressRow span{grid-column:1/-1}}
+.gitTokenPrompt{border-color:#e3c16f;background:#fff9e8}.gitTokenPrompt input{width:100%;box-sizing:border-box}.assetReadiness{display:grid;gap:8px}.assetProgressRow{display:grid;grid-template-columns:82px minmax(110px,1fr) minmax(92px,auto);gap:8px;align-items:center;font-size:10px;color:var(--muted)}.assetProgressRow strong{font-size:10px;color:#39434c}.assetProgressRow progress{width:100%;height:8px;accent-color:var(--accent)}.assetProgressRow[data-state="ready"] span{color:#24713a;font-weight:700}.assetProgressRow[data-state="loading"] span{color:#8a5c00;font-weight:700}button:disabled{opacity:.48;cursor:not-allowed}.panel.disabledHint{background:#fbfcfd}@media(max-width:580px){.assetProgressRow{grid-template-columns:68px 1fr}.assetProgressRow span{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -27,6 +27,12 @@
 
     <main class="layout">
       <aside class="sidebar">
+        <section class="panel gitTokenPrompt" id="gitTokenPrompt" hidden>
+          <h2>GitHub token</h2>
+          <p class="muted">Токен отсутствует, просрочен или отозван. Введите новый здесь — отдельное окно сохранения не открывается.</p>
+          <input id="gitTokenInput" type="password" autocomplete="off" placeholder="github_pat_…">
+          <div class="buttons wrap"><button id="gitTokenSubmit" class="primary">Сохранить токен и продолжить</button><button id="gitTokenCancel" type="button">Отмена</button></div>
+        </section>
         <section class="panel disabledHint" id="assetReadinessPanel">
           <h2>Готовность данных</h2>
           <div class="assetReadiness" role="status" aria-live="polite">
@@ -620,13 +626,13 @@ function waitForGitBridge(timeout=6000){
     gitBridgeReadyWaiters.push(finish);
   });
 }
-async function requestGitBridgeMutation(action,profile){
+async function requestGitBridgeMutation(action,profile,{token=""}={}){
   await waitForGitBridge();
   const requestId="mockup-"+Date.now()+"-"+(++gitBridgeSeq);
   return new Promise((resolve,reject)=>{
     const timer=setTimeout(()=>{gitBridgePending.delete(requestId);reject(Error("Git-мост не завершил операцию"));},20000);
     gitBridgePending.set(requestId,{resolve,reject,timer});
-    gitBridgeFrame.contentWindow.postMessage({type:"gifts-mockup-git-mutate",requestId,action,profile},"https://tohaa28.github.io");
+    gitBridgeFrame.contentWindow.postMessage({type:"gifts-mockup-git-mutate",requestId,action,profile,token:String(token||"")},"https://tohaa28.github.io");
   });
 }
 function handleGitBridgeMessage(event,data){
@@ -643,11 +649,18 @@ function handleGitBridgeMessage(event,data){
   return true;
 }
 ensureGitBridge();
-function openTokenWindow(action,profile){
-  const encoded=encodeProfileForSave(profile,action),popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
-  if(!popup){setStatus("Браузер заблокировал окно ввода GitHub token");return false}
-  setStatus("Нужен новый GitHub token для изменения привязки.");
-  return true;
+let pendingGitOperation=null;
+function hideGitTokenPrompt(){
+  const panel=$("gitTokenPrompt"),input=$("gitTokenInput");
+  if(panel)panel.hidden=true;
+  if(input)input.value="";
+}
+function requestGitTokenInline(action,profile){
+  pendingGitOperation={action,profile};
+  const panel=$("gitTokenPrompt"),input=$("gitTokenInput");
+  if(panel)panel.hidden=false;
+  setStatus("GitHub token нужно обновить. Введите его в текущем окне.");
+  setTimeout(()=>input?.focus(),0);
 }
 function applySavedMappingResult(data){
   const saved={...data.profile,storage:"git"};
@@ -673,13 +686,36 @@ async function persistMapping(action,profile){
   try{
     setStatus(action==="delete"?"Отвязываю фотографию…":"Сохраняю привязку…");
     const response=await requestGitBridgeMutation(action,profile);
-    if(response.tokenRequired){openTokenWindow(action,profile);return;}
+    if(response.tokenRequired){requestGitTokenInline(action,profile);return;}
     if(action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result);
   }catch(error){
     setStatus("Ошибка Git: "+(error?.message||String(error)));
     console.error(error);
   }
 }
+$("gitTokenSubmit").onclick=async()=>{
+  const token=$("gitTokenInput").value.trim(),pending=pendingGitOperation;
+  if(!pending){hideGitTokenPrompt();return;}
+  if(!token){setStatus("Введите новый GitHub token.");$("gitTokenInput").focus();return;}
+  $("gitTokenSubmit").disabled=true;
+  try{
+    setStatus("Проверяю новый GitHub token и продолжаю операцию…");
+    const response=await requestGitBridgeMutation(pending.action,pending.profile,{token});
+    if(response.tokenRequired){
+      setStatus("GitHub отклонил этот token. Введите действующий token.");
+      return;
+    }
+    pendingGitOperation=null;hideGitTokenPrompt();
+    if(pending.action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result);
+  }catch(error){
+    setStatus("Ошибка Git: "+(error?.message||String(error)));
+    console.error(error);
+  }finally{
+    $("gitTokenSubmit").disabled=false;
+  }
+};
+$("gitTokenCancel").onclick=()=>{pendingGitOperation=null;hideGitTokenPrompt();setStatus("Операция Git отменена.");};
+$("gitTokenInput").addEventListener("keydown",event=>{if(event.key==="Enter")$("gitTokenSubmit").click();});
 $("mappingSave").onclick=async()=>{
   const profile=buildProfile(),problem=validateProfileForGit(profile);
   if(problem){setStatus(problem);return;}
