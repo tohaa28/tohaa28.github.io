@@ -11,6 +11,8 @@
 .candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px}.libraryItem button{padding:4px 7px}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
 
+
+.assetReadiness{display:grid;gap:8px}.assetProgressRow{display:grid;grid-template-columns:82px minmax(110px,1fr) minmax(92px,auto);gap:8px;align-items:center;font-size:10px;color:var(--muted)}.assetProgressRow strong{font-size:10px;color:#39434c}.assetProgressRow progress{width:100%;height:8px;accent-color:var(--accent)}.assetProgressRow[data-state="ready"] span{color:#24713a;font-weight:700}.assetProgressRow[data-state="loading"] span{color:#8a5c00;font-weight:700}button:disabled{opacity:.48;cursor:not-allowed}.panel.disabledHint{background:#fbfcfd}@media(max-width:580px){.assetProgressRow{grid-template-columns:68px 1fr}.assetProgressRow span{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -25,6 +27,15 @@
 
     <main class="layout">
       <aside class="sidebar">
+        <section class="panel disabledHint" id="assetReadinessPanel">
+          <h2>Готовность данных</h2>
+          <div class="assetReadiness" role="status" aria-live="polite">
+            <div id="photoProgressRow" class="assetProgressRow" data-state="waiting"><strong>Фото</strong><progress id="photoProgress" max="100" value="0"></progress><span id="photoProgressText">Ожидание</span></div>
+            <div id="templateProgressRow" class="assetProgressRow" data-state="waiting"><strong>Шаблон</strong><progress id="templateProgress" max="100" value="0"></progress><span id="templateProgressText">Ожидание</span></div>
+            <div id="artworkProgressRow" class="assetProgressRow" data-state="waiting"><strong>Логотип</strong><progress id="artworkProgress" max="100" value="0"></progress><span id="artworkProgressText">Ожидание</span></div>
+          </div>
+          <p class="muted">Инструменты включаются автоматически только после подготовки нужных данных.</p>
+        </section>
         <section class="panel">
           <h2>1. Данные заказа</h2>
           <div class="grid2">
@@ -58,7 +69,7 @@
 
         <section class="panel">
           <h2>3. Привязка</h2>
-          <button id="selectField">Выделить поле на конструкторе</button>
+          <button id="selectField" disabled>Выделить поле на конструкторе</button>
           <p class="muted">Нажмите кнопку и протяните рамку по полю нанесения на конструкторе. Если handoff уже содержит геометрию поля, шаг выполняется автоматически.</p>
           <label>Поверхность
             <select id="surface">
@@ -80,18 +91,18 @@
             </select>
           </label>
           <div class="buttons wrap">
-            <button id="resetQuad">Сбросить рамку на фото</button>
-            <button id="toggleArtwork">Скрыть нанесение</button>
+            <button id="resetQuad" disabled>Сбросить рамку на фото</button>
+            <button id="toggleArtwork" disabled>Скрыть нанесение</button>
           </div>
         </section>
 
         <section class="panel">
           <h2>4. Профиль</h2>
           <div class="buttons wrap">
-            <button id="saveToGit" class="primary">Сохранить сопоставление на сайт</button><button id="saveToLibrary">Сохранить локальный черновик</button>
-            <button id="saveProfile">Скачать привязку JSON</button>
+            <button id="saveToGit" class="primary" disabled>Сохранить сопоставление на сайт</button><button id="saveToLibrary" disabled>Сохранить локальный черновик</button>
+            <button id="saveProfile" disabled>Скачать привязку JSON</button>
             <label class="fileButton">Открыть привязку<input id="profileFile" type="file" accept="application/json,.json"></label>
-            <button id="exportPng">Скачать мокап PNG</button>
+            <button id="exportPng" disabled>Скачать мокап PNG</button>
           </div>
           <pre id="profileSummary" class="summary"></pre>
           <div class="candidateHead libraryHead"><strong>Git-профили и локальные черновики</strong><button id="clearLibrary" class="tiny danger">очистить локальные</button></div>
@@ -125,6 +136,7 @@ const state = {
   templateSource: { name: "", url: "" },
   artwork: null,
   artworkSource: { name: "", url: "" },
+  loading: { photo: false, template: false, artwork: false },
   fieldRect: { x: .3, y: .3, w: .4, h: .4 },
   quad: [{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}],
   selectingField: false,
@@ -146,6 +158,34 @@ const PROFILE_REGISTRY_URLS = ["https://raw.githubusercontent.com/tohaa28/tohaa2
 const PROFILE_SAVE_URL = "https://tohaa28.github.io/gifts-layout-workbench-mockups/save-profile.html";
 let serverProfileRegistry={schema:"gifts-mockup-profile-registry/v1",version:1,profiles:[],candidates:[],articleSources:[]};
 const HANDLE_R = 9;
+
+function setAssetProgress(target,label){
+  const ready=!!state[target]&&!state.loading[target], loading=!!state.loading[target];
+  const progress=$(target+"Progress"),row=$(target+"ProgressRow"),text=$(target+"ProgressText");
+  if(!progress||!row||!text)return;
+  if(ready){progress.value=100;row.dataset.state="ready";text.textContent="Готово";}
+  else if(loading){progress.removeAttribute("value");row.dataset.state="loading";text.textContent="Загрузка…";}
+  else{progress.value=0;row.dataset.state="waiting";text.textContent="Ожидание";}
+}
+function updateAssetReadiness(){
+  setAssetProgress("photo","Фото");
+  setAssetProgress("template","Шаблон");
+  setAssetProgress("artwork","Логотип");
+  const photoReady=!!state.photo&&!state.loading.photo;
+  const templateReady=!!state.template&&!state.loading.template;
+  const artworkReady=!!state.artwork&&!state.loading.artwork;
+  const complete=photoReady&&templateReady&&artworkReady;
+  if($("selectField"))$("selectField").disabled=!templateReady;
+  if($("resetQuad"))$("resetQuad").disabled=!photoReady;
+  if($("toggleArtwork"))$("toggleArtwork").disabled=!(photoReady&&artworkReady);
+  for(const id of ["saveToGit","saveToLibrary","saveProfile","exportPng"]){
+    if($(id))$(id).disabled=!complete;
+  }
+}
+function setAssetLoading(target,value){
+  state.loading[target]=!!value;
+  updateAssetReadiness();
+}
 
 
 function htmlEscape(v){ return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
@@ -301,11 +341,16 @@ function slug(v){ return String(v||"").trim().replace(/[^\p{L}\p{N}._-]+/gu,"-")
 
 async function imageFromFile(file, target){
   if(!file) return;
-  const src=await fileToDataUrl(file);
-  state[target]=await loadImage(src);
-  state[target+"Source"]={id:`local:${file.name}:${file.size}`,name:file.name,url:""};
-  if(target==="photo") resetQuad();
-  renderAll();
+  setAssetLoading(target,true);
+  try{
+    const src=await fileToDataUrl(file);
+    state[target]=await loadImage(src);
+    state[target+"Source"]={id:`local:${file.name}:${file.size}`,name:file.name,url:""};
+    if(target==="photo") resetQuad();
+    renderAll();
+  }finally{
+    setAssetLoading(target,false);
+  }
 }
 
 function fitCanvas(canvas,img){
@@ -379,7 +424,7 @@ function renderPhoto(){
   qp.forEach((p,i)=>{ctx.beginPath();ctx.fillStyle="#fff";ctx.strokeStyle="#1677ff";ctx.lineWidth=2;ctx.arc(p.x,p.y,HANDLE_R,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle="#1677ff";ctx.font="11px system-ui";ctx.fillText(String(i+1),p.x-3,p.y+4);}); ctx.restore();
 }
 
-function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); }
+function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); updateAssetReadiness(); }
 function updateSummary(){
   const profile=buildProfile(); const saved=getProfileLibrary().some(p=>profileKey(p)===profileKey(profile)); $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||"ручное"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${profile.surface}`,`Библиотека: ${saved?"сопоставление сохранено":"новое сопоставление"}`].join("\n");
 }
@@ -428,6 +473,9 @@ function encodeProfileForSave(profile){
   return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
 function validateProfileForGit(p){
+  if(!state.template)return "Сначала загрузите шаблон / конструктор";
+  if(!state.artwork)return "Сначала загрузите логотип";
+  if(!state.photo)return "Сначала загрузите фотографию товара";
   if(!p.article)return "Не указан артикул";
   if(!p.place)return "Не указано место нанесения";
   if(!p.field?.printId&&!p.field?.applicationId&&!p.field?.id)return "Не определено поле конструктора";
@@ -493,7 +541,27 @@ async function applyProfile(p){
 }
 
 async function setImageFromSource(target, src, name=""){
-  if(!src) return false; try{state[target]=await loadImage(src);state[target+"Source"]={id:state[target+"Source"]?.id||name||src,name,url:/^https?:/i.test(src)?src:""};if(target==="photo")resetQuad();return true;}catch{return false;}
+  if(!src){
+    state[target]=null;
+    state[target+"Source"]={name:"",url:""};
+    setAssetLoading(target,false);
+    renderAll();
+    return false;
+  }
+  setAssetLoading(target,true);
+  try{
+    state[target]=await loadImage(src);
+    state[target+"Source"]={id:state[target+"Source"]?.id||name||src,name,url:/^https?:/i.test(src)?src:""};
+    if(target==="photo")resetQuad();
+    renderAll();
+    return true;
+  }catch{
+    state[target]=null;
+    renderAll();
+    return false;
+  }finally{
+    setAssetLoading(target,false);
+  }
 }
 function fieldRectFromAny(v,baseW,baseH){
   if(!v) return null; let x=Number(v.x??v.left),y=Number(v.y??v.top),w=Number(v.w??v.width),h=Number(v.h??v.height); if(![x,y,w,h].every(Number.isFinite)) return null; if((x>1||y>1||w>1||h>1)&&baseW>0&&baseH>0){x/=baseW;y/=baseH;w/=baseW;h/=baseH;} return {x:clamp(x),y:clamp(y),w:clamp(w,0,1),h:clamp(h,0,1)};
@@ -539,6 +607,8 @@ $("readHandoff").onclick=async()=>{if(bridgedHandoff){await acceptBridgedHandoff
 $("handoffFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyHandoff(JSON.parse(await f.text()));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
 
 async function createMockupPngBlob(){
+  if(!state.template)throw new Error("Сначала загрузите шаблон / конструктор");
+  if(!state.artwork)throw new Error("Сначала загрузите логотип");
   if(!state.photo)throw new Error("Сначала загрузите фотографию");
   const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
   if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value);ctx.restore();}
