@@ -283,40 +283,79 @@ function photoLookupKey(v){
   try{return decodeURIComponent(new URL(raw,location.href).pathname.split("/").pop()||"").replace(/_(?:200x200|300x300|400|500)(?=\.)/i,"").replace(/\.[^.]+$/,"").toLowerCase();}
   catch{return raw.toLowerCase();}
 }
-function serverProfileScore(p){
-  if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))return -1;
-  if(lookupText(p.article)!==lookupText($("article").value))return -1;
-  const current=state.fieldCandidates[state.activeFieldCandidate]||null;
+function profileMatchesFieldCandidate(p,current){
+  if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))return false;
+  if(lookupText(p.article)!==lookupText($("article").value))return false;
+  const pv=lookupText(p.variant),cv=lookupText($("variant").value);if(pv&&cv&&pv!==cv)return false;
   const wantedPlace=placeLookupKey(current?.place||$("place").value),profilePlace=placeLookupKey(p.place||p.field?.place);
-  if(profilePlace&&wantedPlace&&profilePlace!==wantedPlace)return -1;
-  let score=50;
+  if(profilePlace&&wantedPlace&&profilePlace!==wantedPlace)return false;
+  const currentApp=lookupText(current?.applicationId),profileApp=lookupText(p.field?.applicationId);
+  if(profileApp&&currentApp&&profileApp!==currentApp)return false;
   const currentPrint=lookupText(current?.printId),profilePrint=lookupText(p.field?.printId);
-  if(profilePrint&&currentPrint){if(profilePrint!==currentPrint)return -1;score+=35;}
+  if(profilePrint&&currentPrint&&profilePrint!==currentPrint)return false;
   const pc=methodCode(p.method),cc=methodCode(current?.method||$("method").value);
-  if(pc&&cc){if(pc!==cc)return -1;score+=15;}
+  if(pc&&cc&&pc!==cc)return false;
   const sizeCm=p.field?.sizeCm,currentMm=current?.sizeMm;
   if(Array.isArray(sizeCm)&&sizeCm.length===2&&Array.isArray(currentMm)&&currentMm.length===2){
     const dw=Math.abs(Number(sizeCm[0])*10-currentMm[0])/Math.max(1,Number(sizeCm[0])*10);
     const dh=Math.abs(Number(sizeCm[1])*10-currentMm[1])/Math.max(1,Number(sizeCm[1])*10);
-    if(Math.min(dw+dh,Math.abs(Number(sizeCm[1])*10-currentMm[0])/Math.max(1,Number(sizeCm[1])*10)+Math.abs(Number(sizeCm[0])*10-currentMm[1])/Math.max(1,Number(sizeCm[0])*10))>.25)return -1;
-    score+=20;
+    const swapped=Math.abs(Number(sizeCm[1])*10-currentMm[0])/Math.max(1,Number(sizeCm[1])*10)+Math.abs(Number(sizeCm[0])*10-currentMm[1])/Math.max(1,Number(sizeCm[0])*10);
+    if(Math.min(dw+dh,swapped)>.25)return false;
+  }
+  return true;
+}
+function fieldSelectionKey(field,index=state.activeFieldCandidate){
+  return [field?.applicationId||"",field?.printId||"",field?.id||"",placeLookupKey(field?.place||""),String(index)].map(lookupText).join("|");
+}
+function candidatePhotoKeys(c){
+  return new Set([c?.id,c?.url,c?.name].filter(Boolean).map(photoLookupKey).filter(Boolean));
+}
+function profilePhotoKeys(p){
+  return new Set([p?.photo?.id,p?.photo?.url,p?.photo?.sourceUrl,p?.photo?.name].filter(Boolean).map(photoLookupKey).filter(Boolean));
+}
+function rememberPhotoForActiveField(photo){
+  const field=state.fieldCandidates[state.activeFieldCandidate];if(!field)return;
+  const key=fieldSelectionKey(field,state.activeFieldCandidate),photoKey=[...candidatePhotoKeys(photo)][0]||"";
+  if(photoKey)state.photoByField[key]=photoKey;
+}
+function rememberedPhotoIndexForField(field,index){
+  const wanted=state.photoByField[fieldSelectionKey(field,index)];if(!wanted)return -1;
+  return state.photoCandidates.findIndex(c=>candidatePhotoKeys(c).has(wanted));
+}
+function profilesForField(field){
+  if(!field)return[];
+  return serverProfiles().filter(p=>profileMatchesFieldCandidate(p,field));
+}
+function serverProfileScore(p,{requirePhoto=false}={}){
+  const current=state.fieldCandidates[state.activeFieldCandidate]||null;
+  if(!profileMatchesFieldCandidate(p,current))return -1;
+  let score=50;
+  const currentApp=lookupText(current?.applicationId),profileApp=lookupText(p.field?.applicationId);if(profileApp&&currentApp&&profileApp===currentApp)score+=40;
+  const currentPrint=lookupText(current?.printId),profilePrint=lookupText(p.field?.printId);if(profilePrint&&currentPrint&&profilePrint===currentPrint)score+=35;
+  const wantedPlace=placeLookupKey(current?.place||$("place").value),profilePlace=placeLookupKey(p.place||p.field?.place);if(profilePlace&&wantedPlace&&profilePlace===wantedPlace)score+=20;
+  const pc=methodCode(p.method),cc=methodCode(current?.method||$("method").value);if(pc&&cc&&pc===cc)score+=15;
+  if(requirePhoto){
+    const currentPhoto=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+    const currentKeys=candidatePhotoKeys(currentPhoto),savedKeys=profilePhotoKeys(p);
+    if(![...currentKeys].some(k=>savedKeys.has(k)))return -1;
+    score+=50;
   }
   score+=Math.max(0,Math.min(10,Number(p.confidence||0)*10));
   return score;
 }
-function findServerProfile(){
+function findServerProfile(requirePhoto=false){
   let best=null;
   for(const p of serverProfiles()){
-    const score=serverProfileScore(p);
+    const score=serverProfileScore(p,{requirePhoto});
     if(score>=0&&(!best||score>best.score))best={p:{...p,storage:"git"},score};
   }
   return best?.p||null;
 }
-async function autoApplySavedProfile(){
-  const server=findServerProfile();
+async function autoApplySavedProfile(requirePhoto=false){
+  const server=findServerProfile(requirePhoto);
   if(server){
     await applyProfile(server);
-    setStatus("Git-привязка найдена — мокап размещён автоматически");
+    setStatus(requirePhoto?"Git-привязка для выбранной фотографии загружена":"Git-привязка поля найдена — фотография и разметка загружены");
     return true;
   }
   const probe=buildProfile(),key=profileKey(probe);
