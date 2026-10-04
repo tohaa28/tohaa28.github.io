@@ -174,7 +174,7 @@
 
   function refresh(){
     decorateMockupMappingBadges();
-    const state=currentState(),editorEligible=!!state?.hasSelectedArticle&&!!state?.templateReady&&Number(state.templateFieldCount)>0,mockupEligible=editorEligible&&Number(state.logoCount)>0;
+    const state=currentState(),editorEligible=!!state?.templateReady&&Number(state.templateFieldCount)>0,mockupEligible=editorEligible&&Number(state.logoCount)>0;
     const hideOpen=!editorEligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
     const jobs=mockupEligible?collectProfileJobs():[];
     lastProfiles=jobs.map(job=>job.profile);
