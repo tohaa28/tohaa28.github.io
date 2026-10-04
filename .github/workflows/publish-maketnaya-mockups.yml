@@ -74,6 +74,17 @@ jobs:
           grep -q 'gwbRefreshEditorState' editor.html
           grep -Fq 'c.w*.95' tools/patch-artwork-preflight.mjs
           grep -q 'Default logo fit should use 95% of field coordinates' tests/logo-preflight-browser.mjs
+          grep -q 'collectProfileJobs' editor.html
+          grep -q 'gwbGetMockupTargets' editor.html
+          grep -q 'gwbBuildMockupHandoffForField' editor.html
+          grep -q 'window.gwbGetMockupTargets=function' tools/patch-artwork-preflight.mjs
+          grep -q 'window.gwbBuildMockupHandoffForField=async function' tools/patch-artwork-preflight.mjs
+          grep -q '1. Поле для разметки' mockup.html
+          grep -q '2. Фотография для выбранного поля' mockup.html
+          grep -q 'photoByField' mockup.html
+          grep -q 'profilesForField' mockup.html
+          grep -q 'autoApplySavedProfile(true)' mockup.html
+          grep -q 'Both filled fields must become mockup export targets' tests/logo-preflight-browser.mjs
           grep -q 'window.gwbRefreshEditorState=function' tools/patch-artwork-preflight.mjs
           grep -q 'gwb-editor-readiness-changed' editor.html
           grep -q 'window.gwbGetEditorReadiness=function' tools/patch-artwork-preflight.mjs
