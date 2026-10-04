@@ -77,6 +77,11 @@ jobs:
           grep -q 'corsImg.onerror=()=>direct()' mockup.html
           grep -q 'id="mockupModeButton"' editor.html
           grep -q 'id="mockupShell"' editor.html
+          grep -q 'class="giftsWordmark"' mockup.html
+          grep -q '<h1>Редактор мокапов</h1>' mockup.html
+          grep -q -- '--gifts-green:#82b515' mockup.html
+          grep -q -- '--accent:var(--gifts-green)' mockup.html
+          if grep -q '<h1>Mockup Lab</h1>' mockup.html; then echo "Mockup editor must use the gifts.ru styled header"; exit 1; fi
           grep -q 'findProfiles=state' editor.html
           grep -q 'jobs.length' editor.html
           grep -q 'id="mappingSave"' mockup.html
