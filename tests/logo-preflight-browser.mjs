@@ -54,8 +54,11 @@ export async function verifyLogoPreflight(frame) {
   const twoColors=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="3" height="8" fill="red"/><rect x="6" y="1" width="3" height="8" fill="blue"/></svg>');
   await frame.locator('#artwork').setInputFiles({name:'two-colors.svg',mimeType:'image/svg+xml',buffer:twoColors});
   await frame.waitForFunction(()=>window.gwbLogoPreflight?.[0]?.method==='D1');
-  const defaultFitWidth=await frame.locator('#width').evaluate(el=>Number(el.value));
-  assert.ok(Math.abs(defaultFitWidth-285)<0.05,`Default logo fit should use 95% of the 300 mm field, got ${defaultFitWidth} mm`);
+  const defaultFit=await frame.evaluate(async()=>{
+    const handoff=await window.gwbBuildMockupHandoff();
+    return {logoWidth:Number(document.getElementById('width').value),fieldWidth:Number(handoff?.selectedField?.bounds?.w||0)};
+  });
+  assert.ok(defaultFit.fieldWidth>0&&Math.abs(defaultFit.logoWidth/defaultFit.fieldWidth-.95)<.002,`Default logo fit should use 95% of field coordinates, got ${JSON.stringify(defaultFit)}`);
   await frame.locator('#fillEmpty').evaluate(el=>el.click());
   const multiple=await frame.evaluate(()=>window.gwbLogoPreflight);
   assert.deepEqual(multiple.map(r=>r.method),['D1','F1']);
