@@ -220,7 +220,17 @@
   const logoButtons=["rotateLeft","rotateRight","simpleFit","simpleCenter","simpleFill","fit","center","fillEmpty","removePlacement","editorFit","editorCenter","editorRotateLeft","editorRotateRight","editorRemoveLogo","simpleExport","downloadLayoutMockup","export","saveProject","prepareOrderPdf","mockupModeButton"];
   let templateRequested=false,logoRequested=false;
 
+  function editorReadiness(){
+    try{
+      const state=typeof window.gwbGetEditorReadiness==="function"?window.gwbGetEditorReadiness():null;
+      if(state&&typeof state==="object")return state;
+    }catch(error){console.warn("Editor readiness state unavailable",error)}
+    return null;
+  }
   function templateReady(){
+    const internal=editorReadiness();
+    if(internal&&typeof internal.templateReady==="boolean")return internal.templateReady;
+
     const name=String($("templateName")?.textContent||"").trim();
     const hasName=!!name&&!/^Выбрать файл$/i.test(name);
     if(!hasName)return false;
@@ -233,10 +243,11 @@
     const hasDetectedField=hasRealOption($("fields"))||hasRealOption($("orderFieldChoice"));
     const hasRenderedPage=/^Страница\s+\d+\s*\/\s*\d+/i.test(String($("pageNumber")?.textContent||"").trim());
     const hasSelectedOrderTemplate=String($("orderTemplates")?.value||"").trim()!=="";
-
     return hasDetectedField||hasRenderedPage||hasSelectedOrderTemplate;
   }
   function logoReady(){
+    const internal=editorReadiness();
+    if(internal&&typeof internal.logoReady==="boolean")return internal.logoReady;
     const count=Number((($("placementCount")?.textContent||"").match(/(\d+)/)||[])[1]||0);
     return count>0;
   }
@@ -292,6 +303,7 @@
   ["manualTemplate","template"].forEach(id=>$(id)?.addEventListener("change",()=>{templateRequested=true;sync();}));
   $("artwork")?.addEventListener("change",()=>{logoRequested=true;sync();});
   $("loadOrder")?.addEventListener("click",()=>{templateRequested=true;sync();});
+  window.addEventListener("gwb-editor-readiness-changed",sync);
   const observer=new MutationObserver(sync);
   for(const id of ["empty","placementCount","orderLoading","templateName","artworkName","status","fields","orderFieldChoice","pageNumber","orderTemplates"]){
     const el=$(id);if(el)observer.observe(el,{attributes:true,childList:true,characterData:true,subtree:true});

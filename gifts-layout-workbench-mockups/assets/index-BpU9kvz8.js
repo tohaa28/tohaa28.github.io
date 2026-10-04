@@ -228,5 +228,18 @@ window.gwbCreateReadyLayoutPdf=async function(){
     return {blob:new Blob([bytes],{type:"application/pdf"}),filename};
   }finally{y.busy=!1;X()}
 };
+window.gwbGetEditorReadiness=function(){
+  const fieldOptions=Array.isArray(y.template?.fieldOptions)?y.template.fieldOptions:null;
+  const logoCount=(y.placements||[]).filter(p=>p?.art).length||(y.art?1:0);
+  return {
+    templateReady:!!y.template&&fieldOptions!==null,
+    templateFieldCount:fieldOptions?.length||0,
+    logoReady:logoCount>0,
+    logoCount,
+    hasSelectedField:!!y.field,
+    busy:!!y.busy
+  };
+};
+window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
 window.dispatchEvent(new CustomEvent("gwb-mockup-handoff-ready"));
 
