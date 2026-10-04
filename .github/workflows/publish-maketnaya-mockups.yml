@@ -60,6 +60,7 @@ jobs:
           grep -q 'gwb-ready' launcher.js
           grep -q 'gwb-closing' launcher.js
           grep -q 'prefers-reduced-motion' launcher.js
+          grep -q 'gwb-door-stage' launcher.js
           grep -q "const targetOrigin=location.origin" launcher.js
           if grep -q 'src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"' launcher.js; then
             echo "launcher must embed Mockup Lab as srcdoc, not remote iframe" >&2
@@ -189,6 +190,9 @@ jobs:
           cp source/mockup-profiles.json site/gifts-layout-workbench-mockups/mockup-profiles.json
           cp source/direct-mode.js site/gifts-layout-workbench-mockups/direct-mode.js
           cp source/launcher.js site/gifts-layout-workbench-mockups/launcher.js
+          # Keep the historic bookmark URL working: old bookmarks load the current launcher too.
+          mkdir -p site/gifts-layout-workbench
+          cp source/launcher.js site/gifts-layout-workbench/launcher.js
           cp -R source/assets site/gifts-layout-workbench-mockups/assets
           cp -R source/vendor site/gifts-layout-workbench-mockups/vendor
       - name: Commit GitHub Pages
@@ -197,7 +201,7 @@ jobs:
           cd site
           git config user.name "maketnaya-mockups-publisher"
           git config user.email "actions@users.noreply.github.com"
-          git add -A gifts-layout-workbench-mockups
+          git add -A gifts-layout-workbench-mockups gifts-layout-workbench/launcher.js
           if git diff --cached --quiet; then
             echo "No changes"
           else
