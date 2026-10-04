@@ -341,11 +341,12 @@ export function renderErrorOverlay(checks) {
   const position=()=>{const area=workspace.getBoundingClientRect(),view=stage.getBoundingClientRect();panel.style.top=Math.max(0,view.top-area.top+workspace.scrollTop+12)+'px';panel.style.maxHeight=Math.max(80,view.height*.45)+'px';};
   new ResizeObserver(position).observe(workspace);new ResizeObserver(position).observe(stage);position();
  }
- const errors=checks.filter(f=>f.active!==false&&(f.status==='bad'||f.status==='ok'&&!f.hidden&&f.id!=='method')).map(f=>({status:f.status,text:f.displayText||f.text})).sort((a,b)=>(a.status==='bad'?0:1)-(b.status==='bad'?0:1)),key=JSON.stringify(errors);
+ const errors=checks.filter(f=>f.active!==false&&(f.status==='bad'||f.status==='ok'&&!f.hidden&&f.id!=='method'||f.overlay===true)).map(f=>({status:f.status,text:f.displayText||f.text})).sort((a,b)=>({bad:0,manual:1,ok:2}[a.status]??3)-({bad:0,manual:1,ok:2}[b.status]??3)),key=JSON.stringify(errors);
  if(panel.dataset.errors===key)return;panel.dataset.errors=key;panel.replaceChildren();panel.hidden=!errors.length;
  if(!errors.length)return;
- const title=document.createElement('strong');title.textContent='Проверки · ошибок: '+errors.filter(f=>f.status==='bad').length+' · успешно: '+errors.filter(f=>f.status==='ok').length;panel.append(title);
+ const bad=errors.filter(f=>f.status==='bad').length,manual=errors.filter(f=>f.status==='manual').length,ok=errors.filter(f=>f.status==='ok').length;
+ const title=document.createElement('strong');title.textContent='Проверки · ошибок: '+bad+(manual?' · проверить: '+manual:'')+' · успешно: '+ok;panel.append(title);
  const list=document.createElement('ul');
- for(const finding of errors){const row=document.createElement('li');row.className=finding.status;row.textContent=(finding.status==='ok'?'✓ ':'! ')+finding.text;list.append(row);}
+ for(const finding of errors){const row=document.createElement('li');row.className=finding.status;row.textContent=(finding.status==='ok'?'✓ ':finding.status==='manual'?'⚠ ':'! ')+finding.text;list.append(row);}
  panel.append(list);
 }
