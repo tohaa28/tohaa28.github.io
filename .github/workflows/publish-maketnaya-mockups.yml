@@ -88,7 +88,7 @@ jobs:
           grep -q 'openProfileLibraryIndex' mockup.html
           grep -q 'class="libraryItem" data-profile-index=' mockup.html
           grep -q '.candidate:not(:disabled){cursor:pointer}' mockup.html
-          grep -q 'save-profile.html?bridge=1' mockup.html
+          grep -Fq 'PROFILE_SAVE_URL+"?bridge=1"' mockup.html
           grep -q 'gifts-mockup-profile-deleted' mockup.html
           grep -q 'gifts-mockup-profile-registry-deleted' editor.html
           grep -q 'async function deleteRegistry' save-profile.html
