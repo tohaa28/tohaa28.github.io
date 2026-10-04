@@ -303,6 +303,7 @@
   ["manualTemplate","template"].forEach(id=>$(id)?.addEventListener("change",()=>{templateRequested=true;sync();}));
   $("artwork")?.addEventListener("change",()=>{logoRequested=true;sync();});
   $("loadOrder")?.addEventListener("click",()=>{templateRequested=true;sync();});
+  window.addEventListener("gwb-editor-readiness-changed",sync);
   const observer=new MutationObserver(sync);
   for(const id of ["empty","placementCount","orderLoading","templateName","artworkName","status","fields","orderFieldChoice","pageNumber","orderTemplates"]){
     const el=$(id);if(el)observer.observe(el,{attributes:true,childList:true,characterData:true,subtree:true});
