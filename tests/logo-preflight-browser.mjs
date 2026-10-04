@@ -64,7 +64,11 @@ export async function verifyLogoPreflight(frame) {
   assert.deepEqual(multiple.map(r=>r.method),['D1','F1']);
   assert.ok(multiple[1].findings.some(f=>f.id==='colors'&&f.status==='bad'));
   assert.ok(!multiple[0].findings.some(f=>f.id==='colors'&&f.status==='bad'));
+  const mockupTargets=await frame.evaluate(()=>window.gwbGetMockupTargets?.()||[]);
+  assert.equal(mockupTargets.length,2,'Both filled fields must become mockup export targets');
+  assert.deepEqual(mockupTargets.map(t=>t.fieldIndex),[0,1]);
+  assert.deepEqual(mockupTargets.map(t=>t.place),['сторона b [черный(Black); белый(White)]','сторона а [черный(403/Black)]']);
   await frame.locator('#orderFieldChoice').selectOption('1');
   assert.equal((await frame.evaluate(()=>window.gwbLogoPreflight))[1].method,'F1');
-  console.log('Logo preflight: actual SVG/PDF analysis, 95% default fit, method B4 + underbase, resizing, diagnostics, export confirmation and removal passed');
+  console.log('Logo preflight: actual SVG/PDF analysis, 95% default fit, multi-field mockup targets, method B4 + underbase, resizing, diagnostics, export confirmation and removal passed');
 }
