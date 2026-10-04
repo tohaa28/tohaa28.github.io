@@ -60,7 +60,7 @@ jobs:
           grep -q 'id="mockupModeButton"' editor.html
           grep -q 'id="mockupShell"' editor.html
           grep -q 'findProfiles=state' editor.html
-          grep -q 'profiles.length' editor.html
+          grep -q 'jobs.length' editor.html
           grep -q 'id="saveToGit"' mockup.html
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
