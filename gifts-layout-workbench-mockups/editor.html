@@ -100,9 +100,11 @@
       if(pp&&sp&&pp!==sp)continue;
       const pi=String(p.field?.printId||"").trim().toLowerCase(),si=String(state.printId||"").trim().toLowerCase();
       if(pi&&si&&pi!==si)continue;
+      const pa=String(p.field?.applicationId||"").trim().toLowerCase(),sa=String(state.applicationId||"").trim().toLowerCase();
+      if(pa&&sa&&pa!==sa)continue;
       const ss=sizeScore(p,state);if(ss<0)continue;
       let score=50+ss+Math.round(Number(p.confidence||0)*10);
-      if(pi&&si&&pi===si)score+=30;if(pp&&sp&&pp===sp)score+=20;
+      if(pa&&sa&&pa===sa)score+=40;if(pi&&si&&pi===si)score+=30;if(pp&&sp&&pp===sp)score+=20;
       if(p.status==="confirmed-manual")score+=5;
       matches.push({profile:p,score});
     }
@@ -119,6 +121,26 @@
     try{if(typeof window.gwbGetMockupState==="function")return window.gwbGetMockupState()}catch{}
     const count=Number((document.getElementById("placementCount")?.textContent.match(/Добавлено логотипов:\s*(\d+)/i)||[])[1]||0);
     return{hasSelectedArticle:!!document.getElementById("article")?.value,article:document.getElementById("article")?.value||"",logoCount:count,exportDisabled:!!simpleExport?.disabled};
+  };
+  const currentTargets=()=>{
+    try{
+      if(typeof window.gwbGetMockupTargets==="function"){
+        const targets=window.gwbGetMockupTargets();
+        if(Array.isArray(targets))return targets;
+      }
+    }catch(error){console.warn("Mockup targets unavailable",error)}
+    const state=currentState();
+    return Number(state?.logoCount)>0?[state]:[];
+  };
+  const collectProfileJobs=()=>{
+    const jobs=[],seen=new Set();
+    for(const target of currentTargets()){
+      for(const profile of findProfiles(target)){
+        const key=[target.fieldIndex,profile.field?.applicationId||profile.field?.printId||target.printId,photoKey(profile)].map(v=>String(v??"")).join("|");
+        if(seen.has(key))continue;seen.add(key);jobs.push({target,profile});
+      }
+    }
+    return jobs;
   };
   const loadRegistry=()=>registryPromise||(registryPromise=(async()=>{
     let error=null;
@@ -142,8 +164,9 @@
     decorateMockupMappingBadges();
     const state=currentState(),eligible=!!state?.hasSelectedArticle&&Number(state.logoCount)>0;
     const hideOpen=!eligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
-    lastProfiles=eligible?findProfiles(state):[];
-    const count=lastProfiles.length,hideCombo=!(eligible&&count);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
+    const jobs=eligible?collectProfileJobs():[];
+    lastProfiles=jobs.map(job=>job.profile);
+    const count=jobs.length,hideCombo=!(eligible&&count);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
     const disableCombo=busy||!!state?.exportDisabled||!count;if(combo.disabled!==disableCombo)combo.disabled=disableCombo;
     if(count)combo.textContent=count===1?"Скачать макет и мокап":`Скачать макет и ${count} ${mockupWord(count)}`;
     else combo.textContent="Скачать макет и мокап";
@@ -158,31 +181,40 @@
   const safeName=v=>String(v||"макет").replace(/[^\p{L}\p{N}._-]+/gu,"_").replace(/^_+|_+$/g,"").slice(0,120)||"макет";
 
   combo.addEventListener("click",async()=>{
-    if(busy)return;const state=currentState(),profiles=findProfiles(state);if(!profiles.length)return refresh();
+    if(busy)return;
+    const state=currentState(),jobs=collectProfileJobs();if(!jobs.length)return refresh();
     if(typeof window.gwbBuildMockupHandoff!=="function"||typeof window.gwbCreateReadyLayoutPdf!=="function"){if(status)status.textContent="Экспорт ещё загружается. Повторите через секунду.";return}
-    busy=true;refresh();if(status)status.textContent=`Собираю PDF и ${profiles.length} ${mockupWord(profiles.length)}…`;
+    busy=true;refresh();if(status)status.textContent=`Собираю PDF и ${jobs.length} ${mockupWord(jobs.length)}…`;
     try{
-      const payload=await window.gwbBuildMockupHandoff();if(!payload)throw new Error("Нет данных выбранного логотипа.");
-      await deliver(payload);
       const child=await waitForChild();
       const pdf=await window.gwbCreateReadyLayoutPdf();
       const zip=new JSZip();
       zip.file(pdf.filename,new Uint8Array(await pdf.blob.arrayBuffer()));
-      for(let i=0;i<profiles.length;i++){
-        const profile=profiles[i];
-        if(status)status.textContent=`Создаю мокап ${i+1} из ${profiles.length}…`;
+      let activeFieldKey="";
+      for(let i=0;i<jobs.length;i++){
+        const {target,profile}=jobs[i];
+        const fieldKey=String(target.fieldIndex);
+        if(fieldKey!==activeFieldKey){
+          const payload=typeof window.gwbBuildMockupHandoffForField==="function"
+            ?await window.gwbBuildMockupHandoffForField(target.fieldIndex)
+            :await window.gwbBuildMockupHandoff();
+          if(!payload)throw new Error("Не удалось получить данные поля "+String(target.place||target.fieldIndex+1));
+          await deliver(payload);
+          activeFieldKey=fieldKey;
+        }
+        if(status)status.textContent=`Создаю мокап ${i+1} из ${jobs.length}: ${target.place||"поле"}…`;
         await child.gwbApplyMockupProfile(profile);
         const png=await child.gwbCreateMockupPng();
         const photo=safeName(profile.photo?.id||profile.photo?.name||String(i+1));
-        const place=safeName(profile.place||profile.field?.place||state.place||"place");
+        const place=safeName(profile.place||profile.field?.place||target.place||"place");
         const name=safeName([state.article,place,`mockup_${String(i+1).padStart(2,"0")}`,photo].filter(Boolean).join("_"))+".png";
         zip.file(name,new Uint8Array(await png.blob.arrayBuffer()));
       }
-      if(profiles[0])await child.gwbApplyMockupProfile(profiles[0]);
+      await sendHandoff();
       const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
       const a=document.createElement("a"),url=URL.createObjectURL(blob);
-      a.href=url;a.download=safeName([state.order,state.article,`макет_и_${profiles.length}_мокапов`].filter(Boolean).join("_"))+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
-      if(status)status.textContent=`Скачан ZIP: PDF-макет и ${profiles.length} ${mockupWord(profiles.length)}.`;
+      a.href=url;a.download=safeName([state.order,state.article,`макет_и_${jobs.length}_мокапов`].filter(Boolean).join("_"))+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
+      if(status)status.textContent=`Скачан ZIP: PDF-макет и ${jobs.length} ${mockupWord(jobs.length)} по всем заполненным полям.`;
     }catch(error){if(status)status.textContent="Не удалось скачать макет и мокапы: "+(error?.message||String(error));console.error(error)}
     finally{busy=false;refresh()}
   });

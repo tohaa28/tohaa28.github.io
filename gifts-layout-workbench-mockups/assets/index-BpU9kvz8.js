@@ -220,6 +220,68 @@ window.gwbGetMockupState=function(){
     exportDisabled:!!v("simpleExport")?.disabled
   };
 };
+window.gwbGetMockupTargets=function(){
+  Ft();
+  const entry=y.selectedEntry||null, fields=y.template?.fieldOptions||[];
+  return (y.placements||[]).filter(p=>p?.art&&p?.placement&&p?.field).map(p=>{
+    let index=Number.isInteger(p.fieldIndex)?p.fieldIndex:-1;
+    if(index<0)index=fields.findIndex(f=>f&&p.field&&f.page===p.field.page&&Math.abs(f.x-p.field.x)+Math.abs(f.y-p.field.y)+Math.abs(f.w-p.field.w)+Math.abs(f.h-p.field.h)<.3);
+    const meta=index>=0?(oo(index)||{}):{}, field=p.field||fields[index]||null;
+    return {
+      hasSelectedArticle:!!entry?.article,
+      article:String(entry?.article||v("article")?.value||""),
+      variant:String(entry?.variant||entry?.color||""),
+      order:String(entry?.order||v("order")?.value||""),
+      logoCount:1,
+      fieldIndex:index,
+      printId:String(meta.code||field?.printId||(index>=0?"print"+(index+1):"")),
+      applicationId:String(field?.applicationId||""),
+      place:String(meta.name||field?.orderPlace||entry?.place||(Array.isArray(entry?.places)&&index>=0?entry.places[index]:"")||""),
+      method:String(meta.method||field?.orderMethod||entry?.method||v("method")?.value||""),
+      fieldW:Number(field?.nominalW||field?.w||0),
+      fieldH:Number(field?.nominalH||field?.h||0),
+      artworkName:String(p.art?.name||""),
+      exportDisabled:!!v("simpleExport")?.disabled
+    };
+  }).filter(t=>t.fieldIndex>=0);
+};
+window.gwbBuildMockupHandoffForField=async function(fieldIndex){
+  const payload=await window.gwbBuildMockupHandoff();
+  if(!payload)return null;
+  const index=Number(fieldIndex);
+  const placement=(y.placements||[]).find(p=>p?.art&&p?.placement&&p?.field&&p.fieldIndex===index);
+  if(!placement)return null;
+  const field=payload.fieldCandidates?.[index]||null, art=placement.art;
+  let composite=String(art?.src||"");
+  try{
+    let image=art?.image||null;
+    if(art?.pdf){
+      try{
+        const page=art.pdfPage||await art.pdf.getPage(1),base=page.getViewport({scale:1}),scale=Math.min(4,1600/Math.max(1,base.width,base.height)),viewport=page.getViewport({scale}),canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.ceil(viewport.width));canvas.height=Math.max(1,Math.ceil(viewport.height));
+        const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);
+        await page.render({canvasContext:ctx,viewport,background:"rgba(0,0,0,0)"}).promise;image=canvas;
+      }catch{}
+    }
+    if(image){
+      const f=placement.field,p=placement.placement,W=1000,H=Math.max(1,Math.round(W*f.h/f.w)),canvas=document.createElement("canvas");
+      canvas.width=W;canvas.height=H;const ctx=canvas.getContext("2d"),scale=W/f.w;
+      ctx.clearRect(0,0,W,H);ctx.save();
+      ctx.translate((p.x-f.x+p.w/2)*scale,(p.y-f.y+p.h/2)*scale);
+      ctx.rotate((Number(p.rotation)||0)*Math.PI/180);
+      ctx.drawImage(image,-p.w*scale/2,-p.h*scale/2,p.w*scale,p.h*scale);ctx.restore();
+      composite=canvas.toDataURL("image/png");
+    }
+  }catch{}
+  payload.activeFieldIndex=index;
+  payload.selectedField=field?{...field}:null;
+  payload.place=String(field?.place||placement.field?.orderPlace||payload.place||"");
+  payload.method=String(field?.method||placement.field?.orderMethod||payload.method||"");
+  payload.artworkName=String(art?.name||"");
+  payload.artworkDataUrl=String(art?.src||"");
+  payload.fieldCompositeDataUrl=composite;
+  return payload;
+};
 window.gwbCreateReadyLayoutPdf=async function(){
   if(y.busy||!y.template)throw new Error("Макет пока не готов к экспорту.");
   y.busy=!0;X();

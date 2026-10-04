@@ -56,15 +56,17 @@
 
         <section class="panel">
           <h2>2. Найденные данные</h2>
-          <div class="candidateHead"><strong>Фотографии артикула</strong><span id="photoCandidateCount">0</span></div>
+          <div class="candidateHead"><strong>1. Поле для разметки</strong><span id="fieldCandidateCount">0</span></div>
+          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
+          <p id="fieldPhotoHint" class="muted">Сначала выберите поле шаблона. Затем выберите фотографию именно для этого поля.</p>
+
+          <div class="candidateHead"><strong>2. Фотография для выбранного поля</strong><span id="photoCandidateCount">0</span></div>
           <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
           <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
 
-          <div class="candidateHead"><strong>Поля конструктора</strong><span id="fieldCandidateCount">0</span></div>
-          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
           <label class="fileRow">Макет / логотип<input id="artworkFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
-          <p class="muted">В будущей передаче из «Макетной» редактор получит все найденные фотографии артикула и все распознанные поля конструктора. Здесь выбирается правильная пара «фото ↔ поле».</p>
+          <p class="muted">Каждое поле хранит собственную привязку к фотографии. Одно поле может иметь несколько размеченных фотографий — тогда для него будут создаваться несколько мокапов.</p>
         </section>
 
         <section class="panel">
@@ -149,7 +151,8 @@ const state = {
   photoCandidates: [],
   fieldCandidates: [],
   activePhotoCandidate: -1,
-  activeFieldCandidate: -1
+  activeFieldCandidate: -1,
+  photoByField: {}
 };
 
 const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
@@ -226,8 +229,8 @@ async function loadServerProfileRegistry(){
       const data=await r.json();
       if(data?.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(data.profiles))throw Error("неверный формат реестра");
       serverProfileRegistry=data;
-      renderProfileLibrary();
-      void autoApplySavedProfile();
+      renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();
+      void autoApplySavedProfile(false);
       return true;
     }catch(err){lastError=err;}
   }
@@ -235,26 +238,46 @@ async function loadServerProfileRegistry(){
   return false;
 }
 
-async function activatePhotoCandidate(index){
+async function activatePhotoCandidate(index,{applySaved=true}={}){
   const c=state.photoCandidates[index]; if(!c)return; const src=c.dataUrl||c.url;
-  state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok)setStatus(`Не удалось загрузить ${c.name}`); }
-  state.photoSource={id:c.id,name:c.name,url:c.url}; renderPhotoCandidates(); renderAll(); void autoApplySavedProfile();
+  state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok){setStatus(`Не удалось загрузить ${c.name}`);return;} }
+  state.photoSource={id:c.id,name:c.name,url:c.url}; rememberPhotoForActiveField(c); renderPhotoCandidates(); renderAll();
+  if(applySaved){
+    const applied=await autoApplySavedProfile(true);
+    if(!applied){const field=state.fieldCandidates[state.activeFieldCandidate];setStatus(`Для поля «${field?.place||"поле"}» выбрано фото «${c.name}». Разметьте область и сохраните привязку.`);}
+  }
 }
-function activateFieldCandidate(index){
+async function activateFieldCandidate(index){
   const c=state.fieldCandidates[index]; if(!c)return; state.activeFieldCandidate=index;
   if(c.place)$("place").value=c.place; if(c.method)$("method").value=c.method; if(c.bounds)state.fieldRect={...c.bounds};
-  renderFieldCandidates(); renderAll(); void autoApplySavedProfile();
+  renderFieldCandidates(); renderPhotoCandidates(); renderAll();
+  const remembered=rememberedPhotoIndexForField(c,index);
+  if(remembered>=0){await activatePhotoCandidate(remembered,{applySaved:true});return;}
+  state.activePhotoCandidate=-1;await setImageFromSource("photo","","");renderPhotoCandidates();renderAll();
+  const applied=await autoApplySavedProfile(false);
+  if(!applied)setStatus(`Поле «${c.place||index+1}» выбрано. Теперь выберите фотографию, которую нужно разметить для этого поля.`);
 }
 function renderPhotoCandidates(){
   const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null,hint=$("fieldPhotoHint");
+  if(hint)hint.textContent=field?`Поле «${field.place||state.activeFieldCandidate+1}»: выберите фотографию для разметки. ✓ означает, что для этой пары уже есть сохранённая привязка.`:"Сначала выберите поле шаблона. Затем выберите фотографию именно для этого поля.";
   if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет фотографий из заказа</div>';return;}
-  box.innerHTML=state.photoCandidates.map((c,i)=>`<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}">${c.dataUrl||c.url?`<img class="candidateThumb" src="${htmlEscape(c.dataUrl||c.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(c.name)}</strong><span>${htmlEscape(c.id)}</span></span><span class="candidateTag">${i+1}</span></button>`).join("");
+  const mapped=new Set();
+  if(field)for(const p of profilesForField(field))for(const k of profilePhotoKeys(p))mapped.add(k);
+  box.innerHTML=state.photoCandidates.map((c,i)=>{
+    const isMapped=[...candidatePhotoKeys(c)].some(k=>mapped.has(k)),disabled=!field;
+    return `<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}" ${disabled?'disabled':''}>${c.dataUrl||c.url?`<img class="candidateThumb" src="${htmlEscape(c.dataUrl||c.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(c.name)}</strong><span>${htmlEscape(c.id)}</span></span><span class="candidateTag">${isMapped?'✓ привязано':i+1}</span></button>`;
+  }).join("");
   box.querySelectorAll("[data-photo-index]").forEach(b=>b.onclick=()=>activatePhotoCandidate(Number(b.dataset.photoIndex)));
 }
 function renderFieldCandidates(){
   const box=$("fieldCandidates"); $("fieldCandidateCount").textContent=state.fieldCandidates.length;
-  if(!state.fieldCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет полей из конструктора</div>';return;}
-  box.innerHTML=state.fieldCandidates.map((c,i)=>`<button type="button" class="candidate ${i===state.activeFieldCandidate?'active':''}" data-field-index="${i}"><span class="candidateThumb fieldMini">${htmlEscape(c.printId||String(i+1))}</span><span class="candidateMeta"><strong>${htmlEscape(c.place)}</strong><span>${htmlEscape(c.method||c.applicationId||'поле конструктора')}</span></span><span class="candidateTag">${c.bounds?'✓':'?'}</span></button>`).join("");
+  if(!state.fieldCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет полей из конструктора</div>';renderPhotoCandidates();return;}
+  box.innerHTML=state.fieldCandidates.map((c,i)=>{
+    const photos=new Set();for(const p of profilesForField(c))for(const k of profilePhotoKeys(p))photos.add(k);
+    const tag=photos.size?`${photos.size} фото`:(c.bounds?'0 фото':'?');
+    return `<button type="button" class="candidate ${i===state.activeFieldCandidate?'active':''}" data-field-index="${i}"><span class="candidateThumb fieldMini">${htmlEscape(c.printId||String(i+1))}</span><span class="candidateMeta"><strong>${htmlEscape(c.place)}</strong><span>${htmlEscape(c.method||c.applicationId||'поле конструктора')}</span></span><span class="candidateTag">${tag}</span></button>`;
+  }).join("");
   box.querySelectorAll("[data-field-index]").forEach(b=>b.onclick=()=>activateFieldCandidate(Number(b.dataset.fieldIndex)));
 }
 function renderProfileLibrary(){
@@ -271,40 +294,79 @@ function photoLookupKey(v){
   try{return decodeURIComponent(new URL(raw,location.href).pathname.split("/").pop()||"").replace(/_(?:200x200|300x300|400|500)(?=\.)/i,"").replace(/\.[^.]+$/,"").toLowerCase();}
   catch{return raw.toLowerCase();}
 }
-function serverProfileScore(p){
-  if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))return -1;
-  if(lookupText(p.article)!==lookupText($("article").value))return -1;
-  const current=state.fieldCandidates[state.activeFieldCandidate]||null;
+function profileMatchesFieldCandidate(p,current){
+  if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))return false;
+  if(lookupText(p.article)!==lookupText($("article").value))return false;
+  const pv=lookupText(p.variant),cv=lookupText($("variant").value);if(pv&&cv&&pv!==cv)return false;
   const wantedPlace=placeLookupKey(current?.place||$("place").value),profilePlace=placeLookupKey(p.place||p.field?.place);
-  if(profilePlace&&wantedPlace&&profilePlace!==wantedPlace)return -1;
-  let score=50;
+  if(profilePlace&&wantedPlace&&profilePlace!==wantedPlace)return false;
+  const currentApp=lookupText(current?.applicationId),profileApp=lookupText(p.field?.applicationId);
+  if(profileApp&&currentApp&&profileApp!==currentApp)return false;
   const currentPrint=lookupText(current?.printId),profilePrint=lookupText(p.field?.printId);
-  if(profilePrint&&currentPrint){if(profilePrint!==currentPrint)return -1;score+=35;}
+  if(profilePrint&&currentPrint&&profilePrint!==currentPrint)return false;
   const pc=methodCode(p.method),cc=methodCode(current?.method||$("method").value);
-  if(pc&&cc){if(pc!==cc)return -1;score+=15;}
+  if(pc&&cc&&pc!==cc)return false;
   const sizeCm=p.field?.sizeCm,currentMm=current?.sizeMm;
   if(Array.isArray(sizeCm)&&sizeCm.length===2&&Array.isArray(currentMm)&&currentMm.length===2){
     const dw=Math.abs(Number(sizeCm[0])*10-currentMm[0])/Math.max(1,Number(sizeCm[0])*10);
     const dh=Math.abs(Number(sizeCm[1])*10-currentMm[1])/Math.max(1,Number(sizeCm[1])*10);
-    if(Math.min(dw+dh,Math.abs(Number(sizeCm[1])*10-currentMm[0])/Math.max(1,Number(sizeCm[1])*10)+Math.abs(Number(sizeCm[0])*10-currentMm[1])/Math.max(1,Number(sizeCm[0])*10))>.25)return -1;
-    score+=20;
+    const swapped=Math.abs(Number(sizeCm[1])*10-currentMm[0])/Math.max(1,Number(sizeCm[1])*10)+Math.abs(Number(sizeCm[0])*10-currentMm[1])/Math.max(1,Number(sizeCm[0])*10);
+    if(Math.min(dw+dh,swapped)>.25)return false;
+  }
+  return true;
+}
+function fieldSelectionKey(field,index=state.activeFieldCandidate){
+  return [field?.applicationId||"",field?.printId||"",field?.id||"",placeLookupKey(field?.place||""),String(index)].map(lookupText).join("|");
+}
+function candidatePhotoKeys(c){
+  return new Set([c?.id,c?.url,c?.name].filter(Boolean).map(photoLookupKey).filter(Boolean));
+}
+function profilePhotoKeys(p){
+  return new Set([p?.photo?.id,p?.photo?.url,p?.photo?.sourceUrl,p?.photo?.name].filter(Boolean).map(photoLookupKey).filter(Boolean));
+}
+function rememberPhotoForActiveField(photo){
+  const field=state.fieldCandidates[state.activeFieldCandidate];if(!field)return;
+  const key=fieldSelectionKey(field,state.activeFieldCandidate),photoKey=[...candidatePhotoKeys(photo)][0]||"";
+  if(photoKey)state.photoByField[key]=photoKey;
+}
+function rememberedPhotoIndexForField(field,index){
+  const wanted=state.photoByField[fieldSelectionKey(field,index)];if(!wanted)return -1;
+  return state.photoCandidates.findIndex(c=>candidatePhotoKeys(c).has(wanted));
+}
+function profilesForField(field){
+  if(!field)return[];
+  return serverProfiles().filter(p=>profileMatchesFieldCandidate(p,field));
+}
+function serverProfileScore(p,{requirePhoto=false}={}){
+  const current=state.fieldCandidates[state.activeFieldCandidate]||null;
+  if(!profileMatchesFieldCandidate(p,current))return -1;
+  let score=50;
+  const currentApp=lookupText(current?.applicationId),profileApp=lookupText(p.field?.applicationId);if(profileApp&&currentApp&&profileApp===currentApp)score+=40;
+  const currentPrint=lookupText(current?.printId),profilePrint=lookupText(p.field?.printId);if(profilePrint&&currentPrint&&profilePrint===currentPrint)score+=35;
+  const wantedPlace=placeLookupKey(current?.place||$("place").value),profilePlace=placeLookupKey(p.place||p.field?.place);if(profilePlace&&wantedPlace&&profilePlace===wantedPlace)score+=20;
+  const pc=methodCode(p.method),cc=methodCode(current?.method||$("method").value);if(pc&&cc&&pc===cc)score+=15;
+  if(requirePhoto){
+    const currentPhoto=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+    const currentKeys=candidatePhotoKeys(currentPhoto),savedKeys=profilePhotoKeys(p);
+    if(![...currentKeys].some(k=>savedKeys.has(k)))return -1;
+    score+=50;
   }
   score+=Math.max(0,Math.min(10,Number(p.confidence||0)*10));
   return score;
 }
-function findServerProfile(){
+function findServerProfile(requirePhoto=false){
   let best=null;
   for(const p of serverProfiles()){
-    const score=serverProfileScore(p);
+    const score=serverProfileScore(p,{requirePhoto});
     if(score>=0&&(!best||score>best.score))best={p:{...p,storage:"git"},score};
   }
   return best?.p||null;
 }
-async function autoApplySavedProfile(){
-  const server=findServerProfile();
+async function autoApplySavedProfile(requirePhoto=false){
+  const server=findServerProfile(requirePhoto);
   if(server){
     await applyProfile(server);
-    setStatus("Git-привязка найдена — мокап размещён автоматически");
+    setStatus(requirePhoto?"Git-привязка для выбранной фотографии загружена":"Git-привязка поля найдена — фотография и разметка загружены");
     return true;
   }
   const probe=buildProfile(),key=profileKey(probe);
@@ -500,7 +562,7 @@ window.addEventListener("message",event=>{
     serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
     serverProfileRegistry.profiles.unshift(saved);
     serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    renderProfileLibrary();updateSummary();
+    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();
     setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
     try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
   }else if(data.type==="gifts-mockup-profile-save-error"){
@@ -528,7 +590,7 @@ async function applyProfile(p){
   if(pi>=0){
     state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;
     if(src)await setImageFromSource("photo",src,c.name);
-    state.photoSource={id:c.id,name:c.name,url:c.url};
+    state.photoSource={id:c.id,name:c.name,url:c.url};rememberPhotoForActiveField(c);
   }else if(p.photo?.url){
     const ok=await setImageFromSource("photo",p.photo.url,p.photo.name||"Фото Gifts");
     if(ok)state.photoSource={id:p.photo.id||photoLookupKey(p.photo.url),name:p.photo.name||"Фото Gifts",url:p.photo.url};
@@ -568,6 +630,7 @@ function fieldRectFromAny(v,baseW,baseH){
 }
 async function applyHandoff(payload){
   const item=payload.item||payload.selectedItem||payload.items?.[0]||payload;
+  state.photoByField={};
   $("article").value=item.article||payload.article||""; $("variant").value=item.variant||item.color||payload.variant||""; $("place").value=item.placeName||item.place||payload.placeName||payload.place||""; $("method").value=item.method||item.methodType||payload.method||"";
   const rawPhotos=[...(payload.photoCandidates||[]),...(item.photoCandidates||[])];
   if(!rawPhotos.length&&item.imageUrl)rawPhotos.unshift({id:"order-main",name:item.imageName||"Фото из заказа",url:item.imageUrl});
@@ -588,12 +651,15 @@ async function applyHandoff(payload){
   const template=payload.constructorPreviewDataUrl||payload.templatePreviewDataUrl||item.constructorPreviewDataUrl||item.templatePreviewDataUrl||"";
   const artwork=payload.fieldCompositeDataUrl||payload.artworkDataUrl||item.fieldCompositeDataUrl||item.artworkDataUrl||"";
   if(state.fieldCandidates.length){const wanted=$("place").value.trim().toLocaleLowerCase("ru-RU");let fi=state.fieldCandidates.findIndex(f=>f.place.trim().toLocaleLowerCase("ru-RU")===wanted);if(fi<0)fi=0;state.activeFieldCandidate=fi;const fc=state.fieldCandidates[fi];if(fc.bounds)state.fieldRect={...fc.bounds};if(fc.place)$("place").value=fc.place;if(fc.method)$("method").value=fc.method;} else state.activeFieldCandidate=-1;
+  state.activePhotoCandidate=-1;
   renderFieldCandidates(); renderPhotoCandidates();
-  await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
-  if(state.photoCandidates.length){await activatePhotoCandidate(0);} else {const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||"";await setImageFromSource("photo",photo,payload.photoName||"");}
+  await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||""),setImageFromSource("photo","","")]);
   renderAll();
-  const applied=await autoApplySavedProfile();
-  if(!applied)setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
+  const applied=await autoApplySavedProfile(false);
+  if(!applied){
+    const field=state.fieldCandidates[state.activeFieldCandidate];
+    setStatus(field?`Handoff загружен: выберите фотографию для поля «${field.place||state.activeFieldCandidate+1}»`:`Handoff загружен: ${state.photoCandidates.length} фото, полей не найдено`);
+  }
 }
 
 let bridgedHandoff=null;
