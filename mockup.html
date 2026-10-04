@@ -160,8 +160,6 @@ const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
 const PROFILE_LIBRARY_KEY = "gifts.mockupLab.profiles.v1";
 const PROFILE_REGISTRY_URLS = ["https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json","https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup-profiles.json"];
 const PROFILE_SAVE_URL = "https://tohaa28.github.io/gifts-layout-workbench-mockups/save-profile.html";
-const GITHUB_OWNER="tohaa28",GITHUB_REPO="tohaa28.github.io",GITHUB_BRANCH="gifts-layout-workbench-mockups-source",GITHUB_PROFILE_PATH="mockup-profiles.json";
-const TOKEN_KEY="gifts.mockup.gitToken.v2",TOKEN_EXPIRY_KEY="gifts.mockup.gitTokenExpiration.v1",LEGACY_SESSION_KEY="gifts.mockup.gitToken";
 let serverProfileRegistry={schema:"gifts-mockup-profile-registry/v1",version:1,profiles:[],candidates:[],articleSources:[]};
 const HANDLE_R = 9;
 
@@ -570,75 +568,53 @@ function validateProfileForGit(p){
   if(!Array.isArray(p.targetQuad)||p.targetQuad.length!==4)return "Не размечены четыре угла на фотографии";
   return "";
 }
-class GitProfileApiError extends Error{
-  constructor(status,message,body=""){super(message);this.name="GitProfileApiError";this.status=status;this.body=body;}
+let gitBridgeFrame=null,gitBridgeReady=false,gitBridgeSeq=0;
+const gitBridgePending=new Map(),gitBridgeReadyWaiters=[];
+function ensureGitBridge(){
+  if(gitBridgeFrame)return gitBridgeFrame;
+  const frame=document.createElement("iframe");
+  frame.id="gitTokenBridge";frame.hidden=true;frame.tabIndex=-1;frame.setAttribute("aria-hidden","true");
+  frame.src=PROFILE_SAVE_URL+"?bridge=1";
+  document.body.append(frame);gitBridgeFrame=frame;
+  return frame;
 }
-function storedGitTokenExpired(){
-  const raw=localStorage.getItem(TOKEN_EXPIRY_KEY);if(!raw)return false;
-  const time=Date.parse(raw);return Number.isFinite(time)&&Date.now()>=time;
+function markGitBridgeReady(){
+  gitBridgeReady=true;
+  for(const resolve of gitBridgeReadyWaiters.splice(0))resolve();
 }
-function clearStoredGitToken(){
-  localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(TOKEN_EXPIRY_KEY);sessionStorage.removeItem(LEGACY_SESSION_KEY);
+function waitForGitBridge(timeout=6000){
+  ensureGitBridge();
+  if(gitBridgeReady)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    let done=false;
+    const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};
+    const timer=setTimeout(()=>{if(done)return;done=true;const i=gitBridgeReadyWaiters.indexOf(finish);if(i>=0)gitBridgeReadyWaiters.splice(i,1);reject(Error("Служебный Git-мост не ответил"));},timeout);
+    gitBridgeReadyWaiters.push(finish);
+  });
 }
-function rememberGitTokenExpiration(response){
-  const raw=response?.headers?.get?.("github-authentication-token-expiration")||"";
-  if(raw)localStorage.setItem(TOKEN_EXPIRY_KEY,raw);
+async function requestGitBridgeMutation(action,profile){
+  await waitForGitBridge();
+  const requestId="mockup-"+Date.now()+"-"+(++gitBridgeSeq);
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{gitBridgePending.delete(requestId);reject(Error("Git-мост не завершил операцию"));},20000);
+    gitBridgePending.set(requestId,{resolve,reject,timer});
+    gitBridgeFrame.contentWindow.postMessage({type:"gifts-mockup-git-mutate",requestId,action,profile},"https://tohaa28.github.io");
+  });
 }
-function gitProfileHeaders(token){
-  return{Accept:"application/vnd.github+json",Authorization:"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28","Content-Type":"application/json"};
-}
-function parseGitProfileError(status,text){
-  let body="";try{body=JSON.parse(text)?.message||text||""}catch{body=text||""}
-  return new GitProfileApiError(status,`GitHub ${status}${body?" · "+body:""}`,body);
-}
-function gitAuthMustBeReplaced(error){
-  if(!(error instanceof GitProfileApiError))return false;
-  if(error.status===401)return true;
-  const msg=String(error.body||error.message||"").toLowerCase();
-  return error.status===403&&(/bad credentials|resource not accessible by personal access token|requires authentication|personal access token/.test(msg));
-}
-function b64Utf8(text){
-  const bytes=new TextEncoder().encode(text);let out="";for(const b of bytes)out+=String.fromCharCode(b);return btoa(out);
-}
-async function readGitRegistryForWrite(token){
-  const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PROFILE_PATH}?ref=${encodeURIComponent(GITHUB_BRANCH)}&t=${Date.now()}`;
-  const response=await fetch(url,{headers:gitProfileHeaders(token),cache:"no-store"});
-  rememberGitTokenExpiration(response);
-  if(!response.ok){const text=await response.text().catch(()=>"");throw parseGitProfileError(response.status,text)}
-  const meta=await response.json(),raw=atob(String(meta.content||"").replace(/\s/g,"")),bytes=Uint8Array.from(raw,ch=>ch.charCodeAt(0));
-  return{sha:meta.sha,data:JSON.parse(new TextDecoder().decode(bytes))};
-}
-async function mutateGitMapping(token,action,profile){
-  for(let attempt=0;attempt<2;attempt++){
-    const current=await readGitRegistryForWrite(token),reg=current.data,now=new Date().toISOString(),k=profileKey(profile);
-    const profiles=Array.isArray(reg.profiles)?reg.profiles:[],candidates=Array.isArray(reg.candidates)?reg.candidates:[];
-    let resultProfile=profile,changed=false,message="";
-    if(action==="delete"){
-      const nextProfiles=profiles.filter(p=>profileKey(p)!==k),nextCandidates=candidates.filter(p=>profileKey(p)!==k);
-      changed=nextProfiles.length!==profiles.length||nextCandidates.length!==candidates.length;
-      reg.profiles=nextProfiles;reg.candidates=nextCandidates;
-      message=`Remove mockup mapping ${profile.article} · ${profile.place} · ${profile.photo?.id||profile.photo?.name||"photo"}`;
-    }else{
-      resultProfile={...profile,status:"confirmed-manual",updatedAt:now,confirmedAt:now,confirmedBy:"mockup-editor-manual",generatedBy:"mockup-editor-manual"};
-      const savedKey=profileKey(resultProfile),next=[...profiles],index=next.findIndex(p=>profileKey(p)===savedKey);
-      if(index>=0)next[index]=resultProfile;else next.unshift(resultProfile);
-      reg.profiles=next;reg.candidates=candidates.filter(p=>profileKey(p)!==savedKey);changed=true;
-      message=`Save manual mockup mapping ${resultProfile.article} · ${resultProfile.place} · ${resultProfile.photo?.id||resultProfile.photo?.name||"photo"}`;
-    }
-    if(!changed)return{profile:resultProfile,commit:"",deleted:action==="delete"?false:undefined};
-    reg.updatedAt=now;reg.version=Math.max(1,Number(reg.version)||1);
-    const body={message,content:b64Utf8(JSON.stringify(reg,null,2)+"\n"),branch:GITHUB_BRANCH,sha:current.sha};
-    const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PROFILE_PATH}`;
-    const response=await fetch(url,{method:"PUT",headers:gitProfileHeaders(token),body:JSON.stringify(body)});
-    rememberGitTokenExpiration(response);
-    if(response.ok){
-      const out=await response.json();
-      return{profile:resultProfile,commit:out.commit?.sha||"",deleted:action==="delete"?true:undefined};
-    }
-    if(response.status!==409&&response.status!==422){const text=await response.text().catch(()=>"");throw parseGitProfileError(response.status,text)}
+function handleGitBridgeMessage(event,data){
+  if(event.origin!=="https://tohaa28.github.io")return false;
+  if(data.type==="gifts-mockup-git-bridge-ready"&&gitBridgeFrame&&event.source===gitBridgeFrame.contentWindow){
+    markGitBridgeReady();return true;
   }
-  throw Error("Файл привязок изменился одновременно. Повторите действие.");
+  if(!["gifts-mockup-git-result","gifts-mockup-git-token-required","gifts-mockup-git-error"].includes(data.type))return false;
+  const pending=gitBridgePending.get(String(data.requestId||""));if(!pending)return true;
+  clearTimeout(pending.timer);gitBridgePending.delete(String(data.requestId||""));
+  if(data.type==="gifts-mockup-git-error")pending.reject(Error(data.message||"Ошибка Git-моста"));
+  else if(data.type==="gifts-mockup-git-token-required")pending.resolve({tokenRequired:true,action:data.action});
+  else pending.resolve({tokenRequired:false,action:data.action,result:data.result});
+  return true;
 }
+ensureGitBridge();
 function openTokenWindow(action,profile){
   const encoded=encodeProfileForSave(profile,action),popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
   if(!popup){setStatus("Браузер заблокировал окно ввода GitHub token");return false}
@@ -666,22 +642,14 @@ function applyDeletedMappingResult(data){
   try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
 }
 async function persistMapping(action,profile){
-  if(storedGitTokenExpired())clearStoredGitToken();
-  const token=localStorage.getItem(TOKEN_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY)||"";
-  if(!token){openTokenWindow(action,profile);return}
   try{
     setStatus(action==="delete"?"Отвязываю фотографию…":"Сохраняю привязку…");
-    const result=await mutateGitMapping(token,action,profile);
-    localStorage.setItem(TOKEN_KEY,token);sessionStorage.removeItem(LEGACY_SESSION_KEY);
-    if(action==="delete")applyDeletedMappingResult(result);else applySavedMappingResult(result);
+    const response=await requestGitBridgeMutation(action,profile);
+    if(response.tokenRequired){openTokenWindow(action,profile);return;}
+    if(action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result);
   }catch(error){
-    if(gitAuthMustBeReplaced(error)){
-      clearStoredGitToken();
-      openTokenWindow(action,profile);
-    }else{
-      setStatus("Ошибка Git: "+(error?.message||String(error)));
-      console.error(error);
-    }
+    setStatus("Ошибка Git: "+(error?.message||String(error)));
+    console.error(error);
   }
 }
 $("mappingToggle").onclick=async()=>{
@@ -698,8 +666,9 @@ $("mappingToggle").onclick=async()=>{
   await persistMapping("save",profile);
 };
 window.addEventListener("message",event=>{
-  if(event.origin!=="https://tohaa28.github.io")return;
   const data=event.data||{};
+  if(handleGitBridgeMessage(event,data))return;
+  if(event.origin!=="https://tohaa28.github.io")return;
   if(data.type==="gifts-mockup-profile-saved"&&data.profile)applySavedMappingResult(data);
   else if(data.type==="gifts-mockup-profile-deleted"&&data.profile)applyDeletedMappingResult(data);
   else if(data.type==="gifts-mockup-profile-save-error")setStatus("Не удалось изменить сопоставление: "+String(data.message||"ошибка Git"));
