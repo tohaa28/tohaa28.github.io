@@ -84,6 +84,12 @@ jobs:
           grep -q 'photoByField' mockup.html
           grep -q 'profilesForField' mockup.html
           grep -q 'autoApplySavedProfile(true)' mockup.html
+          grep -q 'id="removeMapping"' mockup.html
+          grep -q 'encodeProfileForSave(saved,"delete")' mockup.html
+          grep -q 'gifts-mockup-profile-deleted' mockup.html
+          grep -q 'gifts-mockup-profile-registry-deleted' editor.html
+          grep -q 'async function deleteRegistry' save-profile.html
+          grep -q 'const action=decoded?.action==="delete"?"delete":"save"' save-profile.html
           grep -q 'Both filled fields must become mockup export targets' tests/logo-preflight-browser.mjs
           grep -q 'window.gwbRefreshEditorState=function' tools/patch-artwork-preflight.mjs
           grep -q 'gwb-editor-readiness-changed' editor.html
