@@ -56,15 +56,17 @@
 
         <section class="panel">
           <h2>2. Найденные данные</h2>
-          <div class="candidateHead"><strong>Фотографии артикула</strong><span id="photoCandidateCount">0</span></div>
+          <div class="candidateHead"><strong>1. Поле для разметки</strong><span id="fieldCandidateCount">0</span></div>
+          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
+          <p id="fieldPhotoHint" class="muted">Сначала выберите поле шаблона. Затем выберите фотографию именно для этого поля.</p>
+
+          <div class="candidateHead"><strong>2. Фотография для выбранного поля</strong><span id="photoCandidateCount">0</span></div>
           <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
           <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
 
-          <div class="candidateHead"><strong>Поля конструктора</strong><span id="fieldCandidateCount">0</span></div>
-          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
           <label class="fileRow">Макет / логотип<input id="artworkFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
-          <p class="muted">В будущей передаче из «Макетной» редактор получит все найденные фотографии артикула и все распознанные поля конструктора. Здесь выбирается правильная пара «фото ↔ поле».</p>
+          <p class="muted">Каждое поле хранит собственную привязку к фотографии. Одно поле может иметь несколько размеченных фотографий — тогда для него будут создаваться несколько мокапов.</p>
         </section>
 
         <section class="panel">
@@ -149,7 +151,8 @@ const state = {
   photoCandidates: [],
   fieldCandidates: [],
   activePhotoCandidate: -1,
-  activeFieldCandidate: -1
+  activeFieldCandidate: -1,
+  photoByField: {}
 };
 
 const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
@@ -235,15 +238,24 @@ async function loadServerProfileRegistry(){
   return false;
 }
 
-async function activatePhotoCandidate(index){
+async function activatePhotoCandidate(index,{applySaved=true}={}){
   const c=state.photoCandidates[index]; if(!c)return; const src=c.dataUrl||c.url;
-  state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok)setStatus(`Не удалось загрузить ${c.name}`); }
-  state.photoSource={id:c.id,name:c.name,url:c.url}; renderPhotoCandidates(); renderAll(); void autoApplySavedProfile();
+  state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok){setStatus(`Не удалось загрузить ${c.name}`);return;} }
+  state.photoSource={id:c.id,name:c.name,url:c.url}; rememberPhotoForActiveField(c); renderPhotoCandidates(); renderAll();
+  if(applySaved){
+    const applied=await autoApplySavedProfile(true);
+    if(!applied){const field=state.fieldCandidates[state.activeFieldCandidate];setStatus(`Для поля «${field?.place||"поле"}» выбрано фото «${c.name}». Разметьте область и сохраните привязку.`);}
+  }
 }
-function activateFieldCandidate(index){
+async function activateFieldCandidate(index){
   const c=state.fieldCandidates[index]; if(!c)return; state.activeFieldCandidate=index;
   if(c.place)$("place").value=c.place; if(c.method)$("method").value=c.method; if(c.bounds)state.fieldRect={...c.bounds};
-  renderFieldCandidates(); renderAll(); void autoApplySavedProfile();
+  renderFieldCandidates(); renderPhotoCandidates(); renderAll();
+  const remembered=rememberedPhotoIndexForField(c,index);
+  if(remembered>=0){await activatePhotoCandidate(remembered,{applySaved:true});return;}
+  state.activePhotoCandidate=-1;await setImageFromSource("photo","","");renderPhotoCandidates();renderAll();
+  const applied=await autoApplySavedProfile(false);
+  if(!applied)setStatus(`Поле «${c.place||index+1}» выбрано. Теперь выберите фотографию, которую нужно разметить для этого поля.`);
 }
 function renderPhotoCandidates(){
   const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
