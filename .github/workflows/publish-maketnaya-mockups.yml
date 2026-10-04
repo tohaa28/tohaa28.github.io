@@ -88,6 +88,7 @@ jobs:
           grep -q 'compactDetailSummary' assets/logo-detail-check.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
           grep -q "f.overlay===true" assets/logo-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261004-1" assets/logo-preflight.mjs
           grep -q "li.manual" assets/index-CdEUuUA7.css
           grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
           grep -q "logo-detail-check.mjs?v=20261004-1" tools/patch-artwork-preflight.mjs
