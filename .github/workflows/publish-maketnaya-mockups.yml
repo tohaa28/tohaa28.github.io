@@ -97,6 +97,8 @@ jobs:
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
           grep -q 'id="templateLoadProgress"' editor.html
+          grep -Fq '.asset-readiness{display:none!important}' editor.html
+          grep -Fq '#assetReadinessPanel{display:none!important}' mockup.html
           grep -q 'id="logoLoadProgress"' editor.html
           grep -q 'button.classList.toggle("readiness-locked",locked)' editor.html
           if grep -q 'readinessOwnedDisabled' editor.html; then echo "readiness must not own native disabled state"; exit 1; fi
