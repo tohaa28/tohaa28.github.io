@@ -590,7 +590,7 @@ async function applyHandoff(payload){
   if(state.fieldCandidates.length){const wanted=$("place").value.trim().toLocaleLowerCase("ru-RU");let fi=state.fieldCandidates.findIndex(f=>f.place.trim().toLocaleLowerCase("ru-RU")===wanted);if(fi<0)fi=0;state.activeFieldCandidate=fi;const fc=state.fieldCandidates[fi];if(fc.bounds)state.fieldRect={...fc.bounds};if(fc.place)$("place").value=fc.place;if(fc.method)$("method").value=fc.method;} else state.activeFieldCandidate=-1;
   renderFieldCandidates(); renderPhotoCandidates();
   await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
-  if(state.photoCandidates.length){await activatePhotoCandidate(0);} else {const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||"";if(photo)await setImageFromSource("photo",photo,payload.photoName||"");}
+  if(state.photoCandidates.length){await activatePhotoCandidate(0);} else {const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||"";await setImageFromSource("photo",photo,payload.photoName||"");}
   renderAll();
   const applied=await autoApplySavedProfile();
   if(!applied)setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
