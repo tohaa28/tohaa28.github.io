@@ -51,6 +51,21 @@ export async function verifyLogoPreflight(frame) {
   await frame.locator('#orderTemplates').evaluate(el=>{el.value=[...el.options].find(o=>o.textContent.includes('16535.66')).value;el.dispatchEvent(new Event('change',{bubbles:true}));});
   await frame.waitForFunction(()=>[...document.querySelector('#orderFieldChoice').options].some(o=>o.textContent.includes('F1:')));
   await frame.locator('#orderFieldChoice').selectOption('0');
+  await frame.waitForFunction(()=>{
+    const button=document.getElementById('mockupModeButton');
+    return button&&!button.hidden&&!button.classList.contains('readiness-locked')&&button.getAttribute('aria-disabled')!=='true';
+  });
+  const noLogoMockup=await frame.evaluate(async()=>{
+    const payload=await window.gwbBuildMockupHandoff();
+    return {
+      fieldCount:Array.isArray(payload?.fieldCandidates)?payload.fieldCandidates.length:0,
+      artworkDataUrl:String(payload?.artworkDataUrl||''),
+      logoCount:Number(window.gwbGetMockupState?.().logoCount||0)
+    };
+  });
+  assert.ok(noLogoMockup.fieldCount>0,'Mockup Lab handoff must expose template fields before a logo is added');
+  assert.equal(noLogoMockup.logoCount,0,'Pre-logo Mockup Lab test must run without artwork');
+  assert.equal(noLogoMockup.artworkDataUrl,'','Pre-logo Mockup Lab handoff must not require artwork');
   const twoColors=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="3" height="8" fill="red"/><rect x="6" y="1" width="3" height="8" fill="blue"/></svg>');
   await frame.locator('#artwork').setInputFiles({name:'two-colors.svg',mimeType:'image/svg+xml',buffer:twoColors});
   await frame.waitForFunction(()=>window.gwbLogoPreflight?.[0]?.method==='D1');
@@ -70,5 +85,5 @@ export async function verifyLogoPreflight(frame) {
   assert.deepEqual(mockupTargets.map(t=>t.place),['сторона b [черный(Black); белый(White)]','сторона а [черный(403/Black)]']);
   await frame.locator('#orderFieldChoice').selectOption('1');
   assert.equal((await frame.evaluate(()=>window.gwbLogoPreflight))[1].method,'F1');
-  console.log('Logo preflight: actual SVG/PDF analysis, 95% default fit, multi-field mockup targets, method B4 + underbase, resizing, diagnostics, export confirmation and removal passed');
+  console.log('Logo preflight: pre-logo Mockup Lab access, actual SVG/PDF analysis, 95% default fit, multi-field mockup targets, method B4 + underbase, resizing, diagnostics, export confirmation and removal passed');
 }
