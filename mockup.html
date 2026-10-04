@@ -570,48 +570,139 @@ function validateProfileForGit(p){
   if(!Array.isArray(p.targetQuad)||p.targetQuad.length!==4)return "Не размечены четыре угла на фотографии";
   return "";
 }
-$("saveToGit").onclick=()=>{
-  const p=buildProfile(),problem=validateProfileForGit(p);
+class GitProfileApiError extends Error{
+  constructor(status,message,body=""){super(message);this.name="GitProfileApiError";this.status=status;this.body=body;}
+}
+function storedGitTokenExpired(){
+  const raw=localStorage.getItem(TOKEN_EXPIRY_KEY);if(!raw)return false;
+  const time=Date.parse(raw);return Number.isFinite(time)&&Date.now()>=time;
+}
+function clearStoredGitToken(){
+  localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(TOKEN_EXPIRY_KEY);sessionStorage.removeItem(LEGACY_SESSION_KEY);
+}
+function rememberGitTokenExpiration(response){
+  const raw=response?.headers?.get?.("github-authentication-token-expiration")||"";
+  if(raw)localStorage.setItem(TOKEN_EXPIRY_KEY,raw);
+}
+function gitProfileHeaders(token){
+  return{Accept:"application/vnd.github+json",Authorization:"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28","Content-Type":"application/json"};
+}
+function parseGitProfileError(status,text){
+  let body="";try{body=JSON.parse(text)?.message||text||""}catch{body=text||""}
+  return new GitProfileApiError(status,`GitHub ${status}${body?" · "+body:""}`,body);
+}
+function gitAuthMustBeReplaced(error){
+  if(!(error instanceof GitProfileApiError))return false;
+  if(error.status===401)return true;
+  const msg=String(error.body||error.message||"").toLowerCase();
+  return error.status===403&&(/bad credentials|resource not accessible by personal access token|requires authentication|personal access token/.test(msg));
+}
+function b64Utf8(text){
+  const bytes=new TextEncoder().encode(text);let out="";for(const b of bytes)out+=String.fromCharCode(b);return btoa(out);
+}
+async function readGitRegistryForWrite(token){
+  const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PROFILE_PATH}?ref=${encodeURIComponent(GITHUB_BRANCH)}&t=${Date.now()}`;
+  const response=await fetch(url,{headers:gitProfileHeaders(token),cache:"no-store"});
+  rememberGitTokenExpiration(response);
+  if(!response.ok){const text=await response.text().catch(()=>"");throw parseGitProfileError(response.status,text)}
+  const meta=await response.json(),raw=atob(String(meta.content||"").replace(/\s/g,"")),bytes=Uint8Array.from(raw,ch=>ch.charCodeAt(0));
+  return{sha:meta.sha,data:JSON.parse(new TextDecoder().decode(bytes))};
+}
+async function mutateGitMapping(token,action,profile){
+  for(let attempt=0;attempt<2;attempt++){
+    const current=await readGitRegistryForWrite(token),reg=current.data,now=new Date().toISOString(),k=profileKey(profile);
+    const profiles=Array.isArray(reg.profiles)?reg.profiles:[],candidates=Array.isArray(reg.candidates)?reg.candidates:[];
+    let resultProfile=profile,changed=false,message="";
+    if(action==="delete"){
+      const nextProfiles=profiles.filter(p=>profileKey(p)!==k),nextCandidates=candidates.filter(p=>profileKey(p)!==k);
+      changed=nextProfiles.length!==profiles.length||nextCandidates.length!==candidates.length;
+      reg.profiles=nextProfiles;reg.candidates=nextCandidates;
+      message=`Remove mockup mapping ${profile.article} · ${profile.place} · ${profile.photo?.id||profile.photo?.name||"photo"}`;
+    }else{
+      resultProfile={...profile,status:"confirmed-manual",updatedAt:now,confirmedAt:now,confirmedBy:"mockup-editor-manual",generatedBy:"mockup-editor-manual"};
+      const savedKey=profileKey(resultProfile),next=[...profiles],index=next.findIndex(p=>profileKey(p)===savedKey);
+      if(index>=0)next[index]=resultProfile;else next.unshift(resultProfile);
+      reg.profiles=next;reg.candidates=candidates.filter(p=>profileKey(p)!==savedKey);changed=true;
+      message=`Save manual mockup mapping ${resultProfile.article} · ${resultProfile.place} · ${resultProfile.photo?.id||resultProfile.photo?.name||"photo"}`;
+    }
+    if(!changed)return{profile:resultProfile,commit:"",deleted:action==="delete"?false:undefined};
+    reg.updatedAt=now;reg.version=Math.max(1,Number(reg.version)||1);
+    const body={message,content:b64Utf8(JSON.stringify(reg,null,2)+"\n"),branch:GITHUB_BRANCH,sha:current.sha};
+    const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PROFILE_PATH}`;
+    const response=await fetch(url,{method:"PUT",headers:gitProfileHeaders(token),body:JSON.stringify(body)});
+    rememberGitTokenExpiration(response);
+    if(response.ok){
+      const out=await response.json();
+      return{profile:resultProfile,commit:out.commit?.sha||"",deleted:action==="delete"?true:undefined};
+    }
+    if(response.status!==409&&response.status!==422){const text=await response.text().catch(()=>"");throw parseGitProfileError(response.status,text)}
+  }
+  throw Error("Файл привязок изменился одновременно. Повторите действие.");
+}
+function openTokenWindow(action,profile){
+  const encoded=encodeProfileForSave(profile,action),popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
+  if(!popup){setStatus("Браузер заблокировал окно ввода GitHub token");return false}
+  setStatus("Нужен новый GitHub token для изменения привязки.");
+  return true;
+}
+function applySavedMappingResult(data){
+  const saved={...data.profile,storage:"git"};
+  serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
+  serverProfileRegistry.profiles.unshift(saved);
+  serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
+  renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
+  setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
+  try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
+}
+function applyDeletedMappingResult(data){
+  const removed=data.profile,key=profileKey(removed);
+  serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==key);
+  serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==key);
+  const local=getProfileLibrary().filter(p=>profileKey(p)!==key);setProfileLibrary(local);
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null;
+  if(field)delete state.photoByField[fieldSelectionKey(field,state.activeFieldCandidate)];
+  renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
+  setStatus(data.deleted===false?"Привязка уже отсутствует в Git.":"Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
+  try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
+}
+async function persistMapping(action,profile){
+  if(storedGitTokenExpired())clearStoredGitToken();
+  const token=localStorage.getItem(TOKEN_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY)||"";
+  if(!token){openTokenWindow(action,profile);return}
+  try{
+    setStatus(action==="delete"?"Отвязываю фотографию…":"Сохраняю привязку…");
+    const result=await mutateGitMapping(token,action,profile);
+    localStorage.setItem(TOKEN_KEY,token);sessionStorage.removeItem(LEGACY_SESSION_KEY);
+    if(action==="delete")applyDeletedMappingResult(result);else applySavedMappingResult(result);
+  }catch(error){
+    if(gitAuthMustBeReplaced(error)){
+      clearStoredGitToken();
+      openTokenWindow(action,profile);
+    }else{
+      setStatus("Ошибка Git: "+(error?.message||String(error)));
+      console.error(error);
+    }
+  }
+}
+$("mappingToggle").onclick=async()=>{
+  const mapped=findServerProfile(true);
+  if(mapped){
+    const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+    if(!field||!photo)return;
+    if(!confirm(`Отвязать фото «${photo.name||photo.id||"фото"}» от поля «${field.place||field.printId||"поле"}»? Другие привязки этого поля останутся.`))return;
+    await persistMapping("delete",mapped);
+    return;
+  }
+  const profile=buildProfile(),problem=validateProfileForGit(profile);
   if(problem){setStatus(problem);return;}
-  const encoded=encodeProfileForSave(p);
-  const popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
-  if(!popup){setStatus("Браузер заблокировал окно сохранения в Git");return;}
-  setStatus("Открыто окно сохранения сопоставления в Git…");
-};
-$("removeMapping").onclick=()=>{
-  const saved=findServerProfile(true);
-  const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
-  if(!saved||!field||!photo){setStatus("Для выбранной пары поле → фото нет сохранённой привязки.");updateAssetReadiness();return;}
-  if(!confirm(`Отвязать фото «${photo.name||photo.id||"фото"}» от поля «${field.place||field.printId||"поле"}»? Другие привязки этого поля останутся.`))return;
-  const encoded=encodeProfileForSave(saved,"delete");
-  const popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
-  if(!popup){setStatus("Браузер заблокировал окно удаления привязки из Git");return;}
-  setStatus("Открыто окно удаления выбранной привязки…");
+  await persistMapping("save",profile);
 };
 window.addEventListener("message",event=>{
   if(event.origin!=="https://tohaa28.github.io")return;
   const data=event.data||{};
-  if(data.type==="gifts-mockup-profile-saved"&&data.profile){
-    const saved={...data.profile,storage:"git"};
-    serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    serverProfileRegistry.profiles.unshift(saved);
-    serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
-    setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
-    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
-  }else if(data.type==="gifts-mockup-profile-deleted"&&data.profile){
-    const removed=data.profile,key=profileKey(removed);
-    serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==key);
-    serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==key);
-    const local=getProfileLibrary().filter(p=>profileKey(p)!==key);setProfileLibrary(local);
-    const field=state.fieldCandidates[state.activeFieldCandidate]||null;
-    if(field)delete state.photoByField[fieldSelectionKey(field,state.activeFieldCandidate)];
-    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
-    setStatus("Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
-    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
-  }else if(data.type==="gifts-mockup-profile-save-error"){
-    setStatus("Не удалось сохранить сопоставление: "+String(data.message||"ошибка Git"));
-  }
+  if(data.type==="gifts-mockup-profile-saved"&&data.profile)applySavedMappingResult(data);
+  else if(data.type==="gifts-mockup-profile-deleted"&&data.profile)applyDeletedMappingResult(data);
+  else if(data.type==="gifts-mockup-profile-save-error")setStatus("Не удалось изменить сопоставление: "+String(data.message||"ошибка Git"));
 });
 $("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки скачан");};
 $("saveToLibrary").onclick=()=>{const p=buildProfile();if(!p.article||!p.place||(!p.photo.id&&!p.photo.name&&!p.photo.url)){setStatus("Для библиотеки нужны артикул, место и выбранная фотография");return;}const lib=getProfileLibrary(),key=profileKey(p),i=lib.findIndex(x=>profileKey(x)===key);p.updatedAt=new Date().toISOString();if(i>=0)lib[i]=p;else lib.unshift(p);setProfileLibrary(lib.slice(0,500));setStatus(i>=0?"Сопоставление обновлено":"Сопоставление запомнено");updateSummary();};
