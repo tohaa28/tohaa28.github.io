@@ -61,7 +61,8 @@ jobs:
           grep -q 'id="mockupShell"' editor.html
           grep -q 'findProfiles=state' editor.html
           grep -q 'jobs.length' editor.html
-          grep -q 'id="mappingToggle"' mockup.html
+          grep -q 'id="mappingSave"' mockup.html
+          grep -q 'id="mappingDelete"' mockup.html
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
@@ -79,10 +80,16 @@ jobs:
           grep -q 'gwbBuildMockupHandoffForField' editor.html
           grep -q 'window.gwbGetMockupTargets=function' tools/patch-artwork-preflight.mjs
           grep -q 'window.gwbBuildMockupHandoffForField=async function' tools/patch-artwork-preflight.mjs
-          grep -q '1. Поле для разметки' mockup.html
-          grep -q '2. Фотография для выбранного поля' mockup.html
+          grep -q '1. Фотографии артикула' mockup.html
+          grep -q '2. Поле шаблона для выбранного фото' mockup.html
           grep -q 'photoByField' mockup.html
           grep -q 'profilesForField' mockup.html
+          grep -q 'profilesForPhotoCandidate' mockup.html
+          grep -q 'Сохранить изменения' mockup.html
+          grep -q 'currentFieldPhotoMapping' mockup.html
+          if grep -q 'disabled=!field' mockup.html; then echo "Article photos must stay selectable before field selection"; exit 1; fi
+          if grep -q 'void autoApplySavedProfile(false)' mockup.html; then echo "Registry loading must not hijack photo selection"; exit 1; fi
+          if grep -q 'mappingToggle' mockup.html; then echo "Legacy one-button mapping toggle must be removed"; exit 1; fi
           grep -q 'autoApplySavedProfile(true)' mockup.html
           grep -q 'requestGitBridgeMutation' mockup.html
           grep -q 'openProfileLibraryIndex' mockup.html
