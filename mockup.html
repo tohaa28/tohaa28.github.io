@@ -562,7 +562,7 @@ window.addEventListener("message",event=>{
     serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
     serverProfileRegistry.profiles.unshift(saved);
     serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    renderProfileLibrary();updateSummary();
+    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();
     setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
     try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
   }else if(data.type==="gifts-mockup-profile-save-error"){
@@ -590,7 +590,7 @@ async function applyProfile(p){
   if(pi>=0){
     state.activePhotoCandidate=pi;const c=state.photoCandidates[pi],src=c.dataUrl||c.url;
     if(src)await setImageFromSource("photo",src,c.name);
-    state.photoSource={id:c.id,name:c.name,url:c.url};
+    state.photoSource={id:c.id,name:c.name,url:c.url};rememberPhotoForActiveField(c);
   }else if(p.photo?.url){
     const ok=await setImageFromSource("photo",p.photo.url,p.photo.name||"Фото Gifts");
     if(ok)state.photoSource={id:p.photo.id||photoLookupKey(p.photo.url),name:p.photo.name||"Фото Gifts",url:p.photo.url};
@@ -630,6 +630,7 @@ function fieldRectFromAny(v,baseW,baseH){
 }
 async function applyHandoff(payload){
   const item=payload.item||payload.selectedItem||payload.items?.[0]||payload;
+  state.photoByField={};
   $("article").value=item.article||payload.article||""; $("variant").value=item.variant||item.color||payload.variant||""; $("place").value=item.placeName||item.place||payload.placeName||payload.place||""; $("method").value=item.method||item.methodType||payload.method||"";
   const rawPhotos=[...(payload.photoCandidates||[]),...(item.photoCandidates||[])];
   if(!rawPhotos.length&&item.imageUrl)rawPhotos.unshift({id:"order-main",name:item.imageName||"Фото из заказа",url:item.imageUrl});
@@ -650,12 +651,15 @@ async function applyHandoff(payload){
   const template=payload.constructorPreviewDataUrl||payload.templatePreviewDataUrl||item.constructorPreviewDataUrl||item.templatePreviewDataUrl||"";
   const artwork=payload.fieldCompositeDataUrl||payload.artworkDataUrl||item.fieldCompositeDataUrl||item.artworkDataUrl||"";
   if(state.fieldCandidates.length){const wanted=$("place").value.trim().toLocaleLowerCase("ru-RU");let fi=state.fieldCandidates.findIndex(f=>f.place.trim().toLocaleLowerCase("ru-RU")===wanted);if(fi<0)fi=0;state.activeFieldCandidate=fi;const fc=state.fieldCandidates[fi];if(fc.bounds)state.fieldRect={...fc.bounds};if(fc.place)$("place").value=fc.place;if(fc.method)$("method").value=fc.method;} else state.activeFieldCandidate=-1;
+  state.activePhotoCandidate=-1;
   renderFieldCandidates(); renderPhotoCandidates();
-  await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||"")]);
-  if(state.photoCandidates.length){await activatePhotoCandidate(0);} else {const photo=payload.photoDataUrl||item.photoDataUrl||payload.photoUrl||item.imageUrl||"";await setImageFromSource("photo",photo,payload.photoName||"");}
+  await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||""),setImageFromSource("photo","","")]);
   renderAll();
-  const applied=await autoApplySavedProfile();
-  if(!applied)setStatus(`Handoff загружен: ${state.photoCandidates.length} фото, ${state.fieldCandidates.length} полей`);
+  const applied=await autoApplySavedProfile(false);
+  if(!applied){
+    const field=state.fieldCandidates[state.activeFieldCandidate];
+    setStatus(field?`Handoff загружен: выберите фотографию для поля «${field.place||state.activeFieldCandidate+1}»`:`Handoff загружен: ${state.photoCandidates.length} фото, полей не найдено`);
+  }
 }
 
 let bridgedHandoff=null;
