@@ -89,6 +89,7 @@ jobs:
           grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
           grep -q "logo-detail-check.mjs?v=20261004-1" tools/patch-artwork-preflight.mjs
           grep -q "logo-preflight.mjs?v=20261004-1" tools/patch-artwork-preflight.mjs
+          grep -q 'hasMockupBadge' .github/workflows/test-direct-workbench.yml
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html
