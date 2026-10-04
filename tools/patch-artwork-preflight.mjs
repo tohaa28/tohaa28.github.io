@@ -162,7 +162,7 @@ const edits=[
   ],
   [
     "for(const f of report.findings)c.push({...f,text:label+\": \"+f.text});",
-    "for(const f of report.findings)c.push({...f,text:label+\": \"+f.text,displayText:f.text,active:y.active<0||e===y.placements[y.active]});"
+    "for(const f of report.findings)c.push({...f,text:label+\": \"+f.text,displayText:f.displayText||f.text,active:y.active<0||e===y.placements[y.active]});"
   ],
   [
     "./logo-detail-check.mjs?v=20260930-3",
@@ -202,11 +202,11 @@ const edits=[
   ],
   [
     "./logo-detail-check.mjs?v=20261001-2",
-    "./logo-detail-check.mjs?v=20261001-3"
+    "./logo-detail-check.mjs?v=20261004-1"
   ],
   [
     "./logo-preflight.mjs?v=20261001-4",
-    "./logo-preflight.mjs?v=20261001-5"
+    "./logo-preflight.mjs?v=20261004-1"
   ],
   [
     "gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});",
