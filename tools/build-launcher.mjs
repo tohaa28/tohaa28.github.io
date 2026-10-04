@@ -38,9 +38,12 @@ const source = `(() => {
   const ID = "gifts-layout-workbench-host";
   const old = document.getElementById(ID);
   if (old) {
-    old.remove();
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
+    old.classList.add("gwb-closing");
+    setTimeout(() => {
+      old.remove();
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    }, 360);
     return;
   }
 
@@ -51,28 +54,148 @@ const source = `(() => {
 
   const host = document.createElement("div");
   host.id = ID;
-  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#fff";
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #${ID}{
+      position:fixed;inset:0;z-index:2147483647;overflow:hidden;
+      background:rgba(244,248,242,.72);
+      backdrop-filter:blur(0px) saturate(1);
+      -webkit-backdrop-filter:blur(0px) saturate(1);
+      animation:gwbBackdropIn .34s ease-out forwards;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    }
+    #${ID} .gwb-frame{
+      position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;
+      opacity:.08;transform:scale(.975) translateY(18px);
+      clip-path:inset(47% 48% 47% 48% round 30px);
+      filter:blur(10px) saturate(.8);
+      transition:
+        clip-path .72s cubic-bezier(.2,.82,.18,1),
+        transform .72s cubic-bezier(.2,.82,.18,1),
+        opacity .46s ease,
+        filter .56s ease;
+      will-change:clip-path,transform,opacity,filter;
+    }
+    #${ID}.gwb-ready .gwb-frame{
+      clip-path:inset(0 0 0 0 round 0);
+      transform:scale(1) translateY(0);
+      opacity:1;filter:none;
+    }
+    #${ID} .gwb-splash{
+      position:absolute;inset:0;z-index:4;display:grid;place-items:center;
+      pointer-events:none;color:#36464d;
+      transition:opacity .24s ease,transform .32s ease,filter .24s ease;
+    }
+    #${ID}.gwb-ready .gwb-splash{opacity:0;transform:scale(.94);filter:blur(5px)}
+    #${ID} .gwb-splash-core{
+      position:relative;display:grid;justify-items:center;gap:10px;
+      transform:translateY(-2vh);animation:gwbCoreIn .48s cubic-bezier(.2,.9,.25,1) both;
+    }
+    #${ID} .gwb-mark-wrap{position:relative;width:78px;height:78px;display:grid;place-items:center}
+    #${ID} .gwb-mark{
+      width:62px;height:62px;border-radius:19px;display:grid;place-items:center;
+      background:linear-gradient(145deg,#93c92b,#74a50c);color:#fff;
+      font:800 34px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+      box-shadow:0 14px 34px rgba(93,132,19,.28),0 3px 9px rgba(45,64,10,.18);
+      transform:rotate(-5deg);animation:gwbMarkIn .58s cubic-bezier(.16,1,.3,1) both;
+    }
+    #${ID} .gwb-ring{
+      position:absolute;inset:2px;border:1px solid rgba(130,181,21,.32);border-radius:26px;
+      animation:gwbRing .85s cubic-bezier(.2,.8,.2,1) both;
+    }
+    #${ID} .gwb-ring::before,#${ID} .gwb-ring::after{
+      content:"";position:absolute;background:#82b515;border-radius:50%;
+      box-shadow:0 0 0 5px rgba(130,181,21,.08);
+    }
+    #${ID} .gwb-ring::before{width:6px;height:6px;left:-3px;top:28px}
+    #${ID} .gwb-ring::after{width:4px;height:4px;right:7px;bottom:-2px}
+    #${ID} .gwb-title{
+      font-size:24px;font-weight:800;letter-spacing:-.45px;
+      animation:gwbTextIn .38s .12s ease-out both;
+    }
+    #${ID} .gwb-subtitle{
+      font-size:12px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;
+      color:#77868b;animation:gwbTextIn .38s .18s ease-out both;
+    }
+    #${ID} .gwb-line{
+      width:126px;height:3px;margin-top:2px;border-radius:99px;overflow:hidden;
+      background:rgba(70,88,94,.1);animation:gwbTextIn .3s .2s ease-out both;
+    }
+    #${ID} .gwb-line::after{
+      content:"";display:block;width:42%;height:100%;border-radius:inherit;background:#82b515;
+      animation:gwbScan .72s .14s cubic-bezier(.4,0,.2,1) infinite;
+    }
+    #${ID} .gwb-close{
+      position:absolute;right:8px;bottom:8px;z-index:5;width:42px;height:42px;
+      border-radius:50%;border:1px solid #839095;background:#435159;color:#fff;
+      font:28px/1 system-ui;cursor:pointer;box-shadow:0 3px 14px #0004;
+      opacity:0;transform:translateY(8px) scale(.9);
+      transition:opacity .22s .46s ease,transform .28s .42s cubic-bezier(.2,.8,.2,1);
+    }
+    #${ID}.gwb-ready .gwb-close{opacity:1;transform:none}
+    #${ID}.gwb-closing{animation:gwbBackdropOut .34s ease-in forwards}
+    #${ID}.gwb-closing .gwb-frame{opacity:0;transform:scale(.985) translateY(10px);filter:blur(6px)}
+    #${ID}.gwb-closing .gwb-close{opacity:0;transition-delay:0s}
+    @keyframes gwbBackdropIn{
+      from{background:rgba(244,248,242,0);backdrop-filter:blur(0) saturate(1);-webkit-backdrop-filter:blur(0) saturate(1)}
+      to{background:rgba(244,248,242,.72);backdrop-filter:blur(11px) saturate(.82);-webkit-backdrop-filter:blur(11px) saturate(.82)}
+    }
+    @keyframes gwbBackdropOut{to{opacity:0;backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0)}}
+    @keyframes gwbCoreIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:translateY(-2vh) scale(1)}}
+    @keyframes gwbMarkIn{0%{opacity:0;transform:scale(.45) rotate(-18deg)}70%{transform:scale(1.08) rotate(-3deg)}100%{opacity:1;transform:scale(1) rotate(-5deg)}}
+    @keyframes gwbRing{from{opacity:0;transform:scale(.55) rotate(-18deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+    @keyframes gwbTextIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+    @keyframes gwbScan{0%{transform:translateX(-115%)}65%,100%{transform:translateX(340%)}}
+    @media(prefers-reduced-motion:reduce){
+      #${ID},#${ID} *{animation:none!important;transition-duration:.01ms!important}
+    }
+  `;
 
   const frame = document.createElement("iframe");
+  frame.className = "gwb-frame";
   frame.title = "Макетная + мокапы";
-  frame.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff";
+
+  const splash = document.createElement("div");
+  splash.className = "gwb-splash";
+  splash.innerHTML = '<div class="gwb-splash-core"><div class="gwb-mark-wrap"><div class="gwb-ring"></div><div class="gwb-mark">М</div></div><div class="gwb-title">Макетная</div><div class="gwb-subtitle">подготовка рабочего пространства</div><div class="gwb-line"></div></div>';
 
   const close = document.createElement("button");
+  close.className = "gwb-close";
   close.type = "button";
   close.textContent = "×";
   close.title = "Закрыть Макетную";
-  close.style.cssText = "position:absolute;right:8px;bottom:8px;z-index:2147483647;width:42px;height:42px;border-radius:50%;border:1px solid #839095;background:#435159;color:#fff;font:28px/1 system-ui;cursor:pointer;box-shadow:0 3px 14px #0004";
-  close.onclick = () => {
-    host.remove();
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
-  };
 
-  host.append(frame, close);
+  const closeWorkbench = () => {
+    if (host.classList.contains("gwb-closing")) return;
+    host.classList.add("gwb-closing");
+    setTimeout(() => {
+      host.remove();
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    }, 360);
+  };
+  close.onclick = closeWorkbench;
+
+  host.append(style, frame, splash, close);
   document.documentElement.style.overflow = "hidden";
   document.body.style.overflow = "hidden";
   document.body.appendChild(host);
 
+  const launchedAt = performance.now();
+  let revealed = false;
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    const wait = Math.max(0, 520 - (performance.now() - launchedAt));
+    setTimeout(() => {
+      if (!host.isConnected) return;
+      host.classList.add("gwb-ready");
+      setTimeout(() => splash.remove(), 420);
+    }, wait);
+  };
+  frame.addEventListener("load", reveal, {once:true});
+  setTimeout(reveal, 1400);
   frame.srcdoc = ${JSON.stringify(app)};
 })();`;
 
