@@ -70,6 +70,8 @@ jobs:
           grep -q 'readinessOwnedDisabled' editor.html
           grep -q 'hasRealOption($("fields"))' editor.html
           grep -q 'gwbGetEditorReadiness' editor.html
+          grep -q 'gwbRefreshEditorState' editor.html
+          grep -q 'window.gwbRefreshEditorState=function' tools/patch-artwork-preflight.mjs
           grep -q 'gwb-editor-readiness-changed' editor.html
           grep -q 'window.gwbGetEditorReadiness=function' tools/patch-artwork-preflight.mjs
           grep -q 'hasRenderedPage=/^Страница' editor.html
