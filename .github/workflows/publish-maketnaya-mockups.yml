@@ -54,7 +54,7 @@ jobs:
           grep -q 'gwb-door-stage' launcher.js
           grep -q 'gwb-door-left' launcher.js
           grep -q 'gwb-door-right' launcher.js
-          grep -q 'gwb-seam' launcher.js
+          if grep -q 'gwb-seam' launcher.js; then echo "green center seam must be absent from door animation"; exit 1; fi
           grep -q 'gwb-door-lock' launcher.js
           grep -Fq '<div class="gwb-door gwb-door-left"><div class="gwb-door-lock">М</div></div>' launcher.js
           grep -q 'right:-38px;left:auto' launcher.js
