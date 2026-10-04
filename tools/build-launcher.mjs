@@ -100,7 +100,6 @@ const source = `(() => {
     setTimeout(() => {
       if (!host.isConnected) return;
       host.classList.add("gwb-ready");
-      setTimeout(() => { if (doors.isConnected) doors.remove(); }, 1120);
     }, wait);
   };
   frame.addEventListener("load", reveal, {once:true});
