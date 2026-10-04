@@ -63,6 +63,13 @@
       if(!count){
         node.classList.remove("has-mockup-map");
         badge?.remove();
+        node.removeAttribute("data-mockup-mapped");
+        node.removeAttribute("data-mockup-mapping-count");
+        if("mockupOriginalTitle" in node.dataset){
+          const original=node.dataset.mockupOriginalTitle;
+          if(original)node.setAttribute("title",original);else node.removeAttribute("title");
+          delete node.dataset.mockupOriginalTitle;
+        }
         continue;
       }
       node.classList.add("has-mockup-map");
