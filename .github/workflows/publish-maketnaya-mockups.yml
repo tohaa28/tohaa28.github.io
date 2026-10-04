@@ -85,6 +85,9 @@ jobs:
           grep -q 'profilesForField' mockup.html
           grep -q 'autoApplySavedProfile(true)' mockup.html
           grep -q 'id="removeMapping"' mockup.html
+          grep -q 'openProfileLibraryIndex' mockup.html
+          grep -q 'class="libraryItem" data-profile-index=' mockup.html
+          grep -q '.candidate:not(:disabled){cursor:pointer}' mockup.html
           grep -q 'encodeProfileForSave(saved,"delete")' mockup.html
           grep -q 'gifts-mockup-profile-deleted' mockup.html
           grep -q 'gifts-mockup-profile-registry-deleted' editor.html
