@@ -8,7 +8,7 @@
 :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124;background:#f4f5f7;--border:#d9dde4;--panel:#fff;--accent:#1f6feb;--muted:#68707d}
 *{box-sizing:border-box}body{margin:0}.app{min-height:100vh}.topbar{height:72px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:18px}.topbar h1{font-size:22px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted);font-size:12px}.status{font-size:13px;background:#eef3fb;padding:8px 12px;border-radius:999px;white-space:nowrap}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:12px;border-right:1px solid var(--border);overflow:auto;max-height:calc(100vh - 72px)}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#4c5563;margin-bottom:9px}input,select,button{font:inherit}input[type=text],input:not([type]),select{width:100%;padding:8px 9px;border:1px solid #cfd5df;border-radius:8px;background:#fff}button,.fileButton{border:1px solid #cdd3dc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;color:#24292f}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.buttons{display:flex;gap:7px}.wrap{flex-wrap:wrap}.fileButton{display:inline-flex;flex-direction:row;align-items:center;margin:0}.fileButton input{display:none}.fileRow{border:1px dashed #cbd2dc;border-radius:8px;padding:8px;background:#fafbfc}.muted{font-size:11px;line-height:1.4;color:var(--muted);margin:7px 0}details summary{cursor:pointer;font-size:12px}.summary{white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;font-size:10px;background:#f7f8fa;padding:8px;border-radius:8px;margin:8px 0 0}.workspace{padding:12px;min-width:0}.workspaceGrid{display:grid;grid-template-columns:minmax(300px,.7fr) minmax(480px,1.3fr);gap:12px;height:calc(100vh - 132px)}.canvasPanel{background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}.canvasPanel header{height:44px;padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px}.canvasPanel header span{color:var(--muted)}.canvasWrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#e9edf2}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
 
-.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
+.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.photoMappingAction{width:100%;margin:-2px 0 8px}.photoMappingAction.danger{background:#fff6f5;border-color:#e4aaa3;color:#a3261b}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
 
 
@@ -62,6 +62,7 @@
 
           <div class="candidateHead"><strong>2. Фотография для выбранного поля</strong><span id="photoCandidateCount">0</span></div>
           <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
+          <button id="mappingToggle" class="primary photoMappingAction" disabled>Привязать выбранное фото к полю</button>
           <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
 
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
@@ -101,7 +102,7 @@
         <section class="panel">
           <h2>4. Профиль</h2>
           <div class="buttons wrap">
-            <button id="saveToGit" class="primary" disabled>Сохранить сопоставление на сайт</button><button id="removeMapping" class="danger" disabled>Отвязать фото от поля</button><button id="saveToLibrary" disabled>Сохранить локальный черновик</button>
+            <button id="saveToLibrary" disabled>Сохранить локальный черновик</button>
             <button id="saveProfile" disabled>Скачать привязку JSON</button>
             <label class="fileButton">Открыть привязку<input id="profileFile" type="file" accept="application/json,.json"></label>
             <button id="exportPng" disabled>Скачать мокап PNG</button>
@@ -181,10 +182,20 @@ function updateAssetReadiness(){
   if($("selectField"))$("selectField").disabled=!templateReady;
   if($("resetQuad"))$("resetQuad").disabled=!photoReady;
   if($("toggleArtwork"))$("toggleArtwork").disabled=!(photoReady&&artworkReady);
-  for(const id of ["saveToGit","saveToLibrary","saveProfile","exportPng"]){
+  for(const id of ["saveToLibrary","saveProfile","exportPng"]){
     if($(id))$(id).disabled=!complete;
   }
-  if($("removeMapping"))$("removeMapping").disabled=!(photoReady&&state.activeFieldCandidate>=0&&findServerProfile(true));
+  updateMappingToggle();
+}
+function updateMappingToggle(){
+  const button=$("mappingToggle");if(!button)return;
+  const photoReady=!!state.photo&&!state.loading.photo,fieldReady=state.activeFieldCandidate>=0;
+  const mapped=photoReady&&fieldReady?findServerProfile(true):null;
+  button.textContent=mapped?"Отвязать выбранное фото от поля":"Привязать выбранное фото к полю";
+  button.classList.toggle("danger",!!mapped);
+  button.classList.toggle("primary",!mapped);
+  button.disabled=!(photoReady&&fieldReady&&(mapped||!!state.template&&!!state.artwork));
+  button.title=mapped?"Удалить только эту пару поле → фотография":"Сохранить текущую разметку выбранной фотографии для выбранного поля";
 }
 function setAssetLoading(target,value){
   state.loading[target]=!!value;
@@ -557,48 +568,110 @@ function validateProfileForGit(p){
   if(!Array.isArray(p.targetQuad)||p.targetQuad.length!==4)return "Не размечены четыре угла на фотографии";
   return "";
 }
-$("saveToGit").onclick=()=>{
-  const p=buildProfile(),problem=validateProfileForGit(p);
+let gitBridgeFrame=null,gitBridgeReady=false,gitBridgeSeq=0;
+const gitBridgePending=new Map(),gitBridgeReadyWaiters=[];
+function ensureGitBridge(){
+  if(gitBridgeFrame)return gitBridgeFrame;
+  const frame=document.createElement("iframe");
+  frame.id="gitTokenBridge";frame.hidden=true;frame.tabIndex=-1;frame.setAttribute("aria-hidden","true");
+  frame.src=PROFILE_SAVE_URL+"?bridge=1";
+  document.body.append(frame);gitBridgeFrame=frame;
+  return frame;
+}
+function markGitBridgeReady(){
+  gitBridgeReady=true;
+  for(const resolve of gitBridgeReadyWaiters.splice(0))resolve();
+}
+function waitForGitBridge(timeout=6000){
+  ensureGitBridge();
+  if(gitBridgeReady)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    let done=false;
+    const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};
+    const timer=setTimeout(()=>{if(done)return;done=true;const i=gitBridgeReadyWaiters.indexOf(finish);if(i>=0)gitBridgeReadyWaiters.splice(i,1);reject(Error("Служебный Git-мост не ответил"));},timeout);
+    gitBridgeReadyWaiters.push(finish);
+  });
+}
+async function requestGitBridgeMutation(action,profile){
+  await waitForGitBridge();
+  const requestId="mockup-"+Date.now()+"-"+(++gitBridgeSeq);
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{gitBridgePending.delete(requestId);reject(Error("Git-мост не завершил операцию"));},20000);
+    gitBridgePending.set(requestId,{resolve,reject,timer});
+    gitBridgeFrame.contentWindow.postMessage({type:"gifts-mockup-git-mutate",requestId,action,profile},"https://tohaa28.github.io");
+  });
+}
+function handleGitBridgeMessage(event,data){
+  if(event.origin!=="https://tohaa28.github.io")return false;
+  if(data.type==="gifts-mockup-git-bridge-ready"&&gitBridgeFrame&&event.source===gitBridgeFrame.contentWindow){
+    markGitBridgeReady();return true;
+  }
+  if(!["gifts-mockup-git-result","gifts-mockup-git-token-required","gifts-mockup-git-error"].includes(data.type))return false;
+  const pending=gitBridgePending.get(String(data.requestId||""));if(!pending)return true;
+  clearTimeout(pending.timer);gitBridgePending.delete(String(data.requestId||""));
+  if(data.type==="gifts-mockup-git-error")pending.reject(Error(data.message||"Ошибка Git-моста"));
+  else if(data.type==="gifts-mockup-git-token-required")pending.resolve({tokenRequired:true,action:data.action});
+  else pending.resolve({tokenRequired:false,action:data.action,result:data.result});
+  return true;
+}
+ensureGitBridge();
+function openTokenWindow(action,profile){
+  const encoded=encodeProfileForSave(profile,action),popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
+  if(!popup){setStatus("Браузер заблокировал окно ввода GitHub token");return false}
+  setStatus("Нужен новый GitHub token для изменения привязки.");
+  return true;
+}
+function applySavedMappingResult(data){
+  const saved={...data.profile,storage:"git"};
+  serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
+  serverProfileRegistry.profiles.unshift(saved);
+  serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
+  renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
+  setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
+  try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
+}
+function applyDeletedMappingResult(data){
+  const removed=data.profile,key=profileKey(removed);
+  serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==key);
+  serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==key);
+  const local=getProfileLibrary().filter(p=>profileKey(p)!==key);setProfileLibrary(local);
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null;
+  if(field)delete state.photoByField[fieldSelectionKey(field,state.activeFieldCandidate)];
+  renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
+  setStatus(data.deleted===false?"Привязка уже отсутствует в Git.":"Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
+  try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
+}
+async function persistMapping(action,profile){
+  try{
+    setStatus(action==="delete"?"Отвязываю фотографию…":"Сохраняю привязку…");
+    const response=await requestGitBridgeMutation(action,profile);
+    if(response.tokenRequired){openTokenWindow(action,profile);return;}
+    if(action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result);
+  }catch(error){
+    setStatus("Ошибка Git: "+(error?.message||String(error)));
+    console.error(error);
+  }
+}
+$("mappingToggle").onclick=async()=>{
+  const mapped=findServerProfile(true);
+  if(mapped){
+    const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+    if(!field||!photo)return;
+    if(!confirm(`Отвязать фото «${photo.name||photo.id||"фото"}» от поля «${field.place||field.printId||"поле"}»? Другие привязки этого поля останутся.`))return;
+    await persistMapping("delete",mapped);
+    return;
+  }
+  const profile=buildProfile(),problem=validateProfileForGit(profile);
   if(problem){setStatus(problem);return;}
-  const encoded=encodeProfileForSave(p);
-  const popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
-  if(!popup){setStatus("Браузер заблокировал окно сохранения в Git");return;}
-  setStatus("Открыто окно сохранения сопоставления в Git…");
-};
-$("removeMapping").onclick=()=>{
-  const saved=findServerProfile(true);
-  const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
-  if(!saved||!field||!photo){setStatus("Для выбранной пары поле → фото нет сохранённой привязки.");updateAssetReadiness();return;}
-  if(!confirm(`Отвязать фото «${photo.name||photo.id||"фото"}» от поля «${field.place||field.printId||"поле"}»? Другие привязки этого поля останутся.`))return;
-  const encoded=encodeProfileForSave(saved,"delete");
-  const popup=window.open(PROFILE_SAVE_URL+"#"+encoded,"giftsMockupGitSave","popup=yes,width=680,height=720,resizable=yes,scrollbars=yes");
-  if(!popup){setStatus("Браузер заблокировал окно удаления привязки из Git");return;}
-  setStatus("Открыто окно удаления выбранной привязки…");
+  await persistMapping("save",profile);
 };
 window.addEventListener("message",event=>{
-  if(event.origin!=="https://tohaa28.github.io")return;
   const data=event.data||{};
-  if(data.type==="gifts-mockup-profile-saved"&&data.profile){
-    const saved={...data.profile,storage:"git"};
-    serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    serverProfileRegistry.profiles.unshift(saved);
-    serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
-    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
-    setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
-    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
-  }else if(data.type==="gifts-mockup-profile-deleted"&&data.profile){
-    const removed=data.profile,key=profileKey(removed);
-    serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==key);
-    serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==key);
-    const local=getProfileLibrary().filter(p=>profileKey(p)!==key);setProfileLibrary(local);
-    const field=state.fieldCandidates[state.activeFieldCandidate]||null;
-    if(field)delete state.photoByField[fieldSelectionKey(field,state.activeFieldCandidate)];
-    renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
-    setStatus("Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
-    try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
-  }else if(data.type==="gifts-mockup-profile-save-error"){
-    setStatus("Не удалось сохранить сопоставление: "+String(data.message||"ошибка Git"));
-  }
+  if(handleGitBridgeMessage(event,data))return;
+  if(event.origin!=="https://tohaa28.github.io")return;
+  if(data.type==="gifts-mockup-profile-saved"&&data.profile)applySavedMappingResult(data);
+  else if(data.type==="gifts-mockup-profile-deleted"&&data.profile)applyDeletedMappingResult(data);
+  else if(data.type==="gifts-mockup-profile-save-error")setStatus("Не удалось изменить сопоставление: "+String(data.message||"ошибка Git"));
 });
 $("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки скачан");};
 $("saveToLibrary").onclick=()=>{const p=buildProfile();if(!p.article||!p.place||(!p.photo.id&&!p.photo.name&&!p.photo.url)){setStatus("Для библиотеки нужны артикул, место и выбранная фотография");return;}const lib=getProfileLibrary(),key=profileKey(p),i=lib.findIndex(x=>profileKey(x)===key);p.updatedAt=new Date().toISOString();if(i>=0)lib[i]=p;else lib.unshift(p);setProfileLibrary(lib.slice(0,500));setStatus(i>=0?"Сопоставление обновлено":"Сопоставление запомнено");updateSummary();};

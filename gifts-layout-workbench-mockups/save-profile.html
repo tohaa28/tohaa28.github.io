@@ -23,6 +23,8 @@
 <script>
 const OWNER="tohaa28",REPO="tohaa28.github.io",BRANCH="gifts-layout-workbench-mockups-source",PATH="mockup-profiles.json";
 const TOKEN_KEY="gifts.mockup.gitToken.v2",TOKEN_EXPIRY_KEY="gifts.mockup.gitTokenExpiration.v1",LEGACY_SESSION_KEY="gifts.mockup.gitToken";
+const BRIDGE_MODE=new URLSearchParams(location.search).get("bridge")==="1";
+if(BRIDGE_MODE)document.documentElement.style.display="none";
 const $=id=>document.getElementById(id);
 
 class GitHubApiError extends Error{
@@ -195,6 +197,41 @@ $("token").addEventListener("input",()=>{
   }else updateTokenInfo();
 });
 $("token").addEventListener("keydown",e=>{if(e.key==="Enter")save()});
-if($("token").value&&profile)setTimeout(save,180);
+
+function bridgeOriginAllowed(origin){
+  try{
+    const url=new URL(origin);
+    return url.protocol==="https:"&&(url.hostname==="tohaa28.github.io"||url.hostname==="gifts.ru"||url.hostname.endsWith(".gifts.ru"));
+  }catch{return false}
+}
+async function handleBridgeMutation(event,data){
+  if(!BRIDGE_MODE||event.source!==parent||!bridgeOriginAllowed(event.origin))return;
+  const requestId=String(data.requestId||""),action=data.action==="delete"?"delete":"save",bridgeProfile=data.profile;
+  if(!requestId||!bridgeProfile)return;
+  if(storedTokenExpired())forgetStoredToken();
+  const token=localStorage.getItem(TOKEN_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY)||"";
+  if(!token){
+    parent.postMessage({type:"gifts-mockup-git-token-required",requestId,action},"*");
+    return;
+  }
+  try{
+    const result=action==="delete"?await deleteRegistry(token,bridgeProfile):await writeRegistry(token,bridgeProfile);
+    localStorage.setItem(TOKEN_KEY,token);sessionStorage.removeItem(LEGACY_SESSION_KEY);updateTokenInfo();
+    parent.postMessage({type:"gifts-mockup-git-result",requestId,action,result},"*");
+  }catch(error){
+    if(authMustBeReplaced(error)){
+      forgetStoredToken();
+      parent.postMessage({type:"gifts-mockup-git-token-required",requestId,action},"*");
+    }else{
+      parent.postMessage({type:"gifts-mockup-git-error",requestId,action,message:error?.message||String(error)},"*");
+    }
+  }
+}
+window.addEventListener("message",event=>{
+  const data=event.data||{};
+  if(data.type==="gifts-mockup-git-mutate")void handleBridgeMutation(event,data);
+});
+if(BRIDGE_MODE)parent.postMessage({type:"gifts-mockup-git-bridge-ready"},"*");
+if(!BRIDGE_MODE&&$("token").value&&profile)setTimeout(save,180);
 </script>
 </body></html>
