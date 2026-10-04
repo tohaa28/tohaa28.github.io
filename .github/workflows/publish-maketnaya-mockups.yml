@@ -69,6 +69,9 @@ jobs:
           grep -q 'id="logoLoadProgress"' editor.html
           grep -q 'readinessOwnedDisabled' editor.html
           grep -q 'hasRealOption($("fields"))' editor.html
+          grep -q 'gwbGetEditorReadiness' editor.html
+          grep -q 'gwb-editor-readiness-changed' editor.html
+          grep -q 'window.gwbGetEditorReadiness=function' tools/patch-artwork-preflight.mjs
           grep -q 'hasRenderedPage=/^Страница' editor.html
           if grep -q 'empty.hidden===true' editor.html; then echo "stale template readiness dependency"; exit 1; fi
           grep -q 'id="photoProgress"' mockup.html
