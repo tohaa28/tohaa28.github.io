@@ -259,14 +259,25 @@ async function activateFieldCandidate(index){
 }
 function renderPhotoCandidates(){
   const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null,hint=$("fieldPhotoHint");
+  if(hint)hint.textContent=field?`Поле «${field.place||state.activeFieldCandidate+1}»: выберите фотографию для разметки. ✓ означает, что для этой пары уже есть сохранённая привязка.`:"Сначала выберите поле шаблона. Затем выберите фотографию именно для этого поля.";
   if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет фотографий из заказа</div>';return;}
-  box.innerHTML=state.photoCandidates.map((c,i)=>`<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}">${c.dataUrl||c.url?`<img class="candidateThumb" src="${htmlEscape(c.dataUrl||c.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(c.name)}</strong><span>${htmlEscape(c.id)}</span></span><span class="candidateTag">${i+1}</span></button>`).join("");
+  const mapped=new Set();
+  if(field)for(const p of profilesForField(field))for(const k of profilePhotoKeys(p))mapped.add(k);
+  box.innerHTML=state.photoCandidates.map((c,i)=>{
+    const isMapped=[...candidatePhotoKeys(c)].some(k=>mapped.has(k)),disabled=!field;
+    return `<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}" ${disabled?'disabled':''}>${c.dataUrl||c.url?`<img class="candidateThumb" src="${htmlEscape(c.dataUrl||c.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(c.name)}</strong><span>${htmlEscape(c.id)}</span></span><span class="candidateTag">${isMapped?'✓ привязано':i+1}</span></button>`;
+  }).join("");
   box.querySelectorAll("[data-photo-index]").forEach(b=>b.onclick=()=>activatePhotoCandidate(Number(b.dataset.photoIndex)));
 }
 function renderFieldCandidates(){
   const box=$("fieldCandidates"); $("fieldCandidateCount").textContent=state.fieldCandidates.length;
-  if(!state.fieldCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет полей из конструктора</div>';return;}
-  box.innerHTML=state.fieldCandidates.map((c,i)=>`<button type="button" class="candidate ${i===state.activeFieldCandidate?'active':''}" data-field-index="${i}"><span class="candidateThumb fieldMini">${htmlEscape(c.printId||String(i+1))}</span><span class="candidateMeta"><strong>${htmlEscape(c.place)}</strong><span>${htmlEscape(c.method||c.applicationId||'поле конструктора')}</span></span><span class="candidateTag">${c.bounds?'✓':'?'}</span></button>`).join("");
+  if(!state.fieldCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет полей из конструктора</div>';renderPhotoCandidates();return;}
+  box.innerHTML=state.fieldCandidates.map((c,i)=>{
+    const photos=new Set();for(const p of profilesForField(c))for(const k of profilePhotoKeys(p))photos.add(k);
+    const tag=photos.size?`${photos.size} фото`:(c.bounds?'0 фото':'?');
+    return `<button type="button" class="candidate ${i===state.activeFieldCandidate?'active':''}" data-field-index="${i}"><span class="candidateThumb fieldMini">${htmlEscape(c.printId||String(i+1))}</span><span class="candidateMeta"><strong>${htmlEscape(c.place)}</strong><span>${htmlEscape(c.method||c.applicationId||'поле конструктора')}</span></span><span class="candidateTag">${tag}</span></button>`;
+  }).join("");
   box.querySelectorAll("[data-field-index]").forEach(b=>b.onclick=()=>activateFieldCandidate(Number(b.dataset.fieldIndex)));
 }
 function renderProfileLibrary(){
