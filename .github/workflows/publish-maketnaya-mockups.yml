@@ -56,6 +56,9 @@ jobs:
           grep -q 'gwb-door-right' launcher.js
           grep -q 'gwb-seam' launcher.js
           grep -q 'gwb-door-lock' launcher.js
+          grep -Fq '<div class="gwb-door gwb-door-left"><div class="gwb-door-lock">М</div></div>' launcher.js
+          grep -q 'right:-38px;left:auto' launcher.js
+          if grep -q 'gwbLockOpen' launcher.js; then echo "Maketnaya mark must ride with the door, not animate independently"; exit 1; fi
           grep -q 'gwbDoorGlow' launcher.js
           grep -q 'const OPEN_MS = 2000' launcher.js
           grep -q 'requestAnimationFrame(() => requestAnimationFrame(() =>' launcher.js
