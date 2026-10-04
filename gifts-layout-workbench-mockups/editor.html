@@ -218,7 +218,7 @@
   const $=id=>document.getElementById(id);
   const templateButtons=["simpleDraw","drawField","clearField","prevPage","nextPage","zoomPage","editorAddLogo"];
   const logoButtons=["rotateLeft","rotateRight","simpleFit","simpleCenter","simpleFill","fit","center","fillEmpty","removePlacement","editorFit","editorCenter","editorRotateLeft","editorRotateRight","editorRemoveLogo","simpleExport","downloadLayoutMockup","export","saveProject","prepareOrderPdf","mockupModeButton"];
-  let templateRequested=false,logoRequested=false;
+  let templateRequested=false,logoRequested=false,lastTemplateReady=false,lastLogoReady=false;
 
   function editorReadiness(){
     try{
@@ -293,6 +293,9 @@
     setProgress("logo",lReady,logoRequested,"Логотип готов","Ожидание логотипа","Загрузка и подготовка логотипа…");
     for(const id of templateButtons)lockButton($(id),!tReady,"Дождитесь загрузки шаблона");
     for(const id of logoButtons)lockButton($(id),!tReady||!lReady,!tReady?"Дождитесь загрузки шаблона":"Сначала загрузите логотип");
+    const becameReady=(!lastTemplateReady&&tReady)||(!lastLogoReady&&lReady);
+    lastTemplateReady=tReady;lastLogoReady=lReady;
+    if(becameReady&&typeof window.gwbRefreshEditorState==="function")queueMicrotask(()=>window.gwbRefreshEditorState());
   }
   document.addEventListener("click",event=>{
     const button=event.target?.closest?.("button.readiness-locked");

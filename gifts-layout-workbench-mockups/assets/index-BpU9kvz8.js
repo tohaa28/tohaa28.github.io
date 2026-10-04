@@ -228,6 +228,7 @@ window.gwbCreateReadyLayoutPdf=async function(){
     return {blob:new Blob([bytes],{type:"application/pdf"}),filename};
   }finally{y.busy=!1;X()}
 };
+window.gwbRefreshEditorState=function(){X();};
 window.gwbGetEditorReadiness=function(){
   const fieldOptions=Array.isArray(y.template?.fieldOptions)?y.template.fieldOptions:null;
   const logoCount=(y.placements||[]).filter(p=>p?.art).length||(y.art?1:0);
