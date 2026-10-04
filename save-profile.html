@@ -209,7 +209,8 @@ async function handleBridgeMutation(event,data){
   const requestId=String(data.requestId||""),action=data.action==="delete"?"delete":"save",bridgeProfile=data.profile;
   if(!requestId||!bridgeProfile)return;
   if(storedTokenExpired())forgetStoredToken();
-  const token=localStorage.getItem(TOKEN_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY)||"";
+  const suppliedToken=String(data.token||"").trim();
+  const token=suppliedToken||localStorage.getItem(TOKEN_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY)||"";
   if(!token){
     parent.postMessage({type:"gifts-mockup-git-token-required",requestId,action},"*");
     return;
