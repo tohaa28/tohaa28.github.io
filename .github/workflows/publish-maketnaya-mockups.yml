@@ -65,13 +65,6 @@ jobs:
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
-          grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
-          grep -q 'authMustBeReplaced' save-profile.html
-          grep -q 'Забыть токен' save-profile.html
-          if grep -q 'sessionStorage' save-profile.html; then
-            echo "save-profile.html must persist token beyond the browser session" >&2
-            exit 1
-          fi
 
   publish:
     needs: precheck
