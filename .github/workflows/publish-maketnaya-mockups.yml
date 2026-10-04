@@ -65,6 +65,14 @@ jobs:
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
+          grep -q 'id="templateLoadProgress"' editor.html
+          grep -q 'id="logoLoadProgress"' editor.html
+          grep -q 'readinessOwnedDisabled' editor.html
+          grep -q 'id="photoProgress"' mockup.html
+          grep -q 'id="templateProgress"' mockup.html
+          grep -q 'id="artworkProgress"' mockup.html
+          grep -q 'updateAssetReadiness' mockup.html
+          grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html
           grep -q 'github-authentication-token-expiration' save-profile.html
