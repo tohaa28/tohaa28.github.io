@@ -57,6 +57,8 @@ jobs:
           grep -q 'gwb-seam' launcher.js
           grep -q 'gwb-door-lock' launcher.js
           grep -q 'gwbDoorGlow' launcher.js
+          grep -q 'transform 1.56s cubic-bezier' launcher.js
+          grep -q 'Math.max(0, 420 - (performance.now() - launchedAt))' launcher.js
           grep -q 'gwb-ready' launcher.js
           grep -q 'gwb-closing' launcher.js
           grep -q 'prefers-reduced-motion' launcher.js
