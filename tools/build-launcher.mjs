@@ -68,7 +68,7 @@ const source = `(() => {
 
   const doors = document.createElement("div");
   doors.className = "gwb-door-stage";
-  doors.innerHTML = '<div class="gwb-door gwb-door-left"></div><div class="gwb-door gwb-door-right"></div><div class="gwb-seam"></div><div class="gwb-door-lock">М</div><div class="gwb-door-caption">Открываем Макетную</div>';
+  doors.innerHTML = '<div class="gwb-door gwb-door-left"><div class="gwb-door-lock">М</div></div><div class="gwb-door gwb-door-right"></div><div class="gwb-seam"></div><div class="gwb-door-caption">Открываем Макетную</div>';
 
   const close = document.createElement("button");
   close.className = "gwb-close";
