@@ -67,7 +67,8 @@ jobs:
           grep -q 'Contents: Read and write' save-profile.html
           grep -q 'id="templateLoadProgress"' editor.html
           grep -q 'id="logoLoadProgress"' editor.html
-          grep -q 'readinessOwnedDisabled' editor.html
+          grep -q 'button.classList.toggle("readiness-locked",locked)' editor.html
+          if grep -q 'readinessOwnedDisabled' editor.html; then echo "readiness must not own native disabled state"; exit 1; fi
           grep -q 'hasRealOption($("fields"))' editor.html
           grep -q 'gwbGetEditorReadiness' editor.html
           grep -q 'gwbRefreshEditorState' editor.html
