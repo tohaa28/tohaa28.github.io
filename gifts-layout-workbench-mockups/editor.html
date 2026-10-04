@@ -255,13 +255,11 @@
     if(!button)return;
     button.classList.toggle("readiness-locked",locked);
     if(locked){
-      if(!button.disabled){button.disabled=true;button.dataset.readinessOwnedDisabled="1";}
       button.setAttribute("aria-disabled","true");
       button.dataset.readinessReason=reason||"Данные ещё загружаются";
       if(!button.dataset.readinessTitle)button.dataset.readinessTitle=button.getAttribute("title")||"";
       button.setAttribute("title",button.dataset.readinessReason);
     }else{
-      if(button.dataset.readinessOwnedDisabled==="1"){button.disabled=false;delete button.dataset.readinessOwnedDisabled;}
       button.removeAttribute("aria-disabled");
       button.removeAttribute("data-readiness-reason");
       if("readinessTitle" in button.dataset){
