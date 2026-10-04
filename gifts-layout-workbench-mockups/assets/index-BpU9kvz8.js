@@ -224,7 +224,7 @@ window.gwbGetMockupTargets=function(){
   Ft();
   const entry=y.selectedEntry||null, fields=y.template?.fieldOptions||[];
   return (y.placements||[]).filter(p=>p?.art&&p?.placement&&p?.field).map(p=>{
-    let index=Number.isInteger(p.fieldIndex)?p.fieldIndex:-1;
+    const rawIndex=Number(p.fieldIndex);let index=Number.isInteger(rawIndex)?rawIndex:-1;
     if(index<0)index=fields.findIndex(f=>f&&p.field&&f.page===p.field.page&&Math.abs(f.x-p.field.x)+Math.abs(f.y-p.field.y)+Math.abs(f.w-p.field.w)+Math.abs(f.h-p.field.h)<.3);
     const meta=index>=0?(oo(index)||{}):{}, field=p.field||fields[index]||null;
     return {
@@ -249,7 +249,7 @@ window.gwbBuildMockupHandoffForField=async function(fieldIndex){
   const payload=await window.gwbBuildMockupHandoff();
   if(!payload)return null;
   const index=Number(fieldIndex);
-  const placement=(y.placements||[]).find(p=>p?.art&&p?.placement&&p?.field&&p.fieldIndex===index);
+  const placement=(y.placements||[]).find(p=>p?.art&&p?.placement&&p?.field&&Number(p.fieldIndex)===index);
   if(!placement)return null;
   const field=payload.fieldCandidates?.[index]||null, art=placement.art;
   let composite=String(art?.src||"");
