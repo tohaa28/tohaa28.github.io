@@ -56,18 +56,18 @@
 
         <section class="panel">
           <h2>2. Найденные данные</h2>
-          <div class="candidateHead"><strong>1. Поле для разметки</strong><span id="fieldCandidateCount">0</span></div>
-          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
-          <p id="fieldPhotoHint" class="muted">Сначала выберите поле шаблона. Затем выберите фотографию именно для этого поля.</p>
-
-          <div class="candidateHead"><strong>2. Фотография для выбранного поля</strong><span id="photoCandidateCount">0</span></div>
+          <div class="candidateHead"><strong>1. Фотографии артикула</strong><span id="photoCandidateCount">0</span></div>
           <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
-          <div class="photoMappingActions"><button id="mappingSave" class="primary photoMappingAction" disabled>Сохранить привязку</button><button id="mappingDelete" class="danger photoMappingAction" disabled>Удалить привязку</button></div>
           <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
+
+          <div class="candidateHead"><strong>2. Поле шаблона для выбранного фото</strong><span id="fieldCandidateCount">0</span></div>
+          <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
+          <p id="fieldPhotoHint" class="muted">Выберите любую фотографию артикула, затем поле шаблона. Для каждой пары можно отдельно сохранить, изменить или удалить разметку.</p>
+          <div class="photoMappingActions"><button id="mappingSave" class="primary photoMappingAction" disabled>Сохранить привязку</button><button id="mappingDelete" class="danger photoMappingAction" disabled>Удалить привязку</button></div>
 
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
           <label class="fileRow">Макет / логотип<input id="artworkFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
-          <p class="muted">Каждое поле хранит собственную привязку к фотографии. Одно поле может иметь несколько размеченных фотографий — тогда для него будут создаваться несколько мокапов.</p>
+          <p class="muted">Каждая фотография артикула выбирается независимо. Одно фото можно привязать к одному или нескольким полям, а одно поле — к нескольким фотографиям.</p>
         </section>
 
         <section class="panel">
@@ -683,9 +683,7 @@ async function persistMapping(action,profile){
 $("mappingSave").onclick=async()=>{
   const profile=buildProfile(),problem=validateProfileForGit(profile);
   if(problem){setStatus(problem);return;}
-  const existed=!!currentFieldPhotoMapping();
   await persistMapping("save",profile);
-  if(!existed)setStatus("Сохраняю новую привязку выбранного фото…");
 };
 $("mappingDelete").onclick=async()=>{
   const mapped=currentFieldPhotoMapping();
