@@ -82,6 +82,13 @@ jobs:
           grep -q 'data-mockup-mapped' editor.html
           grep -q 'dataset.article=String(t.article' assets/index-BpU9kvz8.js
           grep -q 'updateAssetReadiness' mockup.html
+          grep -q 'compactDetailSummary' assets/logo-detail-check.mjs
+          grep -q "overlay:true" assets/logo-detail-check.mjs
+          grep -q "f.overlay===true" assets/logo-preflight.mjs
+          grep -q "li.manual" assets/index-CdEUuUA7.css
+          grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261004-1" tools/patch-artwork-preflight.mjs
+          grep -q "logo-preflight.mjs?v=20261004-1" tools/patch-artwork-preflight.mjs
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html
