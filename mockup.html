@@ -8,7 +8,7 @@
 :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124;background:#f4f5f7;--border:#d9dde4;--panel:#fff;--accent:#1f6feb;--muted:#68707d}
 *{box-sizing:border-box}body{margin:0}.app{min-height:100vh}.topbar{height:72px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:18px}.topbar h1{font-size:22px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted);font-size:12px}.status{font-size:13px;background:#eef3fb;padding:8px 12px;border-radius:999px;white-space:nowrap}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:12px;border-right:1px solid var(--border);overflow:auto;max-height:calc(100vh - 72px)}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#4c5563;margin-bottom:9px}input,select,button{font:inherit}input[type=text],input:not([type]),select{width:100%;padding:8px 9px;border:1px solid #cfd5df;border-radius:8px;background:#fff}button,.fileButton{border:1px solid #cdd3dc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;color:#24292f}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.buttons{display:flex;gap:7px}.wrap{flex-wrap:wrap}.fileButton{display:inline-flex;flex-direction:row;align-items:center;margin:0}.fileButton input{display:none}.fileRow{border:1px dashed #cbd2dc;border-radius:8px;padding:8px;background:#fafbfc}.muted{font-size:11px;line-height:1.4;color:var(--muted);margin:7px 0}details summary{cursor:pointer;font-size:12px}.summary{white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;font-size:10px;background:#f7f8fa;padding:8px;border-radius:8px;margin:8px 0 0}.workspace{padding:12px;min-width:0}.workspaceGrid{display:grid;grid-template-columns:minmax(300px,.7fr) minmax(480px,1.3fr);gap:12px;height:calc(100vh - 132px)}.canvasPanel{background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}.canvasPanel header{height:44px;padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px}.canvasPanel header span{color:var(--muted)}.canvasWrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#e9edf2}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
 
-.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.photoMappingAction{width:100%;margin:-2px 0 8px}.photoMappingAction.danger{background:#fff6f5;border-color:#e4aaa3;color:#a3261b}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
+.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.photoMappingActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:-2px 0 8px}.photoMappingAction{width:100%}.photoMappingAction.danger{background:#fff6f5;border-color:#e4aaa3;color:#a3261b}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
 
 
@@ -62,7 +62,7 @@
 
           <div class="candidateHead"><strong>2. Фотография для выбранного поля</strong><span id="photoCandidateCount">0</span></div>
           <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
-          <button id="mappingToggle" class="primary photoMappingAction" disabled>Привязать выбранное фото к полю</button>
+          <div class="photoMappingActions"><button id="mappingSave" class="primary photoMappingAction" disabled>Сохранить привязку</button><button id="mappingDelete" class="danger photoMappingAction" disabled>Удалить привязку</button></div>
           <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
 
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
@@ -187,17 +187,21 @@ function updateAssetReadiness(){
     if($(id))$(id).disabled=!mappingReady;
   }
   if($("exportPng"))$("exportPng").disabled=!mockupReady;
-  updateMappingToggle();
+  updateMappingActions();
 }
-function updateMappingToggle(){
-  const button=$("mappingToggle");if(!button)return;
-  const photoReady=!!state.photo&&!state.loading.photo,fieldReady=state.activeFieldCandidate>=0;
-  const mapped=photoReady&&fieldReady?findServerProfile(true):null;
-  button.textContent=mapped?"Отвязать выбранное фото от поля":"Привязать выбранное фото к полю";
-  button.classList.toggle("danger",!!mapped);
-  button.classList.toggle("primary",!mapped);
-  button.disabled=!(photoReady&&fieldReady&&(mapped||!!state.template));
-  button.title=mapped?"Удалить только эту пару поле → фотография":"Сохранить текущую разметку выбранной фотографии для выбранного поля";
+function currentFieldPhotoMapping(){
+  if(state.activeFieldCandidate<0||state.activePhotoCandidate<0||!state.photo)return null;
+  return findServerProfile(true);
+}
+function updateMappingActions(){
+  const save=$("mappingSave"),remove=$("mappingDelete");if(!save||!remove)return;
+  const photoReady=!!state.photo&&!state.loading.photo,fieldReady=state.activeFieldCandidate>=0,templateReady=!!state.template&&!state.loading.template;
+  const mapped=photoReady&&fieldReady?currentFieldPhotoMapping():null;
+  save.textContent=mapped?"Сохранить изменения":"Сохранить привязку";
+  save.disabled=!(photoReady&&fieldReady&&templateReady);
+  save.title=mapped?"Перезаписать геометрию выбранной пары поле → фотография":"Сохранить выбранную пару поле → фотография";
+  remove.disabled=!mapped;
+  remove.title=mapped?"Удалить только выбранную пару поле → фотография":"Для этой пары сохранённой привязки нет";
 }
 function setAssetLoading(target,value){
   state.loading[target]=!!value;
@@ -253,23 +257,34 @@ async function loadServerProfileRegistry(){
 }
 
 async function activatePhotoCandidate(index,{applySaved=true}={}){
-  const c=state.photoCandidates[index]; if(!c)return; const src=c.dataUrl||c.url;
-  state.activePhotoCandidate=index; if(src){ const ok=await setImageFromSource("photo",src,c.name); if(!ok){setStatus(`Не удалось загрузить ${c.name}`);return;} }
-  state.photoSource={id:c.id,name:c.name,url:c.url}; rememberPhotoForActiveField(c); renderPhotoCandidates(); renderAll();
-  if(applySaved){
+  const photo=state.photoCandidates[index];if(!photo)return;const src=photo.dataUrl||photo.url;
+  state.activePhotoCandidate=index;
+  if(src){const ok=await setImageFromSource("photo",src,photo.name);if(!ok){setStatus(`Не удалось загрузить ${photo.name}`);return;}}
+  state.photoSource={id:photo.id,name:photo.name,url:photo.url};
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null;
+  if(field)rememberPhotoForActiveField(photo);
+  renderPhotoCandidates();renderFieldCandidates();renderAll();updateMappingActions();
+  if(applySaved&&field){
     const applied=await autoApplySavedProfile(true);
-    if(!applied){const field=state.fieldCandidates[state.activeFieldCandidate];setStatus(`Для поля «${field?.place||"поле"}» выбрано фото «${c.name}». Разметьте область и сохраните привязку.`);}
+    if(!applied)setStatus(`Фото «${photo.name}» выбрано. Для поля «${field.place||state.activeFieldCandidate+1}» привязки пока нет — разметьте область и сохраните её.`);
+  }else if(field){
+    setStatus(`Фото «${photo.name}» выбрано для поля «${field.place||state.activeFieldCandidate+1}».`);
+  }else{
+    setStatus(`Фото «${photo.name}» выбрано. Теперь выберите поле шаблона для привязки.`);
   }
 }
 async function activateFieldCandidate(index){
-  const c=state.fieldCandidates[index]; if(!c)return; state.activeFieldCandidate=index;
-  if(c.place)$("place").value=c.place; if(c.method)$("method").value=c.method; if(c.bounds)state.fieldRect={...c.bounds};
-  renderFieldCandidates(); renderPhotoCandidates(); renderAll();
-  const remembered=rememberedPhotoIndexForField(c,index);
-  if(remembered>=0){await activatePhotoCandidate(remembered,{applySaved:true});return;}
-  state.activePhotoCandidate=-1;await setImageFromSource("photo","","");renderPhotoCandidates();renderAll();
-  const applied=await autoApplySavedProfile(false);
-  if(!applied)setStatus(`Поле «${c.place||index+1}» выбрано. Теперь выберите фотографию, которую нужно разметить для этого поля.`);
+  const field=state.fieldCandidates[index];if(!field)return;state.activeFieldCandidate=index;
+  if(field.place)$("place").value=field.place;if(field.method)$("method").value=field.method;if(field.bounds)state.fieldRect={...field.bounds};
+  renderFieldCandidates();renderPhotoCandidates();renderAll();updateMappingActions();
+  if(state.activePhotoCandidate>=0&&state.photo){
+    const photo=state.photoCandidates[state.activePhotoCandidate];
+    if(photo)rememberPhotoForActiveField(photo);
+    const applied=await autoApplySavedProfile(true);
+    if(!applied)setStatus(`Поле «${field.place||index+1}» выбрано для фото «${photo?.name||state.photoSource.name||"фото"}». Привязку можно сохранить или изменить.`);
+  }else{
+    setStatus(`Поле «${field.place||index+1}» выбрано. Теперь выберите любую фотографию артикула.`);
+  }
 }
 function renderPhotoCandidates(){
   const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
