@@ -184,6 +184,8 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
 }
 
 #assetReadinessPanel{display:none!important}
+
+.handoffManualControls{display:none!important}
 </style>
 </head>
 <body>
@@ -224,9 +226,9 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
             <label>Метод<input id="method" placeholder="LM1"></label>
             <label>Вариант<input id="variant" placeholder="цвет / модификация"></label>
           </div>
-          <div class="buttons wrap">
-            <button id="readHandoff" class="primary">Взять данные Макетной</button>
-            <label class="fileButton">Импорт handoff JSON<input id="handoffFile" type="file" accept="application/json,.json"></label>
+          <div class="buttons wrap handoffManualControls" aria-hidden="true">
+            <button id="readHandoff" class="primary" tabindex="-1">Взять данные Макетной</button>
+            <label class="fileButton">Импорт handoff JSON<input id="handoffFile" type="file" accept="application/json,.json" tabindex="-1"></label>
           </div>
           <details>
             <summary>Формат передачи</summary>
@@ -1008,8 +1010,26 @@ async function acceptBridgedHandoff(payload){bridgedHandoff=payload;try{await ap
 window.gwbApplyMockupHandoff=acceptBridgedHandoff;
 window.gwbSetMockupStatus=setStatus;
 function requestParentHandoff(){if(parent!==window)parent.postMessage({type:"gifts-mockup-handoff-request"},"*");}
+async function applyStoredHandoff(){
+  const raw=localStorage.getItem(HANDOFF_KEY);
+  if(!raw)return false;
+  try{await applyHandoff(JSON.parse(raw));return true}
+  catch(err){console.warn("Stored mockup handoff is invalid",err);return false}
+}
+async function autoLoadHandoff(){
+  if(bridgedHandoff){await acceptBridgedHandoff(bridgedHandoff);return true}
+  if(parent!==window){
+    setStatus("Получаю данные из Макетной…");
+    requestParentHandoff();
+    setTimeout(()=>{if(!bridgedHandoff)void applyStoredHandoff();},500);
+    return true;
+  }
+  const loaded=await applyStoredHandoff();
+  if(!loaded)setStatus("Ожидание данных Макетной");
+  return loaded;
+}
 window.addEventListener("message",event=>{if(event.source!==parent||!allowedParentOrigins.has(event.origin))return;const data=event.data||{};if(data.type==="gifts-mockup-handoff"&&data.payload)acceptBridgedHandoff(data.payload);else if(data.type==="gifts-mockup-handoff-error")setStatus(data.message||"Передача из Макетной недоступна");});
-$("readHandoff").onclick=async()=>{if(bridgedHandoff){await acceptBridgedHandoff(bridgedHandoff);return;}const raw=localStorage.getItem(HANDOFF_KEY);if(raw){try{await applyHandoff(JSON.parse(raw));return;}catch(err){setStatus("Ошибка handoff: "+err.message);return;}}if(parent!==window){setStatus("Запрашиваю данные из Макетной…");requestParentHandoff();return;}setStatus("Передача из Макетной пока не найдена");};
+$("readHandoff").onclick=()=>autoLoadHandoff();
 $("handoffFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyHandoff(JSON.parse(await f.text()));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
 
 async function createMockupPngBlob(){
@@ -1030,7 +1050,7 @@ $("exportPng").onclick=async()=>{
 };
 
 window.addEventListener("resize",()=>requestAnimationFrame(renderAll));
-requestParentHandoff();
+void autoLoadHandoff();
 renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
