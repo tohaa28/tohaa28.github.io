@@ -57,11 +57,14 @@ jobs:
           grep -q 'gwb-seam' launcher.js
           grep -q 'gwb-door-lock' launcher.js
           grep -q 'gwbDoorGlow' launcher.js
-          grep -q 'transform 1.56s cubic-bezier' launcher.js
-          grep -q 'Math.max(0, 420 - (performance.now() - launchedAt))' launcher.js
-          grep -q 'gwb-ready' launcher.js
+          grep -q 'const OPEN_MS = 2000' launcher.js
+          grep -q 'requestAnimationFrame(() => requestAnimationFrame(() =>' launcher.js
+          grep -q 'gwb-opening' launcher.js
+          grep -q 'gwb-opened' launcher.js
+          grep -q 'gwbDoorOpenLeft 2000ms' launcher.js
+          grep -q 'gwbDoorOpenRight 2000ms' launcher.js
+          if grep -q 'prefers-reduced-motion' launcher.js; then echo "door animation must not be skipped by system reduced-motion setting"; exit 1; fi
           grep -q 'gwb-closing' launcher.js
-          grep -q 'prefers-reduced-motion' launcher.js
           grep -q 'gwb-door-stage' launcher.js
           grep -q "const targetOrigin=location.origin" launcher.js
           if grep -q 'src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"' launcher.js; then
