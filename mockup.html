@@ -247,8 +247,7 @@ async function loadServerProfileRegistry(){
       const data=await r.json();
       if(data?.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(data.profiles))throw Error("неверный формат реестра");
       serverProfileRegistry=data;
-      renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();
-      void autoApplySavedProfile(false);
+      renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateMappingActions();
       return true;
     }catch(err){lastError=err;}
   }
@@ -287,17 +286,20 @@ async function activateFieldCandidate(index){
   }
 }
 function renderPhotoCandidates(){
-  const box=$("photoCandidates"); $("photoCandidateCount").textContent=state.photoCandidates.length;
+  const box=$("photoCandidates");$("photoCandidateCount").textContent=state.photoCandidates.length;
   const field=state.fieldCandidates[state.activeFieldCandidate]||null,hint=$("fieldPhotoHint");
-  if(hint)hint.textContent=field?`Поле «${field.place||state.activeFieldCandidate+1}»: выберите фотографию для разметки. ✓ означает, что для этой пары уже есть сохранённая привязка.`:"Сначала выберите поле шаблона. Затем выберите фотографию именно для этого поля.";
-  if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет фотографий из заказа</div>';return;}
-  const mapped=new Set();
-  if(field)for(const p of profilesForField(field))for(const k of profilePhotoKeys(p))mapped.add(k);
-  box.innerHTML=state.photoCandidates.map((c,i)=>{
-    const isMapped=[...candidatePhotoKeys(c)].some(k=>mapped.has(k)),disabled=!field;
-    return `<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}" ${disabled?'disabled':''}>${c.dataUrl||c.url?`<img class="candidateThumb" src="${htmlEscape(c.dataUrl||c.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(c.name)}</strong><span>${htmlEscape(c.id)}</span></span><span class="candidateTag">${isMapped?'✓ привязано':i+1}</span></button>`;
+  if(hint)hint.textContent=field
+    ?`Выбрано поле «${field.place||state.activeFieldCandidate+1}». Можно выбрать любое фото артикула; для выбранной пары доступны сохранение, изменение и удаление.`
+    :"Выберите любое фото артикула, затем поле шаблона. Фотография не будет переключаться при смене поля.";
+  if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет фотографий из заказа</div>';updateMappingActions();return;}
+  box.innerHTML=state.photoCandidates.map((photo,i)=>{
+    const allMappings=profilesForPhotoCandidate(photo);
+    const exact=field&&allMappings.some(p=>profileMatchesFieldCandidate(p,field));
+    const tag=exact?"✓ это поле":allMappings.length?`${allMappings.length} ${allMappings.length===1?"привязка":"привязки"}`:String(i+1);
+    return `<button type="button" class="candidate ${i===state.activePhotoCandidate?'active':''}" data-photo-index="${i}" title="${allMappings.length?`Сохранено привязок: ${allMappings.length}`:"Привязок пока нет"}">${photo.dataUrl||photo.url?`<img class="candidateThumb" src="${htmlEscape(photo.dataUrl||photo.url)}" alt="">`:'<span class="candidateThumb"></span>'}<span class="candidateMeta"><strong>${htmlEscape(photo.name)}</strong><span>${htmlEscape(photo.id)}</span></span><span class="candidateTag">${tag}</span></button>`;
   }).join("");
   box.querySelectorAll("[data-photo-index]").forEach(b=>b.onclick=()=>activatePhotoCandidate(Number(b.dataset.photoIndex)));
+  updateMappingActions();
 }
 function renderFieldCandidates(){
   const box=$("fieldCandidates"); $("fieldCandidateCount").textContent=state.fieldCandidates.length;
@@ -374,6 +376,16 @@ function rememberedPhotoIndexForField(field,index){
 function profilesForField(field){
   if(!field)return[];
   return serverProfiles().filter(p=>profileMatchesFieldCandidate(p,field));
+}
+function profileMatchesCurrentArticle(p){
+  if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))return false;
+  if(lookupText(p.article)!==lookupText($("article").value))return false;
+  const pv=lookupText(p.variant),cv=lookupText($("variant").value);
+  return !(pv&&cv&&pv!==cv);
+}
+function profilesForPhotoCandidate(photo){
+  const keys=candidatePhotoKeys(photo);if(!keys.size)return[];
+  return serverProfiles().filter(p=>profileMatchesCurrentArticle(p)&&[...profilePhotoKeys(p)].some(k=>keys.has(k)));
 }
 function serverProfileScore(p,{requirePhoto=false}={}){
   const current=state.fieldCandidates[state.activeFieldCandidate]||null;
@@ -668,18 +680,19 @@ async function persistMapping(action,profile){
     console.error(error);
   }
 }
-$("mappingToggle").onclick=async()=>{
-  const mapped=findServerProfile(true);
-  if(mapped){
-    const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
-    if(!field||!photo)return;
-    if(!confirm(`Отвязать фото «${photo.name||photo.id||"фото"}» от поля «${field.place||field.printId||"поле"}»? Другие привязки этого поля останутся.`))return;
-    await persistMapping("delete",mapped);
-    return;
-  }
+$("mappingSave").onclick=async()=>{
   const profile=buildProfile(),problem=validateProfileForGit(profile);
   if(problem){setStatus(problem);return;}
+  const existed=!!currentFieldPhotoMapping();
   await persistMapping("save",profile);
+  if(!existed)setStatus("Сохраняю новую привязку выбранного фото…");
+};
+$("mappingDelete").onclick=async()=>{
+  const mapped=currentFieldPhotoMapping();
+  if(!mapped){setStatus("Для выбранных поля и фотографии сохранённой привязки нет.");updateMappingActions();return;}
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+  if(!confirm(`Удалить привязку фото «${photo?.name||photo?.id||"фото"}» к полю «${field?.place||field?.printId||"поле"}»? Другие привязки этого фото и этого поля останутся.`))return;
+  await persistMapping("delete",mapped);
 };
 window.addEventListener("message",event=>{
   const data=event.data||{};
@@ -774,12 +787,11 @@ async function applyHandoff(payload){
   state.activePhotoCandidate=-1;
   renderFieldCandidates(); renderPhotoCandidates();
   await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||""),setImageFromSource("photo","","")]);
-  renderAll();
-  const applied=await autoApplySavedProfile(false);
-  if(!applied){
-    const field=state.fieldCandidates[state.activeFieldCandidate];
-    setStatus(field?`Handoff загружен: выберите фотографию для поля «${field.place||state.activeFieldCandidate+1}»`:`Handoff загружен: ${state.photoCandidates.length} фото, полей не найдено`);
-  }
+  renderAll();updateMappingActions();
+  const field=state.fieldCandidates[state.activeFieldCandidate];
+  setStatus(field
+    ?`Артикул загружен: найдено ${state.photoCandidates.length} фото. Выберите любое фото и при необходимости другое поле «${field.place||state.activeFieldCandidate+1}».`
+    :`Артикул загружен: найдено ${state.photoCandidates.length} фото, полей не найдено`);
 }
 
 let bridgedHandoff=null;
