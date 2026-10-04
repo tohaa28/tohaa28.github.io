@@ -221,8 +221,20 @@
   let templateRequested=false,logoRequested=false;
 
   function templateReady(){
-    const empty=$("empty"),canvas=$("templateCanvas");
-    return !!canvas && canvas.width>1 && canvas.height>1 && !!empty && empty.hidden===true;
+    const name=String($("templateName")?.textContent||"").trim();
+    const hasName=!!name&&!/^Выбрать файл$/i.test(name);
+    if(!hasName)return false;
+
+    const hasRealOption=select=>!!select&&[...select.options].some(option=>{
+      const value=String(option.value||"").trim();
+      const label=String(option.textContent||"").trim();
+      return value!==""&&!/^(?:загрузите шаблон|выберите поле)$/i.test(label);
+    });
+    const hasDetectedField=hasRealOption($("fields"))||hasRealOption($("orderFieldChoice"));
+    const hasRenderedPage=/^Страница\s+\d+\s*\/\s*\d+/i.test(String($("pageNumber")?.textContent||"").trim());
+    const hasSelectedOrderTemplate=String($("orderTemplates")?.value||"").trim()!=="";
+
+    return hasDetectedField||hasRenderedPage||hasSelectedOrderTemplate;
   }
   function logoReady(){
     const count=Number((($("placementCount")?.textContent||"").match(/(\d+)/)||[])[1]||0);
@@ -281,7 +293,7 @@
   $("artwork")?.addEventListener("change",()=>{logoRequested=true;sync();});
   $("loadOrder")?.addEventListener("click",()=>{templateRequested=true;sync();});
   const observer=new MutationObserver(sync);
-  for(const id of ["empty","placementCount","orderLoading","templateName","artworkName","status"]){
+  for(const id of ["empty","placementCount","orderLoading","templateName","artworkName","status","fields","orderFieldChoice","pageNumber","orderTemplates"]){
     const el=$(id);if(el)observer.observe(el,{attributes:true,childList:true,characterData:true,subtree:true});
   }
   setInterval(sync,350);
