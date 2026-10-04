@@ -72,6 +72,8 @@ jobs:
           grep -q 'hasRealOption($("fields"))' editor.html
           grep -q 'gwbGetEditorReadiness' editor.html
           grep -q 'gwbRefreshEditorState' editor.html
+          grep -q 'c.w*.95' tools/patch-artwork-preflight.mjs
+          grep -q 'Default logo fit should use 95%' tests/logo-preflight-browser.mjs
           grep -q 'window.gwbRefreshEditorState=function' tools/patch-artwork-preflight.mjs
           grep -q 'gwb-editor-readiness-changed' editor.html
           grep -q 'window.gwbGetEditorReadiness=function' tools/patch-artwork-preflight.mjs
