@@ -93,6 +93,11 @@ jobs:
           grep -q 'jobs.length' editor.html
           grep -q 'id="mappingSave"' mockup.html
           grep -q 'id="mappingDelete"' mockup.html
+          grep -q 'handoffManualControls' mockup.html
+          grep -Fq '.handoffManualControls{display:none!important}' mockup.html
+          grep -q 'async function autoLoadHandoff()' mockup.html
+          grep -q 'void autoLoadHandoff();' mockup.html
+          grep -q 'setTimeout(()=>{if(!bridgedHandoff)void applyStoredHandoff();},500)' mockup.html
           grep -q 'confirmed-manual' mockup.html
           grep -q 'gifts-mockup-profile-registry-changed' mockup.html
           grep -q 'Contents: Read and write' save-profile.html
