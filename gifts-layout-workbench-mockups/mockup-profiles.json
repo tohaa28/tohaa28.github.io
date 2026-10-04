@@ -1,9 +1,74 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-04T15:43:34.021Z",
+  "updatedAt": "2026-10-04T15:44:21.514Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-4",
+        "name": "Фото 4 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.31919448877874895,
+        "w": 0.16518319468432358,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.3,
+          "y": 0.558
+        },
+        {
+          "x": 0.7,
+          "y": 0.558
+        },
+        {
+          "x": 0.7,
+          "y": 0.958
+        },
+        {
+          "x": 0.3,
+          "y": 0.958
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T15:44:21.514Z",
+      "confirmedAt": "2026-10-04T15:44:21.514Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "15637",
