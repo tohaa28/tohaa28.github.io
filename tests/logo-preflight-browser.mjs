@@ -54,6 +54,8 @@ export async function verifyLogoPreflight(frame) {
   const twoColors=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="3" height="8" fill="red"/><rect x="6" y="1" width="3" height="8" fill="blue"/></svg>');
   await frame.locator('#artwork').setInputFiles({name:'two-colors.svg',mimeType:'image/svg+xml',buffer:twoColors});
   await frame.waitForFunction(()=>window.gwbLogoPreflight?.[0]?.method==='D1');
+  const defaultFitWidth=await frame.locator('#width').evaluate(el=>Number(el.value));
+  assert.ok(Math.abs(defaultFitWidth-285)<0.05,`Default logo fit should use 95% of the 300 mm field, got ${defaultFitWidth} mm`);
   await frame.locator('#fillEmpty').evaluate(el=>el.click());
   const multiple=await frame.evaluate(()=>window.gwbLogoPreflight);
   assert.deepEqual(multiple.map(r=>r.method),['D1','F1']);
@@ -61,5 +63,5 @@ export async function verifyLogoPreflight(frame) {
   assert.ok(!multiple[0].findings.some(f=>f.id==='colors'&&f.status==='bad'));
   await frame.locator('#orderFieldChoice').selectOption('1');
   assert.equal((await frame.evaluate(()=>window.gwbLogoPreflight))[1].method,'F1');
-  console.log('Logo preflight: actual SVG/PDF analysis, method B4 + underbase, resizing, diagnostics, export confirmation and removal passed');
+  console.log('Logo preflight: actual SVG/PDF analysis, 95% default fit, method B4 + underbase, resizing, diagnostics, export confirmation and removal passed');
 }
