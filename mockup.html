@@ -229,8 +229,8 @@ async function loadServerProfileRegistry(){
       const data=await r.json();
       if(data?.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(data.profiles))throw Error("неверный формат реестра");
       serverProfileRegistry=data;
-      renderProfileLibrary();
-      void autoApplySavedProfile();
+      renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();
+      void autoApplySavedProfile(false);
       return true;
     }catch(err){lastError=err;}
   }
