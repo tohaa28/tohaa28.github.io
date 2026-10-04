@@ -10,8 +10,8 @@
 </head>
 <body>
 <div class="card">
-<h1>Сохранить сопоставление в Git</h1>
-<p>Профиль будет записан в <code>mockup-profiles.json</code> ветки <code>gifts-layout-workbench-mockups-source</code>.</p>
+<h1 id="pageTitle">Сохранить сопоставление в Git</h1>
+<p id="pageIntro">Профиль будет записан в <code>mockup-profiles.json</code> ветки <code>gifts-layout-workbench-mockups-source</code>.</p>
 <div id="summary" class="summary"></div>
 <label for="token">GitHub fine-grained token</label>
 <input id="token" type="password" autocomplete="off" placeholder="github_pat_…">
@@ -104,13 +104,37 @@ async function writeRegistry(token,profile){
   }
   throw Error("Файл изменился одновременно. Повторите сохранение.");
 }
+async function deleteRegistry(token,profile){
+  for(let attempt=0;attempt<2;attempt++){
+    const current=await readRegistry(token),reg=current.data,now=new Date().toISOString(),k=key(profile);
+    const profiles=Array.isArray(reg.profiles)?reg.profiles:[],candidates=Array.isArray(reg.candidates)?reg.candidates:[];
+    const nextProfiles=profiles.filter(p=>key(p)!==k),nextCandidates=candidates.filter(p=>key(p)!==k);
+    if(nextProfiles.length===profiles.length&&nextCandidates.length===candidates.length)return{profile,commit:"",deleted:false};
+    reg.profiles=nextProfiles;reg.candidates=nextCandidates;reg.updatedAt=now;reg.version=Math.max(1,Number(reg.version)||1);
+    const body={message:`Remove mockup mapping ${profile.article} · ${profile.place} · ${profile.photo?.id||profile.photo?.name||"photo"}`,content:b64utf8(JSON.stringify(reg,null,2)+"\n"),branch:BRANCH,sha:current.sha};
+    const url=`https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
+    const response=await fetch(url,{method:"PUT",headers:headers(token),body:JSON.stringify(body)});
+    rememberExpiration(response);
+    if(response.ok){const out=await response.json();return{profile,commit:out.commit?.sha||"",deleted:true}}
+    if(response.status!==409&&response.status!==422){const text=await response.text().catch(()=> "");throw parseGitHubError(response.status,text)}
+  }
+  throw Error("Файл изменился одновременно. Повторите удаление.");
+}
 
-const profile=decodeProfile();
+const decoded=decodeProfile();
+const action=decoded?.action==="delete"?"delete":"save";
+const profile=decoded?.action?decoded.profile:decoded;
 if(!profile){
   $("summary").textContent="Профиль не передан или повреждён.";
   $("save").disabled=true;
 }else{
   $("summary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||profile.field?.id||"—"}`,`Фото: ${profile.photo?.name||profile.photo?.id||profile.photo?.url||"—"}`].join("\n");
+  if(action==="delete"){
+    $("pageTitle").textContent="Отвязать фотографию от поля";
+    $("pageIntro").textContent="Будет удалена только выбранная пара поле → фотография из mockup-profiles.json. Остальные привязки останутся.";
+    $("save").textContent="Отвязать";
+    $("save").classList.add("secondary");
+  }
 }
 
 if(storedTokenExpired())forgetStoredToken();
@@ -128,16 +152,22 @@ async function save(){
     return;
   }
   $("save").disabled=true;
-  $("status").textContent="Проверяю токен и сохраняю в Git…";
+  $("status").textContent=action==="delete"?"Проверяю токен и удаляю привязку из Git…":"Проверяю токен и сохраняю в Git…";
   $("status").className="status";
   try{
-    const result=await writeRegistry(token,profile);
+    const result=action==="delete"?await deleteRegistry(token,profile):await writeRegistry(token,profile);
     localStorage.setItem(TOKEN_KEY,token);
     sessionStorage.removeItem(LEGACY_SESSION_KEY);
     updateTokenInfo();
-    $("status").textContent="Сохранено. Commit "+String(result.commit).slice(0,7)+". Токен сохранён и будет использоваться автоматически.";
-    $("status").className="status ok";
-    try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"*")}catch{}
+    if(action==="delete"){
+      $("status").textContent=result.deleted?("Привязка удалена. Commit "+String(result.commit).slice(0,7)+"."):"Эта привязка уже отсутствует в Git.";
+      $("status").className="status ok";
+      try{window.opener?.postMessage({type:"gifts-mockup-profile-deleted",...result},"*")}catch{}
+    }else{
+      $("status").textContent="Сохранено. Commit "+String(result.commit).slice(0,7)+". Токен сохранён и будет использоваться автоматически.";
+      $("status").className="status ok";
+      try{window.opener?.postMessage({type:"gifts-mockup-profile-saved",...result},"*")}catch{}
+    }
   }catch(e){
     if(authMustBeReplaced(e)){
       forgetStoredToken();
