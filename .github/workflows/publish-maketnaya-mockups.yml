@@ -68,6 +68,9 @@ jobs:
           grep -q 'id="templateLoadProgress"' editor.html
           grep -q 'id="logoLoadProgress"' editor.html
           grep -q 'readinessOwnedDisabled' editor.html
+          grep -q 'hasRealOption($("fields"))' editor.html
+          grep -q 'hasRenderedPage=/^Страница' editor.html
+          if grep -q 'empty.hidden===true' editor.html; then echo "stale template readiness dependency"; exit 1; fi
           grep -q 'id="photoProgress"' mockup.html
           grep -q 'id="templateProgress"' mockup.html
           grep -q 'id="artworkProgress"' mockup.html
