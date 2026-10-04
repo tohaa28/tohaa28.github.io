@@ -1,9 +1,74 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-03T19:28:42.050Z",
+  "updatedAt": "2026-10-04T09:08:51.301Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15255.30",
+      "variant": "",
+      "place": "лоб, слева",
+      "method": "DTF3: Печать DTF,1",
+      "photo": {
+        "id": "15255.30-2",
+        "name": "Фото 2 · арт. 15255.30",
+        "url": "https://files.gifts.ru/reviewer/webp/79/15255.30_1_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лоб, слева",
+        "sizeCm": [
+          6,
+          6
+        ]
+      },
+      "constructor": {
+        "name": "7976119_15255.30_49228820.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 625
+      },
+      "fieldRect": {
+        "x": 0.30751140232494883,
+        "y": 0.14774633626526434,
+        "w": 0.04412014996612495,
+        "h": 0.12720482919717305
+      },
+      "targetQuad": [
+        {
+          "x": 0.426875,
+          "y": 0.321
+        },
+        {
+          "x": 0.676875,
+          "y": 0.353
+        },
+        {
+          "x": 0.646875,
+          "y": 0.581
+        },
+        {
+          "x": 0.376875,
+          "y": 0.535
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T09:08:51.301Z",
+      "confirmedAt": "2026-10-04T09:08:51.301Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "16535.66",
