@@ -47,12 +47,31 @@ export function mapQuadBetweenQuads(points,fromQuad,toQuad){
   return normalizedQuad(points).map(p=>mapPointBetweenQuads(p,fromQuad,toQuad));
 }
 
-export function cylinderWarpCoordinate(value,curvature=.72){
-  const t=Math.max(0,Math.min(1,Number(value)||0));
+const MAX_CYLINDER_HALF_ANGLE=5*Math.PI/6; // 150° each side => up to 300° artwork wrap.
+
+export function cylinderHalfAngle(curvature=.72){
   const k=Math.max(0,Math.min(1,Number(curvature)||0));
-  if(k<1e-6)return t;
-  const angle=k*Math.PI*.47;
-  const denom=Math.sin(angle);
-  if(Math.abs(denom)<EPS)return t;
-  return .5+.5*Math.sin((t-.5)*2*angle)/denom;
+  return k*MAX_CYLINDER_HALF_ANGLE;
+}
+
+export function cylinderVisibleRange(curvature=.72){
+  const halfAngle=cylinderHalfAngle(curvature);
+  if(halfAngle<=Math.PI/2+EPS)return {start:0,end:1,halfAngle,clipped:false};
+  const halfSpan=Math.PI/(4*halfAngle);
+  return {start:.5-halfSpan,end:.5+halfSpan,halfAngle,clipped:true};
+}
+
+export function cylinderProjection(value,curvature=.72){
+  const t=Math.max(0,Math.min(1,Number(value)||0));
+  const halfAngle=cylinderHalfAngle(curvature);
+  if(halfAngle<EPS)return {coordinate:t,visible:true,angle:0,depth:1};
+  const angle=(t-.5)*2*halfAngle;
+  const visible=Math.cos(angle)>=-EPS;
+  const denom=Math.sin(Math.min(halfAngle,Math.PI/2));
+  const coordinate=Math.abs(denom)<EPS?t:.5+.5*Math.sin(angle)/denom;
+  return {coordinate,visible,angle,depth:Math.cos(angle)};
+}
+
+export function cylinderWarpCoordinate(value,curvature=.72){
+  return cylinderProjection(value,curvature).coordinate;
 }
