@@ -271,7 +271,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
                 <option value="horizontal">Горизонтальная</option>
               </select>
             </label>
-            <label>Изгиб поверхности <span id="cylinderCurveValue" class="cylinderValue">72%</span>
+            <label>Закручивание <span id="cylinderCurveValue" class="cylinderValue">72%</span>
               <input id="cylinderCurvature" type="range" min="0" max="100" value="72">
             </label>
             <div class="cylinderModeButtons">
@@ -331,7 +331,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {mapPointBetweenQuads,cylinderWarpCoordinate} from "./assets/mockup-cylinder.mjs?v=20261005-1";
+import {mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange} from "./assets/mockup-cylinder.mjs?v=20261005-2";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -753,17 +753,44 @@ function drawTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
   ctx.save(); ctx.beginPath(); ctx.moveTo(d0.x,d0.y); ctx.lineTo(d1.x,d1.y); ctx.lineTo(d2.x,d2.y); ctx.closePath(); ctx.clip(); ctx.setTransform(...m); ctx.drawImage(img,0,0); ctx.restore();
 }
 
+function clipToQuad(ctx,q){
+  if(!Array.isArray(q)||q.length!==4)return false;
+  ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip();return true;
+}
 function drawWarped(ctx,img,q,surface,cylinder={}){
-  const map=homographyForQuad(q); const n=surface==="cylinder"?32:18; const iw=img.naturalWidth, ih=img.naturalHeight;
+  const map=homographyForQuad(q),iw=img.naturalWidth,ih=img.naturalHeight;
   const axis=cylinder.axis==="horizontal"?"horizontal":"vertical",curvature=Number.isFinite(Number(cylinder.curvature))?Number(cylinder.curvature):.72;
-  const warpU=u=>surface==="cylinder"&&axis==="vertical"?cylinderWarpCoordinate(u,curvature):u;
-  const warpV=v=>surface==="cylinder"&&axis==="horizontal"?cylinderWarpCoordinate(v,curvature):v;
-  for(let y=0;y<n;y++) for(let x=0;x<n;x++){
-    const u0=x/n,u1=(x+1)/n,v0=y/n,v1=(y+1)/n;
-    const a=map(warpU(u0),warpV(v0)), b=map(warpU(u1),warpV(v0)), c=map(warpU(u1),warpV(v1)), d=map(warpU(u0),warpV(v1));
-    const sA={x:u0*iw,y:v0*ih}, sB={x:u1*iw,y:v0*ih}, sC={x:u1*iw,y:v1*ih}, sD={x:u0*iw,y:v1*ih};
-    drawTriangle(ctx,img,sA,sB,sC,a,b,c); drawTriangle(ctx,img,sA,sC,sD,a,c,d);
+  const isCylinder=surface==="cylinder",wrapRange=isCylinder?cylinderVisibleRange(curvature):{start:0,end:1},along=48,across=24;
+  ctx.save();
+  if(isCylinder&&Array.isArray(cylinder.clipQuad))clipToQuad(ctx,cylinder.clipQuad);
+  if(isCylinder&&axis==="vertical"){
+    for(let y=0;y<across;y++)for(let x=0;x<along;x++){
+      const u0=wrapRange.start+(wrapRange.end-wrapRange.start)*x/along,u1=wrapRange.start+(wrapRange.end-wrapRange.start)*(x+1)/along,v0=y/across,v1=(y+1)/across;
+      const p0=cylinderProjection(u0,curvature),p1=cylinderProjection(u1,curvature);
+      if(!p0.visible&&!p1.visible)continue;
+      const a=map(p0.coordinate,v0),b=map(p1.coordinate,v0),c=map(p1.coordinate,v1),d=map(p0.coordinate,v1);
+      const sA={x:u0*iw,y:v0*ih},sB={x:u1*iw,y:v0*ih},sC={x:u1*iw,y:v1*ih},sD={x:u0*iw,y:v1*ih};
+      drawTriangle(ctx,img,sA,sB,sC,a,b,c);drawTriangle(ctx,img,sA,sC,sD,a,c,d);
+    }
+  }else if(isCylinder){
+    for(let y=0;y<along;y++)for(let x=0;x<across;x++){
+      const u0=x/across,u1=(x+1)/across,v0=wrapRange.start+(wrapRange.end-wrapRange.start)*y/along,v1=wrapRange.start+(wrapRange.end-wrapRange.start)*(y+1)/along;
+      const p0=cylinderProjection(v0,curvature),p1=cylinderProjection(v1,curvature);
+      if(!p0.visible&&!p1.visible)continue;
+      const a=map(u0,p0.coordinate),b=map(u1,p0.coordinate),c=map(u1,p1.coordinate),d=map(u0,p1.coordinate);
+      const sA={x:u0*iw,y:v0*ih},sB={x:u1*iw,y:v0*ih},sC={x:u1*iw,y:v1*ih},sD={x:u0*iw,y:v1*ih};
+      drawTriangle(ctx,img,sA,sB,sC,a,b,c);drawTriangle(ctx,img,sA,sC,sD,a,c,d);
+    }
+  }else{
+    const n=18;
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+      const u0=x/n,u1=(x+1)/n,v0=y/n,v1=(y+1)/n;
+      const a=map(u0,v0),b=map(u1,v0),c=map(u1,v1),d=map(u0,v1);
+      const sA={x:u0*iw,y:v0*ih},sB={x:u1*iw,y:v0*ih},sC={x:u1*iw,y:v1*ih},sD={x:u0*iw,y:v1*ih};
+      drawTriangle(ctx,img,sA,sB,sC,a,b,c);drawTriangle(ctx,img,sA,sC,sD,a,c,d);
+    }
   }
+  ctx.restore();
 }
 
 function photoGeometry(){
@@ -786,7 +813,7 @@ function renderPhoto(){
   if(!state.photo){ c.width=c.height=1; c.style.width=c.style.height="1px"; empty.hidden=false; return; }
   empty.hidden=true; const {ctx,w,h}=fitCanvas(c,state.photo); ctx.clearRect(0,0,w,h); ctx.drawImage(state.photo,0,0,w,h);
   const surface=$("surface").value,qp=state.quad.map(p=>({x:p.x*w,y:p.y*h}));
-  if(state.artwork && state.showArtwork){ ctx.save(); ctx.globalAlpha=Number($("opacity").value)/100; ctx.globalCompositeOperation=$("blend").value; drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature}); ctx.restore(); }
+  if(state.artwork && state.showArtwork){ ctx.save(); ctx.globalAlpha=Number($("opacity").value)/100; ctx.globalCompositeOperation=$("blend").value; drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,clipQuad:surface==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*w,y:p.y*h})):null}); ctx.restore(); }
   if(surface==="cylinder"){
     ensureCylinderGuide();const cq=state.cylinderQuad.map(p=>({x:p.x*w,y:p.y*h}));
     drawPhotoGuide(ctx,cq,{color:"#648f06",fill:"rgba(129,179,21,.055)",label:"Цилиндр",handles:state.photoEditTarget==="cylinder",dashed:true});
@@ -800,7 +827,7 @@ function renderPhoto(){
 
 function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); updateAssetReadiness(); }
 function updateSummary(){
-  const profile=buildProfile(); const saved=getProfileLibrary().some(p=>profileKey(p)===profileKey(profile)),surfaceText=profile.surface==="cylinder"?`цилиндр · ${profile.cylinder?.axis==="horizontal"?"горизонтальная":"вертикальная"} ось · изгиб ${Math.round((profile.cylinder?.curvature??.72)*100)}%`:profile.surface; $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||"ручное"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${surfaceText}`,`Библиотека: ${saved?"сопоставление сохранено":"новое сопоставление"}`].join("\n");
+  const profile=buildProfile(); const saved=getProfileLibrary().some(p=>profileKey(p)===profileKey(profile)),surfaceText=profile.surface==="cylinder"?`цилиндр · ${profile.cylinder?.axis==="horizontal"?"горизонтальная":"вертикальная"} ось · изгиб ${Math.round((profile.cylinder?.curvature??.72)*100)}%`:profile.surface; $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||"ручное"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${surfaceText}${profile.surface==="cylinder"?" · задняя сторона скрывается":""}`,`Библиотека: ${saved?"сопоставление сохранено":"новое сопоставление"}`].join("\n");
 }
 
 function resetQuad(){ state.quad=[{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}]; renderPhoto(); updateSummary(); }
@@ -1151,7 +1178,7 @@ async function createMockupPngBlob(){
   if(!state.artwork)throw new Error("Сначала загрузите логотип");
   if(!state.photo)throw new Error("Сначала загрузите фотографию");
   const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
-  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:state.cylinderCurvature});ctx.restore();}
+  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,clipQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
   const blob=await new Promise((resolve,reject)=>{try{c.toBlob(b=>b?resolve(b):reject(new Error("Не удалось сформировать PNG")),"image/png")}catch(err){reject(err)}});
   const p=buildProfile();
   return{blob,filename:`mockup-${slug(p.article)}-${slug(p.place)}.png`,profile:p};
