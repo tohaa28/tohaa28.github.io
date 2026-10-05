@@ -15,6 +15,20 @@ export async function verifyMockupCylinder(browserContext){
   await page.route("https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json**",route=>route.fulfill({contentType:"application/json",body:'{"schema":"gifts-mockup-profile-registry/v1","version":1,"profiles":[],"candidates":[],"articleSources":[]}'}));
   await page.goto(base+"mockup.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>typeof window.gwbGetMockupBinding==="function");
+  const mappingStatus=page.locator("#mappingOperationStatus");
+  assert.equal(await mappingStatus.isHidden(),true);
+  await page.evaluate(()=>window.gwbSetMappingOperationStatus("pending","Сохранение привязки…"));
+  assert.equal(await mappingStatus.isVisible(),true);
+  assert.equal(await mappingStatus.getAttribute("data-state"),"pending");
+  assert.equal((await mappingStatus.textContent()).trim(),"Сохранение привязки…");
+  await page.evaluate(()=>window.gwbSetMappingOperationStatus("success","Привязка изменена · Git abc1234"));
+  assert.equal(await mappingStatus.getAttribute("data-state"),"success");
+  assert.match(await mappingStatus.textContent(),/Привязка изменена/);
+  await page.evaluate(()=>window.gwbSetMappingOperationStatus("error","Ошибка Git: тест"));
+  assert.equal(await mappingStatus.getAttribute("data-state"),"error");
+  assert.match(await mappingStatus.textContent(),/Ошибка Git/);
+  await page.evaluate(()=>window.gwbSetMappingOperationStatus("idle",""));
+  assert.equal(await mappingStatus.isHidden(),true);
   await page.locator("#photoFile").setInputFiles({
     name:"cylinder-test.svg",
     mimeType:"image/svg+xml",
@@ -125,5 +139,5 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю развёртку/);
   await page.close();
-  console.log("Mockup cylinder: 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
+  console.log("Mockup cylinder: mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
 }
