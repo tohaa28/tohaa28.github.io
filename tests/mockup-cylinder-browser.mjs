@@ -15,6 +15,12 @@ export async function verifyMockupCylinder(browserContext){
   await page.route("https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json**",route=>route.fulfill({contentType:"application/json",body:'{"schema":"gifts-mockup-profile-registry/v1","version":1,"profiles":[],"candidates":[],"articleSources":[]}'}));
   await page.goto(base+"mockup.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>typeof window.gwbGetMockupBinding==="function");
+  await page.locator("#photoFile").setInputFiles({
+    name:"cylinder-test.svg",
+    mimeType:"image/svg+xml",
+    buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><rect width="800" height="800" fill="white"/><rect x="10" y="10" width="780" height="780" fill="none" stroke="gray"/></svg>')
+  });
+  await page.waitForFunction(()=>document.getElementById("resetQuad")?.disabled===false);
   assert.equal(await page.locator("#cylinderControls").isHidden(),true);
   await page.locator("#surface").selectOption("cylinder");
   assert.equal(await page.locator("#cylinderControls").isVisible(),true);
@@ -27,12 +33,12 @@ export async function verifyMockupCylinder(browserContext){
       method:"TEST",
       field:{id:"field-1",printId:"print1",place:"цилиндр"},
       fieldRect:{x:.2,y:.2,w:.2,h:.2},
-      targetQuad:[{x:-.12,y:.3},{x:.62,y:.32},{x:.6,y:1.08},{x:-.08,y:1.04}],
+      targetQuad:[{x:-.42,y:.3},{x:.62,y:.32},{x:1.38,y:.72},{x:-.36,y:.7}],
       surface:"cylinder",
       cylinder:{
         axis:"horizontal",
         curvature:.84,
-        targetQuad:[{x:-.35,y:-.18},{x:1.25,y:-.12},{x:1.18,y:1.32},{x:-.28,y:1.26}]
+        targetQuad:[{x:-.72,y:.12},{x:1.72,y:.14},{x:1.68,y:.88},{x:-.68,y:.86}]
       },
       render:{opacity:.9,blend:"source-over",mesh:32}
     });
@@ -41,8 +47,33 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(binding.surface,"cylinder");
   assert.equal(binding.cylinder.axis,"horizontal");
   assert.ok(Math.abs(binding.cylinder.curvature-.84)<1e-9);
-  assert.deepEqual(binding.targetQuad,[{x:-.12,y:.3},{x:.62,y:.32},{x:.6,y:1.08},{x:-.08,y:1.04}],"Cylinder field must preserve coordinates outside the photo");
-  assert.deepEqual(binding.cylinder.targetQuad,[{x:-.35,y:-.18},{x:1.25,y:-.12},{x:1.18,y:1.32},{x:-.28,y:1.26}],"Cylinder surface must preserve coordinates outside the photo");
+  assert.deepEqual(binding.targetQuad,[{x:-.42,y:.3},{x:.62,y:.32},{x:1.38,y:.72},{x:-.36,y:.7}],"Cylinder field must preserve coordinates outside the photo");
+  assert.deepEqual(binding.cylinder.targetQuad,[{x:-.72,y:.12},{x:1.72,y:.14},{x:1.68,y:.88},{x:-.68,y:.86}],"Cylinder surface must preserve coordinates outside the photo");
+  const workspace=await page.evaluate(()=>{
+    const canvas=document.getElementById("photoCanvas"),wrap=canvas.parentElement,view=window.gwbGetMockupPhotoView();
+    const px=x=>view.photoX+x*view.photoW;
+    return {
+      className:wrap.className,
+      clientWidth:wrap.clientWidth,
+      scrollWidth:wrap.scrollWidth,
+      canvasWidth:canvas.width,
+      photoWidth:view.photoW,
+      photoX:view.photoX,
+      xMin:view.xMin,
+      xMax:view.xMax,
+      leftCylinderHandle:px(-.72),
+      rightCylinderHandle:px(1.72),
+      leftFieldHandle:px(-.42),
+      rightFieldHandle:px(1.38)
+    };
+  });
+  assert.match(workspace.className,/cylinderWorkspace/);
+  assert.ok(workspace.scrollWidth>workspace.clientWidth*1.5,"Cylinder workspace must be horizontally scrollable");
+  assert.ok(workspace.canvasWidth>workspace.photoWidth*2.9,"Cylinder workspace must span about three photo widths");
+  assert.ok(workspace.leftCylinderHandle>0&&workspace.leftCylinderHandle<workspace.canvasWidth,"Left cylinder handle must be visible inside workspace");
+  assert.ok(workspace.rightCylinderHandle>0&&workspace.rightCylinderHandle<workspace.canvasWidth,"Right cylinder handle must be visible inside workspace");
+  assert.ok(workspace.leftFieldHandle>0&&workspace.rightFieldHandle<workspace.canvasWidth,"Out-of-photo field handles must be visible inside workspace");
+  assert.ok(workspace.xMin<=-1&&workspace.xMax>=2,"Workspace must expose virtual photo-relative coordinates beyond both sides");
   const summary=await page.locator("#profileSummary").textContent();
   assert.match(summary,/цилиндр · горизонтальная ось · изгиб 84%/);
   assert.match(summary,/задняя сторона скрывается/);
@@ -61,5 +92,5 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю рамку/);
   await page.close();
-  console.log("Mockup cylinder: surface controls, out-of-frame geometry, profile persistence, back-face clipping and edit modes passed");
+  console.log("Mockup cylinder: expanded workspace, out-of-frame geometry, profile persistence, back-face clipping and edit modes passed");
 }
