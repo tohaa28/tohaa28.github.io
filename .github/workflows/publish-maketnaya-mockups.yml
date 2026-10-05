@@ -137,6 +137,12 @@ jobs:
           test -f assets/mockup-cylinder.mjs
           grep -q 'cylinderWarpCoordinate' assets/mockup-cylinder.mjs
           grep -q 'cylinderVisibleRange' assets/mockup-cylinder.mjs
+          grep -q 'cylinder3DSurfacePoint' assets/mockup-cylinder.mjs
+          grep -q 'cylinder3DArcHandle' assets/mockup-cylinder.mjs
+          grep -q 'id="cylinderTopArc"' mockup.html
+          grep -q 'id="cylinderBottomArc"' mockup.html
+          grep -q 'geometry:"3d"' mockup.html
+          grep -q '3D cylinder mesh must render the artwork' tests/mockup-cylinder-browser.mjs
           grep -q 'задняя сторона скрывается' mockup.html
           grep -q 'back-face clipping' tests/mockup-cylinder-browser.mjs
           grep -q 'CYLINDER_COORD_MIN=-4' mockup.html
