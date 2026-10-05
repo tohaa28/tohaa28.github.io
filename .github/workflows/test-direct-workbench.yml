@@ -687,6 +687,8 @@ jobs:
           await verifyMethodAdmin(frame);
           const {verifyVectorView}=await import('./tests/vector-view-browser.mjs');
           await verifyVectorView(frame);
+          const {verifyMockupCylinder}=await import('./tests/mockup-cylinder-browser.mjs');
+          await verifyMockupCylinder(browserContext);
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
