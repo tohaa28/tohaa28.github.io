@@ -142,6 +142,10 @@ jobs:
           grep -q 'CYLINDER_COORD_MIN=-4' mockup.html
           grep -q 'рамка может выходить за фото' mockup.html
           grep -q 'out-of-frame geometry' tests/mockup-cylinder-browser.mjs
+          grep -q 'CYLINDER_WORKSPACE={xMin:-1,xMax:2' mockup.html
+          grep -q 'cylinderWorkspace' mockup.html
+          grep -q 'Серые зоны — виртуальное продолжение цилиндра' mockup.html
+          grep -q 'expanded workspace' tests/mockup-cylinder-browser.mjs
           grep -q 'verifyMockupCylinder(browserContext)' .github/workflows/test-direct-workbench.yml
           if grep -q 'disabled=!field' mockup.html; then echo "Article photos must stay selectable before field selection"; exit 1; fi
           if grep -q 'void autoApplySavedProfile(false)' mockup.html; then echo "Registry loading must not hijack photo selection"; exit 1; fi
