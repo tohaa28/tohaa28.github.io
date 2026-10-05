@@ -279,7 +279,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
               <button id="editField" type="button">Разместить поле</button>
             </div>
             <button id="resetCylinder" type="button">Сбросить границы цилиндра</button>
-            <p class="cylinderHint">Зелёная рамка — цилиндрическая поверхность товара. Синяя рамка — поле нанесения. При перемещении цилиндра поле остаётся привязано к нему.</p>
+            <p class="cylinderHint">Зелёная рамка — виртуальная цилиндрическая поверхность товара и может выходить за границы фотографии. Синяя рамка — поле нанесения; в режиме цилиндра оно также может продолжаться за кадр. При перемещении цилиндра поле остаётся привязано к нему.</p>
           </div>
           <label>Непрозрачность <span id="opacityValue">90%</span>
             <input id="opacity" type="range" min="10" max="100" value="90">
@@ -370,13 +370,16 @@ const PROFILE_REGISTRY_URLS = ["https://raw.githubusercontent.com/tohaa28/tohaa2
 const PROFILE_SAVE_URL = "https://tohaa28.github.io/gifts-layout-workbench-mockups/save-profile.html";
 let serverProfileRegistry={schema:"gifts-mockup-profile-registry/v1",version:1,profiles:[],candidates:[],articleSources:[]};
 const HANDLE_R = 9;
+const CYLINDER_COORD_MIN=-4,CYLINDER_COORD_MAX=5;
+function cylinderCoord(v){const n=Number(v);return Number.isFinite(n)?Math.max(CYLINDER_COORD_MIN,Math.min(CYLINDER_COORD_MAX,n)):0;}
+function photoPoint(p,allowOutside=false){return {x:allowOutside?cylinderCoord(p.x):clamp(p.x),y:allowOutside?cylinderCoord(p.y):clamp(p.y)};}
 
 function cylinderGuideFromField(){
   const xs=state.quad.map(p=>p.x),ys=state.quad.map(p=>p.y);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
   const w=Math.max(.04,maxX-minX),h=Math.max(.04,maxY-minY);
-  const x0=clamp(minX-Math.max(.06,w*.65)),x1=clamp(maxX+Math.max(.06,w*.65));
-  const y0=clamp(minY-Math.max(.06,h*.45)),y1=clamp(maxY+Math.max(.06,h*.45));
+  const x0=cylinderCoord(minX-Math.max(.06,w*.65)),x1=cylinderCoord(maxX+Math.max(.06,w*.65));
+  const y0=cylinderCoord(minY-Math.max(.06,h*.45)),y1=cylinderCoord(maxY+Math.max(.06,h*.45));
   return [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}];
 }
 function ensureCylinderGuide(force=false){
@@ -384,8 +387,8 @@ function ensureCylinderGuide(force=false){
   state.cylinderQuad=cylinderGuideFromField();state.cylinderInitialized=true;
 }
 function fieldBoundToCylinder(fromQuad,toQuad,fieldQuad){
-  try{return fieldQuad.map(p=>{const v=mapPointBetweenQuads(p,fromQuad,toQuad);return {x:clamp(v.x),y:clamp(v.y)};});}
-  catch{return fieldQuad.map(p=>({...p}));}
+  try{return fieldQuad.map(p=>photoPoint(mapPointBetweenQuads(p,fromQuad,toQuad),true));}
+  catch{return fieldQuad.map(p=>photoPoint(p,true));}
 }
 function setPhotoEditTarget(target){
   state.photoEditTarget=target==="cylinder"&&$("surface")?.value==="cylinder"?"cylinder":"field";
@@ -401,7 +404,7 @@ function updateCylinderControls(){
   if($("cylinderCurvature"))$("cylinderCurvature").value=String(Math.round(state.cylinderCurvature*100));
   if($("cylinderCurveValue"))$("cylinderCurveValue").textContent=Math.round(state.cylinderCurvature*100)+"%";
   if($("photoCanvasHint"))$("photoCanvasHint").textContent=isCylinder
-    ?(state.photoEditTarget==="cylinder"?"разместите зелёную рамку по цилиндрической поверхности":"уточните синюю рамку поля на цилиндре")
+    ?(state.photoEditTarget==="cylinder"?"разместите зелёную рамку по цилиндру; рамка может выходить за фото":"уточните синюю рамку поля; на цилиндре она может выходить за фото")
     :"перетаскивайте 4 маркера области нанесения";
 }
 function resetCylinderAroundField(){
@@ -831,35 +834,41 @@ function updateSummary(){
 }
 
 function resetQuad(){ state.quad=[{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}]; renderPhoto(); updateSummary(); }
-function normalizedPoint(canvas,e){ const r=canvas.getBoundingClientRect(); return {x:clamp((e.clientX-r.left)/r.width),y:clamp((e.clientY-r.top)/r.height)}; }
+function normalizedPoint(canvas,e,allowOutside=false){ const r=canvas.getBoundingClientRect(),p={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}; return photoPoint(p,allowOutside); }
 function pointInQuad(p,q){ let sign=0; for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4]; const cross=(b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x); if(Math.abs(cross)<1e-7) continue; const s=Math.sign(cross); if(sign && s!==sign) return false; sign=s;} return true; }
 
 function editablePhotoQuad(){
   return $("surface").value==="cylinder"&&state.photoEditTarget==="cylinder"?state.cylinderQuad:state.quad;
 }
 function applyEditedPhotoQuad(next){
+  const cylinderMode=$("surface").value==="cylinder";
   if(state.photoDragTarget==="cylinder"){
-    state.cylinderQuad=next.map(p=>({x:clamp(p.x),y:clamp(p.y)}));state.cylinderInitialized=true;
+    state.cylinderQuad=next.map(p=>photoPoint(p,true));state.cylinderInitialized=true;
     if(state.quadSnapshot&&state.fieldSnapshot)state.quad=fieldBoundToCylinder(state.quadSnapshot,state.cylinderQuad,state.fieldSnapshot);
-  }else state.quad=next.map(p=>({x:clamp(p.x),y:clamp(p.y)}));
+  }else state.quad=next.map(p=>photoPoint(p,cylinderMode));
 }
 $("photoCanvas").addEventListener("pointerdown",e=>{
-  if(!state.photo)return;const c=e.currentTarget,p=normalizedPoint(c,e),r=c.getBoundingClientRect(),target=$("surface").value==="cylinder"&&state.photoEditTarget==="cylinder"?"cylinder":"field",quad=editablePhotoQuad();
+  if(!state.photo)return;const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode),r=c.getBoundingClientRect(),target=cylinderMode&&state.photoEditTarget==="cylinder"?"cylinder":"field",quad=editablePhotoQuad();
   state.photoDragTarget=target;state.quadSnapshot=quad.map(q=>({...q}));state.fieldSnapshot=state.quad.map(q=>({...q}));
   let best=-1,bestD=Infinity;quad.forEach((q,i)=>{const dx=(q.x-p.x)*r.width,dy=(q.y-p.y)*r.height,d=Math.hypot(dx,dy);if(d<bestD){bestD=d;best=i;}});
   if(bestD<20){state.activeHandle=best;c.setPointerCapture(e.pointerId);return;}
   if(pointInQuad(p,quad)){state.draggingQuad=true;state.quadDragStart=p;c.setPointerCapture(e.pointerId);}
 });
 $("photoCanvas").addEventListener("pointermove",e=>{
-  const c=e.currentTarget,p=normalizedPoint(c,e);
+  const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode);
   if(state.activeHandle>=0&&state.quadSnapshot){
     const next=state.quadSnapshot.map(q=>({...q}));next[state.activeHandle]=p;applyEditedPhotoQuad(next);renderPhoto();updateSummary();return;
   }
   if(state.draggingQuad&&state.quadSnapshot){
     const dx=p.x-state.quadDragStart.x,dy=p.y-state.quadDragStart.y;
-    const shifted=state.quadSnapshot.map(q=>({x:q.x+dx,y:q.y+dy})),minX=Math.min(...shifted.map(q=>q.x)),maxX=Math.max(...shifted.map(q=>q.x)),minY=Math.min(...shifted.map(q=>q.y)),maxY=Math.max(...shifted.map(q=>q.y));
-    const adx=dx+(minX<0?-minX:0)+(maxX>1?1-maxX:0),ady=dy+(minY<0?-minY:0)+(maxY>1?1-maxY:0);
-    applyEditedPhotoQuad(state.quadSnapshot.map(q=>({x:q.x+adx,y:q.y+ady})));renderPhoto();updateSummary();
+    if(cylinderMode){
+      applyEditedPhotoQuad(state.quadSnapshot.map(q=>({x:q.x+dx,y:q.y+dy})));
+    }else{
+      const shifted=state.quadSnapshot.map(q=>({x:q.x+dx,y:q.y+dy})),minX=Math.min(...shifted.map(q=>q.x)),maxX=Math.max(...shifted.map(q=>q.x)),minY=Math.min(...shifted.map(q=>q.y)),maxY=Math.max(...shifted.map(q=>q.y));
+      const adx=dx+(minX<0?-minX:0)+(maxX>1?1-maxX:0),ady=dy+(minY<0?-minY:0)+(maxY>1?1-maxY:0);
+      applyEditedPhotoQuad(state.quadSnapshot.map(q=>({x:q.x+adx,y:q.y+ady})));
+    }
+    renderPhoto();updateSummary();
   }
 });
 function endPhotoDrag(){state.activeHandle=-1;state.draggingQuad=false;state.quadDragStart=null;state.quadSnapshot=null;state.fieldSnapshot=null;}
@@ -1072,12 +1081,12 @@ async function applyProfile(p){
     const ok=await setImageFromSource("photo",p.photo.url,p.photo.name||"Фото Gifts");
     if(ok)state.photoSource={id:p.photo.id||photoLookupKey(p.photo.url),name:p.photo.name||"Фото Gifts",url:p.photo.url};
   }
-  if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));
-  $("surface").value=p.surface||"perspective";
-  if($("surface").value==="cylinder"){
+  const profileSurface=p.surface||"perspective";$("surface").value=profileSurface;
+  if(Array.isArray(p.targetQuad)&&p.targetQuad.length===4)state.quad=p.targetQuad.map(x=>photoPoint(x,profileSurface==="cylinder"));
+  if(profileSurface==="cylinder"){
     state.cylinderAxis=p.cylinder?.axis==="horizontal"?"horizontal":"vertical";
     state.cylinderCurvature=clamp(Number(p.cylinder?.curvature??.72));
-    if(Array.isArray(p.cylinder?.targetQuad)&&p.cylinder.targetQuad.length===4){state.cylinderQuad=p.cylinder.targetQuad.map(x=>({x:clamp(x.x),y:clamp(x.y)}));state.cylinderInitialized=true;}
+    if(Array.isArray(p.cylinder?.targetQuad)&&p.cylinder.targetQuad.length===4){state.cylinderQuad=p.cylinder.targetQuad.map(x=>photoPoint(x,true));state.cylinderInitialized=true;}
     else{state.cylinderInitialized=false;ensureCylinderGuide(true);}
   }
   state.photoEditTarget="field";updateCylinderControls();
