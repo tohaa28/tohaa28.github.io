@@ -71,6 +71,10 @@ jobs:
           grep -q 'gwb-closing' launcher.js
           grep -q 'gwb-door-stage' launcher.js
           grep -q "const targetOrigin=location.origin" launcher.js
+          grep -q 'embeddedMockup = mockup' tools/build-launcher.mjs
+          grep -Fq 'https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/mockup-cylinder.mjs' launcher.js
+          if grep -Fq 'from &quot;./assets/mockup-cylinder.mjs' launcher.js; then echo "embedded Mockup Editor module paths must be rebased"; exit 1; fi
+          grep -q 'Maketnaya -> embedded Mockup Editor handoff failed' .github/workflows/test-direct-workbench.yml
           if grep -q 'src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"' launcher.js; then
             echo "launcher must embed Mockup Lab as srcdoc, not remote iframe" >&2
             exit 1
