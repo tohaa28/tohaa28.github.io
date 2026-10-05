@@ -32,6 +32,13 @@ export async function verifyLogoPreflight(frame) {
   const upload=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><text x="1" y="5" font-size="2">Logo</text><path d="M1 7H9" fill="none" stroke="black" stroke-width="0.01"/></svg>');
   await frame.locator('#artwork').setInputFiles({name:'preflight-text.svg',mimeType:'image/svg+xml',buffer:upload});
   await frame.waitForFunction(()=>window.gwbLogoPreflight?.some(r=>r.findings.some(f=>f.id==='outlined-text')));
+  await frame.waitForFunction(()=>document.getElementById('logoErrorOverlay')?.textContent.includes('поиск мелких элементов...'));
+  const pendingDetail=await frame.locator('#logoErrorOverlay').textContent();
+  assert.match(pendingDetail,/поиск мелких элементов\.\.\./,'Transient PrintCheck status must be shown until detail scan finishes');
+  await frame.waitForFunction(()=>window.gwbDetailCheck?.entries?.some(e=>e.state==='done'),null,{timeout:30000});
+  await frame.waitForFunction(()=>!document.getElementById('logoErrorOverlay')?.textContent.includes('поиск мелких элементов...'));
+  const completedDetail=await frame.locator('#logoErrorOverlay').textContent();
+  assert.match(completedDetail,/PrintCheck · мелкие элементы:/,'Transient PrintCheck status must be replaced by the completed detail result');
   let state=await frame.evaluate(()=>({reports:window.gwbLogoPreflight,disabled:document.getElementById('simpleExport').disabled,field:document.getElementById('fieldSize').textContent}));
   assert.equal(state.reports[0].method,'B4');assert.equal(state.reports[0].rule.positive,.4);assert.equal(state.disabled,true);
   assert.match(state.field,/200\.00 × 100\.00/);
