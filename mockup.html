@@ -979,12 +979,26 @@ function applyEditedPhotoQuad(next){
 $("photoCanvas").addEventListener("pointerdown",e=>{
   if(!state.photo)return;const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode),r=c.getBoundingClientRect(),target=cylinderMode&&state.photoEditTarget==="cylinder"?"cylinder":"field",quad=editablePhotoQuad();
   state.photoDragTarget=target;state.quadSnapshot=quad.map(q=>({...q}));state.fieldSnapshot=state.quad.map(q=>({...q}));
-  const hit=canvasPointerPixel(c,e);let best=-1,bestD=Infinity;quad.forEach((q,i)=>{const qp=photoToCanvasPoint(q,state.photoView),d=Math.hypot(qp.x-hit.x,qp.y-hit.y);if(d<bestD){bestD=d;best=i;}});
+  const hit=canvasPointerPixel(c,e);
+  if(cylinderMode&&target==="cylinder"){
+    const cq=state.cylinderQuad.map(q=>photoToCanvasPoint(q,state.photoView)),opts=cylinder3DOptions();
+    const arcHandles=[cylinder3DArcHandle(cq,"top",opts),cylinder3DArcHandle(cq,"bottom",opts)];
+    for(let i=0;i<arcHandles.length;i++){
+      if(Math.hypot(arcHandles[i].x-hit.x,arcHandles[i].y-hit.y)<24){state.activeHandle=4+i;c.setPointerCapture(e.pointerId);return;}
+    }
+  }
+  let best=-1,bestD=Infinity;quad.forEach((q,i)=>{const qp=photoToCanvasPoint(q,state.photoView),d=Math.hypot(qp.x-hit.x,qp.y-hit.y);if(d<bestD){bestD=d;best=i;}});
   if(bestD<20){state.activeHandle=best;c.setPointerCapture(e.pointerId);return;}
   if(pointInQuad(p,quad)){state.draggingQuad=true;state.quadDragStart=p;c.setPointerCapture(e.pointerId);}
 });
 $("photoCanvas").addEventListener("pointermove",e=>{
   const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode);
+  if(state.activeHandle>=4&&state.quadSnapshot){
+    const which=state.activeHandle===4?"top":"bottom";
+    const ratio=clamp(cylinder3DArcRatioFromPoint(state.cylinderQuad,p,which,{axis:state.cylinderAxis}),-.15,.25);
+    if(which==="top")state.cylinderTopArc=ratio;else state.cylinderBottomArc=ratio;
+    updateCylinderControls();renderPhoto();updateSummary();return;
+  }
   if(state.activeHandle>=0&&state.quadSnapshot){
     const next=state.quadSnapshot.map(q=>({...q}));next[state.activeHandle]=p;applyEditedPhotoQuad(next);renderPhoto();updateSummary();return;
   }
@@ -1018,7 +1032,9 @@ $("surface").onchange=()=>{
 };
 $("cylinderAxis").onchange=()=>{state.cylinderAxis=$("cylinderAxis").value==="horizontal"?"horizontal":"vertical";renderPhoto();updateSummary();};
 $("cylinderCurvature").oninput=()=>{state.cylinderCurvature=clamp(Number($("cylinderCurvature").value)/100);$("cylinderCurveValue").textContent=Math.round(state.cylinderCurvature*100)+"%";renderPhoto();updateSummary();};
-$("editCylinder").onclick=()=>{ensureCylinderGuide();setPhotoEditTarget("cylinder");setStatus("Разместите зелёную рамку по границам цилиндрической поверхности.");};
+$("cylinderTopArc").oninput=()=>{state.cylinderTopArc=clamp(Number($("cylinderTopArc").value)/100,-.15,.25);updateCylinderControls();renderPhoto();updateSummary();};
+$("cylinderBottomArc").oninput=()=>{state.cylinderBottomArc=clamp(Number($("cylinderBottomArc").value)/100,-.15,.25);updateCylinderControls();renderPhoto();updateSummary();};
+$("editCylinder").onclick=()=>{ensureCylinderGuide();setPhotoEditTarget("cylinder");setStatus("Совместите 4 зелёные точки с боковыми касательными корпуса, а оранжевые «Верх» и «Дно» — с кривизной кружки.");};
 $("editField").onclick=()=>{setPhotoEditTarget("field");setStatus("Разместите синюю рамку по реальному полю нанесения на цилиндре.");};
 $("resetCylinder").onclick=resetCylinderAroundField;
 ["article","place","method","variant"].forEach(id=>$(id).addEventListener("input",updateSummary));
@@ -1030,7 +1046,7 @@ function buildProfile(){
   const fc=state.fieldCandidates[state.activeFieldCandidate]||null;
   const field=fc?{id:fc.id,printId:fc.printId,applicationId:fc.applicationId,place:fc.place,sizeCm:Array.isArray(fc.sizeMm)?fc.sizeMm.map(v=>Number((v/10).toFixed(4))):null}:{id:"manual",printId:"",applicationId:"",place:$("place").value.trim(),sizeCm:null};
   const surface=$("surface").value;if(surface==="cylinder")ensureCylinderGuide();
-  return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{id:state.photoSource.id||"",name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},field,constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface,cylinder:surface==="cylinder"?{axis:state.cylinderAxis,curvature:state.cylinderCurvature,targetQuad:state.cylinderQuad.map(p=>({...p}))}:undefined,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:surface==="cylinder"?32:18}};
+  return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{id:state.photoSource.id||"",name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},field,constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface,cylinder:surface==="cylinder"?{geometry:"3d",axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,targetQuad:state.cylinderQuad.map(p=>({...p}))}:undefined,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:surface==="cylinder"?32:18}};
 }
 
 function encodeProfileForSave(profile,action="save"){
@@ -1215,6 +1231,8 @@ async function applyProfile(p){
   if(profileSurface==="cylinder"){
     state.cylinderAxis=p.cylinder?.axis==="horizontal"?"horizontal":"vertical";
     state.cylinderCurvature=clamp(Number(p.cylinder?.curvature??.72));
+    state.cylinderTopArc=clamp(Number(p.cylinder?.topArc??.075),-.15,.25);
+    state.cylinderBottomArc=clamp(Number(p.cylinder?.bottomArc??.045),-.15,.25);
     if(Array.isArray(p.cylinder?.targetQuad)&&p.cylinder.targetQuad.length===4){state.cylinderQuad=p.cylinder.targetQuad.map(x=>photoPoint(x,true));state.cylinderInitialized=true;}
     else{state.cylinderInitialized=false;ensureCylinderGuide(true);}
   }
@@ -1316,7 +1334,7 @@ async function createMockupPngBlob(){
   if(!state.artwork)throw new Error("Сначала загрузите логотип");
   if(!state.photo)throw new Error("Сначала загрузите фотографию");
   const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
-  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,clipQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
+  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:.72,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
   const blob=await new Promise((resolve,reject)=>{try{c.toBlob(b=>b?resolve(b):reject(new Error("Не удалось сформировать PNG")),"image/png")}catch(err){reject(err)}});
   const p=buildProfile();
   return{blob,filename:`mockup-${slug(p.article)}-${slug(p.place)}.png`,profile:p};
@@ -1325,6 +1343,7 @@ window.gwbCreateMockupPng=createMockupPngBlob;
 window.gwbApplyMockupProfile=applyProfile;
 window.gwbGetMockupBinding=buildProfile;
 window.gwbGetMockupPhotoView=()=>{if(!state.photoView)return null;const {ctx,...view}=state.photoView;return view;};
+window.gwbGetCylinder3D=()=>({axis:state.cylinderAxis,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,targetQuad:state.cylinderQuad.map(p=>({...p}))});
 $("exportPng").onclick=async()=>{
   try{const out=await createMockupPngBlob();downloadBlob(out.filename,out.blob);setStatus("Мокап PNG сохранён");}
   catch(err){setStatus("Экспорт мокапа не выполнен: "+(err?.message||err));}
