@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate} from "../assets/mockup-cylinder.mjs";
+import {mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange} from "../assets/mockup-cylinder.mjs";
 
 test("cylinder guide keeps field attached while cylinder moves",()=>{
   const from=[{x:.2,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:.2,y:.9}];
@@ -15,11 +15,26 @@ test("cylinder guide keeps field attached while cylinder moves",()=>{
   assert.notDeepEqual(moved,field);
 });
 
-test("cylinder curvature is identity at zero and compresses the edges",()=>{
+test("cylinder projection wraps source and clips the back side",()=>{
   assert.equal(cylinderWarpCoordinate(.25,0),.25);
-  assert.equal(cylinderWarpCoordinate(.5,.8),.5);
-  assert.ok(cylinderWarpCoordinate(.25,.8)<.25);
-  assert.ok(cylinderWarpCoordinate(.75,.8)>.75);
-  assert.ok(Math.abs(cylinderWarpCoordinate(0,.8))<1e-10);
-  assert.ok(Math.abs(cylinderWarpCoordinate(1,.8)-1)<1e-10);
+  assert.equal(cylinderProjection(.5,.8).coordinate,.5);
+  const range=cylinderVisibleRange(.8);
+  assert.equal(range.clipped,true);
+  assert.ok(range.start>0&&range.end<1);
+  assert.equal(cylinderProjection(0,.8).visible,false);
+  assert.equal(cylinderProjection(1,.8).visible,false);
+  assert.equal(cylinderProjection(.5,.8).visible,true);
+  assert.ok(Math.abs(cylinderProjection(range.start,.8).coordinate)<1e-9);
+  assert.ok(Math.abs(cylinderProjection(range.end,.8).coordinate-1)<1e-9);
+  assert.ok(cylinderProjection(range.start-.01,.8).visible===false);
+  assert.ok(cylinderProjection(range.end+.01,.8).visible===false);
+});
+
+test("moderate cylinder curvature keeps the full artwork visible",()=>{
+  const range=cylinderVisibleRange(.5);
+  assert.deepEqual({start:range.start,end:range.end,clipped:range.clipped},{start:0,end:1,clipped:false});
+  assert.equal(cylinderProjection(0,.5).visible,true);
+  assert.equal(cylinderProjection(1,.5).visible,true);
+  assert.ok(Math.abs(cylinderWarpCoordinate(0,.5))<1e-10);
+  assert.ok(Math.abs(cylinderWarpCoordinate(1,.5)-1)<1e-10);
 });
