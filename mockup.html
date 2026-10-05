@@ -1158,6 +1158,7 @@ async function createMockupPngBlob(){
 }
 window.gwbCreateMockupPng=createMockupPngBlob;
 window.gwbApplyMockupProfile=applyProfile;
+window.gwbGetMockupBinding=buildProfile;
 $("exportPng").onclick=async()=>{
   try{const out=await createMockupPngBlob();downloadBlob(out.filename,out.blob);setStatus("Мокап PNG сохранён");}
   catch(err){setStatus("Экспорт мокапа не выполнен: "+(err?.message||err));}
