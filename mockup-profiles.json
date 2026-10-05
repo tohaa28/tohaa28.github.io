@@ -1,9 +1,74 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-05T06:47:37.890Z",
+  "updatedAt": "2026-10-05T06:49:51.907Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "6578.60",
+      "variant": "",
+      "place": "по периметру",
+      "method": "SB1: Сублимация/посуда,4",
+      "photo": {
+        "id": "6578.60-4",
+        "name": "Фото 4 · арт. 6578.60",
+        "url": "https://files.gifts.ru/reviewer/webp/15/6578.60_20_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "4",
+        "printId": "print1",
+        "applicationId": "4",
+        "place": "по периметру",
+        "sizeCm": [
+          22.6995,
+          9.4998
+        ]
+      },
+      "constructor": {
+        "name": "7980902_6578.60_49427066.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1410
+      },
+      "fieldRect": {
+        "x": 0.15231968259295453,
+        "y": 0.19619477378557482,
+        "w": 0.6949317197772683,
+        "h": 0.3714081111220389
+      },
+      "targetQuad": [
+        {
+          "x": 0.305625,
+          "y": 0.24900000000000005
+        },
+        {
+          "x": 0.871625,
+          "y": 0.24100000000000005
+        },
+        {
+          "x": 0.861625,
+          "y": 0.887
+        },
+        {
+          "x": 0.293625,
+          "y": 0.895
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 28
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-05T06:49:51.907Z",
+      "confirmedAt": "2026-10-05T06:49:51.907Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "15637",
