@@ -75,3 +75,64 @@ export function cylinderProjection(value,curvature=.72){
 export function cylinderWarpCoordinate(value,curvature=.72){
   return cylinderProjection(value,curvature).coordinate;
 }
+
+
+function point(v){return {x:Number(v?.x)||0,y:Number(v?.y)||0};}
+function mixPoint(a,b,t){return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};}
+function mid(a,b){return mixPoint(a,b,.5);}
+function sub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
+function add(a,b){return {x:a.x+b.x,y:a.y+b.y};}
+function mul(a,k){return {x:a.x*k,y:a.y*k};}
+function len(a){return Math.hypot(a.x,a.y);}
+function unit(a){const l=len(a)||1;return {x:a.x/l,y:a.y/l};}
+
+export function cylinder3DWrapScale(curvature=.72){
+  const k=Math.max(0,Math.min(1,Number(curvature)||0));
+  return Math.max(.25,Math.min(1.45,k/.72));
+}
+
+export function cylinder3DTheta(localWrapped,curvature=.72){
+  return (Number(localWrapped)-.5)*Math.PI*cylinder3DWrapScale(curvature);
+}
+
+export function cylinder3DVisible(localWrapped,curvature=.72){
+  return Math.cos(cylinder3DTheta(localWrapped,curvature))>=-EPS;
+}
+
+export function cylinder3DSurfacePoint(surfaceQuad,localX,localY,{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
+  const q=normalizedQuad(surfaceQuad);
+  const horizontal=axis==="horizontal";
+  const wrapped=horizontal?Number(localY):Number(localX);
+  const axial=horizontal?Number(localX):Number(localY);
+  const theta=cylinder3DTheta(wrapped,curvature),sn=Math.sin(theta),cs=Math.cos(theta);
+  let startA,startB,endA,endB;
+  if(horizontal){
+    startA=q[0];startB=q[3];endA=q[1];endB=q[2];
+  }else{
+    startA=q[0];startB=q[1];endA=q[3];endB=q[2];
+  }
+  startA=point(startA);startB=point(startB);endA=point(endA);endB=point(endB);
+  const startMid=mid(startA,startB),endMid=mid(endA,endB),axisVec=unit(sub(endMid,startMid));
+  const height=Math.max(EPS,len(sub(endMid,startMid)));
+  const startHalf=mul(sub(startB,startA),.5),endHalf=mul(sub(endB,endA),.5);
+  const startCurve=add(add(startMid,mul(startHalf,sn)),mul(axisVec,Number(topArc||0)*height*cs));
+  const endCurve=add(add(endMid,mul(endHalf,sn)),mul(axisVec,Number(bottomArc||0)*height*cs));
+  const p=mixPoint(startCurve,endCurve,axial);
+  return {x:p.x,y:p.y,visible:cs>=-EPS,depth:cs,theta,wrapped,axial};
+}
+
+export function cylinder3DArcHandle(surfaceQuad,which="top",{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
+  const horizontal=axis==="horizontal";
+  const localX=horizontal?(which==="top"?0:1):.5;
+  const localY=horizontal?.5:(which==="top"?0:1);
+  return cylinder3DSurfacePoint(surfaceQuad,localX,localY,{axis,curvature,topArc,bottomArc});
+}
+
+export function cylinder3DArcRatioFromPoint(surfaceQuad,p,which="top",{axis="vertical"}={}){
+  const q=normalizedQuad(surfaceQuad),pt=point(p),horizontal=axis==="horizontal";
+  const startA=point(horizontal?q[0]:q[0]),startB=point(horizontal?q[3]:q[1]);
+  const endA=point(horizontal?q[1]:q[3]),endB=point(horizontal?q[2]:q[2]);
+  const startMid=mid(startA,startB),endMid=mid(endA,endB),axisVec=unit(sub(endMid,startMid));
+  const height=Math.max(EPS,len(sub(endMid,startMid))),base=which==="top"?startMid:endMid;
+  return ((pt.x-base.x)*axisVec.x+(pt.y-base.y)*axisVec.y)/height;
+}
