@@ -229,6 +229,44 @@ jobs:
             }));
             throw new Error("Workbench module did not initialize: "+JSON.stringify({moduleProbe,errors,error:String(error)}));
           }
+          const mockupElement = await frame.$("#mockupFrame");
+          if (!mockupElement) throw new Error("Embedded Mockup Editor iframe is missing");
+          const embeddedMockup = await mockupElement.contentFrame();
+          if (!embeddedMockup) throw new Error("Embedded Mockup Editor frame is unavailable");
+          await embeddedMockup.waitForFunction(() => typeof window.gwbApplyMockupHandoff === "function", null, {timeout:30000});
+          const templateSvg = "data:image/svg+xml;base64," + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="white"/></svg>').toString("base64");
+          await embeddedMockup.evaluate(async ({templateSvg}) => {
+            await window.gwbApplyMockupHandoff({
+              schema:"gifts-mockup-handoff/v1",
+              article:"HANDOFF-TEST",
+              place:"лицо",
+              method:"LM1",
+              templateWidth:100,
+              templateHeight:100,
+              templateName:"handoff-test.svg",
+              constructorPreviewDataUrl:templateSvg,
+              fieldCandidates:[
+                {id:"field-1",printId:"print1",place:"лицо",method:"LM1",bounds:{x:.10,y:.20,w:.30,h:.25}},
+                {id:"field-2",printId:"print2",place:"оборот",method:"LM1",bounds:{x:.55,y:.25,w:.25,h:.20}}
+              ]
+            });
+          }, {templateSvg});
+          await embeddedMockup.waitForFunction(() => document.getElementById("fieldCandidateCount")?.textContent === "2" && document.getElementById("selectField")?.disabled === false, null, {timeout:30000});
+          const embeddedHandoffState = await embeddedMockup.evaluate(() => ({
+            count:document.getElementById("fieldCandidateCount")?.textContent || "",
+            fields:[...document.querySelectorAll("#fieldCandidates .candidateMeta strong")].map(x=>x.textContent?.trim()||""),
+            article:document.getElementById("article")?.value || "",
+            templateReady:document.getElementById("selectField")?.disabled === false,
+            status:document.getElementById("status")?.textContent || ""
+          }));
+          if (embeddedHandoffState.count !== "2" ||
+              embeddedHandoffState.article !== "HANDOFF-TEST" ||
+              !embeddedHandoffState.templateReady ||
+              !embeddedHandoffState.fields.includes("лицо") ||
+              !embeddedHandoffState.fields.includes("оборот")) {
+            throw new Error("Maketnaya -> embedded Mockup Editor handoff failed: "+JSON.stringify(embeddedHandoffState));
+          }
+          console.log("Embedded Mockup handoff:", JSON.stringify(embeddedHandoffState));
           const guidedState = await frame.evaluate(() => ({
             simpleMode: document.body.classList.contains("simple-mode"),
             modeToggleHidden: document.getElementById("modeToggle")?.hidden === true || getComputedStyle(document.getElementById("modeToggle")).display === "none",
