@@ -1184,20 +1184,23 @@ function hideGitTokenPrompt(){
   if(panel)panel.hidden=true;
   if(input)input.value="";
 }
-function requestGitTokenInline(action,profile){
-  pendingGitOperation={action,profile};
+function requestGitTokenInline(action,profile,operationKind=mappingMutationKind||"create"){
+  pendingGitOperation={action,profile,operationKind};
   const panel=$("gitTokenPrompt"),input=$("gitTokenInput");
   if(panel)panel.hidden=false;
+  waitMappingMutation("Нужен GitHub token — после ввода операция продолжится");
   setStatus("GitHub token нужно обновить. Введите его в текущем окне.");
   setTimeout(()=>input?.focus(),0);
 }
-function applySavedMappingResult(data){
+function applySavedMappingResult(data,operationKind=mappingMutationKind||"create"){
   const saved={...data.profile,storage:"git"};
   serverProfileRegistry.profiles=(serverProfileRegistry.profiles||[]).filter(p=>profileKey(p)!==profileKey(saved));
   serverProfileRegistry.profiles.unshift(saved);
   serverProfileRegistry.candidates=(serverProfileRegistry.candidates||[]).filter(p=>profileKey(p)!==profileKey(saved));
   renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
-  setStatus("Сопоставление сохранено на сайте · Git "+String(data.commit||"").slice(0,7));
+  const verb=operationKind==="update"?"изменено":"сохранено";
+  setStatus("Сопоставление "+verb+" на сайте · Git "+String(data.commit||"").slice(0,7));
+  finishMappingMutation(operationKind,{commit:data.commit||""});
   try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-changed",profile:saved,commit:data.commit||""},"*")}catch{}
 }
 function applyDeletedMappingResult(data){
@@ -1208,54 +1211,60 @@ function applyDeletedMappingResult(data){
   const field=state.fieldCandidates[state.activeFieldCandidate]||null;
   if(field)delete state.photoByField[fieldSelectionKey(field,state.activeFieldCandidate)];
   renderProfileLibrary();renderFieldCandidates();renderPhotoCandidates();updateSummary();updateAssetReadiness();
-  setStatus(data.deleted===false?"Привязка уже отсутствует в Git.":"Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
+  const alreadyMissing=data.deleted===false;
+  setStatus(alreadyMissing?"Привязка уже отсутствует в Git.":"Фотография отвязана от выбранного поля · Git "+String(data.commit||"").slice(0,7));
+  finishMappingMutation("delete",{commit:data.commit||"",message:alreadyMissing?"Привязка уже удалена":"Привязка удалена"+(data.commit?" · Git "+String(data.commit).slice(0,7):"")});
   try{parent!==window&&parent.postMessage({type:"gifts-mockup-profile-registry-deleted",profile:removed,commit:data.commit||""},"*")}catch{}
 }
-async function persistMapping(action,profile){
+async function persistMapping(action,profile,operationKind=action==="delete"?"delete":"create"){
+  beginMappingMutation(operationKind);
   try{
-    setStatus(action==="delete"?"Отвязываю фотографию…":"Сохраняю привязку…");
+    setStatus(mappingOperationLabel(operationKind,"pending"));
     const response=await requestGitBridgeMutation(action,profile);
-    if(response.tokenRequired){requestGitTokenInline(action,profile);return;}
-    if(action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result);
+    if(response.tokenRequired){requestGitTokenInline(action,profile,operationKind);return;}
+    if(action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result,operationKind);
   }catch(error){
-    setStatus("Ошибка Git: "+(error?.message||String(error)));
-    console.error(error);
+    const message="Ошибка Git: "+(error?.message||String(error));
+    setStatus(message);failMappingMutation(message);console.error(error);
   }
 }
 $("gitTokenSubmit").onclick=async()=>{
   const token=$("gitTokenInput").value.trim(),pending=pendingGitOperation;
   if(!pending){hideGitTokenPrompt();return;}
-  if(!token){setStatus("Введите новый GitHub token.");$("gitTokenInput").focus();return;}
+  if(!token){setStatus("Введите новый GitHub token.");waitMappingMutation("Введите GitHub token для продолжения операции");$("gitTokenInput").focus();return;}
   $("gitTokenSubmit").disabled=true;
   try{
+    waitMappingMutation("Проверяю GitHub token и продолжаю операцию…");
     setStatus("Проверяю новый GitHub token и продолжаю операцию…");
     const response=await requestGitBridgeMutation(pending.action,pending.profile,{token});
     if(response.tokenRequired){
-      setStatus("GitHub отклонил этот token. Введите действующий token.");
+      const message="GitHub отклонил token — введите действующий";
+      setStatus("GitHub отклонил этот token. Введите действующий token.");waitMappingMutation(message);
       return;
     }
     pendingGitOperation=null;hideGitTokenPrompt();
-    if(pending.action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result);
+    if(pending.action==="delete")applyDeletedMappingResult(response.result);else applySavedMappingResult(response.result,pending.operationKind);
   }catch(error){
-    setStatus("Ошибка Git: "+(error?.message||String(error)));
-    console.error(error);
+    const message="Ошибка Git: "+(error?.message||String(error));
+    setStatus(message);failMappingMutation(message);console.error(error);
   }finally{
     $("gitTokenSubmit").disabled=false;
   }
 };
-$("gitTokenCancel").onclick=()=>{pendingGitOperation=null;hideGitTokenPrompt();setStatus("Операция Git отменена.");};
+$("gitTokenCancel").onclick=()=>{pendingGitOperation=null;hideGitTokenPrompt();mappingMutationBusy=false;mappingMutationKind="";setMappingOperationStatus("waiting","Операция отменена");updateMappingActions();setStatus("Операция Git отменена.");};
 $("gitTokenInput").addEventListener("keydown",event=>{if(event.key==="Enter")$("gitTokenSubmit").click();});
 $("mappingSave").onclick=async()=>{
+  const mapped=currentFieldPhotoMapping(),operationKind=mapped?"update":"create";
   const profile=buildProfile(),problem=validateProfileForGit(profile);
-  if(problem){setStatus(problem);return;}
-  await persistMapping("save",profile);
+  if(problem){setStatus(problem);setMappingOperationStatus("error",problem);return;}
+  await persistMapping("save",profile,operationKind);
 };
 $("mappingDelete").onclick=async()=>{
   const mapped=currentFieldPhotoMapping();
-  if(!mapped){setStatus("Для выбранных поля и фотографии сохранённой привязки нет.");updateMappingActions();return;}
+  if(!mapped){const message="Для выбранных поля и фотографии сохранённой привязки нет.";setStatus(message);setMappingOperationStatus("error",message);updateMappingActions();return;}
   const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
   if(!confirm(`Удалить привязку фото «${photo?.name||photo?.id||"фото"}» к полю «${field?.place||field?.printId||"поле"}»? Другие привязки этого фото и этого поля останутся.`))return;
-  await persistMapping("delete",mapped);
+  await persistMapping("delete",mapped,"delete");
 };
 window.addEventListener("message",event=>{
   const data=event.data||{};
@@ -1263,7 +1272,7 @@ window.addEventListener("message",event=>{
   if(event.origin!=="https://tohaa28.github.io")return;
   if(data.type==="gifts-mockup-profile-saved"&&data.profile)applySavedMappingResult(data);
   else if(data.type==="gifts-mockup-profile-deleted"&&data.profile)applyDeletedMappingResult(data);
-  else if(data.type==="gifts-mockup-profile-save-error")setStatus("Не удалось изменить сопоставление: "+String(data.message||"ошибка Git"));
+  else if(data.type==="gifts-mockup-profile-save-error"){const message="Не удалось изменить сопоставление: "+String(data.message||"ошибка Git");setStatus(message);failMappingMutation(message);}
 });
 $("saveProfile").onclick=()=>{const p=buildProfile();downloadJson(`mockup-${slug(p.article)}-${slug(p.place)}.json`,p);setStatus("Профиль привязки скачан");};
 $("saveToLibrary").onclick=()=>{const p=buildProfile();if(!p.article||!p.place||(!p.photo.id&&!p.photo.name&&!p.photo.url)){setStatus("Для библиотеки нужны артикул, место и выбранная фотография");return;}const lib=getProfileLibrary(),key=profileKey(p),i=lib.findIndex(x=>profileKey(x)===key);p.updatedAt=new Date().toISOString();if(i>=0)lib[i]=p;else lib.unshift(p);setProfileLibrary(lib.slice(0,500));setStatus(i>=0?"Сопоставление обновлено":"Сопоставление запомнено");updateSummary();};
@@ -1407,6 +1416,7 @@ async function createMockupPngBlob(){
 window.gwbCreateMockupPng=createMockupPngBlob;
 window.gwbApplyMockupProfile=applyProfile;
 window.gwbGetMockupBinding=buildProfile;
+window.gwbSetMappingOperationStatus=(stateName,text)=>setMappingOperationStatus(stateName,text);
 window.gwbGetMockupPhotoView=()=>{if(!state.photoView)return null;const {ctx,...view}=state.photoView;return view;};
 window.gwbGetCylinder3D=()=>({axis:state.cylinderAxis,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,targetQuad:state.cylinderQuad.map(p=>({...p}))});
 $("exportPng").onclick=async()=>{
