@@ -896,26 +896,36 @@ function cylinder3DOptions(){
   return {axis:state.cylinderAxis,curvature:.72,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc};
 }
 function drawCylinder3DGuide(ctx,cq,{handles=true}={}){
-  const opts=cylinder3DOptions(),steps=64,top=[],bottom=[];
+  const opts=cylinder3DOptions(),steps=64,start=[],end=[];
   for(let i=0;i<=steps;i++){
-    const u=i/steps;
-    top.push(cylinder3DSurfacePoint(cq,u,0,opts));
-    bottom.push(cylinder3DSurfacePoint(cq,u,1,opts));
+    const t=i/steps;
+    if(state.cylinderAxis==="horizontal"){
+      start.push(cylinder3DSurfacePoint(cq,0,t,opts));
+      end.push(cylinder3DSurfacePoint(cq,1,t,opts));
+    }else{
+      start.push(cylinder3DSurfacePoint(cq,t,0,opts));
+      end.push(cylinder3DSurfacePoint(cq,t,1,opts));
+    }
   }
   ctx.save();
   ctx.fillStyle="rgba(129,179,21,.055)";ctx.strokeStyle="#648f06";ctx.lineWidth=2;
-  ctx.beginPath();top.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));for(let i=bottom.length-1;i>=0;i--)ctx.lineTo(bottom[i].x,bottom[i].y);ctx.closePath();ctx.fill();
+  ctx.beginPath();start.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));for(let i=end.length-1;i>=0;i--)ctx.lineTo(end[i].x,end[i].y);ctx.closePath();ctx.fill();
   ctx.setLineDash([8,5]);
-  for(const curve of [top,bottom]){ctx.beginPath();curve.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();}
-  ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(cq[0].x,cq[0].y);ctx.lineTo(cq[3].x,cq[3].y);ctx.moveTo(cq[1].x,cq[1].y);ctx.lineTo(cq[2].x,cq[2].y);ctx.stroke();
-  const topMid=cylinder3DSurfacePoint(cq,.5,0,opts),bottomMid=cylinder3DSurfacePoint(cq,.5,1,opts);
-  ctx.setLineDash([4,5]);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(topMid.x,topMid.y);ctx.lineTo(bottomMid.x,bottomMid.y);ctx.stroke();ctx.setLineDash([]);
+  for(const curve of [start,end]){ctx.beginPath();curve.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();}
+  ctx.setLineDash([]);ctx.beginPath();
+  if(state.cylinderAxis==="horizontal"){ctx.moveTo(cq[0].x,cq[0].y);ctx.lineTo(cq[1].x,cq[1].y);ctx.moveTo(cq[3].x,cq[3].y);ctx.lineTo(cq[2].x,cq[2].y);}
+  else{ctx.moveTo(cq[0].x,cq[0].y);ctx.lineTo(cq[3].x,cq[3].y);ctx.moveTo(cq[1].x,cq[1].y);ctx.lineTo(cq[2].x,cq[2].y);}
+  ctx.stroke();
+  const a=state.cylinderAxis==="horizontal"?cylinder3DSurfacePoint(cq,0,.5,opts):cylinder3DSurfacePoint(cq,.5,0,opts);
+  const b=state.cylinderAxis==="horizontal"?cylinder3DSurfacePoint(cq,1,.5,opts):cylinder3DSurfacePoint(cq,.5,1,opts);
+  ctx.setLineDash([4,5]);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);
   ctx.font="600 11px system-ui";ctx.fillStyle="#648f06";ctx.fillText("Цилиндр 3D",cq[0].x+8,cq[0].y-8);
   if(handles){
     cq.forEach((p,i)=>{ctx.beginPath();ctx.fillStyle="#fff";ctx.strokeStyle="#648f06";ctx.lineWidth=2;ctx.arc(p.x,p.y,HANDLE_R,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle="#648f06";ctx.fillText(String(i+1),p.x-3,p.y+4);});
     const topHandle=cylinder3DArcHandle(cq,"top",opts),bottomHandle=cylinder3DArcHandle(cq,"bottom",opts);
-    for(const [p,label] of [[topHandle,"Верх"],[bottomHandle,"Дно"]]){
-      ctx.beginPath();ctx.fillStyle="#fff7e6";ctx.strokeStyle="#d97706";ctx.lineWidth=3;ctx.arc(p.x,p.y,HANDLE_R+2,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle="#9a5700";ctx.font="600 10px system-ui";ctx.fillText(label,p.x+13,p.y+4);
+    const labels=state.cylinderAxis==="horizontal"?["Торец A","Торец B"]:["Верх","Дно"];
+    for(const [index,p] of [topHandle,bottomHandle].entries()){
+      ctx.beginPath();ctx.fillStyle="#fff7e6";ctx.strokeStyle="#d97706";ctx.lineWidth=3;ctx.arc(p.x,p.y,HANDLE_R+2,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle="#9a5700";ctx.font="600 10px system-ui";ctx.fillText(labels[index],p.x+13,p.y+4);
     }
   }
   ctx.restore();
