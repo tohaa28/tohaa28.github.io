@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-05T06:49:51.907Z",
+  "updatedAt": "2026-10-05T06:49:57.855Z",
   "source": "git",
   "profiles": [
     {
@@ -64,8 +64,8 @@
         "mesh": 28
       },
       "status": "confirmed-manual",
-      "updatedAt": "2026-10-05T06:49:51.907Z",
-      "confirmedAt": "2026-10-05T06:49:51.907Z",
+      "updatedAt": "2026-10-05T06:49:57.855Z",
+      "confirmedAt": "2026-10-05T06:49:57.855Z",
       "confirmedBy": "mockup-editor-manual",
       "generatedBy": "mockup-editor-manual"
     },
