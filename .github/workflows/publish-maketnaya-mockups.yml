@@ -136,6 +136,9 @@ jobs:
           grep -q 'window.gwbGetMockupBinding=buildProfile' mockup.html
           test -f assets/mockup-cylinder.mjs
           grep -q 'cylinderWarpCoordinate' assets/mockup-cylinder.mjs
+          grep -q 'cylinderVisibleRange' assets/mockup-cylinder.mjs
+          grep -q 'задняя сторона скрывается' mockup.html
+          grep -q 'back-face clipping' tests/mockup-cylinder-browser.mjs
           grep -q 'verifyMockupCylinder(browserContext)' .github/workflows/test-direct-workbench.yml
           if grep -q 'disabled=!field' mockup.html; then echo "Article photos must stay selectable before field selection"; exit 1; fi
           if grep -q 'void autoApplySavedProfile(false)' mockup.html; then echo "Registry loading must not hijack photo selection"; exit 1; fi
