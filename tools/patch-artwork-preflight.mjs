@@ -178,11 +178,11 @@ const edits=[
   ],
   [
     "./logo-detail-check.mjs?v=20261001-1",
-    "./logo-detail-check.mjs?v=20261001-2"
+    "./logo-detail-check.mjs?v=20261005-1"
   ],
   [
     "./logo-preflight.mjs?v=20261001-3",
-    "./logo-preflight.mjs?v=20261001-4"
+    "./logo-preflight.mjs?v=20261005-1"
   ],
   [
     "",
