@@ -21,6 +21,12 @@ export async function verifyMockupCylinder(browserContext){
     buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><rect width="800" height="800" fill="white"/><rect x="10" y="10" width="780" height="780" fill="none" stroke="gray"/></svg>')
   });
   await page.waitForFunction(()=>document.getElementById("resetQuad")?.disabled===false);
+  await page.locator("#artworkFile").setInputFiles({
+    name:"artwork-red.svg",
+    mimeType:"image/svg+xml",
+    buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="rgb(220,30,30)"/></svg>')
+  });
+  await page.waitForFunction(()=>document.getElementById("toggleArtwork")?.disabled===false);
   assert.equal(await page.locator("#cylinderControls").isHidden(),true);
   await page.locator("#surface").selectOption("cylinder");
   assert.equal(await page.locator("#cylinderControls").isVisible(),true);
@@ -54,6 +60,17 @@ export async function verifyMockupCylinder(browserContext){
   assert.ok(Math.abs(binding.cylinder.bottomArc-.055)<1e-9);
   assert.deepEqual(binding.targetQuad,[{x:-.42,y:.3},{x:.62,y:.32},{x:1.38,y:.72},{x:-.36,y:.7}],"Cylinder field must preserve coordinates outside the photo");
   assert.deepEqual(binding.cylinder.targetQuad,[{x:.06,y:.16},{x:.94,y:.16},{x:.94,y:.88},{x:.06,y:.88}],"3D cylinder body must preserve its visible tangent frame");
+  await page.waitForTimeout(80);
+  const rendered3D=await page.evaluate(()=>{
+    const canvas=document.getElementById("photoCanvas"),view=window.gwbGetMockupPhotoView(),ctx=canvas.getContext("2d");
+    const x=Math.max(0,Math.round(view.photoX)),y=Math.max(0,Math.round(view.photoY));
+    const w=Math.max(1,Math.min(canvas.width-x,Math.round(view.photoW))),h=Math.max(1,Math.min(canvas.height-y,Math.round(view.photoH)));
+    const data=ctx.getImageData(x,y,w,h).data;
+    let red=0;
+    for(let i=0;i<data.length;i+=4)if(data[i]>150&&data[i+1]<100&&data[i+2]<100&&data[i+3]>80)red++;
+    return {red,w,h};
+  });
+  assert.ok(rendered3D.red>1000,"3D cylinder mesh must render the artwork onto the photo: "+JSON.stringify(rendered3D));
   const workspace=await page.evaluate(()=>{
     const canvas=document.getElementById("photoCanvas"),wrap=canvas.parentElement,view=window.gwbGetMockupPhotoView();
     const px=x=>view.photoX+x*view.photoW;
@@ -108,5 +125,5 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю рамку/);
   await page.close();
-  console.log("Mockup cylinder: 3D rims, expanded workspace, out-of-frame field, profile persistence and back-face clipping passed");
+  console.log("Mockup cylinder: 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
 }
