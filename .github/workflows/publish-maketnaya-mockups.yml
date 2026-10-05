@@ -170,14 +170,16 @@ jobs:
           grep -q 'updateAssetReadiness' mockup.html
           grep -q 'compactDetailSummary' assets/logo-detail-check.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
+          grep -Fq "displayText:e.state==='error'?e.error:'поиск мелких элементов...'" assets/logo-detail-check.mjs
+          grep -Fq "transient:e.state!=='error'" assets/logo-detail-check.mjs
           grep -q "f.overlay===true" assets/logo-preflight.mjs
-          grep -q "logo-detail-check.mjs?v=20261004-2" assets/logo-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261005-1" assets/logo-preflight.mjs
           grep -q "li.manual" assets/index-CdEUuUA7.css
           grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
-          grep -q "logo-detail-check.mjs?v=20261004-2" tools/patch-artwork-preflight.mjs
-          grep -q "logo-preflight.mjs?v=20261004-2" tools/patch-artwork-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261005-1" tools/patch-artwork-preflight.mjs
+          grep -q "logo-preflight.mjs?v=20261005-1" tools/patch-artwork-preflight.mjs
           grep -q 'hasMockupBadge' .github/workflows/test-direct-workbench.yml
-          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261004-2' tests/logo-preflight-browser.mjs
+          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261005-1' tests/logo-preflight-browser.mjs
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html
