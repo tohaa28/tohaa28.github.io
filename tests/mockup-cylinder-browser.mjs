@@ -36,19 +36,24 @@ export async function verifyMockupCylinder(browserContext){
       targetQuad:[{x:-.42,y:.3},{x:.62,y:.32},{x:1.38,y:.72},{x:-.36,y:.7}],
       surface:"cylinder",
       cylinder:{
-        axis:"horizontal",
-        curvature:.84,
-        targetQuad:[{x:-.72,y:.12},{x:1.72,y:.14},{x:1.68,y:.88},{x:-.68,y:.86}]
+        geometry:"3d",
+        axis:"vertical",
+        curvature:.72,
+        topArc:.09,
+        bottomArc:.055,
+        targetQuad:[{x:.06,y:.16},{x:.94,y:.16},{x:.94,y:.88},{x:.06,y:.88}]
       },
       render:{opacity:.9,blend:"source-over",mesh:32}
     });
   });
   const binding=await page.evaluate(()=>window.gwbGetMockupBinding());
   assert.equal(binding.surface,"cylinder");
-  assert.equal(binding.cylinder.axis,"horizontal");
-  assert.ok(Math.abs(binding.cylinder.curvature-.84)<1e-9);
+  assert.equal(binding.cylinder.axis,"vertical");
+  assert.equal(binding.cylinder.geometry,"3d");
+  assert.ok(Math.abs(binding.cylinder.topArc-.09)<1e-9);
+  assert.ok(Math.abs(binding.cylinder.bottomArc-.055)<1e-9);
   assert.deepEqual(binding.targetQuad,[{x:-.42,y:.3},{x:.62,y:.32},{x:1.38,y:.72},{x:-.36,y:.7}],"Cylinder field must preserve coordinates outside the photo");
-  assert.deepEqual(binding.cylinder.targetQuad,[{x:-.72,y:.12},{x:1.72,y:.14},{x:1.68,y:.88},{x:-.68,y:.86}],"Cylinder surface must preserve coordinates outside the photo");
+  assert.deepEqual(binding.cylinder.targetQuad,[{x:.06,y:.16},{x:.94,y:.16},{x:.94,y:.88},{x:.06,y:.88}],"3D cylinder body must preserve its visible tangent frame");
   const workspace=await page.evaluate(()=>{
     const canvas=document.getElementById("photoCanvas"),wrap=canvas.parentElement,view=window.gwbGetMockupPhotoView();
     const px=x=>view.photoX+x*view.photoW;
@@ -61,8 +66,8 @@ export async function verifyMockupCylinder(browserContext){
       photoX:view.photoX,
       xMin:view.xMin,
       xMax:view.xMax,
-      leftCylinderHandle:px(-.72),
-      rightCylinderHandle:px(1.72),
+      leftCylinderHandle:px(.06),
+      rightCylinderHandle:px(.94),
       leftFieldHandle:px(-.42),
       rightFieldHandle:px(1.38)
     };
@@ -75,10 +80,16 @@ export async function verifyMockupCylinder(browserContext){
   assert.ok(workspace.leftFieldHandle>0&&workspace.rightFieldHandle<workspace.canvasWidth,"Out-of-photo field handles must be visible inside workspace");
   assert.ok(workspace.xMin<=-1&&workspace.xMax>=2,"Workspace must expose virtual photo-relative coordinates beyond both sides");
   const summary=await page.locator("#profileSummary").textContent();
-  assert.match(summary,/цилиндр · горизонтальная ось · изгиб 84%/);
+  assert.match(summary,/цилиндр 3D · вертикальная ось · верх 9% · дно 6%/);
+  const cylinder3d=await page.evaluate(()=>window.gwbGetCylinder3D());
+  assert.equal(cylinder3d.axis,"vertical");
+  assert.ok(Math.abs(cylinder3d.topArc-.09)<1e-9);
+  assert.ok(Math.abs(cylinder3d.bottomArc-.055)<1e-9);
+  assert.equal(await page.locator("#cylinderTopArc").inputValue(),"9");
+  assert.equal(await page.locator("#cylinderBottomArc").inputValue(),"6");
   assert.match(summary,/задняя сторона скрывается/);
   const projection=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261005-2");
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261005-3");
     const range=mod.cylinderVisibleRange(.84);
     return {range,left:mod.cylinderProjection(0,.84),center:mod.cylinderProjection(.5,.84),right:mod.cylinderProjection(1,.84)};
   });
@@ -87,10 +98,15 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(projection.left.visible,false);
   assert.equal(projection.center.visible,true);
   assert.equal(projection.right.visible,false);
+  await page.locator("#cylinderTopArc").evaluate(el=>{el.value="12";el.dispatchEvent(new Event("input",{bubbles:true}))});
+  await page.locator("#cylinderBottomArc").evaluate(el=>{el.value="7";el.dispatchEvent(new Event("input",{bubbles:true}))});
+  const changed=await page.evaluate(()=>window.gwbGetMockupBinding().cylinder);
+  assert.ok(Math.abs(changed.topArc-.12)<1e-9);
+  assert.ok(Math.abs(changed.bottomArc-.07)<1e-9);
   await page.locator("#editCylinder").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёную рамку/);
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю рамку/);
   await page.close();
-  console.log("Mockup cylinder: expanded workspace, out-of-frame geometry, profile persistence, back-face clipping and edit modes passed");
+  console.log("Mockup cylinder: 3D rims, expanded workspace, out-of-frame field, profile persistence and back-face clipping passed");
 }
