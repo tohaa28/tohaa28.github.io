@@ -7,6 +7,13 @@ const assetStamp = Date.now().toString(36);
 let app = fs.readFileSync(new URL("../editor.html", import.meta.url), "utf8");
 let direct = fs.readFileSync(new URL("../direct-mode.js", import.meta.url), "utf8");
 const mockup = fs.readFileSync(new URL("../mockup.html", import.meta.url), "utf8");
+const embeddedMockup = mockup
+  .replaceAll('from "./assets/', 'from "' + base + 'assets/')
+  .replaceAll("from './assets/", "from '" + base + "assets/")
+  .replaceAll('src="./assets/', 'src="' + base + 'assets/')
+  .replaceAll("src='./assets/", "src='" + base + "assets/")
+  .replaceAll('href="./assets/', 'href="' + base + 'assets/')
+  .replaceAll("href='./assets/", "href='" + base + "assets/");
 const htmlAttr = value => value
   .replaceAll("&", "&amp;")
   .replaceAll('"', "&quot;")
@@ -21,7 +28,7 @@ app = app
   .replace("<head>", '<head><base href="https://gifts.ru/">')
   .replace(
     'src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"',
-    'srcdoc="' + htmlAttr(mockup) + '"'
+    'srcdoc="' + htmlAttr(embeddedMockup) + '"'
   )
   .replace(
     'const targetOrigin="https://tohaa28.github.io";',
