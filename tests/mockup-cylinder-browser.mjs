@@ -42,11 +42,23 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(binding.cylinder.axis,"horizontal");
   assert.ok(Math.abs(binding.cylinder.curvature-.84)<1e-9);
   assert.deepEqual(binding.cylinder.targetQuad,[{x:.18,y:.16},{x:.84,y:.2},{x:.8,y:.86},{x:.16,y:.82}]);
-  assert.match(await page.locator("#profileSummary").textContent(),/цилиндр · горизонтальная ось · изгиб 84%/);
+  const summary=await page.locator("#profileSummary").textContent();
+  assert.match(summary,/цилиндр · горизонтальная ось · изгиб 84%/);
+  assert.match(summary,/задняя сторона скрывается/);
+  const projection=await page.evaluate(async()=>{
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261005-2");
+    const range=mod.cylinderVisibleRange(.84);
+    return {range,left:mod.cylinderProjection(0,.84),center:mod.cylinderProjection(.5,.84),right:mod.cylinderProjection(1,.84)};
+  });
+  assert.equal(projection.range.clipped,true);
+  assert.ok(projection.range.start>0&&projection.range.end<1);
+  assert.equal(projection.left.visible,false);
+  assert.equal(projection.center.visible,true);
+  assert.equal(projection.right.visible,false);
   await page.locator("#editCylinder").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёную рамку/);
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю рамку/);
   await page.close();
-  console.log("Mockup cylinder: surface controls, profile persistence and edit modes passed");
+  console.log("Mockup cylinder: surface controls, profile persistence, back-face clipping and edit modes passed");
 }
