@@ -30,7 +30,7 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(await page.locator("#cylinderControls").isHidden(),true);
   await page.locator("#surface").selectOption("cylinder");
   assert.equal(await page.locator("#cylinderControls").isVisible(),true);
-  assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёную рамку/);
+  assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёный 3D-каркас/);
   await page.evaluate(async()=>{
     await window.gwbApplyMockupProfile({
       schema:"gifts-mockup-profile/v1",
@@ -121,9 +121,9 @@ export async function verifyMockupCylinder(browserContext){
   assert.ok(Math.abs(changed.topArc-.12)<1e-9);
   assert.ok(Math.abs(changed.bottomArc-.07)<1e-9);
   await page.locator("#editCylinder").click();
-  assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёную рамку/);
+  assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёный 3D-каркас/);
   await page.locator("#editField").click();
-  assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю рамку/);
+  assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю развёртку/);
   await page.close();
   console.log("Mockup cylinder: 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
 }
