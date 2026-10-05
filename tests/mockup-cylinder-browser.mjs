@@ -27,12 +27,12 @@ export async function verifyMockupCylinder(browserContext){
       method:"TEST",
       field:{id:"field-1",printId:"print1",place:"цилиндр"},
       fieldRect:{x:.2,y:.2,w:.2,h:.2},
-      targetQuad:[{x:.35,y:.3},{x:.62,y:.32},{x:.6,y:.56},{x:.34,y:.54}],
+      targetQuad:[{x:-.12,y:.3},{x:.62,y:.32},{x:.6,y:1.08},{x:-.08,y:1.04}],
       surface:"cylinder",
       cylinder:{
         axis:"horizontal",
         curvature:.84,
-        targetQuad:[{x:.18,y:.16},{x:.84,y:.2},{x:.8,y:.86},{x:.16,y:.82}]
+        targetQuad:[{x:-.35,y:-.18},{x:1.25,y:-.12},{x:1.18,y:1.32},{x:-.28,y:1.26}]
       },
       render:{opacity:.9,blend:"source-over",mesh:32}
     });
@@ -41,7 +41,8 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(binding.surface,"cylinder");
   assert.equal(binding.cylinder.axis,"horizontal");
   assert.ok(Math.abs(binding.cylinder.curvature-.84)<1e-9);
-  assert.deepEqual(binding.cylinder.targetQuad,[{x:.18,y:.16},{x:.84,y:.2},{x:.8,y:.86},{x:.16,y:.82}]);
+  assert.deepEqual(binding.targetQuad,[{x:-.12,y:.3},{x:.62,y:.32},{x:.6,y:1.08},{x:-.08,y:1.04}],"Cylinder field must preserve coordinates outside the photo");
+  assert.deepEqual(binding.cylinder.targetQuad,[{x:-.35,y:-.18},{x:1.25,y:-.12},{x:1.18,y:1.32},{x:-.28,y:1.26}],"Cylinder surface must preserve coordinates outside the photo");
   const summary=await page.locator("#profileSummary").textContent();
   assert.match(summary,/цилиндр · горизонтальная ось · изгиб 84%/);
   assert.match(summary,/задняя сторона скрывается/);
@@ -60,5 +61,5 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю рамку/);
   await page.close();
-  console.log("Mockup cylinder: surface controls, profile persistence, back-face clipping and edit modes passed");
+  console.log("Mockup cylinder: surface controls, out-of-frame geometry, profile persistence, back-face clipping and edit modes passed");
 }
