@@ -6,7 +6,10 @@
   <title>Редактор мокапов — Макетная · gifts.ru</title><script>if(window.parent!==window)document.documentElement.classList.add("embedded")</script>
   <style>
 :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202124;background:#f4f5f7;--border:#d9dde4;--panel:#fff;--accent:#1f6feb;--muted:#68707d}
-*{box-sizing:border-box}body{margin:0}.app{min-height:100vh}.topbar{height:72px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:18px}.topbar h1{font-size:22px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted);font-size:12px}.status{font-size:13px;background:#eef3fb;padding:8px 12px;border-radius:999px;white-space:nowrap}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:12px;border-right:1px solid var(--border);overflow:auto;max-height:calc(100vh - 72px)}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#4c5563;margin-bottom:9px}input,select,button{font:inherit}input[type=text],input:not([type]),select{width:100%;padding:8px 9px;border:1px solid #cfd5df;border-radius:8px;background:#fff}button,.fileButton{border:1px solid #cdd3dc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;color:#24292f}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.buttons{display:flex;gap:7px}.wrap{flex-wrap:wrap}.fileButton{display:inline-flex;flex-direction:row;align-items:center;margin:0}.fileButton input{display:none}.fileRow{border:1px dashed #cbd2dc;border-radius:8px;padding:8px;background:#fafbfc}.muted{font-size:11px;line-height:1.4;color:var(--muted);margin:7px 0}details summary{cursor:pointer;font-size:12px}.summary{white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;font-size:10px;background:#f7f8fa;padding:8px;border-radius:8px;margin:8px 0 0}.workspace{padding:12px;min-width:0}.workspaceGrid{display:grid;grid-template-columns:minmax(300px,.7fr) minmax(480px,1.3fr);gap:12px;height:calc(100vh - 132px)}.canvasPanel{background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}.canvasPanel header{height:44px;padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px}.canvasPanel header span{color:var(--muted)}.canvasWrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#e9edf2}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
+*{box-sizing:border-box}body{margin:0}.app{min-height:100vh}.topbar{height:72px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:18px}.topbar h1{font-size:22px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted);font-size:12px}.status{font-size:13px;background:#eef3fb;padding:8px 12px;border-radius:999px;white-space:nowrap}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:12px;border-right:1px solid var(--border);overflow:auto;max-height:calc(100vh - 72px)}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#4c5563;margin-bottom:9px}input,select,button{font:inherit}input[type=text],input:not([type]),select{width:100%;padding:8px 9px;border:1px solid #cfd5df;border-radius:8px;background:#fff}button,.fileButton{border:1px solid #cdd3dc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;color:#24292f}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.buttons{display:flex;gap:7px}.wrap{flex-wrap:wrap}.fileButton{display:inline-flex;flex-direction:row;align-items:center;margin:0}.fileButton input{display:none}.fileRow{border:1px dashed #cbd2dc;border-radius:8px;padding:8px;background:#fafbfc}.muted{font-size:11px;line-height:1.4;color:var(--muted);margin:7px 0}details summary{cursor:pointer;font-size:12px}.summary{white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;font-size:10px;background:#f7f8fa;padding:8px;border-radius:8px;margin:8px 0 0}.workspace{padding:12px;min-width:0}.workspaceGrid{display:grid;grid-template-columns:minmax(300px,.7fr) minmax(480px,1.3fr);gap:12px;height:calc(100vh - 132px)}.canvasPanel{background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}.canvasPanel header{height:44px;padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px}.canvasPanel header span{color:var(--muted)}.canvasWrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#e9edf2}
+.canvasWrap.cylinderWorkspace{align-items:flex-start;justify-content:flex-start;overflow:auto;padding:10px;background:#e2e7e7;scrollbar-gutter:stable}
+.canvasWrap.cylinderWorkspace canvas{max-width:none!important;max-height:none!important;flex:0 0 auto}
+.canvasWrap.cylinderWorkspace::after{content:"Серые зоны — виртуальное продолжение цилиндра";position:sticky;left:12px;bottom:8px;align-self:flex-end;margin:0 0 8px 12px;padding:4px 7px;border-radius:4px;background:#435159dd;color:#fff;font-size:10px;pointer-events:none}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
 
 .candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.photoMappingActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:-2px 0 8px}.photoMappingAction{width:100%}.photoMappingAction.danger{background:#fff6f5;border-color:#e4aaa3;color:#a3261b}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
@@ -325,7 +328,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
           </section>
         </div>
         <div class="helpbar">
-          <strong>Как настраивать:</strong> сначала сопоставьте поле конструктора. Для плоской поверхности расставьте четыре угла поля. Для цилиндра сначала зелёной рамкой разместите сам цилиндр на фото, затем синей рамкой уточните поле нанесения.
+          <strong>Как настраивать:</strong> для цилиндра фотография находится в центре расширенной рабочей области. Серые зоны слева и справа — виртуальное продолжение цилиндра: туда можно вытягивать зелёную рамку и поле нанесения от ручки до ручки.
         </div>
       </section>
     </main>
@@ -361,7 +364,8 @@ const state = {
   fieldCandidates: [],
   activePhotoCandidate: -1,
   activeFieldCandidate: -1,
-  photoByField: {}
+  photoByField: {},
+  photoView: null
 };
 
 const HANDOFF_KEY = "gifts.mockupLab.handoff.v1";
@@ -721,6 +725,48 @@ function fitCanvas(canvas,img){
   const ctx=canvas.getContext("2d"); ctx.setTransform(1,0,0,1,0,0); return {ctx,w:cssW,h:cssH,dpr:1};
 }
 
+const CYLINDER_WORKSPACE={xMin:-1,xMax:2,yMin:-.12,yMax:1.12};
+function fitPhotoCanvas(canvas,img,surface){
+  const wrap=canvas.parentElement,isCylinder=surface==="cylinder";
+  wrap.classList.toggle("cylinderWorkspace",isCylinder);
+  if(!isCylinder){
+    canvas.style.maxWidth="";canvas.style.maxHeight="";
+    const base=fitCanvas(canvas,img),view={...base,isCylinder:false,photoX:0,photoY:0,photoW:base.w,photoH:base.h,xMin:0,xMax:1,yMin:0,yMax:1};
+    state.photoView=view;delete canvas.dataset.workspaceKey;return view;
+  }
+  const maxW=Math.max(320,wrap.clientWidth-20),maxH=Math.max(260,wrap.clientHeight-20);
+  const spanX=CYLINDER_WORKSPACE.xMax-CYLINDER_WORKSPACE.xMin,spanY=CYLINDER_WORKSPACE.yMax-CYLINDER_WORKSPACE.yMin;
+  const scale=Math.min((maxW*.78)/img.naturalWidth,maxH/(img.naturalHeight*spanY),1);
+  const photoW=Math.max(1,Math.round(img.naturalWidth*scale)),photoH=Math.max(1,Math.round(img.naturalHeight*scale));
+  const w=Math.max(1,Math.round(photoW*spanX)),h=Math.max(1,Math.round(photoH*spanY));
+  const photoX=Math.round(-CYLINDER_WORKSPACE.xMin*photoW),photoY=Math.round(-CYLINDER_WORKSPACE.yMin*photoH);
+  canvas.style.width=w+"px";canvas.style.height=h+"px";canvas.style.maxWidth="none";canvas.style.maxHeight="none";canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext("2d");ctx.setTransform(1,0,0,1,0,0);
+  const view={ctx,w,h,dpr:1,isCylinder:true,photoX,photoY,photoW,photoH,...CYLINDER_WORKSPACE};
+  state.photoView=view;
+  const key=[state.photoSource.id||state.photoSource.url||state.photoSource.name||"photo",w,h].join("|");
+  if(canvas.dataset.workspaceKey!==key){
+    canvas.dataset.workspaceKey=key;
+    requestAnimationFrame(()=>{
+      const desired=Math.max(0,photoX-(wrap.clientWidth-photoW)/2);
+      wrap.scrollLeft=desired;wrap.scrollTop=Math.max(0,photoY-(wrap.clientHeight-photoH)/2);
+    });
+  }
+  return view;
+}
+function photoToCanvasPoint(p,view=state.photoView){
+  if(!view)return {x:0,y:0};
+  return {x:view.photoX+Number(p.x)*view.photoW,y:view.photoY+Number(p.y)*view.photoH};
+}
+function canvasToPhotoPoint(px,py,view=state.photoView){
+  if(!view||!view.photoW||!view.photoH)return {x:0,y:0};
+  return {x:(px-view.photoX)/view.photoW,y:(py-view.photoY)/view.photoH};
+}
+function canvasPointerPixel(canvas,e){
+  const r=canvas.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*(canvas.width/Math.max(1,r.width)),y:(e.clientY-r.top)*(canvas.height/Math.max(1,r.height))};
+}
+
 function renderTemplate(){
   const c=$("templateCanvas"), empty=$("templateEmpty");
   if(!state.template){ c.width=c.height=1; c.style.width=c.style.height="1px"; empty.hidden=false; return; }
@@ -797,11 +843,12 @@ function drawWarped(ctx,img,q,surface,cylinder={}){
 }
 
 function photoGeometry(){
-  const c=$("photoCanvas"); const cssW=parseFloat(c.style.width)||1, cssH=parseFloat(c.style.height)||1;
-  return {w:cssW,h:cssH};
+  const view=state.photoView;
+  if(view)return {...view};
+  const c=$("photoCanvas");return {w:parseFloat(c.style.width)||1,h:parseFloat(c.style.height)||1,photoX:0,photoY:0,photoW:1,photoH:1,xMin:0,xMax:1,yMin:0,yMax:1};
 }
 
-function quadPixels(){ const {w,h}=photoGeometry(); return state.quad.map(p=>({x:p.x*w,y:p.y*h})); }
+function quadPixels(){ return state.quad.map(p=>photoToCanvasPoint(p)); }
 
 function drawPhotoGuide(ctx,points,{color,fill,label,handles=true,dashed=false}){
   if(!points?.length)return;
@@ -812,13 +859,30 @@ function drawPhotoGuide(ctx,points,{color,fill,label,handles=true,dashed=false})
   ctx.restore();
 }
 function renderPhoto(){
-  const c=$("photoCanvas"), empty=$("photoEmpty");
-  if(!state.photo){ c.width=c.height=1; c.style.width=c.style.height="1px"; empty.hidden=false; return; }
-  empty.hidden=true; const {ctx,w,h}=fitCanvas(c,state.photo); ctx.clearRect(0,0,w,h); ctx.drawImage(state.photo,0,0,w,h);
-  const surface=$("surface").value,qp=state.quad.map(p=>({x:p.x*w,y:p.y*h}));
-  if(state.artwork && state.showArtwork){ ctx.save(); ctx.globalAlpha=Number($("opacity").value)/100; ctx.globalCompositeOperation=$("blend").value; drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,clipQuad:surface==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*w,y:p.y*h})):null}); ctx.restore(); }
+  const c=$("photoCanvas"),empty=$("photoEmpty");
+  if(!state.photo){c.width=c.height=1;c.style.width=c.style.height="1px";c.parentElement.classList.remove("cylinderWorkspace");state.photoView=null;empty.hidden=false;return;}
+  empty.hidden=true;
+  const surface=$("surface").value,view=fitPhotoCanvas(c,state.photo,surface),{ctx,w,h,photoX,photoY,photoW,photoH}=view;
+  ctx.clearRect(0,0,w,h);
   if(surface==="cylinder"){
-    ensureCylinderGuide();const cq=state.cylinderQuad.map(p=>({x:p.x*w,y:p.y*h}));
+    ctx.fillStyle="#eef1f1";ctx.fillRect(0,0,w,h);
+    ctx.fillStyle="#fff";ctx.fillRect(photoX,photoY,photoW,photoH);
+  }
+  ctx.drawImage(state.photo,photoX,photoY,photoW,photoH);
+  if(surface==="cylinder"){
+    ctx.save();ctx.strokeStyle="#9ba9aa";ctx.lineWidth=1;ctx.setLineDash([6,5]);ctx.strokeRect(photoX+.5,photoY+.5,Math.max(0,photoW-1),Math.max(0,photoH-1));ctx.setLineDash([]);
+    ctx.fillStyle="#526168";ctx.font="600 10px system-ui";ctx.fillText("Границы фотографии",photoX+8,Math.max(12,photoY-7));ctx.restore();
+  }
+  const qp=state.quad.map(p=>photoToCanvasPoint(p,view));
+  if(state.artwork&&state.showArtwork){
+    ctx.save();
+    ctx.beginPath();ctx.rect(photoX,photoY,photoW,photoH);ctx.clip();
+    ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;
+    drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,clipQuad:surface==="cylinder"?state.cylinderQuad.map(p=>photoToCanvasPoint(p,view)):null});
+    ctx.restore();
+  }
+  if(surface==="cylinder"){
+    ensureCylinderGuide();const cq=state.cylinderQuad.map(p=>photoToCanvasPoint(p,view));
     drawPhotoGuide(ctx,cq,{color:"#648f06",fill:"rgba(129,179,21,.055)",label:"Цилиндр",handles:state.photoEditTarget==="cylinder",dashed:true});
     ctx.save();ctx.strokeStyle="rgba(100,143,6,.8)";ctx.lineWidth=1.5;ctx.setLineDash([4,5]);ctx.beginPath();
     if(state.cylinderAxis==="vertical"){const a={x:(cq[0].x+cq[1].x)/2,y:(cq[0].y+cq[1].y)/2},b={x:(cq[3].x+cq[2].x)/2,y:(cq[3].y+cq[2].y)/2};ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}
@@ -834,7 +898,14 @@ function updateSummary(){
 }
 
 function resetQuad(){ state.quad=[{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}]; renderPhoto(); updateSummary(); }
-function normalizedPoint(canvas,e,allowOutside=false){ const r=canvas.getBoundingClientRect(),p={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}; return photoPoint(p,allowOutside); }
+function normalizedPoint(canvas,e,allowOutside=false){
+  if(canvas.id==="photoCanvas"&&state.photoView){
+    const px=canvasPointerPixel(canvas,e),p=canvasToPhotoPoint(px.x,px.y,state.photoView);
+    return photoPoint(p,allowOutside);
+  }
+  const r=canvas.getBoundingClientRect(),p={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};
+  return photoPoint(p,allowOutside);
+}
 function pointInQuad(p,q){ let sign=0; for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4]; const cross=(b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x); if(Math.abs(cross)<1e-7) continue; const s=Math.sign(cross); if(sign && s!==sign) return false; sign=s;} return true; }
 
 function editablePhotoQuad(){
@@ -850,7 +921,7 @@ function applyEditedPhotoQuad(next){
 $("photoCanvas").addEventListener("pointerdown",e=>{
   if(!state.photo)return;const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode),r=c.getBoundingClientRect(),target=cylinderMode&&state.photoEditTarget==="cylinder"?"cylinder":"field",quad=editablePhotoQuad();
   state.photoDragTarget=target;state.quadSnapshot=quad.map(q=>({...q}));state.fieldSnapshot=state.quad.map(q=>({...q}));
-  let best=-1,bestD=Infinity;quad.forEach((q,i)=>{const dx=(q.x-p.x)*r.width,dy=(q.y-p.y)*r.height,d=Math.hypot(dx,dy);if(d<bestD){bestD=d;best=i;}});
+  const hit=canvasPointerPixel(c,e);let best=-1,bestD=Infinity;quad.forEach((q,i)=>{const qp=photoToCanvasPoint(q,state.photoView),d=Math.hypot(qp.x-hit.x,qp.y-hit.y);if(d<bestD){bestD=d;best=i;}});
   if(bestD<20){state.activeHandle=best;c.setPointerCapture(e.pointerId);return;}
   if(pointInQuad(p,quad)){state.draggingQuad=true;state.quadDragStart=p;c.setPointerCapture(e.pointerId);}
 });
@@ -1195,6 +1266,7 @@ async function createMockupPngBlob(){
 window.gwbCreateMockupPng=createMockupPngBlob;
 window.gwbApplyMockupProfile=applyProfile;
 window.gwbGetMockupBinding=buildProfile;
+window.gwbGetMockupPhotoView=()=>state.photoView?{...state.photoView}:null;
 $("exportPng").onclick=async()=>{
   try{const out=await createMockupPngBlob();downloadBlob(out.filename,out.blob);setStatus("Мокап PNG сохранён");}
   catch(err){setStatus("Экспорт мокапа не выполнен: "+(err?.message||err));}
