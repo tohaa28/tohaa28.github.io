@@ -126,6 +126,13 @@ jobs:
           grep -q 'profilesForPhotoCandidate' mockup.html
           grep -q 'Сохранить изменения' mockup.html
           grep -q 'currentFieldPhotoMapping' mockup.html
+          grep -q 'id="cylinderControls"' mockup.html
+          grep -q 'id="editCylinder"' mockup.html
+          grep -q 'mapPointBetweenQuads' mockup.html
+          grep -q 'window.gwbGetMockupBinding=buildProfile' mockup.html
+          test -f assets/mockup-cylinder.mjs
+          grep -q 'cylinderWarpCoordinate' assets/mockup-cylinder.mjs
+          grep -q 'verifyMockupCylinder(browserContext)' .github/workflows/test-direct-workbench.yml
           if grep -q 'disabled=!field' mockup.html; then echo "Article photos must stay selectable before field selection"; exit 1; fi
           if grep -q 'void autoApplySavedProfile(false)' mockup.html; then echo "Registry loading must not hijack photo selection"; exit 1; fi
           if grep -q 'mappingToggle' mockup.html; then echo "Legacy one-button mapping toggle must be removed"; exit 1; fi
