@@ -11,7 +11,19 @@
 .canvasWrap.cylinderWorkspace canvas{max-width:none!important;max-height:none!important;flex:0 0 auto}
 .canvasWrap.cylinderWorkspace::after{content:"Серые зоны — виртуальное продолжение цилиндра";position:sticky;left:12px;bottom:8px;align-self:flex-end;margin:0 0 8px 12px;padding:4px 7px;border-radius:4px;background:#435159dd;color:#fff;font-size:10px;pointer-events:none}.checker{background-image:linear-gradient(45deg,#edf0f3 25%,transparent 25%),linear-gradient(-45deg,#edf0f3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#edf0f3 75%),linear-gradient(-45deg,transparent 75%,#edf0f3 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}canvas{display:block;max-width:100%;max-height:100%;touch-action:none}.empty{position:absolute;color:#7c8491;font-size:13px;pointer-events:none}.helpbar{margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:#505966}.helpbar strong{color:#202124}@media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{max-height:none;border-right:0;border-bottom:1px solid var(--border)}.workspaceGrid{grid-template-columns:1fr;height:auto}.canvasWrap{min-height:420px}.workspace{padding-bottom:40px}}@media(max-width:580px){.grid2{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start}.layout{min-height:auto}}
 
-.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.photoMappingActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:-2px 0 8px}.photoMappingAction{width:100%}.photoMappingAction.danger{background:#fff6f5;border-color:#e4aaa3;color:#a3261b}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
+.candidateHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;font-size:12px}.candidateHead>span{min-width:22px;text-align:center;border-radius:999px;background:#eef2f7;padding:2px 6px;color:#596273}.candidateList{display:grid;gap:6px;margin-bottom:8px}.candidateEmpty{font-size:11px;color:var(--muted);padding:9px;border:1px dashed #d5dae2;border-radius:8px;background:#fafbfc}.candidate{width:100%;display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:6px;text-align:left}.candidate:not(:disabled){cursor:pointer}.photoMappingActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:-2px 0 6px}.photoMappingAction{width:100%}.photoMappingAction.danger{background:#fff6f5;border-color:#e4aaa3;color:#a3261b}
+.mappingOperationStatus{min-height:30px;display:flex;align-items:center;gap:8px;margin:0 0 9px;padding:6px 9px;border:1px solid var(--line,#dce2e2);border-radius:6px;background:#f7f9f9;color:#526168;font-size:11px;font-weight:650;line-height:1.25}
+.mappingOperationStatus[hidden]{display:none!important}
+.mappingOperationStatus::before{content:"";width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#9aa7aa}
+.mappingOperationStatus[data-state="pending"]{border-color:#b8c99a;background:#f6faef;color:#526d18}
+.mappingOperationStatus[data-state="pending"]::before{background:transparent;border:2px solid #b8c99a;border-top-color:var(--green,#81b315);animation:mappingOperationSpin .7s linear infinite}
+.mappingOperationStatus[data-state="waiting"]{border-color:#e6c66f;background:#fff9e9;color:#7a5a00}
+.mappingOperationStatus[data-state="waiting"]::before{background:#d49a00}
+.mappingOperationStatus[data-state="success"]{border-color:#b8d69b;background:#f2f9ea;color:#4e7413}
+.mappingOperationStatus[data-state="success"]::before{background:var(--green,#81b315);box-shadow:inset 0 0 0 2px #fff}
+.mappingOperationStatus[data-state="error"]{border-color:#e5aaa4;background:#fff5f4;color:#9d2a20}
+.mappingOperationStatus[data-state="error"]::before{background:#c93b2f}
+@keyframes mappingOperationSpin{to{transform:rotate(360deg)}}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
 .cylinderControls{border:1px solid #cfe0c5;background:#f7fbf4;border-radius:8px;padding:9px;margin:8px 0}.cylinderControls[hidden]{display:none!important}.cylinderModeButtons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:6px 0}.cylinderHint{font-size:10px;line-height:1.4;color:var(--muted);margin:5px 0 0}.cylinderValue{font-variant-numeric:tabular-nums}.cylinderControls .primary{background:var(--green,#81b315);border-color:var(--green,#81b315)}
 
@@ -249,7 +261,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
           <div class="candidateHead"><strong>2. Поле шаблона для выбранного фото</strong><span id="fieldCandidateCount">0</span></div>
           <div id="fieldCandidates" class="candidateList"><div class="candidateEmpty">Пока нет полей из конструктора</div></div>
           <p id="fieldPhotoHint" class="muted">Выберите любую фотографию артикула, затем поле шаблона. Для каждой пары можно отдельно сохранить, изменить или удалить разметку.</p>
-          <div class="photoMappingActions"><button id="mappingSave" class="primary photoMappingAction" disabled>Сохранить привязку</button><button id="mappingDelete" class="danger photoMappingAction" disabled>Удалить привязку</button></div>
+          <div class="photoMappingActions"><button id="mappingSave" class="primary photoMappingAction" disabled>Сохранить привязку</button><button id="mappingDelete" class="danger photoMappingAction" disabled>Удалить привязку</button></div><div id="mappingOperationStatus" class="mappingOperationStatus" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
           <label class="fileRow">Превью конструктора<input id="templateFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
           <label class="fileRow">Макет / логотип<input id="artworkFile" type="file" accept="image/*,.svg,image/svg+xml"></label>
@@ -453,6 +465,46 @@ function updateAssetReadiness(){
   if($("exportPng"))$("exportPng").disabled=!mockupReady;
   updateMappingActions();
 }
+let mappingMutationBusy=false,mappingMutationKind="",mappingStatusSelectionKey="";
+function currentMappingSelectionKey(){
+  const field=state.fieldCandidates[state.activeFieldCandidate]||null,photo=state.photoCandidates[state.activePhotoCandidate]||state.photoSource;
+  return [fieldSelectionKey(field,state.activeFieldCandidate),photoLookupKey(photo?.id||photo?.url||photo?.name||"")].join("::");
+}
+function setMappingOperationStatus(stateName,text,{key=currentMappingSelectionKey()}={}){
+  const node=$("mappingOperationStatus");if(!node)return;
+  node.hidden=!text;node.dataset.state=stateName||"idle";node.textContent=text||"";
+  mappingStatusSelectionKey=text?key:"";
+}
+function clearMappingOperationStatus(){setMappingOperationStatus("idle","",{key:""});}
+function mappingOperationLabel(kind,phase){
+  const labels={
+    create:{pending:"Сохранение привязки…",success:"Привязка сохранена"},
+    update:{pending:"Изменение привязки…",success:"Привязка изменена"},
+    delete:{pending:"Удаление привязки…",success:"Привязка удалена"}
+  };
+  return labels[kind]?.[phase]||"Операция с привязкой…";
+}
+function beginMappingMutation(kind){
+  mappingMutationBusy=true;mappingMutationKind=kind;
+  setMappingOperationStatus("pending",mappingOperationLabel(kind,"pending"));
+  updateMappingActions();
+}
+function finishMappingMutation(kind,{commit="",message=""}={}){
+  const resolved=kind||mappingMutationKind||"create";
+  mappingMutationBusy=false;mappingMutationKind="";
+  const suffix=commit?" · Git "+String(commit).slice(0,7):"";
+  setMappingOperationStatus("success",message||mappingOperationLabel(resolved,"success")+suffix);
+  updateMappingActions();
+}
+function failMappingMutation(message){
+  mappingMutationBusy=false;mappingMutationKind="";
+  setMappingOperationStatus("error",message||"Не удалось изменить привязку");
+  updateMappingActions();
+}
+function waitMappingMutation(message){
+  setMappingOperationStatus("waiting",message||"Операция ожидает подтверждения");
+  updateMappingActions();
+}
 function currentFieldPhotoMapping(){
   if(state.activeFieldCandidate<0||state.activePhotoCandidate<0||!state.photo)return null;
   return findServerProfile(true);
@@ -460,11 +512,14 @@ function currentFieldPhotoMapping(){
 function updateMappingActions(){
   const save=$("mappingSave"),remove=$("mappingDelete");if(!save||!remove)return;
   const photoReady=!!state.photo&&!state.loading.photo,fieldReady=state.activeFieldCandidate>=0,templateReady=!!state.template&&!state.loading.template;
+  const pairKey=currentMappingSelectionKey();
+  if(mappingStatusSelectionKey&&pairKey!==mappingStatusSelectionKey&&!mappingMutationBusy)clearMappingOperationStatus();
   const mapped=photoReady&&fieldReady?currentFieldPhotoMapping():null;
-  save.textContent=mapped?"Сохранить изменения":"Сохранить привязку";
-  save.disabled=!(photoReady&&fieldReady&&templateReady);
+  save.textContent=mappingMutationBusy?(mappingMutationKind==="update"?"Изменение…":mappingMutationKind==="create"?"Сохранение…":"Сохранить привязку"):(mapped?"Сохранить изменения":"Сохранить привязку");
+  save.disabled=mappingMutationBusy||!(photoReady&&fieldReady&&templateReady);
   save.title=mapped?"Перезаписать геометрию выбранной пары поле → фотография":"Сохранить выбранную пару поле → фотография";
-  remove.disabled=!mapped;
+  remove.textContent=mappingMutationBusy&&mappingMutationKind==="delete"?"Удаление…":"Удалить привязку";
+  remove.disabled=mappingMutationBusy||!mapped;
   remove.title=mapped?"Удалить только выбранную пару поле → фотография":"Для этой пары сохранённой привязки нет";
 }
 function setAssetLoading(target,value){
