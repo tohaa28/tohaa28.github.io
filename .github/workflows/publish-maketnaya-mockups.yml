@@ -146,7 +146,7 @@ jobs:
           grep -q 'задняя сторона скрывается' mockup.html
           grep -q 'back-face clipping' tests/mockup-cylinder-browser.mjs
           grep -q 'CYLINDER_COORD_MIN=-4' mockup.html
-          grep -q 'рамка может выходить за фото' mockup.html
+          grep -q 'Синяя рамка — развёртка нанесения' mockup.html
           grep -q 'out-of-frame geometry' tests/mockup-cylinder-browser.mjs
           grep -q 'CYLINDER_WORKSPACE={xMin:-1,xMax:2' mockup.html
           grep -q 'cylinderWorkspace' mockup.html
