@@ -98,6 +98,13 @@ jobs:
           grep -q 'jobs.length' editor.html
           grep -q 'id="mappingSave"' mockup.html
           grep -q 'id="mappingDelete"' mockup.html
+          grep -q 'id="mappingOperationStatus"' mockup.html
+          grep -q 'Сохранение привязки…' mockup.html
+          grep -q 'Изменение привязки…' mockup.html
+          grep -q 'Удаление привязки…' mockup.html
+          grep -q 'beginMappingMutation' mockup.html
+          grep -q 'failMappingMutation' mockup.html
+          grep -q 'mapping status UI' tests/mockup-cylinder-browser.mjs
           grep -q 'handoffManualControls' mockup.html
           grep -Fq '.handoffManualControls{display:none!important}' mockup.html
           grep -q 'async function autoLoadHandoff()' mockup.html
