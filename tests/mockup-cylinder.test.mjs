@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange} from "../assets/mockup-cylinder.mjs";
+import {mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
 
 test("cylinder guide keeps field attached while cylinder moves",()=>{
   const from=[{x:.2,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:.2,y:.9}];
@@ -37,4 +37,24 @@ test("moderate cylinder curvature keeps the full artwork visible",()=>{
   assert.equal(cylinderProjection(1,.5).visible,true);
   assert.ok(Math.abs(cylinderWarpCoordinate(0,.5))<1e-10);
   assert.ok(Math.abs(cylinderWarpCoordinate(1,.5)-1)<1e-10);
+});
+
+
+test("3D cylinder bends top and bottom edges and hides the back",()=>{
+  const q=[{x:0,y:0},{x:100,y:0},{x:100,y:200},{x:0,y:200}];
+  const topCenter=cylinder3DSurfacePoint(q,.5,0,{axis:"vertical",curvature:.72,topArc:.08,bottomArc:.04});
+  const bottomCenter=cylinder3DSurfacePoint(q,.5,1,{axis:"vertical",curvature:.72,topArc:.08,bottomArc:.04});
+  assert.ok(topCenter.y>0,"top edge must bow toward the cylinder body");
+  assert.ok(bottomCenter.y>200,"bottom edge must bow toward the cylinder body");
+  assert.equal(cylinder3DSurfacePoint(q,-.2,.5,{axis:"vertical",curvature:.72}).visible,false);
+  assert.equal(cylinder3DSurfacePoint(q,.5,.5,{axis:"vertical",curvature:.72}).visible,true);
+  assert.equal(cylinder3DSurfacePoint(q,1.2,.5,{axis:"vertical",curvature:.72}).visible,false);
+});
+
+test("3D cylinder arc handles round-trip their curve depth",()=>{
+  const q=[{x:0,y:0},{x:100,y:0},{x:100,y:200},{x:0,y:200}];
+  const opts={axis:"vertical",curvature:.72,topArc:.09,bottomArc:.055};
+  const top=cylinder3DArcHandle(q,"top",opts),bottom=cylinder3DArcHandle(q,"bottom",opts);
+  assert.ok(Math.abs(cylinder3DArcRatioFromPoint(q,top,"top",opts)-.09)<1e-9);
+  assert.ok(Math.abs(cylinder3DArcRatioFromPoint(q,bottom,"bottom",opts)-.055)<1e-9);
 });
