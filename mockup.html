@@ -263,7 +263,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
           <label>Поверхность
             <select id="surface">
               <option value="perspective">Плоская / перспектива</option>
-              <option value="cylinder">Цилиндр</option>
+              <option value="cylinder">Цилиндр 3D</option>
               <option value="textile">Текстиль — пока как перспектива</option>
             </select>
           </label>
@@ -274,15 +274,21 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
                 <option value="horizontal">Горизонтальная</option>
               </select>
             </label>
-            <label>Закручивание <span id="cylinderCurveValue" class="cylinderValue">72%</span>
+            <label hidden>Закручивание <span id="cylinderCurveValue" class="cylinderValue">72%</span>
               <input id="cylinderCurvature" type="range" min="0" max="100" value="72">
+            </label>
+            <label>Верхняя кромка <span id="cylinderTopArcValue" class="cylinderValue">8%</span>
+              <input id="cylinderTopArc" type="range" min="-15" max="25" value="8">
+            </label>
+            <label>Нижняя кромка / дно <span id="cylinderBottomArcValue" class="cylinderValue">5%</span>
+              <input id="cylinderBottomArc" type="range" min="-15" max="25" value="5">
             </label>
             <div class="cylinderModeButtons">
               <button id="editCylinder" type="button">Разместить цилиндр</button>
               <button id="editField" type="button">Разместить поле</button>
             </div>
             <button id="resetCylinder" type="button">Сбросить границы цилиндра</button>
-            <p class="cylinderHint">Зелёная рамка — виртуальная цилиндрическая поверхность товара и может выходить за границы фотографии. Синяя рамка — поле нанесения; в режиме цилиндра оно также может продолжаться за кадр. При перемещении цилиндра поле остаётся привязано к нему.</p>
+            <p class="cylinderHint">Зелёный 3D-каркас ставится по видимому корпусу: четыре угла задают боковые касательные, оранжевые точки — кривизну верхней кромки и дна. Синяя рамка — развёртка нанесения и может уходить в серые зоны за пределами фото.</p>
           </div>
           <label>Непрозрачность <span id="opacityValue">90%</span>
             <input id="opacity" type="range" min="10" max="100" value="90">
@@ -334,7 +340,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange} from "./assets/mockup-cylinder.mjs?v=20261005-2";
+import {mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261005-3";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -350,6 +356,8 @@ const state = {
   cylinderInitialized: false,
   cylinderAxis: "vertical",
   cylinderCurvature: .72,
+  cylinderTopArc: .075,
+  cylinderBottomArc: .045,
   photoEditTarget: "field",
   photoDragTarget: "field",
   fieldSnapshot: null,
@@ -407,12 +415,16 @@ function updateCylinderControls(){
   if($("cylinderAxis"))$("cylinderAxis").value=state.cylinderAxis;
   if($("cylinderCurvature"))$("cylinderCurvature").value=String(Math.round(state.cylinderCurvature*100));
   if($("cylinderCurveValue"))$("cylinderCurveValue").textContent=Math.round(state.cylinderCurvature*100)+"%";
+  if($("cylinderTopArc"))$("cylinderTopArc").value=String(Math.round(state.cylinderTopArc*100));
+  if($("cylinderBottomArc"))$("cylinderBottomArc").value=String(Math.round(state.cylinderBottomArc*100));
+  if($("cylinderTopArcValue"))$("cylinderTopArcValue").textContent=Math.round(state.cylinderTopArc*100)+"%";
+  if($("cylinderBottomArcValue"))$("cylinderBottomArcValue").textContent=Math.round(state.cylinderBottomArc*100)+"%";
   if($("photoCanvasHint"))$("photoCanvasHint").textContent=isCylinder
-    ?(state.photoEditTarget==="cylinder"?"разместите зелёную рамку по цилиндру; рамка может выходить за фото":"уточните синюю рамку поля; на цилиндре она может выходить за фото")
+    ?(state.photoEditTarget==="cylinder"?"совместите зелёный 3D-каркас с корпусом, верхом и дном":"растяните синюю развёртку поля; невидимая часть сама уйдёт за цилиндр")
     :"перетаскивайте 4 маркера области нанесения";
 }
 function resetCylinderAroundField(){
-  state.cylinderInitialized=false;ensureCylinderGuide(true);state.photoEditTarget="cylinder";updateCylinderControls();renderPhoto();updateSummary();
+  state.cylinderInitialized=false;state.cylinderTopArc=.075;state.cylinderBottomArc=.045;ensureCylinderGuide(true);state.photoEditTarget="cylinder";updateCylinderControls();renderPhoto();updateSummary();
 }
 
 function setAssetProgress(target,label){
