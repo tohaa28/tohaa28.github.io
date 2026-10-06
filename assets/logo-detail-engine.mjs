@@ -124,9 +124,29 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
  return out;
 }
 function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){const other=Uint8Array.from(owner,v=>v!==0&&v!==id?1:0);return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
+function wallOppositionAt(i,wall,w,h,radius){
+ const x=i%w,y=Math.floor(i/w);
+ for(const [dx,dy] of dirs){
+  const norm=Math.hypot(dx,dy);let a=false,b=false;
+  for(let q=1;q<=radius;q++){
+   const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);
+   if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;
+   if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;
+   if(a&&b)return true;
+  }
+ }
+ return false;
+}
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
- const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
- return controlCircleDefects(gap,w,h,ppm,rule,'negative',{wallMask:wall});
+ const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
+ for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
+ const d=distance(gap,w,h),axis=medialAxis(gap,d,w,h),bad=new Uint8Array(owner.length),widths=new Float64Array(owner.length).fill(Infinity),
+  tol=Math.max(.015,.55/ppm),radius=Math.max(2,Math.ceil(rule*ppm*1.5));
+ for(let i=0;i<axis.length;i++)if(axis[i]){
+  const mm=localDiameterMm(d,i,ppm);widths[i]=mm;
+  if(mm+tol<rule&&wallOppositionAt(i,wall,w,h,radius))bad[i]=1;
+ }
+ return persistent(bad,widths,w,h,ppm,rule,'negative');
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
