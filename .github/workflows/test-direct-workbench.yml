@@ -309,6 +309,28 @@ jobs:
           if (!sessionJson || sessionJson.direct !== true || sessionJson.active !== true) {
             throw new Error("Direct gifts.ru session adapter is not active: "+JSON.stringify({context,session}));
           }
+          const introAuthState = await frame.evaluate(async () => {
+            const intro=document.getElementById("orderIntro"),logout=document.getElementById("logoutButton");
+            await new Promise(resolve=>setTimeout(resolve,0));
+            const authenticated={hidden:intro.hidden,authState:intro.dataset.authState||"",text:intro.textContent.trim()};
+            logout.hidden=true;
+            await new Promise(resolve=>setTimeout(resolve,0));
+            const anonymous={hidden:intro.hidden,authState:intro.dataset.authState||"",text:intro.textContent.trim()};
+            logout.hidden=false;
+            await new Promise(resolve=>setTimeout(resolve,0));
+            const restored={hidden:intro.hidden,authState:intro.dataset.authState||""};
+            return {authenticated,anonymous,restored};
+          });
+          if (introAuthState.authenticated.hidden !== true ||
+              introAuthState.authenticated.authState !== "authenticated" ||
+              introAuthState.anonymous.hidden !== false ||
+              introAuthState.anonymous.authState !== "anonymous" ||
+              !/Войдите в gifts\.ru, затем выберите заказ из корзины\./.test(introAuthState.anonymous.text) ||
+              introAuthState.restored.hidden !== true ||
+              introAuthState.restored.authState !== "authenticated") {
+            throw new Error("Order login hint auth visibility is invalid: "+JSON.stringify(introAuthState));
+          }
+          console.log("Order login hint follows authentication:", JSON.stringify(introAuthState));
           const orderData = await frame.evaluate(async () => {
             const r = await fetch("/api/orders/7920509", {cache:"no-store"});
             return await r.json();
