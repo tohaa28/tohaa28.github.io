@@ -31,6 +31,13 @@ export async function verifyDetailCheck(frame){
  while(await frame.locator('#detailList button').filter({hasText:'Показать ещё'}).count())await frame.locator('#detailList button').filter({hasText:'Показать ещё'}).click();
  assert.equal(await frame.locator('#detailList button').count(),grid.boxes.length);await frame.locator('#detailList button').last().click();assert.equal(await frame.locator('#detailPreview').isVisible(),true);
  if(process.env.COVERAGE_SCREENSHOT)await frame.page().screenshot({path:process.env.COVERAGE_SCREENSHOT});
+ // Different colours may touch, but their rasterized boundary must never become a thin element or gap.
+ const colourBoundary=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 200 100"><path fill="#ef233c" d="M0 0H112L88 100H0Z"/><path fill="#1d4ed8" d="M112 0H200V100H88Z"/></svg>');
+ await frame.locator('#artwork').setInputFiles({name:'detail-colour-boundary.svg',mimeType:'image/svg+xml',buffer:colourBoundary});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-colour-boundary.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
+ const boundary=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+ assert.match(boundary.algorithm,/colour-boundary-safe/);
+ assert.equal(boundary.boxes.filter(b=>b.kind==='positive'||b.kind==='negative').length,0,'Colour boundary must not create thin-element or gap markers: '+JSON.stringify(boundary));
  // Exercise PDF.js rerender and native PNG decoding through real upload controls.
  const files=await frame.evaluate(async()=>{const doc=await PDFLib.PDFDocument.create();const page=doc.addPage([100,100]);page.drawRectangle({x:10,y:10,width:2,height:70});const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillRect(10,10,2,70);return {pdf:Array.from(await doc.save()),png:canvas.toDataURL().split(',')[1]};});
  for(const [ext,buffer]of [['pdf',Buffer.from(files.pdf)],['png',Buffer.from(files.png,'base64')]]){
@@ -38,5 +45,5 @@ export async function verifyDetailCheck(frame){
   await frame.waitForFunction(name=>document.getElementById('artworkName').textContent.includes(name),'detail-source.'+ext);await resize(10);await done();
   const current=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});assert.ok(current.boxes.some(b=>b.kind==='positive'),ext+' thin feature');
  }
- console.log('PrintCheck detail browser: actual worker, positive/negative markers, preview, idle hold, rotation cache, resize, disable, size budget passed');
+ console.log('PrintCheck detail browser: same-colour-only positive/negative scan, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
 }
