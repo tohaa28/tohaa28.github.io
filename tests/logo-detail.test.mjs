@@ -95,3 +95,36 @@ test('Strict negative scan still finds an enclosed knockout inside one colour',(
  const strict=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5},{sameComponentOpenGaps:false});
  assert.ok(strict.counts.negative>0,'enclosed same-colour knockout must still be checked');
 });
+
+
+test('Positive scan does not flag the cap of a thick stroke',()=>{
+ const w=80,h=60,{rgb,seed}=painted(w,h,set=>{
+  set(30,8,48,50,0x1234c0);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[18,52,192]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
+ assert.equal(result.counts.positive,0,'flat cap of a thick element is not a thin positive');
+});
+
+test('Positive scan still finds a genuinely thin persistent line',()=>{
+ const w=80,h=60,{rgb,seed}=painted(w,h,set=>{
+  set(34,8,37,50,0x1234c0);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[18,52,192]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
+ assert.ok(result.counts.positive>0,'long 0.3 mm line must be detected against a 0.5 mm rule');
+ assert.ok(result.boxes.some(b=>b.kind==='positive'&&b.minWidthMm<.5));
+});
+
+test('Positive scan ignores thick rounded/convex ends but keeps a narrow neck',()=>{
+ const w=100,h=70,{rgb,seed}=painted(w,h,set=>{
+  set(10,20,38,50,0x1234c0);
+  set(62,20,90,50,0x1234c0);
+  set(38,31,62,39,0x1234c0);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[18,52,192]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:1});
+ assert.ok(result.counts.positive>0,'real narrow connecting neck must still be detected');
+ const neck=result.boxes.filter(b=>b.kind==='positive');
+ assert.ok(neck.some(b=>b.cx>.35&&b.cx<.65),'marker should land on the narrow neck, not on the thick block caps');
+});
