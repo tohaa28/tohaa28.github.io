@@ -81,52 +81,51 @@ function medialAxis(mask,d,w,h){
  const out=new Uint8Array(mask.length),pairs=[[-1,0,1,0],[0,-1,0,1],[-1,-1,1,1],[-1,1,1,-1]];
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
   const i=y*w+x,v=d[i];if(!mask[i]||v<=0)continue;
-  for(const [ax,ay,bx,by] of pairs){
-   const a=d[(y+ay)*w+x+ax],b=d[(y+by)*w+x+bx];
-   if(v>=a&&v>=b&&(v>a||v>b)){out[i]=1;break;}
-  }
+  for(const [ax,ay,bx,by] of pairs){const a=d[(y+ay)*w+x+ax],b=d[(y+by)*w+x+bx];if(v>=a&&v>=b&&(v>a||v>b)){out[i]=1;break;}}
  }
  return out;
 }
-function angularSupport(comp,axis,bad,w,h){
+function circleOpening(mask,w,h,diameterPx){
+ const radius=Math.max(.5,diameterPx/2),inside=distance(mask,w,h),centers=new Uint8Array(mask.length);
+ for(let i=0;i<mask.length;i++)if(mask[i]&&inside[i]/3>=radius)centers[i]=1;
+ if(!centers.some(Boolean))return {inside,opened:new Uint8Array(mask.length),centers};
+ const fromCenter=distance(centers,w,h,true),opened=new Uint8Array(mask.length);
+ for(let i=0;i<mask.length;i++)if(mask[i]&&fromCenter[i]/3<=radius+.55)opened[i]=1;
+ return {inside,opened,centers};
+}
+function attachmentGeometry(comp,opened,w,h){
  let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
- const vectors=[];for(const i of comp){const x=i%w,y=Math.floor(i/w);neighbors(i,w,h,n=>{if(!axis[n]||bad[n])return;const nx=n%w,ny=Math.floor(n/w),dx=nx-cx,dy=ny-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});}
+ const vectors=[];for(const i of comp){neighbors(i,w,h,n=>{if(!opened[n])return;const dx=n%w-cx,dy=Math.floor(n/w)-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});}
  let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
  return {count:vectors.length,maxSep};
 }
-function circleProbe(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
- const d=distance(mask,w,h),axis=medialAxis(mask,d,w,h),bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),tol=Math.max(.015,.55/ppm),forbiddenDistance=forbiddenMask?distance(forbiddenMask,w,h,true):null,forbiddenGuard=Math.max(1.5,rule*ppm*.55);
- for(let i=0;i<axis.length;i++)if(axis[i]){const mm=localDiameterMm(d,i,ppm);widths[i]=mm;if(forbiddenDistance&&forbiddenDistance[i]/3<=forbiddenGuard)continue;if(mm+tol<rule)bad[i]=1;}
- const out=[];
- for(const comp of groups(bad,w,h).items){
+function wallOpposition(comp,wall,w,h,radius){
+ for(const i of comp){const x=i%w,y=Math.floor(i/w);for(const [dx,dy] of dirs){const norm=Math.hypot(dx,dy);let a=false,b=false;for(let q=1;q<=radius;q++){const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;if(a&&b)return true;}}}
+ return false;
+}
+function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
+ const diameterPx=rule*ppm,{inside,opened}=circleOpening(mask,w,h,diameterPx),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h),forbiddenDistance=forbiddenMask?distance(forbiddenMask,w,h,true):null;
+ for(let i=0;i<mask.length;i++)if(mask[i]&&!opened[i])missing[i]=1;
+ const out=[],extentLimit=Math.max(4,diameterPx*3),wallRadius=Math.max(2,Math.ceil(diameterPx*1.25)),crossGuard=Math.max(1.5,diameterPx*.55);
+ for(const comp of groups(missing,w,h).items){
   if(comp.length<2)continue;
-  let min=Infinity,max=0,minI=comp[0],sx=0,sy=0;
-  for(const i of comp){const z=widths[i];if(z<min){min=z;minI=i;}max=Math.max(max,z);sx+=i%w;sy+=Math.floor(i/w);}
-  if(kind==='negative'&&wallMask){
-   let wallSupport=false;
-   const r=Math.max(2,Math.ceil(rule*ppm*.9));
-   for(const i of comp){const x=i%w,y=Math.floor(i/w);for(const [dx,dy] of dirs){let a=false,b=false;for(let q=1;q<=r;q++){const x1=Math.round(x+dx*q/Math.hypot(dx,dy)),y1=Math.round(y+dy*q/Math.hypot(dx,dy)),x2=Math.round(x-dx*q/Math.hypot(dx,dy)),y2=Math.round(y-dy*q/Math.hypot(dx,dy));if(x1>=0&&x1<w&&y1>=0&&y1<h&&wallMask[y1*w+x1])a=true;if(x2>=0&&x2<w&&y2>=0&&y2<h&&wallMask[y2*w+x2])b=true;if(a&&b){wallSupport=true;break;}}if(wallSupport)break;}if(wallSupport)break;}
-   if(!wallSupport)continue;
-  }
-  const support=angularSupport(comp,axis,bad,w,h),span=Math.max(...comp.map(i=>i%w))-Math.min(...comp.map(i=>i%w))+Math.max(...comp.map(i=>Math.floor(i/w)))-Math.min(...comp.map(i=>Math.floor(i/w)));
-  const oneSided=support.count>0&&support.maxSep<Math.PI*.66;
-  let q=new Int32Array(mask.length),seen=new Int32Array(mask.length),token=0;
-  const farthest=start=>{token++;let a=0,b=1,far=start;q[0]=start;seen[start]=token;const dist=new Int32Array(mask.length);while(a<b){const v=q[a++];neighbors(v,w,h,n=>{if(!bad[n]||seen[n]===token)return;seen[n]=token;dist[n]=dist[v]+1;q[b++]=n;if(dist[n]>dist[far])far=n;});}return far;};
-  const endA=farthest(comp[0]),endB=farthest(endA),wa=widths[endA],wb=widths[endB],hi=Math.max(wa,wb),lo=Math.min(wa,wb);
-  const asymmetricTaper=hi>rule*.68&&lo<rule*.58&&(hi-lo)>rule*.22&&span<rule*ppm*7;
-  const taper=(oneSided&&(max-min)>rule*.28&&span<rule*ppm*5)||asymmetricTaper;
-  if(taper)continue;
-  const centerCandidates=comp.filter(i=>widths[i]<=min+Math.max(.015,.5/ppm));
-  let center=minI;if(centerCandidates.length>1){const cx=sx/comp.length,cy=sy/comp.length;center=centerCandidates.reduce((a,b)=>Math.hypot(b%w-cx,Math.floor(b/w)-cy)<Math.hypot(a%w-cx,Math.floor(a/w)-cy)?b:a,centerCandidates[0]);}
-  out.push(makeBox(comp,widths,w,h,kind,rule,[center]));
+  if(forbiddenDistance&&comp.some(i=>forbiddenDistance[i]/3<=crossGuard))continue;
+  if(kind==='negative'&&wallMask&&!wallOpposition(comp,wallMask,w,h,wallRadius))continue;
+  let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0;for(const i of comp){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;}cx/=comp.length;cy/=comp.length;
+  const attach=attachmentGeometry(comp,opened,w,h),extent=Math.max(x1-x0+1,y1-y0+1),oneSided=attach.count>0&&attach.maxSep<Math.PI*.66;
+  if(oneSided&&extent<=extentLimit)continue;
+  const medial=comp.filter(i=>axis[i]);
+  if(!medial.length)continue;
+  const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
+  const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity;for(const i of medial){widths[i]=localDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);}
+  const box=makeBox(comp,widths,w,h,kind,rule,[center]);box.minWidthMm=min;out.push(box);
  }
  return out;
 }
-function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){const other=Uint8Array.from(owner,v=>v!==0&&v!==id?1:0);return circleProbe(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
+function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){const other=Uint8Array.from(owner,v=>v!==0&&v!==id?1:0);return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
- const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
- for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
- return circleProbe(gap,w,h,ppm,rule,'negative',{wallMask:wall});
+ const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
+ return controlCircleDefects(gap,w,h,ppm,rule,'negative',{wallMask:wall});
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0};
@@ -226,5 +225,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-circle-probe-v12-local-thickness',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v13-morph-open',candidateOnly:true};
 }
