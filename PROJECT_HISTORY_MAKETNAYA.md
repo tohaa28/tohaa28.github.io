@@ -23,10 +23,10 @@ Floot не использовать. Разработка, история и п�
 4. `browser_verify / browser-test`;
 5. только после полного success считать версию готовой.
 
-Последний подтверждённый зелёный workflow на момент создания файла:
-- source: `4852bd1f8e5ebc7a32d6a2c347821cc8650404a3`;
-- published main: `ad2fcd987462c8355f67af8d2ca540f7fa8a7ee3`;
-- workflow run: `37472479961`;
+Последний подтверждённый зелёный workflow:
+- source: `b9327621c49aa9aee8119de024c2eb977e0fcc48`;
+- published main: `d797839d2ec326433aed617334390b050da6f1b2`;
+- workflow run: `37482820523`;
 - precheck: success;
 - publish: success;
 - browser_verify / browser-test: success;
@@ -356,3 +356,20 @@ Compiled bundle `assets/index-BpU9kvz8.js` вручную не редактир�
 - обновлять patcher expected hash;
 - обновлять browser regressions;
 - проверять `precheck → publish → browser_verify`.
+
+
+## Дополнение 2026-10-06 — PrintCheck v15 Euclidean local thickness
+
+После v14 алгоритм поиска мелких элементов переведён на более точное измерение локальной толщины.
+
+Ключевое изменение:
+- финальное измерение positive/negative выполняется по exact Euclidean Distance Transform;
+- morphological opening остаётся генератором кандидатов, а не окончательным критерием брака;
+- это сохраняет проверенные фильтры торцов, углов и клиньев и одновременно устраняет угловую погрешность 3–4 chamfer при измерении;
+- добавлены тесты повёрнутой/диагональной толстой и тонкой перемычки;
+- ручная маска не возвращалась; auto mask остаётся обязательной;
+- никакие модули корзины, заказов, полей, экспорта, Mockup Editor и cylinder renderer не изменялись.
+
+Первый v15 commit `9bd88d1828f10f243161a4e254116d7168358b62` не прошёл precheck: exact opening изменил топологию кандидатов и потерял два ранее корректных positive-сценария. Эта версия не была опубликована.
+
+Исправление `b9327621c49aa9aee8119de024c2eb977e0fcc48` оставило старую morphology только для candidate topology, а Euclidean distance — для финального измерения. Полный workflow `37482820523` прошёл success во всех jobs. Опубликован main `d797839d2ec326433aed617334390b050da6f1b2`, algorithm marker `PrintCheck-control-circle-v15-euclidean-local-thickness`, cache `20261006-10`.

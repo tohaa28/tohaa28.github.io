@@ -47,36 +47,36 @@ Published path: `gifts-layout-workbench-mockups/`
 
 Последний функциональный source HEAD, для которого полный pipeline прошёл success:
 
-`4852bd1f8e5ebc7a32d6a2c347821cc8650404a3`
+`b9327621c49aa9aee8119de024c2eb977e0fcc48`
 
 Published main:
 
-`ad2fcd987462c8355f67af8d2ca540f7fa8a7ee3`
+`d797839d2ec326433aed617334390b050da6f1b2`
 
 Workflow run:
 
-`37472479961`
+`37482820523`
 
 Jobs:
 - precheck — success;
 - publish — success;
 - browser_verify / browser-test — success.
 
-После этого в source добавлены только documentation/handoff-файлы. При продолжении всё равно получить новый HEAD и не предполагать, что он остался прежним.
+После этой зелёной версии handoff обновлён отдельным documentation-коммитом. При продолжении всё равно получить новый HEAD и не предполагать, что он остался прежним.
 
 ## 4. Текущий PrintCheck
 
 Активный algorithm marker:
 
-`PrintCheck-control-circle-v14-local-thickness`
+`PrintCheck-control-circle-v15-euclidean-local-thickness`
 
 Cache version:
 
-`20261006-9`
+`20261006-10`
 
 Patcher expected hash на последней проверке:
 
-`7981db14c8a2c3455b91158c0b8dfef75bfb23ca77bf9b483f1a7df16050473e`
+`456ead1cde25615f34026147c265d2283e01a6ed87cee8b8d1d8e045b931d7a6`
 
 Основные файлы:
 - `assets/logo-detail-engine.mjs`;
@@ -353,3 +353,24 @@ Negative — непечатаемый пробел внутри/между уч�
 - GitHub source HEAD — источник фактического кода;
 - этот файл — источник требований, архитектурных решений и намерения пользователя;
 - не откатывать свежий код к старой версии только потому, что он описан здесь иначе.
+
+
+## 20. Дополнение — PrintCheck v15
+
+После v14 проведено дополнительное исследование local thickness / medial axis / Euclidean distance transform.
+
+Итоговая зелёная v15:
+- exact Euclidean Distance Transform используется для финального измерения локальной толщины;
+- прежняя morphology/opening-топология сохранена только как генератор подозрительных зон, чтобы не потерять проверенные сценарии торцов, клиньев и узких шеек;
+- кандидат признаётся positive defect только после Euclidean-подтверждения, что локальная толщина действительно меньше нормы;
+- negative gap также измеряется Euclidean distance;
+- добавлены regression tests для толстой и тонкой диагональной перемычки;
+- старые regression tests open-channel, narrow neck, rounded cap, wedge, colour boundary и raster/vector parity сохранены и проходят;
+- первый source commit v15 `9bd88d1828f10f243161a4e254116d7168358b62` был остановлен precheck из-за двух регрессий и не опубликован;
+- исправляющий source commit `b9327621c49aa9aee8119de024c2eb977e0fcc48` прошёл полный pipeline;
+- workflow `37482820523`: precheck success, publish success, browser_verify success;
+- published main `d797839d2ec326433aed617334390b050da6f1b2`;
+- cache `20261006-10`;
+- algorithm `PrintCheck-control-circle-v15-euclidean-local-thickness`.
+
+При следующей пользовательской проверке ориентироваться прежде всего на тот же реальный проблемный логотип. Если останутся false positive/false negative, классифицировать конкретную геометрию отметок и не возвращаться к edge-based поиску.
