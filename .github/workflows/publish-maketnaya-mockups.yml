@@ -224,7 +224,7 @@ jobs:
           grep -q 'sourcePalette' assets/logo-detail-check.mjs
           grep -q 'Antialias colour boundary is blocked' tests/logo-detail.test.mjs
           grep -q 'Strict negative scan ignores an open channel' tests/logo-detail.test.mjs
-          grep -q 'same-colour-only positive/negative scan' tests/logo-detail-browser.mjs
+          grep -q 'true-gap-only negative scan' tests/logo-detail-browser.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
           grep -Fq "displayText:e.state==='error'?e.error:'поиск мелких элементов...'" assets/logo-detail-check.mjs
           grep -Fq "transient:e.state!=='error'" assets/logo-detail-check.mjs
