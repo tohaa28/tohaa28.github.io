@@ -76,7 +76,40 @@ function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
  const ray=(x,y,dx,dy,sign)=>{let norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm,lx=x,ly=y;for(let s=1;s<=maxRay;s++){let xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;if(xx<0||xx>=w||yy<0||yy>=h)return null;let i=yy*w+xx;if(owner[i]!==0&&owner[i]!==id)return null;if(fg[i])return [lab.labels[i],s];}return null;};
  for(const same of (sameComponentOpenGaps?[false,true]:[false])){if(!same&&lab.items.length<2)continue;const bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity);for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++){let i=y*w+x;if(fg[i]||enclosed[i]||owner[i]||d[i]<=0||d[i]/3>limit*.5+1.5)continue;let best=Infinity;for(const [dx,dy]of dirs){let x1=x+dx,y1=y+dy,x2=x-dx,y2=y-dy;if(x1<0||x1>=w||y1<0||y1>=h||x2<0||x2>=w||y2<0||y2>=h)continue;let a=d[y1*w+x1],b=d[y2*w+x2];if(!(d[i]>=a&&d[i]>=b&&(d[i]>a||d[i]>b)))continue;let A=ray(x,y,dx,dy,1),B=ray(x,y,dx,dy,-1);if(!A||!B||(A[0]===B[0])!==same)continue;best=Math.min(best,Math.max(1,A[1]+B[1]-1)/ppm);}if(Number.isFinite(best)&&best<=rule*1.75+.05){widths[i]=best;if(best+.02<rule)bad[i]=1;}}result.push(...persistent(bad,widths,w,h,ppm,rule,'negative'));}return result;
 }
-export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){const boxes=[],counts={positive:0,negative:0,isolated:0};for(const l of layers){for(const kind of ['positive','negative','isolated']){const threshold=rule[kind];if(!(threshold>0))continue;let found=[];if(kind==='positive')found=positive(l.mask,owner,l.id,w,h,ppm,threshold);else if(kind==='negative')found=negative(l.mask,owner,l.id,w,h,ppm,threshold,options);else {const zero=new Float64Array(l.mask.length);for(const c of groups(l.mask,w,h).items){const b=makeBox(c,zero,w,h,kind,threshold),size=Math.max(b.w*w,b.h*h)/ppm;if(size+.02<threshold){b.minWidthMm=size;found.push(b);}}}counts[kind]+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}}return {boxes,counts};}
+export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
+ const boxes=[],counts={positive:0,negative:0,isolated:0};
+ for(const l of layers){
+  for(const kind of ['positive','negative']){
+   const threshold=rule[kind];if(!(threshold>0))continue;
+   const found=kind==='positive'?positive(l.mask,owner,l.id,w,h,ppm,threshold):negative(l.mask,owner,l.id,w,h,ppm,threshold,options);
+   counts[kind]+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
+  }
+ }
+ const isolatedThreshold=rule.isolated;
+ if(isolatedThreshold>0){
+  if(options.visualIsolated){
+   const visible=Uint8Array.from(owner,v=>v!==0?1:0),zero=new Float64Array(owner.length);
+   for(const c of groups(visible,w,h).items){
+    let x0=w,y0=h,x1=0,y1=0;const inkCounts=new Map();
+    for(const i of c){
+     const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);
+     const id=owner[i];if(id>0)inkCounts.set(id,(inkCounts.get(id)||0)+1);
+    }
+    const size=Math.max(x1-x0,y1-y0)/ppm;
+    if(size+.02>=isolatedThreshold||!inkCounts.size)continue;
+    const dominant=[...inkCounts].sort((a,b)=>b[1]-a[1])[0][0],layer=layers.find(l=>l.id===dominant),b=makeBox(c,zero,w,h,'isolated',isolatedThreshold);
+    b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
+   }
+  }else{
+   for(const l of layers){
+    const zero=new Float64Array(l.mask.length),found=[];
+    for(const c of groups(l.mask,w,h).items){const b=makeBox(c,zero,w,h,'isolated',isolatedThreshold),size=Math.max(b.w*w,b.h*h)/ppm;if(size+.02<isolatedThreshold){b.minWidthMm=size;found.push(b);}}
+    counts.isolated+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
+   }
+  }
+ }
+ return {boxes,counts};
+}
 // Colour directions and seeded connected solids from ArtworkColorLayerLogic (alpha26).
 // v7 keeps real inks separate but suppresses antialias-only transition bands at colour boundaries.
 function rgbParts(c){return [c>>16&255,c>>8&255,c&255];}
@@ -129,12 +162,32 @@ export function splitColors(rgb,seed,w,h,background=0xffffff,palette=[]){
  }
  return {layers:finalLayers,owner,suppressedTransitions:suppressed.size};
 }
-export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245,palette=[],lowResolution=false,sourceLimited=false,samplesPerMinimum=null}){
- if(width*height>MAX_PIXELS)throw Error('Превышен лимит размера маски.');const N=width*height,rgb=new Int32Array(N),seed=new Uint8Array(N),background=mode==='light'?0:0xffffff;
- for(let i=0;i<N;i++){const a=data[i*4+3]/255,bg=background?255:0,r=Math.round(data[i*4]*a+bg*(1-a)),g=Math.round(data[i*4+1]*a+bg*(1-a)),b=Math.round(data[i*4+2]*a+bg*(1-a));rgb[i]=r<<16|g<<8|b;seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);}
- const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false}),notes=[];
- if(mode==='alpha')notes.push('Режим прозрачности объединяет цвета. Для проверки по цветам выберите светлый или тёмный фон.');
- if(!split.layers.length)notes.push('Не найдены видимые элементы. Проверьте режим фона и прозрачность логотипа.');
+export function inferAutoMask(data,width,height){
+ const border=[],push=i=>{const a=data[i*4+3],r=data[i*4],g=data[i*4+1],b=data[i*4+2];border.push({a,r,g,b});};
+ const step=Math.max(1,Math.floor(Math.max(width,height)/512));
+ for(let x=0;x<width;x+=step){push(x);if(height>1)push((height-1)*width+x);}
+ for(let y=1;y<height-1;y+=step){push(y*width);if(width>1)push(y*width+width-1);}
+ const transparent=border.filter(p=>p.a<32).length/Math.max(1,border.length);
+ if(transparent>=.12)return {kind:'transparent',background:0xffffff,threshold:16,previewMode:'dark'};
+ const hist=new Map();
+ for(const p of border){const key=(p.r>>4)<<8|(p.g>>4)<<4|(p.b>>4),v=hist.get(key)||{n:0,r:0,g:0,b:0};v.n++;v.r+=p.r;v.g+=p.g;v.b+=p.b;hist.set(key,v);}
+ const best=[...hist.values()].sort((a,b)=>b.n-a.n)[0]||{n:1,r:255,g:255,b:255},br=Math.round(best.r/best.n),bg=Math.round(best.g/best.n),bb=Math.round(best.b/best.n),background=br<<16|bg<<8|bb;
+ const noise=border.map(p=>Math.hypot(p.r-br,p.g-bg,p.b-bb)).sort((a,b)=>a-b),p95=noise[Math.min(noise.length-1,Math.floor(noise.length*.95))]||0,threshold=Math.max(14,Math.min(46,Math.ceil(p95+8))),lum=.2126*br+.7152*bg+.0722*bb;
+ return {kind:'background',background,threshold,previewMode:lum<128?'light':'dark'};
+}
+export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',threshold=0,palette=[],lowResolution=false,sourceLimited=false,samplesPerMinimum=null}){
+ if(width*height>MAX_PIXELS)throw Error('Превышен лимит размера маски.');
+ const N=width*height,rgb=new Int32Array(N),seed=new Uint8Array(N),auto=mode==='auto'?inferAutoMask(data,width,height):null,background=auto?.background??(mode==='light'?0:0xffffff),maskThreshold=auto?.threshold??threshold;
+ const br=background>>16&255,bg0=background>>8&255,bb=background&255;
+ for(let i=0;i<N;i++){
+  const a=data[i*4+3]/255,r=Math.round(data[i*4]*a+br*(1-a)),g=Math.round(data[i*4+1]*a+bg0*(1-a)),b=Math.round(data[i*4+2]*a+bb*(1-a));rgb[i]=r<<16|g<<8|b;
+  if(auto?.kind==='transparent')seed[i]=+(a>.06);
+  else if(auto)seed[i]=+(a>.06&&Math.hypot(r-br,g-bg0,b-bb)>maskThreshold);
+  else seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);
+ }
+ const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),
+  step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
+ if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-medial-axis-v10-raster-vector',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-auto-mask-v11-visual-objects',candidateOnly:true};
 }
