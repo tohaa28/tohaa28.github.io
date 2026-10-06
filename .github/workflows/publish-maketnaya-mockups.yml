@@ -228,7 +228,7 @@ jobs:
           grep -q 'Raster scan never upsamples beyond source pixels' tests/logo-detail.test.mjs
           grep -q 'Automatic mask detects light opaque background' tests/logo-detail.test.mjs
           grep -q 'Control-circle positive scan ignores a line wider' tests/logo-detail.test.mjs
-          grep -q 'Visual isolated detection does not split one multicolour object' tests/logo-detail.test.mjs
+          grep -q 'Isolated detection does not split one multicolour visible object' tests/logo-detail.test.mjs
           ! grep -q 'id="detailMode"' assets/logo-detail-check.mjs
           ! grep -q 'id="detailThreshold"' assets/logo-detail-check.mjs
           grep -q 'Маска и фон определяются автоматически' assets/logo-detail-check.mjs
