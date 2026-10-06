@@ -37,7 +37,36 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
   result.push(makeBox(stable,widths,w,h,kind,rule,center.length?center:stable));
  }return result;
 }
-function positive(fg,owner,id,w,h,ppm,rule){const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;if(!fg[i]||d[i]<=0||!maximum(d,w,x,y)||other[i]/3<=guard)continue;const mm=Math.max(1,2*d[i]/3-1)/ppm;if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;}return persistent(bad,widths,w,h,ppm,rule,'positive');}
+function positive(fg,owner,id,w,h,ppm,rule){
+ const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.2+5);
+ const exitDistance=(x,y,dx,dy,sign)=>{
+  const norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm;let lx=x,ly=y;
+  for(let step=1;step<=maxRay;step++){
+   const xx=Math.round(x+ux*step),yy=Math.round(y+uy*step);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;
+   if(xx<0||xx>=w||yy<0||yy>=h)return null;
+   const n=yy*w+xx;
+   if(owner[n]!==0&&owner[n]!==id)return null;
+   if(!fg[n])return step;
+  }
+  return Infinity;
+ };
+ const crossSection=(x,y)=>{
+  let best=Infinity;
+  for(const [dx,dy] of dirs){
+   const a=exitDistance(x,y,dx,dy,1),b=exitDistance(x,y,dx,dy,-1);
+   if(a===null||b===null)continue;
+   if(!Number.isFinite(a)||!Number.isFinite(b))continue;
+   best=Math.min(best,Math.max(1,a+b-1)/ppm);
+  }
+  return best;
+ };
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x;if(!fg[i]||d[i]<=0||!maximum(d,w,x,y)||other[i]/3<=guard)continue;
+  const mm=crossSection(x,y);if(!Number.isFinite(mm))continue;
+  if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;
+ }
+ return persistent(bad,widths,w,h,ppm,rule,'positive');
+}
 function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
  const lab=groups(fg,w,h),d=distance(fg,w,h,true),empty=Uint8Array.from(owner,v=>v===0?1:0),enclosed=new Uint8Array(fg.length),holeBad=new Uint8Array(fg.length),holeWidths=new Float64Array(fg.length),result=[];
  for(const c of groups(empty,w,h).items){let border=false,other=false;for(const v of c){let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1)border=true;neighbors(v,w,h,n=>{if(owner[n]!==0&&owner[n]!==id)other=true;});}if(border||other)continue;const bad=holeBad,widths=holeWidths;for(const v of c){enclosed[v]=1;let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1||!maximum(d,w,x,y))continue;let mm=Math.max(1,2*d[v]/3-1)/ppm;if(mm+.02<rule){bad[v]=1;widths[v]=mm;}}}
@@ -106,5 +135,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',thresh
  if(mode==='alpha')notes.push('Режим прозрачности объединяет цвета. Для проверки по цветам выберите светлый или тёмный фон.');
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Проверьте режим фона и прозрачность логотипа.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,algorithm:'PrintCheck-per-color-medial-gap-v8-true-gaps-only',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,algorithm:'PrintCheck-cross-section-v9-true-gaps-only',candidateOnly:true};
 }
