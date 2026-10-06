@@ -131,12 +131,12 @@ export function splitColors(rgb,seed,w,h,background=0xffffff,palette=[]){
  }
  return {layers:finalLayers,owner,suppressedTransitions:suppressed.size};
 }
-export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245,palette=[]}){
+export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245,palette=[],lowResolution=false,sourceLimited=false,samplesPerMinimum=null}){
  if(width*height>MAX_PIXELS)throw Error('Превышен лимит размера маски.');const N=width*height,rgb=new Int32Array(N),seed=new Uint8Array(N),background=mode==='light'?0:0xffffff;
  for(let i=0;i<N;i++){const a=data[i*4+3]/255,bg=background?255:0,r=Math.round(data[i*4]*a+bg*(1-a)),g=Math.round(data[i*4+1]*a+bg*(1-a)),b=Math.round(data[i*4+2]*a+bg*(1-a));rgb[i]=r<<16|g<<8|b;seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);}
  const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false}),notes=[];
  if(mode==='alpha')notes.push('Режим прозрачности объединяет цвета. Для проверки по цветам выберите светлый или тёмный фон.');
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Проверьте режим фона и прозрачность логотипа.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,algorithm:'PrintCheck-cross-section-v9-true-gaps-only',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-cross-section-v9-true-gaps-only',candidateOnly:true};
 }
