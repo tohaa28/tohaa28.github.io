@@ -111,7 +111,7 @@ export function installDetailCheck({canvas,getState,redraw}){
     }
    }
   }
-  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],error:v.error}))};schedule();
+  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,error:v.error}))};schedule();
  }
  api={getState,redraw,refresh};
  $('detailEnabled').onchange=event=>{enabled=event.target.checked;activity();lastPanelKey='';redraw();};$('detailShow').onchange=event=>{show=event.target.checked;refresh();};
