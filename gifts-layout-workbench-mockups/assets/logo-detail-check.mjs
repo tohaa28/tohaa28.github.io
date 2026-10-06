@@ -32,7 +32,13 @@ const compactNames={positive:'линии',negative:'пробелы',isolated:'о
 const mm=v=>Number(v).toFixed(2).replace(/0+$/,'').replace(/[.,]$/,'').replace('.',',');
 export function compactDetailSummary(result,rule={}){
  const boxes=Array.isArray(result?.boxes)?result.boxes:[],counts=result?.counts||{};
- if(!boxes.length)return 'PrintCheck · мелкие элементы: не найдены.';
+ if(!boxes.length){
+  const checked=[];
+  if(Number(rule.positive)>0)checked.push(`линии <${mm(rule.positive)} мм — не найдены`);
+  if(Number(rule.negative)>0)checked.push(`пробелы <${mm(rule.negative)} мм — не найдены`);
+  if(Number(rule.isolated)>0)checked.push(`отдельные элементы <${mm(rule.isolated)} мм — не найдены`);
+  return checked.length?`PrintCheck · мелкие элементы проверены: ${checked.join('; ')}.`:'PrintCheck · мелкие элементы: не найдены.';
+ }
  const parts=[];
  for(const kind of ['positive','negative','isolated']){
   const count=Number(counts[kind]||boxes.filter(b=>b.kind===kind).length);
@@ -93,7 +99,7 @@ export function installDetailCheck({canvas,getState,redraw}){
   for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8)entries.delete(key);
   if(worker&&!validEntries().some(e=>e.state==='running'))cancel();
   if(currentKey!==e?.key){cancelPreview?.();cancelPreview=null;selected=-1;currentKey=e?.key||'';$('detailPreview').hidden=true;}
-  $('detailStatus').textContent=!enabled?'Поиск выключен.':!e?(state.art?'Поиск отключён или пороги не заданы в настройках нанесения.':'Выберите логотип.'):e.state==='done'?`Найдено областей: ${e.result.boxes.length}. Шаг ${e.result.step.toFixed(4)} мм.`:e.state==='error'?e.error:'поиск мелких элементов...';
+  $('detailStatus').textContent=!enabled?'Поиск выключен.':!e?(state.art?'Поиск отключён или пороги не заданы в настройках нанесения.':'Выберите логотип.'):e.state==='done'?compactDetailSummary(e.result,e.rule):e.state==='error'?e.error:'поиск мелких элементов...';
   const panelKey=JSON.stringify([e?.key,e?.state,enabled]);if(lastPanelKey!==panelKey){lastPanelKey=panelKey;$('detailList').replaceChildren();if(enabled&&e?.state==='done'){
    let offset=0;const more=document.createElement('button');more.type='button';more.textContent='Показать ещё';const appendPage=()=>{more.remove();const end=Math.min(offset+100,e.result.boxes.length),fragment=document.createDocumentFragment();for(;offset<end;offset++){const i=offset,b=e.result.boxes[i],button=document.createElement('button');button.type='button';button.textContent=`${i+1}. ${labels[b.kind]} · порог ${b.threshold} мм`;button.onclick=()=>{selected=i;preview(e,b);refresh();};fragment.append(button);}$('detailList').append(fragment);if(offset<e.result.boxes.length)$('detailList').append(more);};more.onclick=appendPage;appendPage();
    for(const note of e.result.notes){const p=document.createElement('p');p.textContent=note;$('detailList').append(p);}
