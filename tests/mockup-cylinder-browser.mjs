@@ -15,6 +15,26 @@ export async function verifyMockupCylinder(browserContext){
   await page.route("https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json**",route=>route.fulfill({contentType:"application/json",body:'{"schema":"gifts-mockup-profile-registry/v1","version":1,"profiles":[],"candidates":[],"articleSources":[]}'}));
   await page.goto(base+"mockup.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>typeof window.gwbGetMockupBinding==="function");
+  const smallPhoto="data:image/svg+xml;base64,"+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="gray"/></svg>').toString("base64");
+  const largePhoto="data:image/svg+xml;base64,"+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="white"/></svg>').toString("base64");
+  await page.evaluate(async ({smallPhoto,largePhoto})=>{
+    await window.gwbApplyMockupHandoff({
+      article:"PHOTO-FILTER-TEST",
+      place:"лицо",
+      method:"TEST",
+      photoCandidates:[
+        {id:"small",name:"Маленькая 240×240",dataUrl:smallPhoto},
+        {id:"large",name:"Рабочая 800×600",dataUrl:largePhoto}
+      ],
+      fieldCandidates:[{id:"field-1",printId:"print1",place:"лицо",bounds:{x:.2,y:.2,w:.4,h:.4}}]
+    });
+  },{smallPhoto,largePhoto});
+  const photoFilter=await page.evaluate(()=>window.gwbGetArticlePhotoFilter());
+  assert.equal(photoFilter.minLongSide,500);
+  assert.equal(photoFilter.minShortSide,300);
+  assert.equal(photoFilter.count,1,"Small article thumbnails must not enter the photo candidate list");
+  assert.deepEqual(photoFilter.photos.map(p=>p.id),["large"]);
+  assert.match(await page.locator("#status").textContent(),/Маленьких фото исключено: 1/);
   const mappingStatus=page.locator("#mappingOperationStatus");
   assert.equal(await mappingStatus.isHidden(),true);
   await page.evaluate(()=>window.gwbSetMappingOperationStatus("pending","Сохранение привязки…"));
@@ -139,5 +159,5 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю развёртку/);
   await page.close();
-  console.log("Mockup cylinder: mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
+  console.log("Mockup cylinder: small-photo filtering, mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
 }
