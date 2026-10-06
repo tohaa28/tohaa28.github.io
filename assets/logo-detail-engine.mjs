@@ -117,7 +117,7 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
   const medial=comp.filter(i=>axis[i]);if(!medial.length)continue;
   const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity,maxWidth=0;for(const i of medial){widths[i]=localDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);maxWidth=Math.max(maxWidth,widths[i]);}
   const taperToOneBody=adjacentOpened.size===1&&(maxWidth-min)>rule*.22;
-  if((oneSided&&extent<=extentLimit)||taperToOneBody)continue;
+  if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody))continue;
   const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
   const box=makeBox(comp,widths,w,h,kind,rule,[center]);box.minWidthMm=min;out.push(box);
  }
@@ -143,7 +143,11 @@ export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  }
  for(const l of layers){
   if(rule.positive>0){
-   const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive).filter(b=>!isolatedPixels[Math.min(owner.length-1,Math.max(0,Math.round(b.cy*h)*w+Math.round(b.cx*w)))]);
+   const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive).filter(b=>{
+    const x0=Math.max(0,Math.floor(b.x*w)),y0=Math.max(0,Math.floor(b.y*h)),x1=Math.min(w,Math.ceil((b.x+b.w)*w)),y1=Math.min(h,Math.ceil((b.y+b.h)*h));
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)if(isolatedPixels[y*w+x])return false;
+    return true;
+   });
    counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
   }
   if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
