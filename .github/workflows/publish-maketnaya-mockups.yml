@@ -227,6 +227,7 @@ jobs:
           grep -q 'Positive scan does not flag the cap of a thick stroke' tests/logo-detail.test.mjs
           grep -q 'Raster scan never upsamples beyond source pixels' tests/logo-detail.test.mjs
           grep -q 'cross-section positive scan' tests/logo-detail-browser.mjs
+          grep -q 'raster+vector feature parity' tests/logo-detail-browser.mjs
           grep -q 'true-gap-only negative scan' tests/logo-detail-browser.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
           grep -Fq "displayText:e.state==='error'?e.error:'поиск мелких элементов...'" assets/logo-detail-check.mjs
