@@ -117,7 +117,8 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
   const medial=comp.filter(i=>axis[i]);if(!medial.length)continue;
   const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity,maxWidth=0;for(const i of medial){widths[i]=localDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);maxWidth=Math.max(maxWidth,widths[i]);}
   const taperToOneBody=adjacentOpened.size===1&&(maxWidth-min)>rule*.22;
-  if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody))continue;
+  const compactEndCap=kind==='positive'&&adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
+  if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody)||compactEndCap)continue;
   const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
   const box=makeBox(comp,widths,w,h,kind,rule,[center]);box.minWidthMm=min;out.push(box);
  }
@@ -253,5 +254,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v13-morph-open',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v14-local-thickness',candidateOnly:true};
 }
