@@ -531,6 +531,34 @@ jobs:
           }
           await frame.waitForSelector("#orderTemplateList .article-choice", {state:"attached", timeout:30000});
           await frame.waitForFunction(() => document.getElementById("orderFieldChoiceBox")?.hidden === false, null, {timeout:30000});
+          const openWorkspaceState = await frame.evaluate(() => ({
+            orderEditorHidden:document.getElementById("orderEditor")?.hidden,
+            waitingHidden:document.getElementById("orderWaitingWorkspace")?.hidden,
+            orderState:document.querySelector(".workspace")?.dataset.orderState || ""
+          }));
+          if (openWorkspaceState.orderEditorHidden !== false || openWorkspaceState.waitingHidden !== true || openWorkspaceState.orderState !== "open") {
+            throw new Error("Workspace did not leave waiting mode after opening order: "+JSON.stringify(openWorkspaceState));
+          }
+          await frame.locator("#backToOrders").click();
+          await frame.waitForFunction(() => document.getElementById("orderWaitingWorkspace")?.hidden === false && document.getElementById("orderEditor")?.hidden === true, null, {timeout:10000});
+          const waitingWorkspaceState = await frame.evaluate(() => {
+            const workspace=document.querySelector(".workspace"),waiting=document.getElementById("orderWaitingWorkspace"),stage=document.getElementById("stageScroll"),resume=document.getElementById("resumeEditor");
+            return {
+              text:waiting?.textContent?.replace(/\s+/g," ").trim()||"",
+              orderState:workspace?.dataset.orderState||"",
+              stageVisibility:stage?getComputedStyle(stage).visibility:"",
+              resumeHidden:resume?.hidden
+            };
+          });
+          if (!/Ожидание выбора заказа/.test(waitingWorkspaceState.text) ||
+              waitingWorkspaceState.orderState !== "waiting" ||
+              waitingWorkspaceState.stageVisibility !== "hidden" ||
+              waitingWorkspaceState.resumeHidden !== false) {
+            throw new Error("Returning to order list did not clear the right workspace: "+JSON.stringify(waitingWorkspaceState));
+          }
+          await frame.locator("#resumeEditor").click();
+          await frame.waitForFunction(() => document.getElementById("orderWaitingWorkspace")?.hidden === true && document.getElementById("orderEditor")?.hidden === false, null, {timeout:10000});
+          console.log("Order-list workspace waiting state:", JSON.stringify(waitingWorkspaceState));
           await frame.waitForFunction(() => {
             const img = document.querySelector("#orderTemplateList .article-thumb");
             return !!img && img.hidden === false && img.complete && img.naturalWidth > 0;
