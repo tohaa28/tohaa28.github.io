@@ -219,23 +219,26 @@ jobs:
           grep -q 'dataset.article=String(t.article' assets/index-BpU9kvz8.js
           grep -q 'updateAssetReadiness' mockup.html
           grep -q 'compactDetailSummary' assets/logo-detail-check.mjs
-          grep -q 'PrintCheck-per-color-medial-gap-v8-true-gaps-only' assets/logo-detail-engine.mjs
+          grep -q 'PrintCheck-cross-section-v9-true-gaps-only' assets/logo-detail-engine.mjs
           grep -q 'transitionLayer' assets/logo-detail-engine.mjs
           grep -q 'sourcePalette' assets/logo-detail-check.mjs
           grep -q 'Antialias colour boundary is blocked' tests/logo-detail.test.mjs
           grep -q 'Strict negative scan ignores an open channel' tests/logo-detail.test.mjs
+          grep -q 'Positive scan does not flag the cap of a thick stroke' tests/logo-detail.test.mjs
+          grep -q 'Raster scan never upsamples beyond source pixels' tests/logo-detail.test.mjs
+          grep -q 'cross-section positive scan' tests/logo-detail-browser.mjs
           grep -q 'true-gap-only negative scan' tests/logo-detail-browser.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
           grep -Fq "displayText:e.state==='error'?e.error:'поиск мелких элементов...'" assets/logo-detail-check.mjs
           grep -Fq "transient:e.state!=='error'" assets/logo-detail-check.mjs
           grep -q "f.overlay===true" assets/logo-preflight.mjs
-          grep -q "logo-detail-check.mjs?v=20261006-2" assets/logo-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261006-3" assets/logo-preflight.mjs
           grep -q "li.manual" assets/index-CdEUuUA7.css
           grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
-          grep -q "logo-detail-check.mjs?v=20261006-2" tools/patch-artwork-preflight.mjs
-          grep -q "logo-preflight.mjs?v=20261006-2" tools/patch-artwork-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261006-3" tools/patch-artwork-preflight.mjs
+          grep -q "logo-preflight.mjs?v=20261006-3" tools/patch-artwork-preflight.mjs
           grep -q 'hasMockupBadge' .github/workflows/test-direct-workbench.yml
-          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-2' tests/logo-preflight-browser.mjs
+          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-3' tests/logo-preflight-browser.mjs
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html
