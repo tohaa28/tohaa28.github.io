@@ -122,10 +122,10 @@ function medialAxis(mask,d,w,h){
  return out;
 }
 function circleOpening(mask,w,h,diameterPx){
- const radius=Math.max(.5,diameterPx/2),inside=euclideanDistance(mask,w,h),centers=new Uint8Array(mask.length);
- for(let i=0;i<mask.length;i++)if(mask[i]&&inside[i]>=radius)centers[i]=1;
+ const radius=Math.max(.5,diameterPx/2),inside=distance(mask,w,h),centers=new Uint8Array(mask.length);
+ for(let i=0;i<mask.length;i++)if(mask[i]&&inside[i]/3>=radius)centers[i]=1;
  if(!centers.some(Boolean))return {inside,opened:new Uint8Array(mask.length),centers};
- const fromCenter=euclideanDistance(centers,w,h,true),opened=new Uint8Array(mask.length);
+ const fromCenter=distance(centers,w,h,true),opened=new Uint8Array(mask.length);
  for(let i=0;i<mask.length;i++)if(mask[i]&&fromCenter[i]/3<=radius+.55)opened[i]=1;
  return {inside,opened,centers};
 }
@@ -140,7 +140,7 @@ function wallOpposition(comp,wall,w,h,radius){
  return false;
 }
 function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
- const diameterPx=rule*ppm,{inside,opened}=circleOpening(mask,w,h,diameterPx),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h),forbiddenDistance=forbiddenMask?euclideanDistance(forbiddenMask,w,h,true):null;
+ const diameterPx=rule*ppm,{opened}=circleOpening(mask,w,h,diameterPx),inside=euclideanDistance(mask,w,h),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h),forbiddenDistance=forbiddenMask?euclideanDistance(forbiddenMask,w,h,true):null;
  for(let i=0;i<mask.length;i++)if(mask[i]&&!opened[i])missing[i]=1;
  const openedLabels=groups(opened,w,h).labels,out=[],extentLimit=Math.max(4,diameterPx*3),wallRadius=Math.max(2,Math.ceil(diameterPx*1.25)),crossGuard=Math.max(1.5,diameterPx*.55);
  for(const comp of groups(missing,w,h).items){
@@ -152,6 +152,8 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
   for(const i of comp)neighbors(i,w,h,n=>{if(openedLabels[n])adjacentOpened.add(openedLabels[n]);});
   const medial=comp.filter(i=>axis[i]);if(!medial.length)continue;
   const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity,maxWidth=0;for(const i of medial){widths[i]=exactLocalDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);maxWidth=Math.max(maxWidth,widths[i]);}
+  const measurementTolerance=Math.max(.015,.45/ppm);
+  if(min+measurementTolerance>=rule)continue;
   const taperToOneBody=adjacentOpened.size===1&&(maxWidth-min)>rule*.22;
   const compactEndCap=kind==='positive'&&adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
   if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody)||compactEndCap)continue;
