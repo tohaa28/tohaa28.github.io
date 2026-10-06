@@ -107,17 +107,15 @@ test('A true empty gap inside one ink remains detectable',()=>{
 });
 
 
-test('Strict negative scan ignores an open channel inside one connected ink object',()=>{
+test('Circle probe finds a real narrow white channel even when the ink is one connected object',()=>{
  const w=60,h=45,{rgb,seed}=painted(w,h,set=>{
   set(10,5,20,36,0x0033cc);
   set(23,5,33,36,0x0033cc);
   set(10,31,33,36,0x0033cc);
  });
  const split=splitColors(rgb,seed,w,h,0xffffff,[[0,51,204]]);
- const legacy=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
- const strict=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5},{sameComponentOpenGaps:false});
- assert.ok(legacy.counts.negative>0,'legacy geometry should demonstrate the former false positive');
- assert.equal(strict.counts.negative,0,'open concavity of one connected object is not a true gap');
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
+ assert.ok(result.counts.negative>0,'a 0.3 mm white channel must fail a 0.5 mm control circle');
 });
 
 test('Strict negative scan still finds a narrow gap between separate objects of the same colour',()=>{
@@ -234,13 +232,11 @@ test('Automatic mask detects transparent artwork without user settings',()=>{
  assert.equal(r.autoMask.kind,'transparent');
  assert.ok(r.layers>=1);
 });
-test('Visual isolated detection does not split one multicolour object into separate colour fragments',()=>{
+test('Isolated detection does not split one multicolour visible object into colour fragments',()=>{
  const w=80,h=30,owner=new Int32Array(w*h),a=new Uint8Array(w*h),b=new Uint8Array(w*h);
  for(let y=13;y<17;y++)for(let x=10;x<70;x++){const i=y*w+x,id=Math.floor((x-10)/4)%2?2:1;owner[i]=id;(id===1?a:b)[i]=1;}
  const layers=[{id:1,rgb:0xff0000,mask:a},{id:2,rgb:0x0000ff,mask:b}];
- const legacy=analyzeLayers(layers,owner,w,h,10,{isolated:1});
- const visual=analyzeLayers(layers,owner,w,h,10,{isolated:1},{visualIsolated:true});
- assert.ok(legacy.counts.isolated>0,'fixture must demonstrate former per-colour fragmentation');
+ const visual=analyzeLayers(layers,owner,w,h,10,{isolated:1});
  assert.equal(visual.counts.isolated,0,'one connected visible drawing is not many isolated objects');
 });
 test('Visual isolated detection still finds a truly detached small object',()=>{
@@ -250,4 +246,25 @@ test('Visual isolated detection still finds a truly detached small object',()=>{
  const layers=[{id:1,rgb:0x0033cc,mask}],visual=analyzeLayers(layers,owner,w,h,10,{isolated:.5},{visualIsolated:true});
  assert.equal(visual.counts.isolated,1);
  const box=visual.boxes.find(b=>b.kind==='isolated');assert.ok(box&&box.cx>.75);
+});
+
+test('Control-circle positive scan ignores a line wider than the allowed diameter',()=>{
+ const w=90,h=40,{rgb,seed}=painted(w,h,set=>set(10,15,80,25,0x163dc5));
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[22,61,197]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
+ assert.equal(result.counts.positive,0,'1.0 mm line must accept a 0.5 mm control circle');
+});
+test('Control-circle positive scan marks the centre of a line narrower than the allowed diameter',()=>{
+ const w=90,h=40,{rgb,seed}=painted(w,h,set=>set(10,18,80,21,0x163dc5));
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[22,61,197]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
+ const hit=result.boxes.find(b=>b.kind==='positive');
+ assert.ok(hit,'0.3 mm line must fail a 0.5 mm control circle');
+ assert.ok(hit.cy>.35&&hit.cy<.65,'marker must sit near the centreline');
+});
+test('Control-circle negative scan ignores open background beside a single ink wall',()=>{
+ const w=90,h=50,{rgb,seed}=painted(w,h,set=>set(35,5,45,45,0x163dc5));
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[22,61,197]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
+ assert.equal(result.counts.negative,0,'outside background next to one edge is not a printable gap');
 });
