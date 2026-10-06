@@ -60,3 +60,38 @@ test('A true empty gap inside one ink remains detectable',()=>{
  const result=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
  assert.ok(result.counts.negative>0,'real same-colour gap must still be found');
 });
+
+
+test('Strict negative scan ignores an open channel inside one connected ink object',()=>{
+ const w=60,h=45,{rgb,seed}=painted(w,h,set=>{
+  set(10,5,20,36,0x0033cc);
+  set(23,5,33,36,0x0033cc);
+  set(10,31,33,36,0x0033cc);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[0,51,204]]);
+ const legacy=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
+ const strict=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5},{sameComponentOpenGaps:false});
+ assert.ok(legacy.counts.negative>0,'legacy geometry should demonstrate the former false positive');
+ assert.equal(strict.counts.negative,0,'open concavity of one connected object is not a true gap');
+});
+
+test('Strict negative scan still finds a narrow gap between separate objects of the same colour',()=>{
+ const w=60,h=45,{rgb,seed}=painted(w,h,set=>{
+  set(10,5,20,36,0x0033cc);
+  set(23,5,33,36,0x0033cc);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[0,51,204]]);
+ const strict=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5},{sameComponentOpenGaps:false});
+ assert.ok(strict.counts.negative>0,'clearance between separate same-colour objects must be checked');
+});
+
+test('Strict negative scan still finds an enclosed knockout inside one colour',()=>{
+ const w=60,h=45,{rgb,seed}=painted(w,h,(set,rgb)=>{
+  set(8,4,42,38,0x0033cc);
+  for(let y=10;y<32;y++)for(let x=23;x<26;x++)rgb[y*w+x]=0xffffff;
+ });
+ const localSeed=Uint8Array.from(rgb,c=>c!==0xffffff?1:0);
+ const split=splitColors(rgb,localSeed,w,h,0xffffff,[[0,51,204]]);
+ const strict=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5},{sameComponentOpenGaps:false});
+ assert.ok(strict.counts.negative>0,'enclosed same-colour knockout must still be checked');
+});
