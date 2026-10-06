@@ -81,6 +81,10 @@ jobs:
           fi
           grep -q 'corsImg.onerror=()=>direct()' mockup.html
           grep -q 'id="mockupModeButton"' editor.html
+          grep -q 'id="orderWaitingWorkspace"' editor.html
+          grep -q 'Ожидание выбора заказа' editor.html
+          grep -q 'gwbSyncOrderWorkspaceWaiting' editor.html
+          grep -q 'Returning to order list did not clear the right workspace' .github/workflows/test-direct-workbench.yml
           grep -q 'id="mockupShell"' editor.html
           grep -q 'shared Maketnaya visual system' mockup.html
           grep -q 'class="brand"><span class="mark"' mockup.html
