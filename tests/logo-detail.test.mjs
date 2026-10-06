@@ -71,7 +71,7 @@ test('Compact PrintCheck summary is suitable for workspace overlay',()=>{
   {kind:'isolated',minWidthMm:.2,threshold:.3}
  ],counts:{positive:2,negative:1,isolated:1}};
  assert.equal(compactDetailSummary(result,{positive:.12,negative:.15,isolated:.3}),'PrintCheck · мелкие элементы: 4 — линии 2 (0,08<0,12 мм), пробелы 1 (0,11<0,15 мм), отдельные 1 (0,2<0,3 мм).');
- assert.equal(compactDetailSummary({boxes:[],counts:{positive:0,negative:0,isolated:0}},{positive:.12}),'PrintCheck · мелкие элементы: не найдены.');
+ assert.equal(compactDetailSummary({boxes:[],counts:{positive:0,negative:0,isolated:0}},{positive:.12,negative:.2}),'PrintCheck · мелкие элементы проверены: линии <0,12 мм — не найдены; пробелы <0,2 мм — не найдены.');
 });
 
 
