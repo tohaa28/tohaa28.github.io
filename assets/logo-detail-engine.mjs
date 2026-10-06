@@ -20,7 +20,7 @@ function distance(mask,w,h,toTrue=false){return chamfer(Int32Array.from(mask,v=>
 function maximum(d,w,x,y){let v=d[y*w+x];for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(d[yy*w+xx]>v)return false;return true;}
 function makeBox(indices,widths,w,h,kind,rule,centerSubset=indices){let x0=w,y0=h,x1=0,y1=0,min=Infinity,max=0,cx=0,cy=0;for(const i of indices){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);min=Math.min(min,widths[i]);max=Math.max(max,widths[i]);}for(const i of centerSubset){cx+=i%w;cy+=Math.floor(i/w);}return {x:x0/w,y:y0/h,w:(x1-x0)/w,h:(y1-y0)/h,cx:cx/centerSubset.length/w,cy:cy/centerSubset.length/h,pixels:indices.length,minWidthMm:min,maxWidthMm:max,kind,threshold:rule};}
 function components(bad,widths,w,h,ppm,rule,kind){return groups(bad,w,h).items.filter(c=>c.length>=2||c.length/ppm**2>=.0008).map(c=>makeBox(c,widths,w,h,kind,rule));}
-function persistent(bad,widths,w,h,ppm,rule,kind){
+function persistent(bad,widths,w,h,ppm,rule,kind,{rejectOneSidedTaper=false}={}){
  const result=[],N=bad.length,q=new Int32Array(N),visit=new Int32Array(N),dist=new Int32Array(N),parent=new Int32Array(N),mark=new Int32Array(N);let token=0,comp=0;
  const minPath=Math.max(3,rule*ppm),need=Math.ceil(minPath),band=Math.max(.03,rule*.18),eps=Math.max(.01,.5/ppm);
  const farthest=(start,keep)=>{token++;let a=0,b=1,far=start;q[0]=start;visit[start]=token;dist[start]=0;if(keep)parent[start]=-1;while(a<b){let v=q[a++];neighbors(v,w,h,n=>{if(!bad[n]||visit[n]===token)return;visit[n]=token;dist[n]=dist[v]+1;if(keep)parent[n]=v;q[b++]=n;if(dist[n]>dist[far])far=n;});}return far;};
@@ -33,7 +33,9 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
   let left=0,mh=0,mt=0,xh=0,xt=0,bs=-1,be=-1,bl=0;const mn=new Int32Array(path.length),mx=new Int32Array(path.length);
   for(let right=0;right<path.length;right++){const wr=widths[path[right]];if(!Number.isFinite(wr)){left=right+1;mh=mt=xh=xt=0;continue;}while(mt>mh&&widths[path[mn[mt-1]]]>=wr)mt--;mn[mt++]=right;while(xt>xh&&widths[path[mx[xt-1]]]<=wr)xt--;mx[xt++]=right;while(left<=right&&xh<xt&&mh<mt&&widths[path[mx[xh]]]-widths[path[mn[mh]]]>band){if(mn[mh]===left)mh++;if(mx[xh]===left)xh++;left++;}const len=right-left+1;if(len>bl){bl=len;bs=left;be=right;}}
   if(bl<need){reject();continue;}const occ=bl/path.length;if((bs===0)!==(be===path.length-1)&&occ<.72){reject();continue;}
-  if(occ>=.70&&widerAhead(path[0],path[Math.min(path.length-1,1)])!==widerAhead(path.at(-1),path[Math.max(0,path.length-2)])&&bl<Math.ceil(Math.max(need,minPath*2.5))){reject();continue;}
+  const widerA=widerAhead(path[0],path[Math.min(path.length-1,1)]),widerB=widerAhead(path.at(-1),path[Math.max(0,path.length-2)]);
+  if(rejectOneSidedTaper&&widerA!==widerB){reject();continue;}
+  if(!rejectOneSidedTaper&&occ>=.70&&widerA!==widerB&&bl<Math.ceil(Math.max(need,minPath*2.5))){reject();continue;}
   let supported=false;for(let pi=bs;pi<=be;pi++){let degree=0;neighbors(path[pi],w,h,n=>{if(n!==path[pi]&&bad[n])degree++;});if(degree>=3&&widerNear(path[pi])){supported=true;break;}}
   if(supported&&bl<Math.ceil(minPath*2)){reject();continue;}
   const stable=path.slice(bs,be+1),minimum=stable.reduce((m,i)=>Math.min(m,widths[i]),Infinity),center=stable.filter(i=>widths[i]<=minimum+eps);
@@ -61,7 +63,7 @@ function positive(fg,owner,id,w,h,ppm,rule){
   if(mm<=rule*1.75+.05)widths[i]=mm;
   if(mm+measurementTolerance<rule)bad[i]=1;
  }
- return persistent(bad,widths,w,h,ppm,rule,'positive');
+ return persistent(bad,widths,w,h,ppm,rule,'positive',{rejectOneSidedTaper:true});
 }
 function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
  const lab=groups(fg,w,h),d=distance(fg,w,h,true),empty=Uint8Array.from(owner,v=>v===0?1:0),enclosed=new Uint8Array(fg.length),holeBad=new Uint8Array(fg.length),holeWidths=new Float64Array(fg.length),result=[];
@@ -131,5 +133,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',thresh
  if(mode==='alpha')notes.push('Режим прозрачности объединяет цвета. Для проверки по цветам выберите светлый или тёмный фон.');
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Проверьте режим фона и прозрачность логотипа.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-cross-section-v9-true-gaps-only',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-medial-axis-v10-raster-vector',candidateOnly:true};
 }
