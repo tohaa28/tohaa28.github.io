@@ -41,6 +41,20 @@ export async function verifyDetailCheck(frame){
  const boundary=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
  assert.match(boundary.algorithm,/cross-section-v9/);
  assert.equal(boundary.boxes.filter(b=>b.kind==='positive'||b.kind==='negative').length,0,'Colour boundary must not create thin-element or gap markers: '+JSON.stringify(boundary));
+ // Positive scan must work on the medial axis, not on ordinary outer edges.
+ const thickShape=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 200 100"><rect x="20" y="20" width="160" height="60" rx="18" fill="#1238c8"/></svg>');
+ await frame.locator('#artwork').setInputFiles({name:'detail-thick-shape.svg',mimeType:'image/svg+xml',buffer:thickShape});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-thick-shape.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
+ const thick=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+ assert.match(thick.algorithm,/medial-axis-v9/);
+ assert.equal(thick.boxes.filter(b=>b.kind==='positive').length,0,'Thick object edges must not create positive markers: '+JSON.stringify(thick));
+
+ const thinBridge=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 200 100"><rect x="15" y="15" width="45" height="70" fill="#1238c8"/><rect x="60" y="48" width="90" height="4" fill="#1238c8"/><rect x="150" y="15" width="35" height="70" fill="#1238c8"/></svg>');
+ await frame.locator('#artwork').setInputFiles({name:'detail-thin-bridge.svg',mimeType:'image/svg+xml',buffer:thinBridge});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-thin-bridge.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
+ const bridge=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+ const bridgePositive=bridge.boxes.filter(b=>b.kind==='positive'&&b.cx>.3&&b.cx<.78);
+ assert.ok(bridgePositive.length>0,'Genuinely thin stroke must be found on its medial axis: '+JSON.stringify(bridge));
  // Exercise PDF.js rerender and native PNG decoding through real upload controls.
  const files=await frame.evaluate(async()=>{const doc=await PDFLib.PDFDocument.create();const page=doc.addPage([100,100]);page.drawRectangle({x:10,y:10,width:2,height:70});const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillRect(10,10,2,70);return {pdf:Array.from(await doc.save()),png:canvas.toDataURL().split(',')[1]};});
  for(const [ext,buffer]of [['pdf',Buffer.from(files.pdf)],['png',Buffer.from(files.png,'base64')]]){
