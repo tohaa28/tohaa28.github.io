@@ -105,6 +105,10 @@ jobs:
           grep -q 'beginMappingMutation' mockup.html
           grep -q 'failMappingMutation' mockup.html
           grep -q 'mapping status UI' tests/mockup-cylinder-browser.mjs
+          grep -q 'ARTICLE_PHOTO_MIN_LONG_SIDE=500' mockup.html
+          grep -q 'ARTICLE_PHOTO_MIN_SHORT_SIDE=300' mockup.html
+          grep -q 'filterUsableArticlePhotos' mockup.html
+          grep -q 'small-photo filtering' tests/mockup-cylinder-browser.mjs
           grep -q 'handoffManualControls' mockup.html
           grep -Fq '.handoffManualControls{display:none!important}' mockup.html
           grep -q 'async function autoLoadHandoff()' mockup.html
