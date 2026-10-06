@@ -1,8 +1,8 @@
 import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
-import {scanPlan} from './logo-detail-engine.mjs?v=20261006-5';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261006-6';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
-let enabled=true,mode='dark',threshold=245,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
+let enabled=true,mode='auto',threshold=0,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
 const ids=new WeakMap(),placementKeys=new WeakMap(),entries=new Map();let sequence=0;
 const colors={positive:'#ffd600',negative:'#00e5ff',isolated:'#ff8000'};
 const source='https://gifts.ru/maket-problems/10002362';
@@ -45,7 +45,7 @@ export function detailFindings({art,placement,field,rule}){
  if(!rule||rule.settings?.enabled===false||rule.settings?.checks.details===false||![rule.positive,rule.negative,rule.isolated].some(v=>v>0)){placementKeys.delete(placement);return [];}const e=entryFor(art,placement,field,rule);schedule();
  if(!enabled)return [{id:'detail-scan',status:'manual',text:'Поиск мелких элементов выключен.',source}];
  if(e.state!=='done')return [{id:'detail-scan',status:'manual',text:e.state==='error'?e.error:'поиск мелких элементов...',displayText:e.state==='error'?e.error:'поиск мелких элементов...',overlay:true,transient:e.state!=='error',source}];
- const r=e.result,found=r.boxes.length>0,precision=r.lowResolution?' Разрешение исходного растра ограничивает точность проверки.':'';return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм.${precision} ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
+ const r=e.result,found=r.boxes.length>0,precision=r.lowResolution?' Разрешение исходного растра ограничивает точность проверки.':'';return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм.${precision} ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:r.autoMask?.kind||'auto',maskThreshold:r.autoMask?.threshold??null},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
 }
 function validEntries(){if(!api)return [];return [...new Set(api.getState().placements.filter(p=>p.art&&p.placement).map(p=>entries.get(placementKeys.get(p.placement))).filter(Boolean))];}
 function cancel(){clearTimeout(watchdog);clearTimeout(timer);timer=0;if(idle){(window.cancelIdleCallback||clearTimeout)(idle);idle=0;}job++;if(worker){worker.terminate();worker=null;cancellations++;}renderTask?.cancel();renderTask=null;busy=false;for(const e of entries.values())if(e.state==='running')e.state='pending';}
@@ -64,7 +64,7 @@ async function start(){
  if(plan.skip){e.state='error';e.error=plan.skip;busy=false;api.redraw();schedule();return;}
  try{
   const data=await raster(e,plan,token);if(token!==job)return;
-  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-5',import.meta.url).href;
+  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-6',import.meta.url).href;
   const blobUrl=URL.createObjectURL(new Blob([`import ${JSON.stringify(workerUrl)};`],{type:'application/javascript'}));
   try{worker=new Worker(blobUrl,{type:'module'});}finally{URL.revokeObjectURL(blobUrl);}
   runs++;watchdog=setTimeout(()=>complete(null,'Проверка заняла слишком много времени. Мелкие элементы не проверены.'),20000);
@@ -79,12 +79,12 @@ async function start(){
 }
 export function installDetailCheck({canvas,getState,redraw}){
  const panel=document.createElement('details');panel.id='logoDetailCheck';panel.open=false;panel.className='logo-detail-check';
- panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><label>Маска <select id="detailMode"><option value="dark">Тёмное на светлом</option><option value="light">Светлое на тёмном</option><option value="alpha">Все непрозрачные элементы</option></select></label><label>Порог маски <input id="detailThreshold" type="number" min="1" max="254" value="245"></label><p id="detailStatus" role="status"></p><p class="help">Каждый кружок отмечает один найденный участок. Круги показывают порог: жёлтые — линии, голубые — пробелы, оранжевые — отдельные объекты. Нажмите область в списке, чтобы рассмотреть её крупнее.</p><div id="detailList"></div><div id="detailPreview" style="width:320px;max-width:100%" hidden></div>';
+ panel.innerHTML='<summary>Мелкие элементы · PrintCheck</summary><label><input id="detailEnabled" type="checkbox" checked> Искать после паузы</label> <label><input id="detailShow" type="checkbox" checked> Показывать отметки</label><p id="detailStatus" role="status"></p><p class="help">Маска и фон определяются автоматически. Каждый кружок отмечает один найденный участок: жёлтые — тонкие элементы, голубые — реальные пробелы, оранжевые — только действительно отдельные маленькие объекты.</p><div id="detailList"></div><div id="detailPreview" style="width:320px;max-width:100%" hidden></div>';
  const separate=document.createElement('section');separate.id='detailPanel';separate.className='panel';separate.append(panel);document.getElementById('step4Box').closest('.panel').after(separate);
  const layer=document.createElement('canvas');layer.id='detailOverlay';layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';canvas.parentElement.append(layer);
  const $=id=>panel.querySelector('#'+id);
  let cancelPreview=null;
- function preview(entry,box){cancelPreview?.();const c=$('detailPreview');c.hidden=false;cancelPreview=renderArtworkPreview(c,{art:entry.art,box,wMm:entry.wMm,hMm:entry.hMm,mode:entry.mode,color:colors[box.kind]});}
+ function preview(entry,box){cancelPreview?.();const c=$('detailPreview');c.hidden=false;cancelPreview=renderArtworkPreview(c,{art:entry.art,box,wMm:entry.wMm,hMm:entry.hMm,mode:entry.result?.autoMask?.previewMode||'dark',color:colors[box.kind]});}
  function refresh(){
   const state=getState();separate.hidden=!state.art;const e=entries.get(placementKeys.get(state.placement));const keys=new Set(validEntries().map(e=>e.key));
   for(const [key,value]of entries)if(!keys.has(key)&&entries.size>8)entries.delete(key);
@@ -111,11 +111,10 @@ export function installDetailCheck({canvas,getState,redraw}){
     }
    }
   }
-  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,step:v.result?.step||0,lowResolution:!!v.result?.lowResolution,sourceLimited:!!v.result?.sourceLimited,samplesPerMinimum:v.result?.samplesPerMinimum||null,error:v.error}))};schedule();
+  window.gwbDetailCheck={enabled,mode:e?.result?.autoMask?.kind||'auto',threshold:e?.result?.autoMask?.threshold??null,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,step:v.result?.step||0,autoMask:v.result?.autoMask||null,lowResolution:!!v.result?.lowResolution,sourceLimited:!!v.result?.sourceLimited,samplesPerMinimum:v.result?.samplesPerMinimum||null,error:v.error}))};schedule();
  }
  api={getState,redraw,refresh};
  $('detailEnabled').onchange=event=>{enabled=event.target.checked;activity();lastPanelKey='';redraw();};$('detailShow').onchange=event=>{show=event.target.checked;refresh();};
- $('detailMode').onchange=event=>{mode=event.target.value;activity();redraw();};$('detailThreshold').oninput=event=>{threshold=Math.min(254,Math.max(1,Number(event.target.value)||245));activity();redraw();};
  document.addEventListener('pointerdown',event=>{if(event.target.closest('#stage,#fieldLogoTools')){holding=true;activity();refresh();}},true);
  const release=()=>{if(holding){holding=false;activity();refresh();}};window.addEventListener('pointerup',release,true);window.addEventListener('pointercancel',release,true);window.addEventListener('blur',release);
  document.addEventListener('input',event=>{if(!panel.contains(event.target)){activity();}},true);
