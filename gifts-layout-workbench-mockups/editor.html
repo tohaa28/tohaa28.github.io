@@ -381,6 +381,19 @@
 })();
 </script><script>
 (()=>{
+  const intro=document.getElementById("orderIntro"),logout=document.getElementById("logoutButton");
+  if(!intro||!logout)return;
+  function syncOrderIntroAuthState(){
+    const authenticated=!logout.hidden;
+    intro.hidden=authenticated;
+    intro.dataset.authState=authenticated?"authenticated":"anonymous";
+  }
+  new MutationObserver(syncOrderIntroAuthState).observe(logout,{attributes:true,attributeFilter:["hidden"]});
+  window.gwbSyncOrderIntroAuthState=syncOrderIntroAuthState;
+  syncOrderIntroAuthState();
+})();
+</script><script>
+(()=>{
   const workspace=document.querySelector(".workspace"),editor=document.getElementById("orderEditor"),waiting=document.getElementById("orderWaitingWorkspace");
   if(!workspace||!editor||!waiting)return;
   const managed=[workspace.querySelector(":scope > .toolbar"),workspace.querySelector(":scope > .workspace-step"),workspace.querySelector(":scope > .stage-logo-tools"),workspace.querySelector(":scope > #stageScroll")].filter(Boolean);
