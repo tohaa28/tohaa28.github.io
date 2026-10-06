@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-06T08:10:49.487Z",
+  "updatedAt": "2026-10-06T08:15:08.953Z",
   "source": "git",
   "profiles": [
     {
@@ -41,20 +41,20 @@
       },
       "targetQuad": [
         {
-          "x": 0.41321875,
-          "y": 0.19
+          "x": 0.42721875,
+          "y": 0.188
         },
         {
-          "x": 2.10921875,
-          "y": 0.202
+          "x": 1.79921875,
+          "y": 0.158
         },
         {
-          "x": 2.06921875,
-          "y": 0.9440000000000001
+          "x": 1.80121875,
+          "y": 0.908
         },
         {
           "x": 0.42121875000000003,
-          "y": 0.934
+          "y": 0.9239999999999999
         }
       ],
       "surface": "cylinder",
@@ -89,8 +89,8 @@
         "mesh": 32
       },
       "status": "confirmed-manual",
-      "updatedAt": "2026-10-06T08:10:49.487Z",
-      "confirmedAt": "2026-10-06T08:10:49.487Z",
+      "updatedAt": "2026-10-06T08:15:08.953Z",
+      "confirmedAt": "2026-10-06T08:15:08.953Z",
       "confirmedBy": "mockup-editor-manual",
       "generatedBy": "mockup-editor-manual"
     },
