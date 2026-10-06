@@ -54,14 +54,16 @@ function positive(fg,owner,id,w,h,ppm,rule){
   return Infinity;
  };
  const crossSection=(x,y)=>{
-  let best=Infinity;
+  const spans=[];let maxBalance=0;
   for(const [dx,dy] of dirs){
    const a=exitDistance(x,y,dx,dy,1),b=exitDistance(x,y,dx,dy,-1);
    if(a===null||b===null||!Number.isFinite(a)||!Number.isFinite(b))continue;
-   const balance=Math.min(a,b)/Math.max(a,b);
-   if(balance<.42)continue;
-   best=Math.min(best,Math.max(1,a+b-1)/ppm);
+   const balance=Math.min(a,b)/Math.max(a,b),span=Math.max(1,a+b-1)/ppm;
+   spans.push({balance,span});maxBalance=Math.max(maxBalance,balance);
   }
+  if(maxBalance<.42)return Infinity;
+  const floor=Math.max(.42,maxBalance-.08);let best=Infinity;
+  for(const item of spans)if(item.balance>=floor)best=Math.min(best,item.span);
   return best;
  };
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
