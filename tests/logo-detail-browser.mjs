@@ -36,7 +36,7 @@ export async function verifyDetailCheck(frame){
  await frame.locator('#artwork').setInputFiles({name:'detail-colour-boundary.svg',mimeType:'image/svg+xml',buffer:colourBoundary});
  await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-colour-boundary.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
  const boundary=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
- assert.match(boundary.algorithm,/colour-boundary-safe/);
+ assert.match(boundary.algorithm,/true-gaps-only/);
  assert.equal(boundary.boxes.filter(b=>b.kind==='positive'||b.kind==='negative').length,0,'Colour boundary must not create thin-element or gap markers: '+JSON.stringify(boundary));
  // Exercise PDF.js rerender and native PNG decoding through real upload controls.
  const files=await frame.evaluate(async()=>{const doc=await PDFLib.PDFDocument.create();const page=doc.addPage([100,100]);page.drawRectangle({x:10,y:10,width:2,height:70});const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillRect(10,10,2,70);return {pdf:Array.from(await doc.save()),png:canvas.toDataURL().split(',')[1]};});
@@ -45,5 +45,5 @@ export async function verifyDetailCheck(frame){
   await frame.waitForFunction(name=>document.getElementById('artworkName').textContent.includes(name),'detail-source.'+ext);await resize(10);await done();
   const current=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});assert.ok(current.boxes.some(b=>b.kind==='positive'),ext+' thin feature');
  }
- console.log('PrintCheck detail browser: same-colour-only positive/negative scan, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
+ console.log('PrintCheck detail browser: true-gap-only negative scan, same-colour positive scan, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
 }
