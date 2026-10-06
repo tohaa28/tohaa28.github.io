@@ -3,12 +3,15 @@
 // Browser port; physical dimensions come from the placed logo, never screen zoom.
 export const MAX_PIXELS=4_000_000;
 const INF=1<<27, dirs=[[1,0],[0,1],[1,1],[1,-1],[2,1],[1,2],[2,-1],[1,-2]];
-export function scanPlan(wMm,hMm,rule,{maxPixels=MAX_PIXELS}={}){
+export function scanPlan(wMm,hMm,rule,{maxPixels=MAX_PIXELS,sourceWidth=0,sourceHeight=0}={}){
  const ts=[rule.positive,rule.negative,rule.isolated].filter(x=>x>0);
  if(!(wMm>0&&hMm>0)||!ts.length)return {skip:'Для нанесения не определены пороги мелких элементов.'};
- const preferred=Math.min(2400,Math.max(720,25.4*6/Math.min(...ts))),budgetDpi=25.4*Math.sqrt(maxPixels/(wMm*hMm))*.995,dpi=Math.min(preferred,budgetDpi),width=Math.ceil(wMm*dpi/25.4),height=Math.ceil(hMm*dpi/25.4),step=Math.max(wMm/width,hMm/height);
- if(width*height>maxPixels||Math.min(...ts)/step<4)return {skip:'Область слишком велика для точной фоновой проверки. Мелкие элементы не проверены.'};
- return {width,height,dpi,step,lowResolution:Math.min(...ts)/step<4};
+ const minimum=Math.min(...ts),preferred=Math.min(2400,Math.max(720,25.4*6/minimum)),budgetDpi=25.4*Math.sqrt(maxPixels/(wMm*hMm))*.995;
+ const sourceLimited=sourceWidth>0&&sourceHeight>0;
+ const sourceDpi=sourceLimited?25.4*Math.min(sourceWidth/wMm,sourceHeight/hMm):Infinity;
+ const dpi=Math.min(preferred,budgetDpi,sourceDpi),width=Math.max(1,Math.min(sourceLimited?sourceWidth:Infinity,Math.ceil(wMm*dpi/25.4))),height=Math.max(1,Math.min(sourceLimited?sourceHeight:Infinity,Math.ceil(hMm*dpi/25.4))),step=Math.max(wMm/width,hMm/height),samples=minimum/step;
+ if(width*height>maxPixels||samples<(sourceLimited?3:4))return {skip:'Область слишком велика или исходный растр недостаточно детален для точной фоновой проверки. Мелкие элементы не проверены.'};
+ return {width,height,dpi,step,lowResolution:samples<4,sourceLimited,samplesPerMinimum:samples};
 }
 function neighbors(v,w,h,fn){const y=Math.floor(v/w),x=v-y*w;for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++)fn(yy*w+xx);}
 function groups(mask,w,h){const labels=new Int32Array(mask.length),q=new Int32Array(mask.length),items=[];let id=0;for(let i=0;i<mask.length;i++)if(mask[i]&&!labels[i]){id++;let a=0,b=1;q[0]=i;labels[i]=id;while(a<b)neighbors(q[a++],w,h,n=>{if(mask[n]&&!labels[n]){labels[n]=id;q[b++]=n;}});items.push(q.slice(0,b));}return {labels,items};}
