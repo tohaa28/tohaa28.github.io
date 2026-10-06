@@ -34,6 +34,20 @@ test('Source-limited raster may run at three-plus samples per minimum without in
  assert.ok(plan.samplesPerMinimum>=3);
  assert.equal(plan.lowResolution,true);
 });
+test('Native raster still scans when a valid minimum spans only one to three source pixels',()=>{
+ const plan=scanPlan(100,100,{positive:.1,minDpi:300},{sourceWidth:1315,sourceHeight:1315});
+ assert.ok(!plan.skip,'334 dpi raster must not be rejected only because 0.1 mm is below three pixels');
+ assert.equal(plan.width,1315);
+ assert.equal(plan.height,1315);
+ assert.ok(plan.samplesPerMinimum>=1&&plan.samplesPerMinimum<3);
+ assert.equal(plan.pixelQuantized,true);
+ assert.equal(plan.lowResolution,true);
+});
+test('Native raster skips only when the minimum is smaller than one source pixel',()=>{
+ const plan=scanPlan(100,100,{positive:.05,minDpi:300},{sourceWidth:1000,sourceHeight:1000});
+ assert.ok(plan.skip);
+ assert.match(plan.skip,/меньше одного пикселя/);
+});
 
 test('Raster tolerance keeps exact-limit geometry from becoming a false failure',()=>{
  const f=fixtures.find(x=>x.name==='bars-0.25'),rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v)),seed=Uint8Array.from(rgb,v=>v!==0xffffff?1:0),split=splitColors(rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
