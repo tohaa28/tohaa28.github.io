@@ -295,9 +295,10 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   else if(auto)seed[i]=+(a>.06&&Math.hypot(r-br,g-bg0,b-bb)>maskThreshold);
   else seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);
  }
- const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),
+ const separated=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),
+  split=rule.singleInk?(()=>{const mask=Uint8Array.from(seed,v=>v?1:0),visible=mask.some(Boolean),rgb=separated.layers.slice().sort((a,b)=>(b.pixels||0)-(a.pixels||0))[0]?.rgb??0;return {layers:visible?[{id:1,rgb,mask,pixels:mask.reduce((n,v)=>n+v,0)}]:[],owner:Int32Array.from(mask),suppressedTransitions:separated.suppressedTransitions||0};})():separated,
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v16-exact-euclidean-opening',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v17-method-aware-single-ink',singleInk:!!rule.singleInk,candidateOnly:true};
 }
