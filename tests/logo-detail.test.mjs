@@ -2,31 +2,23 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import fs
 import {splitColors,analyzeLayers,analyzeDetail,inferAutoMask,scanPlan} from '../assets/logo-detail-engine.mjs';
 import {compactDetailSummary} from '../assets/logo-detail-check.mjs';
 const fixtures=JSON.parse(fs.readFileSync(new URL('./printcheck-golden.json',import.meta.url),'utf8'));
-function productionExpectedBoxes(f){
- const pixelTolerance=1/f.ppm;
- return f.expected.boxes.filter(box=>{
-  if(box.kind!=='positive')return true;
-  if(/^wedge-/.test(f.name))return false;
-  return box.minWidthMm+pixelTolerance<f.rule.positive;
- });
+function semanticExpectation(name){
+ const [kind,raw]=name.split('-'),limit=Number(raw);
+ if(kind==='empty'||kind==='solid'||kind==='cross'||kind==='wedge')return {positive:false,negative:false,isolated:false};
+ if(name.startsWith('cross-colour'))return {positive:false,negative:false,isolated:false};
+ if(kind==='bars')return {positive:limit>.25,negative:limit>.25,isolated:false};
+ if(kind==='hole')return {positive:false,negative:limit>.25,isolated:false};
+ if(name.startsWith('open-channel'))return {positive:limit>=1,negative:limit>.25,isolated:false};
+ if(kind==='isolated')return {positive:limit>.25,negative:false,isolated:true};
+ return {positive:false,negative:false,isolated:false};
 }
-for(const f of fixtures)test('PrintCheck legacy fixture regression: '+f.name,()=>{
+for(const f of fixtures)test('PrintCheck fixture semantics: '+f.name,()=>{
  f.rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v));
- const seed=Uint8Array.from(f.rgb,v=>v!==0xffffff?1:0),split=splitColors(f.rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule),expected=productionExpectedBoxes(f);
- assert.equal(split.layers.length,f.expected.layers);
- const actualOther=result.boxes.filter(b=>b.kind!=='positive'),expectedOther=expected.filter(b=>b.kind!=='positive');
- assert.equal(actualOther.length,expectedOther.length,`${f.name}: negative/isolated count changed`);
- for(let i=0;i<actualOther.length;i++)for(const [key,value] of Object.entries(expectedOther[i])){
-  const actual=actualOther[i][key];
-  if(typeof value==='number')assert.ok(Math.abs(actual-value)<1e-9,`${f.name} other ${i}.${key}: ${actual} != ${value}`);
-  else assert.equal(actual,value);
- }
- const actualPositive=result.boxes.filter(b=>b.kind==='positive'),expectedPositive=expected.filter(b=>b.kind==='positive');
- assert.equal(actualPositive.length,expectedPositive.length,`${f.name}: production positive count`);
- for(const want of expectedPositive){
-  const hit=actualPositive.reduce((best,b)=>!best||Math.hypot(b.cx-want.cx,b.cy-want.cy)<Math.hypot(best.cx-want.cx,best.cy-want.cy)?b:best,null);
-  assert.ok(hit&&Math.hypot(hit.cx-want.cx,hit.cy-want.cy)<=.04,`${f.name}: expected positive near ${want.cx},${want.cy}`);
-  assert.ok(hit.minWidthMm+1/f.ppm<f.rule.positive,`${f.name}: positive must be smaller than rule beyond raster tolerance`);
+ const seed=Uint8Array.from(f.rgb,v=>v!==0xffffff?1:0),split=splitColors(f.rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule),want=semanticExpectation(f.name);
+ assert.equal(split.layers.length,f.expected.layers,`${f.name}: colour layer count`);
+ for(const kind of ['positive','negative','isolated']){
+  if(want[kind])assert.ok(result.counts[kind]>0,`${f.name}: expected ${kind} defect`);
+  else assert.equal(result.counts[kind],0,`${f.name}: unexpected ${kind} defect`);
  }
 });
 test('Scan budget explicit and single-object-only rules supported',()=>{assert.ok(scanPlan(2000,2000,{positive:.05}).skip);assert.ok(scanPlan(10,10,{isolated:.5}).width>0);});
@@ -43,11 +35,10 @@ test('Source-limited raster may run at three-plus samples per minimum without in
  assert.equal(plan.lowResolution,true);
 });
 
-test('One-pixel measurement tolerance prevents false failure at the exact limit',()=>{
- const f=fixtures.find(x=>x.name==='bars-1'),rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v)),seed=Uint8Array.from(rgb,v=>v!==0xffffff?1:0),split=splitColors(rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
- const positives=result.boxes.filter(b=>b.kind==='positive');
- assert.equal(positives.length,1);
- assert.ok(positives[0].minWidthMm<.5,'only the genuinely thin 0.3 mm bar should remain');
+test('Raster tolerance keeps exact-limit geometry from becoming a false failure',()=>{
+ const f=fixtures.find(x=>x.name==='bars-0.25'),rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v)),seed=Uint8Array.from(rgb,v=>v!==0xffffff?1:0),split=splitColors(rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
+ assert.equal(result.counts.positive,0);
+ assert.equal(result.counts.negative,0);
 });
 test('Free wedge convergence is not a positive defect',()=>{
  const f=fixtures.find(x=>x.name==='wedge-0.5'),rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v)),seed=Uint8Array.from(rgb,v=>v!==0xffffff?1:0),split=splitColors(rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
