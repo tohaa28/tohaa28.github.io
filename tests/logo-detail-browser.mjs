@@ -55,6 +55,33 @@ export async function verifyDetailCheck(frame){
  const bridge=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
  const bridgePositive=bridge.boxes.filter(b=>b.kind==='positive'&&b.cx>.3&&b.cx<.78);
  assert.ok(bridgePositive.length>0,'Genuinely thin stroke must be found on its medial axis: '+JSON.stringify(bridge));
+ // Raster logos must follow the same geometry rules as vector artwork.
+ const rasterCases=await frame.evaluate(()=>{
+   const make=paint=>{
+     const c=document.createElement('canvas');c.width=240;c.height=120;const x=c.getContext('2d');
+     x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#1238c8';paint(x);
+     return c.toDataURL('image/png').split(',')[1];
+   };
+   return {
+     thick:make(x=>{x.fillRect(30,25,180,70);}),
+     thin:make(x=>{x.fillRect(18,18,55,84);x.fillRect(73,58,105,4);x.fillRect(178,18,44,84);}),
+     gap:make(x=>{x.fillRect(35,20,55,80);x.fillRect(94,20,55,80);})
+   };
+ });
+ await frame.locator('#artwork').setInputFiles({name:'detail-raster-thick.png',mimeType:'image/png',buffer:Buffer.from(rasterCases.thick,'base64')});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-raster-thick.png'));await resize(20);await frame.locator('#editorCenter').click();await done();
+ const rasterThick=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+ assert.equal(rasterThick.boxes.filter(b=>b.kind==='positive').length,0,'Raster thick edges must not create positive markers: '+JSON.stringify(rasterThick));
+
+ await frame.locator('#artwork').setInputFiles({name:'detail-raster-thin.png',mimeType:'image/png',buffer:Buffer.from(rasterCases.thin,'base64')});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-raster-thin.png'));await resize(20);await frame.locator('#editorCenter').click();await done();
+ const rasterThin=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+ assert.ok(rasterThin.boxes.some(b=>b.kind==='positive'&&b.cx>.28&&b.cx<.82),'Raster thin bridge must be detected near its centre: '+JSON.stringify(rasterThin));
+
+ await frame.locator('#artwork').setInputFiles({name:'detail-raster-gap.png',mimeType:'image/png',buffer:Buffer.from(rasterCases.gap,'base64')});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-raster-gap.png'));await resize(20);await frame.locator('#editorCenter').click();await done();
+ const rasterGap=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+ assert.ok(rasterGap.boxes.some(b=>b.kind==='negative'),'Raster same-colour gap must be detected: '+JSON.stringify(rasterGap));
  // Exercise PDF.js rerender and native PNG decoding through real upload controls.
  const files=await frame.evaluate(async()=>{const doc=await PDFLib.PDFDocument.create();const page=doc.addPage([100,100]);page.drawRectangle({x:10,y:10,width:2,height:70});const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillRect(10,10,2,70);return {pdf:Array.from(await doc.save()),png:canvas.toDataURL().split(',')[1]};});
  for(const [ext,buffer]of [['pdf',Buffer.from(files.pdf)],['png',Buffer.from(files.png,'base64')]]){
@@ -65,5 +92,5 @@ export async function verifyDetailCheck(frame){
   if(ext==='png'){assert.equal(current.sourceLimited,true,'PNG scan must be capped to source pixels');assert.ok(current.samplesPerMinimum>=3);}
   else assert.equal(current.sourceLimited,false,'PDF remains vector-rendered for detail scan');
  }
- console.log('PrintCheck detail browser: cross-section positive scan, true-gap-only negative scan, raster source cap, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
+ console.log('PrintCheck detail browser: raster+vector feature parity, cross-section positive scan, true-gap-only negative scan, raster source cap, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
 }
