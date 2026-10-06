@@ -373,3 +373,42 @@ Compiled bundle `assets/index-BpU9kvz8.js` вручную не редактир�
 Первый v15 commit `9bd88d1828f10f243161a4e254116d7168358b62` не прошёл precheck: exact opening изменил топологию кандидатов и потерял два ранее корректных positive-сценария. Эта версия не была опубликована.
 
 Исправление `b9327621c49aa9aee8119de024c2eb977e0fcc48` оставило старую morphology только для candidate topology, а Euclidean distance — для финального измерения. Полный workflow `37482820523` прошёл success во всех jobs. Опубликован main `d797839d2ec326433aed617334390b050da6f1b2`, algorithm marker `PrintCheck-control-circle-v15-euclidean-local-thickness`, cache `20261006-10`.
+
+## Дополнение 2026-10-06 — PrintCheck v16 exact Euclidean opening
+
+После v15 обнаружена конкретная причина двух регрессий первой попытки exact opening: после замены chamfer distance на Euclidean Distance Transform в dilation-части `circleOpening` сохранилось старое деление `/3`. В результате Euclidean-расстояние ошибочно масштабировалось как chamfer 3/4 и реконструкция контрольного круга получалась примерно втрое шире.
+
+Исправлено:
+- `circleOpening` теперь использует exact Euclidean Distance Transform и для поиска центров контрольного круга, и для восстановления covered-area без старого `/3`;
+- final local thickness остаётся Euclidean;
+- candidate-компоненты по-прежнему проходят фильтрацию углов/торцов, но `taperToOneBody` теперь оценивает профиль толщины вдоль медиальной оси;
+- длинная равномерно тонкая ветвь, присоединённая к толстому объекту, больше не отбрасывается как taper;
+- короткий клиновидный сход/угол по-прежнему не считается дефектом;
+- исправлена JS-ошибка typed-array: `Int32Array.map(i => [distance,width])` заменён на `Array.from(...)`, иначе пары профиля превращались в нули.
+
+Новые/сохранённые regressions:
+- thick straight/rounded element > limit → positive = 0;
+- thin straight element < limit → positive > 0;
+- thick diagonal bridge → 0;
+- thin diagonal bridge → найден;
+- narrow neck → найден;
+- wedge/corner convergence → 0;
+- long uniform 0.3 mm spur при норме 0.5 mm → найден;
+- negative open-background / true-gap / same-colour channel, colour boundary, antialias transition, isolated-object tests сохранены.
+
+Текущая опубликованная версия:
+- source commit: `7275710faef27c6e10abc84bdd52c847c3150f77`;
+- workflow: `37495979009` — precheck success, publish success, browser_verify success;
+- published main: `88ff57b17162c3be460e18054411d06d831487d6`;
+- algorithm: `PrintCheck-control-circle-v16-exact-euclidean-opening`;
+- cache: `20261006-11`;
+- patched bundle SHA-256: `c955fd3ffefc6d811342b16c54cf98c176c41836492796d2ef265372cd92118c`;
+- unit suite: 97 tests, все success.
+
+Следующая проверка должна выполняться на том же реальном синем круглом логотипе пользователя. Сравнивать отдельно:
+1. ложные жёлтые positive markers по обычным контурам;
+2. ложные голубые negative markers;
+3. реальные тонкие перемычки/линии;
+4. отдельные объекты.
+Если остаются ошибки — классифицировать конкретную геометрию маркера и править только соответствующий класс, не возвращаясь к edge-based анализу и не меняя остальные модули Макетной.
+
