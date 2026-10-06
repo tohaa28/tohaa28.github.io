@@ -39,13 +39,14 @@ test('Antialias colour boundary is blocked, not treated as a thin ink or gap',()
  const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5,negative:.5});
  assert.equal(result.boxes.length,0);
 });
-test('A real third source colour stays measurable even when it lies between two colours',()=>{
+test('A real third source colour is preserved but not flagged at a multi-colour boundary',()=>{
  const w=70,h=40,{rgb,seed}=painted(w,h,set=>{set(5,5,32,35,0xff0000);set(32,5,33,35,0x800080);set(33,5,60,35,0x0000ff);});
  const split=splitColors(rgb,seed,w,h,0xffffff,[[255,0,0],[128,0,128],[0,0,255]]);
  assert.equal(split.layers.length,3);
  assert.equal(split.suppressedTransitions,0);
+ assert.ok(split.layers.some(l=>l.rgb===0x800080),'explicit source purple must stay a distinct ink layer');
  const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
- assert.ok(result.boxes.some(b=>b.kind==='positive'&&b.rgb===0x800080),'real thin purple ink must still be checked');
+ assert.equal(result.boxes.filter(b=>b.kind==='positive'&&b.rgb===0x800080).length,0,'a colour boundary/intersection must not be reported as a thin element');
 });
 test('Different ink between same-colour objects is never a negative gap',()=>{
  const w=70,h=40,{rgb,seed}=painted(w,h,set=>{set(5,5,27,35,0xff0000);set(27,5,30,35,0x0000ff);set(30,5,52,35,0xff0000);});
