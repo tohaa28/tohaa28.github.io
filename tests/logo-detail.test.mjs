@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {splitColors,analyzeLayers,analyzeDetail,inferAutoMask,scanPlan} from '../assets/logo-detail-engine.mjs';
-import {compactDetailSummary} from '../assets/logo-detail-check.mjs';
+import {compactDetailSummary,detailSingleInk} from '../assets/logo-detail-check.mjs';
 const fixtures=JSON.parse(fs.readFileSync(new URL('./printcheck-golden.json',import.meta.url),'utf8'));
 function semanticExpectation(name){
  const parts=name.split('-'),kind=parts[0],limit=Number(parts.at(-1));
@@ -213,6 +213,37 @@ function rgbaImage(width,height,pixel){
  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const [r,g,b,a=255]=pixel(x,y),i=(y*width+x)*4;data[i]=r;data[i+1]=g;data[i+2]=b;data[i+3]=a;}
  return data;
 }
+test('Single-ink technology is derived from the print colour policy',()=>{
+ assert.equal(detailSingleInk({colorPolicy:'black-white'}),true);
+ assert.equal(detailSingleInk({colorPolicy:'single-color'}),true);
+ assert.equal(detailSingleInk({maxColors:1}),true);
+ assert.equal(detailSingleInk({colorPolicy:'black-gray'}),false);
+ assert.equal(detailSingleInk({maxColors:2}),false);
+});
+test('Single-ink geometry merges source colours before measuring thin elements',()=>{
+ const w=100,h=50,data=rgbaImage(w,h,(x,y)=>{
+  if(x<10||x>=90||y<20||y>=29)return [255,255,255,255];
+  if(y<23)return [230,30,40,255];
+  if(y<26)return [25,175,75,255];
+  return [25,70,220,255];
+ });
+ const separated=analyzeDetail({data,width:w,height:h,wMm:10,hMm:5,rule:{positive:.5,negative:0,isolated:0},mode:'auto'});
+ const merged=analyzeDetail({data,width:w,height:h,wMm:10,hMm:5,rule:{positive:.5,negative:0,isolated:0,singleInk:true},mode:'auto'});
+ assert.ok(separated.layers>=2,'multi-colour source must remain separable when the method allows several inks');
+ assert.equal(merged.layers,1,'single-ink process must use one physical foreground phase');
+ assert.equal(merged.singleInk,true);
+ assert.equal(merged.counts.positive,0,'three colour bands forming one 0.9 mm stroke must not become three 0.3 mm defects');
+});
+test('Single-ink merge still detects a true white gap',()=>{
+ const w=100,h=60,data=rgbaImage(w,h,(x,y)=>{
+  const ink=x>=15&&x<85&&y>=10&&y<50&&!(x>=49&&x<52);
+  return ink?[20,65,210,255]:[255,255,255,255];
+ });
+ const merged=analyzeDetail({data,width:w,height:h,wMm:10,hMm:6,rule:{positive:0,negative:.5,isolated:0,singleInk:true},mode:'auto'});
+ assert.equal(merged.layers,1);
+ assert.ok(merged.counts.negative>0,'0.3 mm white clearance must remain a negative defect after shade merging');
+});
+
 test('Automatic mask detects light opaque background without user settings',()=>{
  const w=40,h=20,data=rgbaImage(w,h,(x,y)=>x>=10&&x<30&&y>=5&&y<15?[20,50,200,255]:[250,250,250,255]),auto=inferAutoMask(data,w,h);
  assert.equal(auto.kind,'background');
