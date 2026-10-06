@@ -287,6 +287,32 @@ test('Euclidean control-circle finds a thin diagonal bridge on its medial axis',
  assert.ok(hit,'0.3 mm diagonal bridge must fail a 0.5 mm control circle');
  assert.ok(hit.cx>.2&&hit.cx<.8&&hit.cy>.2&&hit.cy<.8,'marker must stay on the diagonal bridge, not on a block edge');
 });
+function polylineStrokeFixture(points,widthPx,{w=150,h=100,ppm=10}={}){
+ const mask=new Uint8Array(w*h),owner=new Int32Array(w*h),radius=widthPx/2;
+ const distanceToSegment=(x,y,a,b)=>{
+  const vx=b[0]-a[0],vy=b[1]-a[1],den=vx*vx+vy*vy;
+  const t=den?Math.max(0,Math.min(1,((x-a[0])*vx+(y-a[1])*vy)/den)):0;
+  return Math.hypot(x-(a[0]+t*vx),y-(a[1]+t*vy));
+ };
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  let d=Infinity;
+  for(let j=1;j<points.length;j++)d=Math.min(d,distanceToSegment(x,y,points[j-1],points[j]));
+  if(d<=radius){const i=y*w+x;mask[i]=1;owner[i]=1;}
+ }
+ return {w,h,ppm,layers:[{id:1,rgb:0x163dc5,mask}],owner};
+}
+test('Real-logo-like thick zigzag contour does not create positive edge noise',()=>{
+ const f=polylineStrokeFixture([[12,78],[35,18],[55,73],[78,22],[99,70],[126,16],[140,75]],8);
+ const result=analyzeLayers(f.layers,f.owner,f.w,f.h,f.ppm,{positive:.5});
+ assert.equal(result.counts.positive,0,'0.8 mm zigzag line art must not create markers along ordinary contour bends');
+});
+test('Real-logo-like thin zigzag contour is still detected',()=>{
+ const f=polylineStrokeFixture([[12,78],[35,18],[55,73],[78,22],[99,70],[126,16],[140,75]],3);
+ const result=analyzeLayers(f.layers,f.owner,f.w,f.h,f.ppm,{positive:.5});
+ assert.ok(result.counts.positive>0,'0.3 mm persistent zigzag line art must fail a 0.5 mm rule');
+ assert.ok(result.boxes.some(b=>b.kind==='positive'&&b.minWidthMm<.5));
+});
+
 test('Control-circle negative scan ignores open background beside a single ink wall',()=>{
  const w=90,h=50,{rgb,seed}=painted(w,h,set=>set(35,5,45,45,0x163dc5));
  const split=splitColors(rgb,seed,w,h,0xffffff,[[22,61,197]]);
