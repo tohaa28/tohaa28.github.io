@@ -3,13 +3,13 @@ import {splitColors,analyzeLayers,analyzeDetail,inferAutoMask,scanPlan} from '..
 import {compactDetailSummary} from '../assets/logo-detail-check.mjs';
 const fixtures=JSON.parse(fs.readFileSync(new URL('./printcheck-golden.json',import.meta.url),'utf8'));
 function semanticExpectation(name){
- const [kind,raw]=name.split('-'),limit=Number(raw);
+ const parts=name.split('-'),kind=parts[0],limit=Number(parts.at(-1));
  if(kind==='empty'||kind==='solid'||kind==='cross'||kind==='wedge')return {positive:false,negative:false,isolated:false};
  if(name.startsWith('cross-colour'))return {positive:false,negative:false,isolated:false};
  if(kind==='bars')return {positive:limit>.25,negative:limit>.25,isolated:false};
  if(kind==='hole')return {positive:false,negative:limit>.25,isolated:false};
  if(name.startsWith('open-channel'))return {positive:limit>=1,negative:limit>.25,isolated:false};
- if(kind==='isolated')return {positive:limit>.25,negative:false,isolated:true};
+ if(kind==='isolated')return {positive:false,negative:false,isolated:true};
  return {positive:false,negative:false,isolated:false};
 }
 for(const f of fixtures)test('PrintCheck fixture semantics: '+f.name,()=>{
