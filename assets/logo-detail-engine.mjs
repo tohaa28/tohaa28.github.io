@@ -106,18 +106,19 @@ function wallOpposition(comp,wall,w,h,radius){
 function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
  const diameterPx=rule*ppm,{inside,opened}=circleOpening(mask,w,h,diameterPx),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h),forbiddenDistance=forbiddenMask?distance(forbiddenMask,w,h,true):null;
  for(let i=0;i<mask.length;i++)if(mask[i]&&!opened[i])missing[i]=1;
- const out=[],extentLimit=Math.max(4,diameterPx*3),wallRadius=Math.max(2,Math.ceil(diameterPx*1.25)),crossGuard=Math.max(1.5,diameterPx*.55);
+ const openedLabels=groups(opened,w,h).labels,out=[],extentLimit=Math.max(4,diameterPx*3),wallRadius=Math.max(2,Math.ceil(diameterPx*1.25)),crossGuard=Math.max(1.5,diameterPx*.55);
  for(const comp of groups(missing,w,h).items){
   if(comp.length<2)continue;
   if(forbiddenDistance&&comp.some(i=>forbiddenDistance[i]/3<=crossGuard))continue;
   if(kind==='negative'&&wallMask&&!wallOpposition(comp,wallMask,w,h,wallRadius))continue;
   let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0;for(const i of comp){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;}cx/=comp.length;cy/=comp.length;
-  const attach=attachmentGeometry(comp,opened,w,h),extent=Math.max(x1-x0+1,y1-y0+1),oneSided=attach.count>0&&attach.maxSep<Math.PI*.66;
-  if(oneSided&&extent<=extentLimit)continue;
-  const medial=comp.filter(i=>axis[i]);
-  if(!medial.length)continue;
+  const attach=attachmentGeometry(comp,opened,w,h),extent=Math.max(x1-x0+1,y1-y0+1),oneSided=attach.count>0&&attach.maxSep<Math.PI*.66,adjacentOpened=new Set();
+  for(const i of comp)neighbors(i,w,h,n=>{if(openedLabels[n])adjacentOpened.add(openedLabels[n]);});
+  const medial=comp.filter(i=>axis[i]);if(!medial.length)continue;
+  const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity,maxWidth=0;for(const i of medial){widths[i]=localDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);maxWidth=Math.max(maxWidth,widths[i]);}
+  const taperToOneBody=adjacentOpened.size===1&&(maxWidth-min)>rule*.22;
+  if((oneSided&&extent<=extentLimit)||taperToOneBody)continue;
   const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
-  const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity;for(const i of medial){widths[i]=localDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);}
   const box=makeBox(comp,widths,w,h,kind,rule,[center]);box.minWidthMm=min;out.push(box);
  }
  return out;
@@ -128,21 +129,24 @@ function negativeCircleProbe(owner,id,w,h,ppm,rule){
  return controlCircleDefects(gap,w,h,ppm,rule,'negative',{wallMask:wall});
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
- const boxes=[],counts={positive:0,negative:0,isolated:0};
- for(const l of layers){
-  if(rule.positive>0){const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive);counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
-  if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
- }
- const isolatedThreshold=rule.isolated;
+ const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
  if(isolatedThreshold>0){
   const visible=Uint8Array.from(owner,v=>v!==0?1:0),zero=new Float64Array(owner.length);
   for(const c of groups(visible,w,h).items){
    let x0=w,y0=h,x1=0,y1=0;const inkCounts=new Map();
    for(const i of c){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);const id=owner[i];if(id>0)inkCounts.set(id,(inkCounts.get(id)||0)+1);}
    const size=Math.max(x1-x0,y1-y0)/ppm;if(size+.02>=isolatedThreshold||!inkCounts.size)continue;
+   for(const i of c)isolatedPixels[i]=1;
    const dominant=[...inkCounts].sort((a,b)=>b[1]-a[1])[0][0],layer=layers.find(l=>l.id===dominant),b=makeBox(c,zero,w,h,'isolated',isolatedThreshold);
    b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
   }
+ }
+ for(const l of layers){
+  if(rule.positive>0){
+   const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive).filter(b=>!isolatedPixels[Math.min(owner.length-1,Math.max(0,Math.round(b.cy*h)*w+Math.round(b.cx*w)))]);
+   counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
+  }
+  if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
  }
  return {boxes,counts};
 }
