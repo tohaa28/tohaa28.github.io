@@ -41,46 +41,25 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
  }return result;
 }
 function positive(fg,owner,id,w,h,ppm,rule){
- const other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.4+6),measurementTolerance=Math.max(.02,1/ppm);
- const exitDistance=(x,y,dx,dy,sign)=>{
-  const norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm;let lx=x,ly=y;
-  for(let step=1;step<=maxRay;step++){
-   const xx=Math.round(x+ux*step),yy=Math.round(y+uy*step);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;
-   if(xx<0||xx>=w||yy<0||yy>=h)return null;
-   const n=yy*w+xx;
-   if(owner[n]!==0&&owner[n]!==id)return null;
-   if(!fg[n])return step;
+ const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),
+  bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),
+  guard=Math.max(1.5,rule*ppm*.55),measurementTolerance=Math.max(.02,1/ppm);
+ const ridge=(x,y)=>{
+  const i=y*w+x,v=d[i];if(!(v>0))return false;
+  let lower=false;
+  for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
+   if(xx===x&&yy===y)continue;const n=yy*w+xx;
+   if(d[n]>v)return false;
+   if(d[n]<v)lower=true;
   }
-  return Infinity;
- };
- const tangentSupported=(x,y,dx,dy)=>{
-  const norm=Math.hypot(dx,dy),tx=-dy/norm,ty=dx/norm,support=Math.max(2,Math.ceil(rule*ppm*.4));
-  for(const sign of [-1,1])for(let step=1;step<=support;step++){
-   const xx=Math.round(x+tx*sign*step),yy=Math.round(y+ty*sign*step);
-   if(xx<0||xx>=w||yy<0||yy>=h||!fg[yy*w+xx])return false;
-  }
-  return true;
- };
- const crossSection=(x,y)=>{
-  const spans=[];let maxBalance=0;
-  for(const [dx,dy] of dirs){
-   const a=exitDistance(x,y,dx,dy,1),b=exitDistance(x,y,dx,dy,-1);
-   if(a===null||b===null||!Number.isFinite(a)||!Number.isFinite(b))continue;
-   const balance=Math.min(a,b)/Math.max(a,b),span=Math.max(1,a+b-1)/ppm;
-   spans.push({dx,dy,balance,span});maxBalance=Math.max(maxBalance,balance);
-  }
-  if(maxBalance<.42)return null;
-  const floor=Math.max(.42,maxBalance-.08);let best=null;
-  for(const item of spans){
-   if(item.balance<floor||!tangentSupported(x,y,item.dx,item.dy))continue;
-   if(!best||item.span<best.span)best=item;
-  }
-  return best;
+  return lower;
  };
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
-  const i=y*w+x;if(!fg[i]||other[i]/3<=guard)continue;
-  const section=crossSection(x,y);if(!section)continue;const mm=section.span;
-  if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+measurementTolerance<rule)bad[i]=1;
+  const i=y*w+x;
+  if(!fg[i]||other[i]/3<=guard||!ridge(x,y))continue;
+  const mm=Math.max(1,2*d[i]/3-1)/ppm;
+  if(mm<=rule*1.75+.05)widths[i]=mm;
+  if(mm+measurementTolerance<rule)bad[i]=1;
  }
  return persistent(bad,widths,w,h,ppm,rule,'positive');
 }
