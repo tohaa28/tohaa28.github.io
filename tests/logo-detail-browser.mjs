@@ -29,7 +29,7 @@ export async function verifyDetailCheck(frame){
  const cells=Array.from({length:400},(_,i)=>'<rect x="'+(i%20*20+4)+'" y="'+(Math.floor(i/20)*20+4)+'" width="2" height="14"/>').join('');
  await frame.locator('#artwork').setInputFiles({name:'detail-full-grid.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="40mm" viewBox="0 0 404 404">'+cells+'</svg>')});
  await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-full-grid.svg'));await resize(40);await frame.locator('#editorCenter').click();await done();
- const grid=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});assert.equal(grid.boxes.filter(b=>b.kind==='positive').length,400);assert.ok(grid.boxes.some(b=>b.kind==='positive'&&b.cx>.9&&b.cy>.9));
+ const grid=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});assert.equal(grid.boxes.length,400,'All 400 genuinely separate small objects must be preserved');assert.equal(grid.boxes.filter(b=>b.kind==='isolated').length,400);assert.ok(grid.boxes.some(b=>b.cx>.9&&b.cy>.9));
  assert.ok(await frame.locator('#detailList button').count()<=101,'Only one list page should be built initially');
  while(await frame.locator('#detailList button').filter({hasText:'Показать ещё'}).count())await frame.locator('#detailList button').filter({hasText:'Показать ещё'}).click();
  assert.equal(await frame.locator('#detailList button').count(),grid.boxes.length);await frame.locator('#detailList button').last().click();assert.equal(await frame.locator('#detailPreview').isVisible(),true);
