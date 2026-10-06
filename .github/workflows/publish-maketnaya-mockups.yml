@@ -237,9 +237,9 @@ jobs:
           grep -q "li.manual" assets/index-CdEUuUA7.css
           grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
           grep -q "logo-detail-check.mjs?v=20261006-5" tools/patch-artwork-preflight.mjs
-          grep -q "logo-preflight.mjs?v=20261006-4" tools/patch-artwork-preflight.mjs
+          grep -q "logo-preflight.mjs?v=20261006-5" tools/patch-artwork-preflight.mjs
           grep -q 'hasMockupBadge' .github/workflows/test-direct-workbench.yml
-          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-4' tests/logo-preflight-browser.mjs
+          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-5' tests/logo-preflight-browser.mjs
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html
