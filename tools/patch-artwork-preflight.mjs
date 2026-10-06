@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="bf9a660304f4c53a5af4bc19cb364721cf7b744c0e51b03b9f0a65fc167de37f";
+const expected="fa9fb1c9ce643fba840a6a8f3131d12c95c06db9d9d35f154b434d98dcb6eaaa";
 const edits=[
   [
     "",
@@ -114,7 +114,7 @@ const edits=[
   ],
   [
     "i=Math.min(1e3,s,Math.max(96,(v(\"stageScroll\").clientHeight-36)*e));",
-    "i=y.view&&y.field?fw:Math.min(1e3,s,Math.max(96,(v(\"stageScroll\").clientHeight-36)*e));"
+    "i=y.view&&y.field?fw:Math.min(1e3,s,Math.max(96,fh*e));"
   ],
   [
     "const sc=v(\"stageScroll\"),cs=getComputedStyle(sc)",
