@@ -1,15 +1,28 @@
 import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
-import {scanPlan} from './logo-detail-engine.mjs?v=20261001-1';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261006-1';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
 let enabled=true,mode='dark',threshold=245,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
 const ids=new WeakMap(),placementKeys=new WeakMap(),entries=new Map();let sequence=0;
 const colors={positive:'#ffd600',negative:'#00e5ff',isolated:'#ff8000'};
 const source='https://gifts.ru/maket-problems/10002362';
+function sourcePalette(art){
+ const facts=art?.preflight||{},direct=Array.isArray(facts.vectorColors?.rgb)?facts.vectorColors.rgb.filter(c=>Array.isArray(c)&&c.length>=3).map(c=>c.slice(0,3).map(Number)):[];
+ if(direct.length)return direct;
+ const colors=[];
+ for(const c of facts.originalColors||[]){
+  if(c?.model==="RGB"&&Array.isArray(c.values)&&c.values.length===3)colors.push(c.values.map(v=>Math.round(Number(v)*255)));
+  else if(c?.model==="Gray"&&Array.isArray(c.values)&&c.values.length===1){const g=Math.round(Number(c.values[0])*255);colors.push([g,g,g]);}
+  else if(c?.model==="CMYK"&&Array.isArray(c.values)&&c.values.length===4){
+   const [C,M,Y,K]=c.values.map(Number);colors.push([255*(1-Math.min(1,C+K)),255*(1-Math.min(1,M+K)),255*(1-Math.min(1,Y+K))].map(Math.round));
+  }
+ }
+ return colors.slice(0,32);
+}
 function entryFor(art,placement,field,rule){
  if(!ids.has(art))ids.set(art,++sequence);const scale=field?.templateScale||1,wMm=placement.w*scale,hMm=placement.h*scale;
  const key=JSON.stringify([ids.get(art),wMm,hMm,rule.positive,rule.negative,rule.isolated,mode,threshold]);placementKeys.set(placement,key);
- let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated},mode,threshold,state:'pending'};entries.set(key,entry);}
+ let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated},mode,threshold,palette:sourcePalette(art),state:'pending'};entries.set(key,entry);}
  return entry;
 }
 const compactNames={positive:'линии',negative:'пробелы',isolated:'отдельные'};
@@ -51,7 +64,7 @@ async function start(){
  if(plan.skip){e.state='error';e.error=plan.skip;busy=false;api.redraw();schedule();return;}
  try{
   const data=await raster(e,plan,token);if(token!==job)return;
-  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261001-2',import.meta.url).href;
+  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-1',import.meta.url).href;
   const blobUrl=URL.createObjectURL(new Blob([`import ${JSON.stringify(workerUrl)};`],{type:'application/javascript'}));
   try{worker=new Worker(blobUrl,{type:'module'});}finally{URL.revokeObjectURL(blobUrl);}
   runs++;watchdog=setTimeout(()=>complete(null,'Проверка заняла слишком много времени. Мелкие элементы не проверены.'),20000);
@@ -61,7 +74,7 @@ async function start(){
    }api.redraw();schedule();
   }
   worker.onmessage=event=>{if(event.data.id===token)complete(event.data.result,event.data.error);};worker.onerror=event=>{event.preventDefault();complete(null,'Фоновая проверка недоступна: '+event.message);};
-  worker.postMessage({id:token,rgba:data.buffer,width:plan.width,height:plan.height,wMm:e.wMm,hMm:e.hMm,rule:e.rule,mode:e.mode,threshold:e.threshold},[data.buffer]);
+  worker.postMessage({id:token,rgba:data.buffer,width:plan.width,height:plan.height,wMm:e.wMm,hMm:e.hMm,rule:e.rule,mode:e.mode,threshold:e.threshold,palette:e.palette},[data.buffer]);
  }catch(error){if(token!==job)return;busy=false;e.state='error';e.error='Мелкие элементы не проверены: '+String(error.message||error);api.redraw();schedule();}
 }
 export function installDetailCheck({canvas,getState,redraw}){
