@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="5cd89c39f4efe3284b9d1cd348c7758a1710f223c17d15ecdfcb949f63edae9f";
+const expected="bf9a660304f4c53a5af4bc19cb364721cf7b744c0e51b03b9f0a65fc167de37f";
 const edits=[
   [
     "",
@@ -323,10 +323,6 @@ const edits=[
   [
     "function cn(c){const t=i=>Number(i.replace(\",\",\".\")),e=[...c.matchAll(/(\\d+(?:[.,]\\d+)?)\\s*[xх×]\\s*(\\d+(?:[.,]\\d+)?)/gi)].map(i=>({w:t(i[1])*10,h:t(i[2])*10})),s=i=>c.match(i)?.[1]||\"\";return{order:s(/№\\s*(\\d+)/),article:s(/Арт\\.\\s*([\\d.]+)/),method:s(/\\b([A-Z]+[\\w-]*\\d[\\w-]*)\\s*:/),sizes:e,minDpi:s(/Разрешение\\s+растрового\\s+изображения\\s+от\\s+(\\d+)\\s*dpi/i),requirements:c.includes(\"Технические требования\")?c.slice(c.indexOf(\"Технические требования\")):\"\"}}",
     "function cn(c){const t=i=>Number(i.replace(\",\",\".\")),e=[...c.matchAll(/(\\d+(?:[.,]\\d+)?)\\s*[xх×]\\s*(\\d+(?:[.,]\\d+)?)\\s*(мм|mm|см|cm)(?=\\s|[),.;]|$)/gi)].map(i=>{const n=t(i[1]),r=t(i[2]),a=/^(?:см|cm)$/i.test(i[3])?10:1;return{w:n*a,h:r*a,unit:i[3].toLowerCase()}}),s=i=>c.match(i)?.[1]||\"\";return{order:s(/№\\s*(\\d+)/),article:s(/Арт\\.\\s*([\\d.]+)/),method:s(/\\b([A-Z]+[\\w-]*\\d[\\w-]*)\\s*:/),sizes:e,minDpi:s(/Разрешение\\s+растрового\\s+изображения\\s+от\\s+(\\d+)\\s*dpi/i),requirements:c.includes(\"Технические требования\")?c.slice(c.indexOf(\"Технические требования\")):\"\"}}"
-  ],
-  [
-    "v(\"dimensions\").textContent=`${ft(c.w)} × ${ft(c.h)} мм`",
-    "v(\"dimensions\").textContent=`Шаблон: ${ft(c.w)} × ${ft(c.h)} мм`"
   ]
 ];
 export function applyLogoPreflight(){
