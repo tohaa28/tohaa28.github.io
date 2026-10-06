@@ -23,3 +23,39 @@ test('Compact PrintCheck summary is suitable for workspace overlay',()=>{
  assert.equal(compactDetailSummary(result,{positive:.12,negative:.15,isolated:.3}),'PrintCheck · мелкие элементы: 4 — линии 2 (0,08<0,12 мм), пробелы 1 (0,11<0,15 мм), отдельные 1 (0,2<0,3 мм).');
  assert.equal(compactDetailSummary({boxes:[],counts:{positive:0,negative:0,isolated:0}},{positive:.12}),'PrintCheck · мелкие элементы: не найдены.');
 });
+
+
+function painted(width,height,paint){
+ const rgb=Array(width*height).fill(0xffffff);
+ const set=(x0,y0,x1,y1,color)=>{for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)rgb[y*width+x]=color;};
+ paint(set,rgb);return {rgb,seed:Uint8Array.from(rgb,c=>c!==0xffffff?1:0)};
+}
+test('Antialias colour boundary is blocked, not treated as a thin ink or gap',()=>{
+ const w=70,h=40,{rgb,seed}=painted(w,h,set=>{set(5,5,32,35,0xff0000);set(32,5,33,35,0x800080);set(33,5,60,35,0x0000ff);});
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[255,0,0],[0,0,255]]);
+ assert.equal(split.layers.length,2);
+ assert.equal(split.suppressedTransitions,1);
+ assert.equal(split.owner[20*w+32],-1,'transition pixels must block same-colour gap rays');
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5,negative:.5});
+ assert.equal(result.boxes.length,0);
+});
+test('A real third source colour stays measurable even when it lies between two colours',()=>{
+ const w=70,h=40,{rgb,seed}=painted(w,h,set=>{set(5,5,32,35,0xff0000);set(32,5,33,35,0x800080);set(33,5,60,35,0x0000ff);});
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[255,0,0],[128,0,128],[0,0,255]]);
+ assert.equal(split.layers.length,3);
+ assert.equal(split.suppressedTransitions,0);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
+ assert.ok(result.boxes.some(b=>b.kind==='positive'&&b.rgb===0x800080),'real thin purple ink must still be checked');
+});
+test('Different ink between same-colour objects is never a negative gap',()=>{
+ const w=70,h=40,{rgb,seed}=painted(w,h,set=>{set(5,5,27,35,0xff0000);set(27,5,30,35,0x0000ff);set(30,5,52,35,0xff0000);});
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[255,0,0],[0,0,255]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
+ assert.equal(result.counts.negative,0);
+});
+test('A true empty gap inside one ink remains detectable',()=>{
+ const w=70,h=40,{rgb,seed}=painted(w,h,set=>{set(5,5,27,35,0xff0000);set(30,5,52,35,0xff0000);});
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[255,0,0]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
+ assert.ok(result.counts.negative>0,'real same-colour gap must still be found');
+});
