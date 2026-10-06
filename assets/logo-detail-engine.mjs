@@ -41,7 +41,7 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
  }return result;
 }
 function positive(fg,owner,id,w,h,ppm,rule){
- const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.2+5);
+ const other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.4+6);
  const exitDistance=(x,y,dx,dy,sign)=>{
   const norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm;let lx=x,ly=y;
   for(let step=1;step<=maxRay;step++){
@@ -57,14 +57,15 @@ function positive(fg,owner,id,w,h,ppm,rule){
   let best=Infinity;
   for(const [dx,dy] of dirs){
    const a=exitDistance(x,y,dx,dy,1),b=exitDistance(x,y,dx,dy,-1);
-   if(a===null||b===null)continue;
-   if(!Number.isFinite(a)||!Number.isFinite(b))continue;
+   if(a===null||b===null||!Number.isFinite(a)||!Number.isFinite(b))continue;
+   const balance=Math.min(a,b)/Math.max(a,b);
+   if(balance<.42)continue;
    best=Math.min(best,Math.max(1,a+b-1)/ppm);
   }
   return best;
  };
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
-  const i=y*w+x;if(!fg[i]||d[i]<=0||!maximum(d,w,x,y)||other[i]/3<=guard)continue;
+  const i=y*w+x;if(!fg[i]||other[i]/3<=guard)continue;
   const mm=crossSection(x,y);if(!Number.isFinite(mm))continue;
   if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;
  }
