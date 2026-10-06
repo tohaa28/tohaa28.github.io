@@ -9,7 +9,7 @@ function semanticExpectation(name){
  if(kind==='bars')return {positive:limit>.25,negative:limit>.25,isolated:false};
  if(kind==='hole')return {positive:false,negative:limit>.25,isolated:false};
  if(name.startsWith('open-channel'))return {positive:limit>=1,negative:limit>.25,isolated:false};
- if(kind==='isolated')return {positive:false,negative:false,isolated:true};
+ if(kind==='isolated')return {positive:limit>.25,negative:false,isolated:true};
  return {positive:false,negative:false,isolated:false};
 }
 for(const f of fixtures)test('PrintCheck fixture semantics: '+f.name,()=>{
