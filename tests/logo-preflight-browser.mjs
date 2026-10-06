@@ -4,7 +4,7 @@ export async function verifyLogoPreflight(frame) {
   // Run against the real loaded module in the launcher frame, with real SVG DOM,
   // PDF.js, PDF-lib and browser image decoding. No application state is injected.
   const result=await frame.evaluate(async()=>{
-    const {inspectArtwork,checkLogo,resolveMethod}=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-13');
+    const {inspectArtwork,checkLogo,resolveMethod}=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-14');
     const svg='<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><path d="M1 2H9" fill="none" stroke="black" stroke-width=".2"/><rect x="1" y="5" width="8" height="3" fill="red"/></svg>';
     const root=new DOMParser().parseFromString(svg,'image/svg+xml').documentElement;
     const image=new Image();image.src='data:image/svg+xml;base64,'+btoa(svg);await image.decode();
@@ -38,7 +38,7 @@ export async function verifyLogoPreflight(frame) {
   await frame.waitForFunction(()=>window.gwbDetailCheck?.entries?.some(e=>e.state==='done'),null,{timeout:30000});
   await frame.waitForFunction(()=>!document.getElementById('logoErrorOverlay')?.textContent.includes('поиск мелких элементов...'));
   const completedDetail=await frame.locator('#logoErrorOverlay').textContent();
-  assert.match(completedDetail,/PrintCheck · мелкие элементы:/,'Transient PrintCheck status must be replaced by the completed detail result');
+  assert.match(completedDetail,/PrintCheck · мелкие элементы(?: проверены)?:/,'Transient PrintCheck status must be replaced by the completed detail result');
   let state=await frame.evaluate(()=>({reports:window.gwbLogoPreflight,disabled:document.getElementById('simpleExport').disabled,field:document.getElementById('fieldSize').textContent}));
   assert.equal(state.reports[0].method,'B4');assert.equal(state.reports[0].rule.positive,.4);assert.equal(state.disabled,true);
   assert.match(state.field,/200\.00 × 100\.00/);
