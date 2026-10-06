@@ -54,12 +54,12 @@ function positive(fg,owner,id,w,h,ppm,rule){
   return Infinity;
  };
  const tangentSupported=(x,y,dx,dy)=>{
-  const norm=Math.hypot(dx,dy),tx=-dy/norm,ty=dx/norm;
-  const sample=sign=>{
-   const xx=Math.round(x+tx*sign),yy=Math.round(y+ty*sign);
-   return xx>=0&&xx<w&&yy>=0&&yy<h&&!!fg[yy*w+xx];
-  };
-  return sample(1)&&sample(-1);
+  const norm=Math.hypot(dx,dy),tx=-dy/norm,ty=dx/norm,support=Math.max(2,Math.ceil(rule*ppm*.4));
+  for(const sign of [-1,1])for(let step=1;step<=support;step++){
+   const xx=Math.round(x+tx*sign*step),yy=Math.round(y+ty*sign*step);
+   if(xx<0||xx>=w||yy<0||yy>=h||!fg[yy*w+xx])return false;
+  }
+  return true;
  };
  const crossSection=(x,y)=>{
   const spans=[];let maxBalance=0;
