@@ -37,36 +37,74 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
   result.push(makeBox(stable,widths,w,h,kind,rule,center.length?center:stable));
  }return result;
 }
-function positive(fg,owner,id,w,h,ppm,rule){const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v>0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;if(!fg[i]||d[i]<=0||!maximum(d,w,x,y)||other[i]/3<=guard)continue;const mm=Math.max(1,2*d[i]/3-1)/ppm;if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;}return persistent(bad,widths,w,h,ppm,rule,'positive');}
+function positive(fg,owner,id,w,h,ppm,rule){const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;if(!fg[i]||d[i]<=0||!maximum(d,w,x,y)||other[i]/3<=guard)continue;const mm=Math.max(1,2*d[i]/3-1)/ppm;if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;}return persistent(bad,widths,w,h,ppm,rule,'positive');}
 function negative(fg,owner,id,w,h,ppm,rule){
  const lab=groups(fg,w,h),d=distance(fg,w,h,true),empty=Uint8Array.from(owner,v=>v===0?1:0),enclosed=new Uint8Array(fg.length),holeBad=new Uint8Array(fg.length),holeWidths=new Float64Array(fg.length),result=[];
- for(const c of groups(empty,w,h).items){let border=false,other=false;for(const v of c){let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1)border=true;neighbors(v,w,h,n=>{if(owner[n]>0&&owner[n]!==id)other=true;});}if(border||other)continue;const bad=holeBad,widths=holeWidths;for(const v of c){enclosed[v]=1;let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1||!maximum(d,w,x,y))continue;let mm=Math.max(1,2*d[v]/3-1)/ppm;if(mm+.02<rule){bad[v]=1;widths[v]=mm;}}}
+ for(const c of groups(empty,w,h).items){let border=false,other=false;for(const v of c){let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1)border=true;neighbors(v,w,h,n=>{if(owner[n]!==0&&owner[n]!==id)other=true;});}if(border||other)continue;const bad=holeBad,widths=holeWidths;for(const v of c){enclosed[v]=1;let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1||!maximum(d,w,x,y))continue;let mm=Math.max(1,2*d[v]/3-1)/ppm;if(mm+.02<rule){bad[v]=1;widths[v]=mm;}}}
  result.push(...components(holeBad,holeWidths,w,h,ppm,rule,'negative'));
  const limit=rule*ppm*1.75,maxRay=Math.ceil(limit+2.5);
- const ray=(x,y,dx,dy,sign)=>{let norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm,lx=x,ly=y;for(let s=1;s<=maxRay;s++){let xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;if(xx<0||xx>=w||yy<0||yy>=h)return null;let i=yy*w+xx;if(owner[i]>0&&owner[i]!==id)return null;if(fg[i])return [lab.labels[i],s];}return null;};
+ const ray=(x,y,dx,dy,sign)=>{let norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm,lx=x,ly=y;for(let s=1;s<=maxRay;s++){let xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;if(xx<0||xx>=w||yy<0||yy>=h)return null;let i=yy*w+xx;if(owner[i]!==0&&owner[i]!==id)return null;if(fg[i])return [lab.labels[i],s];}return null;};
  for(const same of [false,true]){if(!same&&lab.items.length<2)continue;const bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity);for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++){let i=y*w+x;if(fg[i]||enclosed[i]||owner[i]||d[i]<=0||d[i]/3>limit*.5+1.5)continue;let best=Infinity;for(const [dx,dy]of dirs){let x1=x+dx,y1=y+dy,x2=x-dx,y2=y-dy;if(x1<0||x1>=w||y1<0||y1>=h||x2<0||x2>=w||y2<0||y2>=h)continue;let a=d[y1*w+x1],b=d[y2*w+x2];if(!(d[i]>=a&&d[i]>=b&&(d[i]>a||d[i]>b)))continue;let A=ray(x,y,dx,dy,1),B=ray(x,y,dx,dy,-1);if(!A||!B||(A[0]===B[0])!==same)continue;best=Math.min(best,Math.max(1,A[1]+B[1]-1)/ppm);}if(Number.isFinite(best)&&best<=rule*1.75+.05){widths[i]=best;if(best+.02<rule)bad[i]=1;}}result.push(...persistent(bad,widths,w,h,ppm,rule,'negative'));}return result;
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule){const boxes=[],counts={positive:0,negative:0,isolated:0};for(const l of layers){for(const kind of ['positive','negative','isolated']){const threshold=rule[kind];if(!(threshold>0))continue;let found=[];if(kind==='positive')found=positive(l.mask,owner,l.id,w,h,ppm,threshold);else if(kind==='negative')found=negative(l.mask,owner,l.id,w,h,ppm,threshold);else {const zero=new Float64Array(l.mask.length);for(const c of groups(l.mask,w,h).items){const b=makeBox(c,zero,w,h,kind,threshold),size=Math.max(b.w*w,b.h*h)/ppm;if(size+.02<threshold){b.minWidthMm=size;found.push(b);}}}counts[kind]+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}}return {boxes,counts};}
 // Colour directions and seeded connected solids from ArtworkColorLayerLogic (alpha26).
-export function splitColors(rgb,seed,w,h,background=0xffffff){
+// v7 keeps real inks separate but suppresses antialias-only transition bands at colour boundaries.
+function rgbParts(c){return [c>>16&255,c>>8&255,c&255];}
+function rgbDistance(a,b){const A=rgbParts(a),B=rgbParts(b);return Math.hypot(A[0]-B[0],A[1]-B[1],A[2]-B[2]);}
+function mixError(c,a,b){
+ const C=rgbParts(c),A=rgbParts(a),B=rgbParts(b),vx=A[0]-B[0],vy=A[1]-B[1],vz=A[2]-B[2],den=vx*vx+vy*vy+vz*vz;
+ if(den<1)return Infinity;
+ const t=((C[0]-B[0])*vx+(C[1]-B[1])*vy+(C[2]-B[2])*vz)/den;
+ if(t<.08||t>.92)return Infinity;
+ return Math.hypot(C[0]-(B[0]+vx*t),C[1]-(B[1]+vy*t),C[2]-(B[2]+vz*t));
+}
+function transitionLayer(layer,layers,owner,w,h,palette){
+ if(palette.some(c=>rgbDistance(layer.rgb,c)<=24))return false;
+ const d=distance(layer.mask,w,h);let maxRadius=0;
+ for(let i=0;i<layer.mask.length;i++)if(layer.mask[i])maxRadius=Math.max(maxRadius,d[i]/3);
+ if(maxRadius>2.25)return false;
+ const contacts=new Map(),radius=3;
+ for(let i=0;i<layer.mask.length;i++)if(layer.mask[i]){
+  const x=i%w,y=Math.floor(i/w),seen=new Set();
+  for(let yy=Math.max(0,y-radius);yy<=Math.min(h-1,y+radius);yy++)for(let xx=Math.max(0,x-radius);xx<=Math.min(w-1,x+radius);xx++){
+   const id=owner[yy*w+xx];if(id>0&&id!==layer.id)seen.add(id);
+  }
+  for(const id of seen)contacts.set(id,(contacts.get(id)||0)+1);
+ }
+ const ranked=[...contacts].sort((a,b)=>b[1]-a[1]);if(ranked.length<2)return false;
+ const support=Math.max(3,Math.ceil(layer.pixels*.12));
+ if(ranked[0][1]<support||ranked[1][1]<support)return false;
+ const a=layers.find(l=>l.id===ranked[0][0]),b=layers.find(l=>l.id===ranked[1][0]);
+ return !!a&&!!b&&mixError(layer.rgb,a.rgb,b.rgb)<=30;
+}
+export function splitColors(rgb,seed,w,h,background=0xffffff,palette=[]){
  const br=background>>16&255,bg=background>>8&255,bb=background&255,hist=new Map(),layers=[];
  const direction=c=>{const r=(c>>16&255)-br,g=(c>>8&255)-bg,b=(c&255)-bb,m=Math.hypot(r,g,b);return {r:r/m,g:g/m,b:b/m,m};};
  for(let i=0;i<seed.length;i++)if(seed[i]){let c=rgb[i],d=direction(c);if(d.m<9)continue;let r=c>>16&255,g=c>>8&255,b=c&255,key=(r>>4)<<8|(g>>4)<<4|(b>>4),v=hist.get(key);if(!v){v={key,count:0,sr:0,sg:0,sb:0,coreMag:0,coreRgb:0};hist.set(key,v);}v.count++;v.sr+=r;v.sg+=g;v.sb+=b;if(d.m>v.coreMag){v.coreMag=d.m;v.coreRgb=c;}}
  const bins=[...hist.values()].sort((a,b)=>b.count-a.count||b.coreMag-a.coreMag||a.key-b.key),best=(d,min)=>{let hit=null;for(const l of layers){let c=d.r*l.r+d.g*l.g+d.b*l.b;if(c>min){min=c;hit=l;}}return hit;};
  const color=v=>v.coreRgb||((Math.floor(v.sr/v.count)&255)<<16|(Math.floor(v.sg/v.count)&255)<<8|Math.floor(v.sb/v.count)&255);
- const add=v=>{const c=color(v),d=direction(c);if(!(d.m>0))return;layers.push({id:layers.length+1,rgb:c,...d,coreMagnitude:v.coreMag});};
- for(const v of bins){if(v.coreMag<48)continue;let c=color(v),d=direction(c),l=best(d,.985);if(l){if(v.coreMag>l.coreMagnitude){l.coreMagnitude=v.coreMag;l.rgb=c;}continue;}if(v.count<2)continue;if(layers.length>=16)break;add(v);}
+ const add=v=>{const c=color(v),d=direction(c);if(!(d.m>0))return;layers.push({id:layers.length+1,rgb:c,...d,coreMagnitude:v.coreMag,histCount:v.count});};
+ for(const v of bins){if(v.coreMag<48)continue;let c=color(v),d=direction(c),l=best(d,.985);if(l){if(v.coreMag>l.coreMagnitude){l.coreMagnitude=v.coreMag;l.rgb=c;}l.histCount=(l.histCount||0)+v.count;continue;}if(v.count<2)continue;if(layers.length>=16)break;add(v);}
  if(!layers.length&&bins.length)add(bins.reduce((a,b)=>b.coreMag>a.coreMag?b:a));
  const provisional=new Int32Array(seed.length);for(let i=0;i<rgb.length;i++){const d=direction(rgb[i]);if(d.m<9)continue;provisional[i]=best(d,.90)?.id||0;}
  const kept=[];for(const l of layers){const candidate=Uint8Array.from(provisional,v=>v===l.id?1:0);l.mask=new Uint8Array(seed.length);l.pixels=0;for(const c of groups(candidate,w,h).items){let supported=false;for(const v of c){if(seed[v]&&provisional[v]===l.id){supported=true;break;}neighbors(v,w,h,n=>{if(seed[n]&&provisional[n]===l.id)supported=true;});if(supported)break;}if(supported){for(const v of c)l.mask[v]=1;l.pixels+=c.length;}}if(l.pixels){l.id=kept.length+1;kept.push(l);}}
- const owner=new Int32Array(seed.length);for(const l of kept)for(let i=0;i<owner.length;i++)if(l.mask[i])owner[i]=l.id;return {layers:kept,owner};
+ const rawOwner=new Int32Array(seed.length);for(const l of kept)for(let i=0;i<rawOwner.length;i++)if(l.mask[i])rawOwner[i]=l.id;
+ const sourcePalette=(Array.isArray(palette)?palette:[]).map(c=>Array.isArray(c)?((Math.round(c[0])&255)<<16|(Math.round(c[1])&255)<<8|(Math.round(c[2])&255)):Number(c)).filter(Number.isFinite);
+ const suppressed=new Set();for(const l of kept)if(transitionLayer(l,kept,rawOwner,w,h,sourcePalette))suppressed.add(l.id);
+ const finalLayers=[],idMap=new Map();for(const l of kept)if(!suppressed.has(l.id)){const old=l.id;l.id=finalLayers.length+1;idMap.set(old,l.id);finalLayers.push(l);}
+ const owner=new Int32Array(seed.length);for(let i=0;i<owner.length;i++){
+  if(!seed[i])continue;
+  const old=rawOwner[i],mapped=idMap.get(old);
+  owner[i]=mapped||-1; // visible but not a proven ink layer: block gap detection at colour transitions.
+ }
+ return {layers:finalLayers,owner,suppressedTransitions:suppressed.size};
 }
-export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245}){
+export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245,palette=[]}){
  if(width*height>MAX_PIXELS)throw Error('Превышен лимит размера маски.');const N=width*height,rgb=new Int32Array(N),seed=new Uint8Array(N),background=mode==='light'?0:0xffffff;
  for(let i=0;i<N;i++){const a=data[i*4+3]/255,bg=background?255:0,r=Math.round(data[i*4]*a+bg*(1-a)),g=Math.round(data[i*4+1]*a+bg*(1-a)),b=Math.round(data[i*4+2]*a+bg*(1-a));rgb[i]=r<<16|g<<8|b;seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);}
- const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed)}:splitColors(rgb,seed,width,height,background),step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule),notes=[];
+ const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule),notes=[];
  if(mode==='alpha')notes.push('Режим прозрачности объединяет цвета. Для проверки по цветам выберите светлый или тёмный фон.');
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Проверьте режим фона и прозрачность логотипа.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,algorithm:'PrintCheck-alpha63-per-color-medial-gap-v6-full-coverage',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,algorithm:'PrintCheck-per-color-medial-gap-v7-colour-boundary-safe',candidateOnly:true};
 }
