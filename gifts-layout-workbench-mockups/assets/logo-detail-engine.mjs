@@ -20,7 +20,7 @@ function distance(mask,w,h,toTrue=false){return chamfer(Int32Array.from(mask,v=>
 function maximum(d,w,x,y){let v=d[y*w+x];for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(d[yy*w+xx]>v)return false;return true;}
 function makeBox(indices,widths,w,h,kind,rule,centerSubset=indices){let x0=w,y0=h,x1=0,y1=0,min=Infinity,max=0,cx=0,cy=0;for(const i of indices){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);min=Math.min(min,widths[i]);max=Math.max(max,widths[i]);}for(const i of centerSubset){cx+=i%w;cy+=Math.floor(i/w);}return {x:x0/w,y:y0/h,w:(x1-x0)/w,h:(y1-y0)/h,cx:cx/centerSubset.length/w,cy:cy/centerSubset.length/h,pixels:indices.length,minWidthMm:min,maxWidthMm:max,kind,threshold:rule};}
 function components(bad,widths,w,h,ppm,rule,kind){return groups(bad,w,h).items.filter(c=>c.length>=2||c.length/ppm**2>=.0008).map(c=>makeBox(c,widths,w,h,kind,rule));}
-function persistent(bad,widths,w,h,ppm,rule,kind,{rejectOneSidedTaper=false,fieldDistance=null}={}){
+function persistent(bad,widths,w,h,ppm,rule,kind,{rejectOneSidedTaper=false,fieldDistance=null,allowOpenChannel=false}={}){
  const result=[],N=bad.length,q=new Int32Array(N),visit=new Int32Array(N),dist=new Int32Array(N),parent=new Int32Array(N),mark=new Int32Array(N);let token=0,comp=0;
  const minPath=Math.max(3,rule*ppm),need=Math.ceil(minPath),band=Math.max(.03,rule*.18),eps=Math.max(.01,.5/ppm);
  const farthest=(start,keep)=>{token++;let a=0,b=1,far=start;q[0]=start;visit[start]=token;dist[start]=0;if(keep)parent[start]=-1;while(a<b){let v=q[a++];neighbors(v,w,h,n=>{if(!bad[n]||visit[n]===token)return;visit[n]=token;dist[n]=dist[v]+1;if(keep)parent[n]=v;q[b++]=n;if(dist[n]>dist[far])far=n;});}return far;};
@@ -35,10 +35,10 @@ function persistent(bad,widths,w,h,ppm,rule,kind,{rejectOneSidedTaper=false,fiel
   const reject=()=>{for(const i of c)bad[i]=0;};if(path.length<need){reject();continue;}
   let left=0,mh=0,mt=0,xh=0,xt=0,bs=-1,be=-1,bl=0;const mn=new Int32Array(path.length),mx=new Int32Array(path.length);
   for(let right=0;right<path.length;right++){const wr=widths[path[right]];if(!Number.isFinite(wr)){left=right+1;mh=mt=xh=xt=0;continue;}while(mt>mh&&widths[path[mn[mt-1]]]>=wr)mt--;mn[mt++]=right;while(xt>xh&&widths[path[mx[xt-1]]]<=wr)xt--;mx[xt++]=right;while(left<=right&&xh<xt&&mh<mt&&widths[path[mx[xh]]]-widths[path[mn[mh]]]>band){if(mn[mh]===left)mh++;if(mx[xh]===left)xh++;left++;}const len=right-left+1;if(len>bl){bl=len;bs=left;be=right;}}
-  if(bl<need){reject();continue;}const occ=bl/path.length;if((bs===0)!==(be===path.length-1)&&occ<.72){reject();continue;}
+  if(bl<need){reject();continue;}const occ=bl/path.length;if(!allowOpenChannel&&(bs===0)!==(be===path.length-1)&&occ<.72){reject();continue;}
   const widerA=widerAhead(path[0],path[Math.min(path.length-1,1)]),widerB=widerAhead(path.at(-1),path[Math.max(0,path.length-2)]);
   if(rejectOneSidedTaper&&widerA!==widerB){reject();continue;}
-  if(!rejectOneSidedTaper&&occ>=.70&&widerA!==widerB&&bl<Math.ceil(Math.max(need,minPath*2.5))){reject();continue;}
+  if(!allowOpenChannel&&!rejectOneSidedTaper&&occ>=.70&&widerA!==widerB&&bl<Math.ceil(Math.max(need,minPath*2.5))){reject();continue;}
   let supported=false;for(let pi=bs;pi<=be;pi++){let degree=0;neighbors(path[pi],w,h,n=>{if(n!==path[pi]&&bad[n])degree++;});if(degree>=3&&widerNear(path[pi])){supported=true;break;}}
   if(supported&&bl<Math.ceil(minPath*2)){reject();continue;}
   const stable=path.slice(bs,be+1),minimum=stable.reduce((m,i)=>Math.min(m,widths[i]),Infinity),center=stable.filter(i=>widths[i]<=minimum+eps);
@@ -76,37 +76,101 @@ function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
  const ray=(x,y,dx,dy,sign)=>{let norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm,lx=x,ly=y;for(let s=1;s<=maxRay;s++){let xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;if(xx<0||xx>=w||yy<0||yy>=h)return null;let i=yy*w+xx;if(owner[i]!==0&&owner[i]!==id)return null;if(fg[i])return [lab.labels[i],s];}return null;};
  for(const same of (sameComponentOpenGaps?[false,true]:[false])){if(!same&&lab.items.length<2)continue;const bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity);for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++){let i=y*w+x;if(fg[i]||enclosed[i]||owner[i]||d[i]<=0||d[i]/3>limit*.5+1.5)continue;let best=Infinity;for(const [dx,dy]of dirs){let x1=x+dx,y1=y+dy,x2=x-dx,y2=y-dy;if(x1<0||x1>=w||y1<0||y1>=h||x2<0||x2>=w||y2<0||y2>=h)continue;let a=d[y1*w+x1],b=d[y2*w+x2];if(!(d[i]>=a&&d[i]>=b&&(d[i]>a||d[i]>b)))continue;let A=ray(x,y,dx,dy,1),B=ray(x,y,dx,dy,-1);if(!A||!B||(A[0]===B[0])!==same)continue;best=Math.min(best,Math.max(1,A[1]+B[1]-1)/ppm);}if(Number.isFinite(best)&&best<=rule*1.75+.05){widths[i]=best;if(best+.02<rule)bad[i]=1;}}result.push(...persistent(bad,widths,w,h,ppm,rule,'negative'));}return result;
 }
-export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
- const boxes=[],counts={positive:0,negative:0,isolated:0};
- for(const l of layers){
-  for(const kind of ['positive','negative']){
-   const threshold=rule[kind];if(!(threshold>0))continue;
-   const found=kind==='positive'?positive(l.mask,owner,l.id,w,h,ppm,threshold):negative(l.mask,owner,l.id,w,h,ppm,threshold,options);
-   counts[kind]+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
+function localDiameterMm(d,i,ppm){return Math.max(1,2*d[i]/3-1)/ppm;}
+function medialAxis(mask,d,w,h){
+ const out=new Uint8Array(mask.length),pairs=[[-1,0,1,0],[0,-1,0,1],[-1,-1,1,1],[-1,1,1,-1]];
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x,v=d[i];if(!mask[i]||v<=0)continue;
+  for(const [ax,ay,bx,by] of pairs){const a=d[(y+ay)*w+x+ax],b=d[(y+by)*w+x+bx];if(v>=a&&v>=b&&(v>a||v>b)){out[i]=1;break;}}
+ }
+ return out;
+}
+function circleOpening(mask,w,h,diameterPx){
+ const radius=Math.max(.5,diameterPx/2),inside=distance(mask,w,h),centers=new Uint8Array(mask.length);
+ for(let i=0;i<mask.length;i++)if(mask[i]&&inside[i]/3>=radius)centers[i]=1;
+ if(!centers.some(Boolean))return {inside,opened:new Uint8Array(mask.length),centers};
+ const fromCenter=distance(centers,w,h,true),opened=new Uint8Array(mask.length);
+ for(let i=0;i<mask.length;i++)if(mask[i]&&fromCenter[i]/3<=radius+.55)opened[i]=1;
+ return {inside,opened,centers};
+}
+function attachmentGeometry(comp,opened,w,h){
+ let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
+ const vectors=[];for(const i of comp){neighbors(i,w,h,n=>{if(!opened[n])return;const dx=n%w-cx,dy=Math.floor(n/w)-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});}
+ let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
+ return {count:vectors.length,maxSep};
+}
+function wallOpposition(comp,wall,w,h,radius){
+ for(const i of comp){const x=i%w,y=Math.floor(i/w);for(const [dx,dy] of dirs){const norm=Math.hypot(dx,dy);let a=false,b=false;for(let q=1;q<=radius;q++){const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;if(a&&b)return true;}}}
+ return false;
+}
+function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
+ const diameterPx=rule*ppm,{inside,opened}=circleOpening(mask,w,h,diameterPx),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h),forbiddenDistance=forbiddenMask?distance(forbiddenMask,w,h,true):null;
+ for(let i=0;i<mask.length;i++)if(mask[i]&&!opened[i])missing[i]=1;
+ const openedLabels=groups(opened,w,h).labels,out=[],extentLimit=Math.max(4,diameterPx*3),wallRadius=Math.max(2,Math.ceil(diameterPx*1.25)),crossGuard=Math.max(1.5,diameterPx*.55);
+ for(const comp of groups(missing,w,h).items){
+  if(comp.length<2)continue;
+  if(forbiddenDistance&&comp.some(i=>forbiddenDistance[i]/3<=crossGuard))continue;
+  if(kind==='negative'&&wallMask&&!wallOpposition(comp,wallMask,w,h,wallRadius))continue;
+  let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0;for(const i of comp){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;}cx/=comp.length;cy/=comp.length;
+  const attach=attachmentGeometry(comp,opened,w,h),extent=Math.max(x1-x0+1,y1-y0+1),oneSided=attach.count>0&&attach.maxSep<Math.PI*.66,adjacentOpened=new Set();
+  for(const i of comp)neighbors(i,w,h,n=>{if(openedLabels[n])adjacentOpened.add(openedLabels[n]);});
+  const medial=comp.filter(i=>axis[i]);if(!medial.length)continue;
+  const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity,maxWidth=0;for(const i of medial){widths[i]=localDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);maxWidth=Math.max(maxWidth,widths[i]);}
+  const taperToOneBody=adjacentOpened.size===1&&(maxWidth-min)>rule*.22;
+  if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody))continue;
+  const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
+  const box=makeBox(comp,widths,w,h,kind,rule,[center]);box.minWidthMm=min;out.push(box);
+ }
+ return out;
+}
+function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){const other=Uint8Array.from(owner,v=>v!==0&&v!==id?1:0);return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
+function wallOppositionAt(i,wall,w,h,radius){
+ const x=i%w,y=Math.floor(i/w);
+ for(const [dx,dy] of dirs){
+  const norm=Math.hypot(dx,dy);let a=false,b=false;
+  for(let q=1;q<=radius;q++){
+   const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);
+   if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;
+   if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;
+   if(a&&b)return true;
   }
  }
- const isolatedThreshold=rule.isolated;
+ return false;
+}
+function negativeCircleProbe(owner,id,w,h,ppm,rule){
+ const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
+ for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
+ const d=distance(gap,w,h),axis=medialAxis(gap,d,w,h),bad=new Uint8Array(owner.length),widths=new Float64Array(owner.length).fill(Infinity),
+  tol=Math.max(.015,.55/ppm),radius=Math.max(2,Math.ceil(rule*ppm*1.5));
+ for(let i=0;i<axis.length;i++)if(axis[i]){
+  const mm=localDiameterMm(d,i,ppm);widths[i]=mm;
+  if(mm+tol<rule&&wallOppositionAt(i,wall,w,h,radius))bad[i]=1;
+ }
+ return persistent(bad,widths,w,h,ppm,rule,'negative',{allowOpenChannel:true});
+}
+export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
+ const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
  if(isolatedThreshold>0){
-  if(options.visualIsolated){
-   const visible=Uint8Array.from(owner,v=>v!==0?1:0),zero=new Float64Array(owner.length);
-   for(const c of groups(visible,w,h).items){
-    let x0=w,y0=h,x1=0,y1=0;const inkCounts=new Map();
-    for(const i of c){
-     const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);
-     const id=owner[i];if(id>0)inkCounts.set(id,(inkCounts.get(id)||0)+1);
-    }
-    const size=Math.max(x1-x0,y1-y0)/ppm;
-    if(size+.02>=isolatedThreshold||!inkCounts.size)continue;
-    const dominant=[...inkCounts].sort((a,b)=>b[1]-a[1])[0][0],layer=layers.find(l=>l.id===dominant),b=makeBox(c,zero,w,h,'isolated',isolatedThreshold);
-    b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
-   }
-  }else{
-   for(const l of layers){
-    const zero=new Float64Array(l.mask.length),found=[];
-    for(const c of groups(l.mask,w,h).items){const b=makeBox(c,zero,w,h,'isolated',isolatedThreshold),size=Math.max(b.w*w,b.h*h)/ppm;if(size+.02<isolatedThreshold){b.minWidthMm=size;found.push(b);}}
-    counts.isolated+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
-   }
+  const visible=Uint8Array.from(owner,v=>v!==0?1:0),zero=new Float64Array(owner.length);
+  for(const c of groups(visible,w,h).items){
+   let x0=w,y0=h,x1=0,y1=0;const inkCounts=new Map();
+   for(const i of c){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);const id=owner[i];if(id>0)inkCounts.set(id,(inkCounts.get(id)||0)+1);}
+   const size=Math.max(x1-x0,y1-y0)/ppm;if(size+.02>=isolatedThreshold||!inkCounts.size)continue;
+   for(const i of c)isolatedPixels[i]=1;
+   const dominant=[...inkCounts].sort((a,b)=>b[1]-a[1])[0][0],layer=layers.find(l=>l.id===dominant),b=makeBox(c,zero,w,h,'isolated',isolatedThreshold);
+   b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
   }
+ }
+ for(const l of layers){
+  if(rule.positive>0){
+   const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive).filter(b=>{
+    const x0=Math.max(0,Math.floor(b.x*w)),y0=Math.max(0,Math.floor(b.y*h)),x1=Math.min(w,Math.ceil((b.x+b.w)*w)),y1=Math.min(h,Math.ceil((b.y+b.h)*h));
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)if(isolatedPixels[y*w+x])return false;
+    return true;
+   });
+   counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
+  }
+  if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
  }
  return {boxes,counts};
 }
@@ -189,5 +253,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-auto-mask-v11-visual-objects',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v13-morph-open',candidateOnly:true};
 }
