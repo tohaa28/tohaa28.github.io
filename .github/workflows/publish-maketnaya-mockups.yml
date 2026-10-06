@@ -219,7 +219,7 @@ jobs:
           grep -q 'dataset.article=String(t.article' assets/index-BpU9kvz8.js
           grep -q 'updateAssetReadiness' mockup.html
           grep -q 'compactDetailSummary' assets/logo-detail-check.mjs
-          grep -q 'PrintCheck-control-circle-v14-local-thickness' assets/logo-detail-engine.mjs
+          grep -q 'PrintCheck-control-circle-v15-euclidean-local-thickness' assets/logo-detail-engine.mjs
           grep -q 'transitionLayer' assets/logo-detail-engine.mjs
           grep -q 'sourcePalette' assets/logo-detail-check.mjs
           grep -q 'Antialias colour boundary is blocked' tests/logo-detail.test.mjs
@@ -228,24 +228,25 @@ jobs:
           grep -q 'Raster scan never upsamples beyond source pixels' tests/logo-detail.test.mjs
           grep -q 'Automatic mask detects light opaque background' tests/logo-detail.test.mjs
           grep -q 'Control-circle positive scan ignores a line wider' tests/logo-detail.test.mjs
+          grep -q 'Euclidean control-circle is rotation-stable for a thick diagonal bridge' tests/logo-detail.test.mjs
           grep -q 'Isolated detection does not split one multicolour visible object' tests/logo-detail.test.mjs
           ! grep -q 'id="detailMode"' assets/logo-detail-check.mjs
           ! grep -q 'id="detailThreshold"' assets/logo-detail-check.mjs
           grep -q 'Маска и фон определяются автоматически' assets/logo-detail-check.mjs
-          grep -q 'morphological control-circle scan' tests/logo-detail-browser.mjs
+          grep -q 'euclidean control-circle scan' tests/logo-detail-browser.mjs
           grep -q 'automatic mask + raster/vector parity' tests/logo-detail-browser.mjs
           grep -q 'true-gap-only negative scan' tests/logo-detail-browser.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
           grep -Fq "displayText:e.state==='error'?e.error:'поиск мелких элементов...'" assets/logo-detail-check.mjs
           grep -Fq "transient:e.state!=='error'" assets/logo-detail-check.mjs
           grep -q "f.overlay===true" assets/logo-preflight.mjs
-          grep -q "logo-detail-check.mjs?v=20261006-9" assets/logo-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261006-10" assets/logo-preflight.mjs
           grep -q "li.manual" assets/index-CdEUuUA7.css
           grep -q "displayText:f.displayText||f.text" tools/patch-artwork-preflight.mjs
-          grep -q "logo-detail-check.mjs?v=20261006-9" tools/patch-artwork-preflight.mjs
-          grep -q "logo-preflight.mjs?v=20261006-9" tools/patch-artwork-preflight.mjs
+          grep -q "logo-detail-check.mjs?v=20261006-10" tools/patch-artwork-preflight.mjs
+          grep -q "logo-preflight.mjs?v=20261006-10" tools/patch-artwork-preflight.mjs
           grep -q 'hasMockupBadge' .github/workflows/test-direct-workbench.yml
-          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-9' tests/logo-preflight-browser.mjs
+          grep -q 'gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-10' tests/logo-preflight-browser.mjs
           grep -q 'id="selectField" disabled' mockup.html
           grep -q 'localStorage.getItem(TOKEN_KEY)' save-profile.html
           grep -q 'authMustBeReplaced' save-profile.html

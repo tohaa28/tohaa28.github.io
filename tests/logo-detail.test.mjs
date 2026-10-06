@@ -253,6 +253,28 @@ test('Control-circle positive scan marks the centre of a line narrower than the 
  assert.ok(hit,'0.3 mm line must fail a 0.5 mm control circle');
  assert.ok(hit.cy>.35&&hit.cy<.65,'marker must sit near the centreline');
 });
+function diagonalBridgeFixture(widthPx){
+ const w=110,h=80,ppm=10,mask=new Uint8Array(w*h),owner=new Int32Array(w*h),set=(x,y)=>{if(x>=0&&x<w&&y>=0&&y<h){const i=y*w+x;mask[i]=1;owner[i]=1;}};
+ for(let y=10;y<70;y++)for(let x=10;x<30;x++)set(x,y);
+ for(let y=10;y<70;y++)for(let x=80;x<100;x++)set(x,y);
+ const ax=29,ay=24,bx=80,by=54,vx=bx-ax,vy=by-ay,len2=vx*vx+vy*vy;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const t=((x-ax)*vx+(y-ay)*vy)/len2;if(t<0||t>1)continue;
+  const px=ax+t*vx,py=ay+t*vy;
+  if(Math.hypot(x-px,y-py)<=widthPx/2)set(x,y);
+ }
+ return {w,h,ppm,layers:[{id:1,rgb:0x163dc5,mask}],owner};
+}
+test('Euclidean control-circle is rotation-stable for a thick diagonal bridge',()=>{
+ const f=diagonalBridgeFixture(8),result=analyzeLayers(f.layers,f.owner,f.w,f.h,f.ppm,{positive:.5});
+ assert.equal(result.counts.positive,0,'0.8 mm diagonal bridge must accept a 0.5 mm control circle');
+});
+test('Euclidean control-circle finds a thin diagonal bridge on its medial axis',()=>{
+ const f=diagonalBridgeFixture(3),result=analyzeLayers(f.layers,f.owner,f.w,f.h,f.ppm,{positive:.5});
+ const hit=result.boxes.find(b=>b.kind==='positive');
+ assert.ok(hit,'0.3 mm diagonal bridge must fail a 0.5 mm control circle');
+ assert.ok(hit.cx>.2&&hit.cx<.8&&hit.cy>.2&&hit.cy<.8,'marker must stay on the diagonal bridge, not on a block edge');
+});
 test('Control-circle negative scan ignores open background beside a single ink wall',()=>{
  const w=90,h=50,{rgb,seed}=painted(w,h,set=>set(35,5,45,45,0x163dc5));
  const split=splitColors(rgb,seed,w,h,0xffffff,[[22,61,197]]);

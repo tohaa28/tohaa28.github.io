@@ -1,5 +1,5 @@
 import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
-import {scanPlan} from './logo-detail-engine.mjs?v=20261006-9';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261006-10';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
 let enabled=true,mode='auto',threshold=0,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
@@ -64,7 +64,7 @@ async function start(){
  if(plan.skip){e.state='error';e.error=plan.skip;busy=false;api.redraw();schedule();return;}
  try{
   const data=await raster(e,plan,token);if(token!==job)return;
-  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-9',import.meta.url).href;
+  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-10',import.meta.url).href;
   const blobUrl=URL.createObjectURL(new Blob([`import ${JSON.stringify(workerUrl)};`],{type:'application/javascript'}));
   try{worker=new Worker(blobUrl,{type:'module'});}finally{URL.revokeObjectURL(blobUrl);}
   runs++;watchdog=setTimeout(()=>complete(null,'Проверка заняла слишком много времени. Мелкие элементы не проверены.'),20000);
