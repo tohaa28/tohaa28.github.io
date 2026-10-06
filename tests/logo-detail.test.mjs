@@ -184,6 +184,18 @@ test('Positive scan finds a genuinely thin stroke on its medial axis',()=>{
  assert.ok(bridge.length>0,'marker must be centered on the thin bridge, not on the outer edge');
 });
 
+test('Control-circle keeps a long uniform thin spur attached to thick artwork',()=>{
+ const w=120,h=70,{rgb,seed}=painted(w,h,set=>{
+  set(10,15,45,55,0x163dc5);
+  set(45,33,105,36,0x163dc5);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[22,61,197]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5});
+ const hit=result.boxes.find(b=>b.kind==='positive');
+ assert.ok(hit,'a long 0.3 mm spur must fail a 0.5 mm control circle');
+ assert.ok(hit.cx>.35,'marker must stay on the uniform thin spur');
+});
+
 test('Positive scan ignores a narrow corner convergence shorter than the persistence rule',()=>{
  const w=70,h=50,{rgb,seed}=painted(w,h,(set,rgb)=>{
   set(10,10,22,40,0x0033cc);
