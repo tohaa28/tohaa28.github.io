@@ -87,6 +87,9 @@ jobs:
           grep -q 'Order login hint auth visibility is invalid' .github/workflows/test-direct-workbench.yml
           grep -q 'Ожидание выбора заказа' editor.html
           grep -q 'gwbSyncOrderWorkspaceWaiting' editor.html
+          grep -q 'gwbClearOrderArtworkLayers' editor.html
+          grep -q 'logoErrorOverlay{visibility:hidden' editor.html
+          grep -q 'Artwork layers were not restored after returning to order' .github/workflows/test-direct-workbench.yml
           grep -q 'Returning to order list did not clear the right workspace' .github/workflows/test-direct-workbench.yml
           grep -q 'id="mockupShell"' editor.html
           grep -q 'shared Maketnaya visual system' mockup.html
