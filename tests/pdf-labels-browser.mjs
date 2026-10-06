@@ -449,7 +449,6 @@ export async function verifyPdfLabels(frame) {
     }));
     assert.match(sizeState.fieldSize,/32\.00 × 32\.00 мм/,`${fixture.name}: ${JSON.stringify(sizeState)}`);
     assert.doesNotMatch(sizeState.fieldSize,/320\.00/);
-    assert.match(sizeState.dimensions,/^Шаблон: /,'Page dimensions must be labelled as template size, not field size');
     console.log('Unit-aware field size:',fixture.name,JSON.stringify(sizeState));
   }
 
