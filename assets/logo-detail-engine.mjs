@@ -138,7 +138,7 @@ function attachmentGeometry(comp,opened,w,h){
 function median(values){const a=values.slice().sort((x,y)=>x-y),n=a.length;if(!n)return Infinity;return n&1?a[n>>1]:(a[n/2-1]+a[n/2])/2;}
 function oneBodyTaper(medial,opened,inside,w,h,ppm,rule){
  if(medial.length<4)return false;
- const fromOpened=euclideanDistance(opened,w,h,true),rows=medial.map(i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3));
+ const fromOpened=euclideanDistance(opened,w,h,true),rows=Array.from(medial,i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3));
  const near=median(rows.slice(0,q).map(v=>v[1])),far=median(rows.slice(-q).map(v=>v[1]));
  return near-far>Math.max(rule*.12,.45/ppm);
 }
