@@ -3,12 +3,15 @@
 // Browser port; physical dimensions come from the placed logo, never screen zoom.
 export const MAX_PIXELS=4_000_000;
 const INF=1<<27, dirs=[[1,0],[0,1],[1,1],[1,-1],[2,1],[1,2],[2,-1],[1,-2]];
-export function scanPlan(wMm,hMm,rule,{maxPixels=MAX_PIXELS}={}){
+export function scanPlan(wMm,hMm,rule,{maxPixels=MAX_PIXELS,sourceWidth=0,sourceHeight=0}={}){
  const ts=[rule.positive,rule.negative,rule.isolated].filter(x=>x>0);
  if(!(wMm>0&&hMm>0)||!ts.length)return {skip:'Для нанесения не определены пороги мелких элементов.'};
- const preferred=Math.min(2400,Math.max(720,25.4*6/Math.min(...ts))),budgetDpi=25.4*Math.sqrt(maxPixels/(wMm*hMm))*.995,dpi=Math.min(preferred,budgetDpi),width=Math.ceil(wMm*dpi/25.4),height=Math.ceil(hMm*dpi/25.4),step=Math.max(wMm/width,hMm/height);
- if(width*height>maxPixels||Math.min(...ts)/step<4)return {skip:'Область слишком велика для точной фоновой проверки. Мелкие элементы не проверены.'};
- return {width,height,dpi,step,lowResolution:Math.min(...ts)/step<4};
+ const minimum=Math.min(...ts),preferred=Math.min(2400,Math.max(720,25.4*6/minimum)),budgetDpi=25.4*Math.sqrt(maxPixels/(wMm*hMm))*.995;
+ const sourceLimited=sourceWidth>0&&sourceHeight>0;
+ const sourceDpi=sourceLimited?25.4*Math.min(sourceWidth/wMm,sourceHeight/hMm):Infinity;
+ const dpi=Math.min(preferred,budgetDpi,sourceDpi),width=Math.max(1,Math.min(sourceLimited?sourceWidth:Infinity,Math.ceil(wMm*dpi/25.4))),height=Math.max(1,Math.min(sourceLimited?sourceHeight:Infinity,Math.ceil(hMm*dpi/25.4))),step=Math.max(wMm/width,hMm/height),samples=minimum/step;
+ if(width*height>maxPixels||samples<(sourceLimited?3:4))return {skip:'Область слишком велика или исходный растр недостаточно детален для точной фоновой проверки. Мелкие элементы не проверены.'};
+ return {width,height,dpi,step,lowResolution:samples<4,sourceLimited,samplesPerMinimum:samples};
 }
 function neighbors(v,w,h,fn){const y=Math.floor(v/w),x=v-y*w;for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++)fn(yy*w+xx);}
 function groups(mask,w,h){const labels=new Int32Array(mask.length),q=new Int32Array(mask.length),items=[];let id=0;for(let i=0;i<mask.length;i++)if(mask[i]&&!labels[i]){id++;let a=0,b=1;q[0]=i;labels[i]=id;while(a<b)neighbors(q[a++],w,h,n=>{if(mask[n]&&!labels[n]){labels[n]=id;q[b++]=n;}});items.push(q.slice(0,b));}return {labels,items};}
@@ -37,7 +40,50 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
   result.push(makeBox(stable,widths,w,h,kind,rule,center.length?center:stable));
  }return result;
 }
-function positive(fg,owner,id,w,h,ppm,rule){const d=distance(fg,w,h),other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;if(!fg[i]||d[i]<=0||!maximum(d,w,x,y)||other[i]/3<=guard)continue;const mm=Math.max(1,2*d[i]/3-1)/ppm;if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;}return persistent(bad,widths,w,h,ppm,rule,'positive');}
+function positive(fg,owner,id,w,h,ppm,rule){
+ const other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.4+6),measurementTolerance=Math.max(.02,1/ppm);
+ const exitDistance=(x,y,dx,dy,sign)=>{
+  const norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm;let lx=x,ly=y;
+  for(let step=1;step<=maxRay;step++){
+   const xx=Math.round(x+ux*step),yy=Math.round(y+uy*step);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;
+   if(xx<0||xx>=w||yy<0||yy>=h)return null;
+   const n=yy*w+xx;
+   if(owner[n]!==0&&owner[n]!==id)return null;
+   if(!fg[n])return step;
+  }
+  return Infinity;
+ };
+ const tangentSupported=(x,y,dx,dy)=>{
+  const norm=Math.hypot(dx,dy),tx=-dy/norm,ty=dx/norm,support=Math.max(2,Math.ceil(rule*ppm*.4));
+  for(const sign of [-1,1])for(let step=1;step<=support;step++){
+   const xx=Math.round(x+tx*sign*step),yy=Math.round(y+ty*sign*step);
+   if(xx<0||xx>=w||yy<0||yy>=h||!fg[yy*w+xx])return false;
+  }
+  return true;
+ };
+ const crossSection=(x,y)=>{
+  const spans=[];let maxBalance=0;
+  for(const [dx,dy] of dirs){
+   const a=exitDistance(x,y,dx,dy,1),b=exitDistance(x,y,dx,dy,-1);
+   if(a===null||b===null||!Number.isFinite(a)||!Number.isFinite(b))continue;
+   const balance=Math.min(a,b)/Math.max(a,b),span=Math.max(1,a+b-1)/ppm;
+   spans.push({dx,dy,balance,span});maxBalance=Math.max(maxBalance,balance);
+  }
+  if(maxBalance<.42)return null;
+  const floor=Math.max(.42,maxBalance-.08);let best=null;
+  for(const item of spans){
+   if(item.balance<floor||!tangentSupported(x,y,item.dx,item.dy))continue;
+   if(!best||item.span<best.span)best=item;
+  }
+  return best;
+ };
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x;if(!fg[i]||other[i]/3<=guard)continue;
+  const section=crossSection(x,y);if(!section)continue;const mm=section.span;
+  if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+measurementTolerance<rule)bad[i]=1;
+ }
+ return persistent(bad,widths,w,h,ppm,rule,'positive');
+}
 function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
  const lab=groups(fg,w,h),d=distance(fg,w,h,true),empty=Uint8Array.from(owner,v=>v===0?1:0),enclosed=new Uint8Array(fg.length),holeBad=new Uint8Array(fg.length),holeWidths=new Float64Array(fg.length),result=[];
  for(const c of groups(empty,w,h).items){let border=false,other=false;for(const v of c){let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1)border=true;neighbors(v,w,h,n=>{if(owner[n]!==0&&owner[n]!==id)other=true;});}if(border||other)continue;const bad=holeBad,widths=holeWidths;for(const v of c){enclosed[v]=1;let x=v%w,y=Math.floor(v/w);if(!x||!y||x===w-1||y===h-1||!maximum(d,w,x,y))continue;let mm=Math.max(1,2*d[v]/3-1)/ppm;if(mm+.02<rule){bad[v]=1;widths[v]=mm;}}}
@@ -99,12 +145,12 @@ export function splitColors(rgb,seed,w,h,background=0xffffff,palette=[]){
  }
  return {layers:finalLayers,owner,suppressedTransitions:suppressed.size};
 }
-export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245,palette=[]}){
+export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='dark',threshold=245,palette=[],lowResolution=false,sourceLimited=false,samplesPerMinimum=null}){
  if(width*height>MAX_PIXELS)throw Error('Превышен лимит размера маски.');const N=width*height,rgb=new Int32Array(N),seed=new Uint8Array(N),background=mode==='light'?0:0xffffff;
  for(let i=0;i<N;i++){const a=data[i*4+3]/255,bg=background?255:0,r=Math.round(data[i*4]*a+bg*(1-a)),g=Math.round(data[i*4+1]*a+bg*(1-a)),b=Math.round(data[i*4+2]*a+bg*(1-a));rgb[i]=r<<16|g<<8|b;seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);}
  const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false}),notes=[];
  if(mode==='alpha')notes.push('Режим прозрачности объединяет цвета. Для проверки по цветам выберите светлый или тёмный фон.');
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Проверьте режим фона и прозрачность логотипа.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,algorithm:'PrintCheck-per-color-medial-gap-v8-true-gaps-only',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-cross-section-v9-true-gaps-only',candidateOnly:true};
 }

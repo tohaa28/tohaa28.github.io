@@ -1,5 +1,5 @@
 import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
-import {scanPlan} from './logo-detail-engine.mjs?v=20261006-2';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261006-3';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
 let enabled=true,mode='dark',threshold=245,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
@@ -22,7 +22,7 @@ function sourcePalette(art){
 function entryFor(art,placement,field,rule){
  if(!ids.has(art))ids.set(art,++sequence);const scale=field?.templateScale||1,wMm=placement.w*scale,hMm=placement.h*scale;
  const key=JSON.stringify([ids.get(art),wMm,hMm,rule.positive,rule.negative,rule.isolated,mode,threshold]);placementKeys.set(placement,key);
- let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated},mode,threshold,palette:sourcePalette(art),state:'pending'};entries.set(key,entry);}
+ let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated},mode,threshold,palette:sourcePalette(art),sourceWidth:art?.pixelW||0,sourceHeight:art?.pixelH||0,state:'pending'};entries.set(key,entry);}
  return entry;
 }
 const compactNames={positive:'линии',negative:'пробелы',isolated:'отдельные'};
@@ -45,7 +45,7 @@ export function detailFindings({art,placement,field,rule}){
  if(!rule||rule.settings?.enabled===false||rule.settings?.checks.details===false||![rule.positive,rule.negative,rule.isolated].some(v=>v>0)){placementKeys.delete(placement);return [];}const e=entryFor(art,placement,field,rule);schedule();
  if(!enabled)return [{id:'detail-scan',status:'manual',text:'Поиск мелких элементов выключен.',source}];
  if(e.state!=='done')return [{id:'detail-scan',status:'manual',text:e.state==='error'?e.error:'поиск мелких элементов...',displayText:e.state==='error'?e.error:'поиск мелких элементов...',overlay:true,transient:e.state!=='error',source}];
- const r=e.result,found=r.boxes.length>0;return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм. ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
+ const r=e.result,found=r.boxes.length>0,precision=r.lowResolution?' Разрешение исходного растра ограничивает точность проверки.':'';return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм.${precision} ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:e.mode,maskThreshold:e.threshold},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
 }
 function validEntries(){if(!api)return [];return [...new Set(api.getState().placements.filter(p=>p.art&&p.placement).map(p=>entries.get(placementKeys.get(p.placement))).filter(Boolean))];}
 function cancel(){clearTimeout(watchdog);clearTimeout(timer);timer=0;if(idle){(window.cancelIdleCallback||clearTimeout)(idle);idle=0;}job++;if(worker){worker.terminate();worker=null;cancellations++;}renderTask?.cancel();renderTask=null;busy=false;for(const e of entries.values())if(e.state==='running')e.state='pending';}
@@ -60,11 +60,11 @@ async function raster(entry,plan,token){
 }
 async function start(){
  const e=validEntries().find(e=>e.state==='pending');if(!e)return;const token=++job;busy=true;e.state='running';api.refresh();
- const plan=scanPlan(e.wMm,e.hMm,e.rule);
+ const plan=scanPlan(e.wMm,e.hMm,e.rule,{sourceWidth:e.sourceWidth,sourceHeight:e.sourceHeight});
  if(plan.skip){e.state='error';e.error=plan.skip;busy=false;api.redraw();schedule();return;}
  try{
   const data=await raster(e,plan,token);if(token!==job)return;
-  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-2',import.meta.url).href;
+  const workerUrl=new URL('./logo-detail-worker.mjs?v=20261006-3',import.meta.url).href;
   const blobUrl=URL.createObjectURL(new Blob([`import ${JSON.stringify(workerUrl)};`],{type:'application/javascript'}));
   try{worker=new Worker(blobUrl,{type:'module'});}finally{URL.revokeObjectURL(blobUrl);}
   runs++;watchdog=setTimeout(()=>complete(null,'Проверка заняла слишком много времени. Мелкие элементы не проверены.'),20000);
@@ -74,7 +74,7 @@ async function start(){
    }api.redraw();schedule();
   }
   worker.onmessage=event=>{if(event.data.id===token)complete(event.data.result,event.data.error);};worker.onerror=event=>{event.preventDefault();complete(null,'Фоновая проверка недоступна: '+event.message);};
-  worker.postMessage({id:token,rgba:data.buffer,width:plan.width,height:plan.height,wMm:e.wMm,hMm:e.hMm,rule:e.rule,mode:e.mode,threshold:e.threshold,palette:e.palette},[data.buffer]);
+  worker.postMessage({id:token,rgba:data.buffer,width:plan.width,height:plan.height,wMm:e.wMm,hMm:e.hMm,rule:e.rule,mode:e.mode,threshold:e.threshold,palette:e.palette,lowResolution:plan.lowResolution,sourceLimited:plan.sourceLimited,samplesPerMinimum:plan.samplesPerMinimum},[data.buffer]);
  }catch(error){if(token!==job)return;busy=false;e.state='error';e.error='Мелкие элементы не проверены: '+String(error.message||error);api.redraw();schedule();}
 }
 export function installDetailCheck({canvas,getState,redraw}){
@@ -111,7 +111,7 @@ export function installDetailCheck({canvas,getState,redraw}){
     }
    }
   }
-  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,error:v.error}))};schedule();
+  window.gwbDetailCheck={enabled,mode,threshold,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,step:v.result?.step||0,lowResolution:!!v.result?.lowResolution,sourceLimited:!!v.result?.sourceLimited,samplesPerMinimum:v.result?.samplesPerMinimum||null,error:v.error}))};schedule();
  }
  api={getState,redraw,refresh};
  $('detailEnabled').onchange=event=>{enabled=event.target.checked;activity();lastPanelKey='';redraw();};$('detailShow').onchange=event=>{show=event.target.checked;refresh();};
