@@ -76,36 +76,69 @@ function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
  const ray=(x,y,dx,dy,sign)=>{let norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm,lx=x,ly=y;for(let s=1;s<=maxRay;s++){let xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;if(xx<0||xx>=w||yy<0||yy>=h)return null;let i=yy*w+xx;if(owner[i]!==0&&owner[i]!==id)return null;if(fg[i])return [lab.labels[i],s];}return null;};
  for(const same of (sameComponentOpenGaps?[false,true]:[false])){if(!same&&lab.items.length<2)continue;const bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity);for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++){let i=y*w+x;if(fg[i]||enclosed[i]||owner[i]||d[i]<=0||d[i]/3>limit*.5+1.5)continue;let best=Infinity;for(const [dx,dy]of dirs){let x1=x+dx,y1=y+dy,x2=x-dx,y2=y-dy;if(x1<0||x1>=w||y1<0||y1>=h||x2<0||x2>=w||y2<0||y2>=h)continue;let a=d[y1*w+x1],b=d[y2*w+x2];if(!(d[i]>=a&&d[i]>=b&&(d[i]>a||d[i]>b)))continue;let A=ray(x,y,dx,dy,1),B=ray(x,y,dx,dy,-1);if(!A||!B||(A[0]===B[0])!==same)continue;best=Math.min(best,Math.max(1,A[1]+B[1]-1)/ppm);}if(Number.isFinite(best)&&best<=rule*1.75+.05){widths[i]=best;if(best+.02<rule)bad[i]=1;}}result.push(...persistent(bad,widths,w,h,ppm,rule,'negative'));}return result;
 }
+function localDiameterMm(d,i,ppm){return Math.max(1,2*d[i]/3-1)/ppm;}
+function medialAxis(mask,d,w,h){
+ const out=new Uint8Array(mask.length),pairs=[[-1,0,1,0],[0,-1,0,1],[-1,-1,1,1],[-1,1,1,-1]];
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x,v=d[i];if(!mask[i]||v<=0)continue;
+  for(const [ax,ay,bx,by] of pairs){
+   const a=d[(y+ay)*w+x+ax],b=d[(y+by)*w+x+bx];
+   if(v>=a&&v>=b&&(v>a||v>b)){out[i]=1;break;}
+  }
+ }
+ return out;
+}
+function angularSupport(comp,axis,bad,w,h){
+ let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
+ const vectors=[];for(const i of comp){const x=i%w,y=Math.floor(i/w);neighbors(i,w,h,n=>{if(!axis[n]||bad[n])return;const nx=n%w,ny=Math.floor(n/w),dx=nx-cx,dy=ny-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});}
+ let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
+ return {count:vectors.length,maxSep};
+}
+function circleProbe(mask,w,h,ppm,rule,kind,{wallMask=null}={}){
+ const d=distance(mask,w,h),axis=medialAxis(mask,d,w,h),bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),tol=Math.max(.015,.45/ppm);
+ for(let i=0;i<axis.length;i++)if(axis[i]){const mm=localDiameterMm(d,i,ppm);widths[i]=mm;if(mm+tol<rule)bad[i]=1;}
+ const out=[];
+ for(const comp of groups(bad,w,h).items){
+  if(comp.length<2)continue;
+  let min=Infinity,max=0,minI=comp[0],sx=0,sy=0;
+  for(const i of comp){const z=widths[i];if(z<min){min=z;minI=i;}max=Math.max(max,z);sx+=i%w;sy+=Math.floor(i/w);}
+  if(kind==='negative'&&wallMask){
+   let wallSupport=false;
+   const r=Math.max(2,Math.ceil(rule*ppm*.9));
+   for(const i of comp){const x=i%w,y=Math.floor(i/w);for(const [dx,dy] of dirs){let a=false,b=false;for(let q=1;q<=r;q++){const x1=Math.round(x+dx*q/Math.hypot(dx,dy)),y1=Math.round(y+dy*q/Math.hypot(dx,dy)),x2=Math.round(x-dx*q/Math.hypot(dx,dy)),y2=Math.round(y-dy*q/Math.hypot(dx,dy));if(x1>=0&&x1<w&&y1>=0&&y1<h&&wallMask[y1*w+x1])a=true;if(x2>=0&&x2<w&&y2>=0&&y2<h&&wallMask[y2*w+x2])b=true;if(a&&b){wallSupport=true;break;}}if(wallSupport)break;}if(wallSupport)break;}
+   if(!wallSupport)continue;
+  }
+  const support=angularSupport(comp,axis,bad,w,h),span=Math.max(...comp.map(i=>i%w))-Math.min(...comp.map(i=>i%w))+Math.max(...comp.map(i=>Math.floor(i/w)))-Math.min(...comp.map(i=>Math.floor(i/w)));
+  const oneSided=support.count>0&&support.maxSep<Math.PI*.66;
+  const taper=oneSided&&(max-min)>rule*.28&&span<rule*ppm*5;
+  if(taper)continue;
+  const centerCandidates=comp.filter(i=>widths[i]<=min+Math.max(.015,.5/ppm));
+  let center=minI;if(centerCandidates.length>1){const cx=sx/comp.length,cy=sy/comp.length;center=centerCandidates.reduce((a,b)=>Math.hypot(b%w-cx,Math.floor(b/w)-cy)<Math.hypot(a%w-cx,Math.floor(a/w)-cy)?b:a,centerCandidates[0]);}
+  out.push(makeBox(comp,widths,w,h,kind,rule,[center]));
+ }
+ return out;
+}
+function positiveCircleProbe(fg,w,h,ppm,rule){return circleProbe(fg,w,h,ppm,rule,'positive');}
+function negativeCircleProbe(owner,id,w,h,ppm,rule){
+ const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
+ for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
+ return circleProbe(gap,w,h,ppm,rule,'negative',{wallMask:wall});
+}
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0};
  for(const l of layers){
-  for(const kind of ['positive','negative']){
-   const threshold=rule[kind];if(!(threshold>0))continue;
-   const found=kind==='positive'?positive(l.mask,owner,l.id,w,h,ppm,threshold):negative(l.mask,owner,l.id,w,h,ppm,threshold,options);
-   counts[kind]+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
-  }
+  if(rule.positive>0){const found=positiveCircleProbe(l.mask,w,h,ppm,rule.positive);counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
+  if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
  }
  const isolatedThreshold=rule.isolated;
  if(isolatedThreshold>0){
-  if(options.visualIsolated){
-   const visible=Uint8Array.from(owner,v=>v!==0?1:0),zero=new Float64Array(owner.length);
-   for(const c of groups(visible,w,h).items){
-    let x0=w,y0=h,x1=0,y1=0;const inkCounts=new Map();
-    for(const i of c){
-     const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);
-     const id=owner[i];if(id>0)inkCounts.set(id,(inkCounts.get(id)||0)+1);
-    }
-    const size=Math.max(x1-x0,y1-y0)/ppm;
-    if(size+.02>=isolatedThreshold||!inkCounts.size)continue;
-    const dominant=[...inkCounts].sort((a,b)=>b[1]-a[1])[0][0],layer=layers.find(l=>l.id===dominant),b=makeBox(c,zero,w,h,'isolated',isolatedThreshold);
-    b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
-   }
-  }else{
-   for(const l of layers){
-    const zero=new Float64Array(l.mask.length),found=[];
-    for(const c of groups(l.mask,w,h).items){const b=makeBox(c,zero,w,h,'isolated',isolatedThreshold),size=Math.max(b.w*w,b.h*h)/ppm;if(size+.02<isolatedThreshold){b.minWidthMm=size;found.push(b);}}
-    counts.isolated+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
-   }
+  const visible=Uint8Array.from(owner,v=>v!==0?1:0),zero=new Float64Array(owner.length);
+  for(const c of groups(visible,w,h).items){
+   let x0=w,y0=h,x1=0,y1=0;const inkCounts=new Map();
+   for(const i of c){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+1);y1=Math.max(y1,y+1);const id=owner[i];if(id>0)inkCounts.set(id,(inkCounts.get(id)||0)+1);}
+   const size=Math.max(x1-x0,y1-y0)/ppm;if(size+.02>=isolatedThreshold||!inkCounts.size)continue;
+   const dominant=[...inkCounts].sort((a,b)=>b[1]-a[1])[0][0],layer=layers.find(l=>l.id===dominant),b=makeBox(c,zero,w,h,'isolated',isolatedThreshold);
+   b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
   }
  }
  return {boxes,counts};
@@ -189,5 +222,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-auto-mask-v11-visual-objects',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-circle-probe-v12-local-thickness',candidateOnly:true};
 }
