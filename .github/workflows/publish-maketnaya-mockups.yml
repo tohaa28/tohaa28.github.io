@@ -223,7 +223,7 @@ jobs:
           grep -q 'transitionLayer' assets/logo-detail-engine.mjs
           grep -q 'sourcePalette' assets/logo-detail-check.mjs
           grep -q 'Antialias colour boundary is blocked' tests/logo-detail.test.mjs
-          grep -q 'Strict negative scan ignores an open channel' tests/logo-detail.test.mjs
+          grep -q 'Circle probe finds a real narrow white channel even when the ink is one connected object' tests/logo-detail.test.mjs
           grep -q 'Positive scan does not flag the cap of a thick stroke' tests/logo-detail.test.mjs
           grep -q 'Raster scan never upsamples beyond source pixels' tests/logo-detail.test.mjs
           grep -q 'Automatic mask detects light opaque background' tests/logo-detail.test.mjs
