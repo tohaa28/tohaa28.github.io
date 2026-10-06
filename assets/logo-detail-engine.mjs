@@ -53,22 +53,33 @@ function positive(fg,owner,id,w,h,ppm,rule){
   }
   return Infinity;
  };
+ const tangentSupported=(x,y,dx,dy)=>{
+  const norm=Math.hypot(dx,dy),tx=-dy/norm,ty=dx/norm;
+  const sample=sign=>{
+   const xx=Math.round(x+tx*sign),yy=Math.round(y+ty*sign);
+   return xx>=0&&xx<w&&yy>=0&&yy<h&&!!fg[yy*w+xx];
+  };
+  return sample(1)&&sample(-1);
+ };
  const crossSection=(x,y)=>{
   const spans=[];let maxBalance=0;
   for(const [dx,dy] of dirs){
    const a=exitDistance(x,y,dx,dy,1),b=exitDistance(x,y,dx,dy,-1);
    if(a===null||b===null||!Number.isFinite(a)||!Number.isFinite(b))continue;
    const balance=Math.min(a,b)/Math.max(a,b),span=Math.max(1,a+b-1)/ppm;
-   spans.push({balance,span});maxBalance=Math.max(maxBalance,balance);
+   spans.push({dx,dy,balance,span});maxBalance=Math.max(maxBalance,balance);
   }
-  if(maxBalance<.42)return Infinity;
-  const floor=Math.max(.42,maxBalance-.08);let best=Infinity;
-  for(const item of spans)if(item.balance>=floor)best=Math.min(best,item.span);
+  if(maxBalance<.42)return null;
+  const floor=Math.max(.42,maxBalance-.08);let best=null;
+  for(const item of spans){
+   if(item.balance<floor||!tangentSupported(x,y,item.dx,item.dy))continue;
+   if(!best||item.span<best.span)best=item;
+  }
   return best;
  };
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
   const i=y*w+x;if(!fg[i]||other[i]/3<=guard)continue;
-  const mm=crossSection(x,y);if(!Number.isFinite(mm))continue;
+  const section=crossSection(x,y);if(!section)continue;const mm=section.span;
   if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;
  }
  return persistent(bad,widths,w,h,ppm,rule,'positive');
