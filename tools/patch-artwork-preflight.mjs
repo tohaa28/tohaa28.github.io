@@ -279,6 +279,14 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261006-7",
     "./logo-preflight.mjs?v=20261006-8"
+  ],
+  [
+    "./logo-detail-check.mjs?v=20261006-8",
+    "./logo-detail-check.mjs?v=20261006-9"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261006-8",
+    "./logo-preflight.mjs?v=20261006-9"
   ]
 ];
 export function applyLogoPreflight(){
