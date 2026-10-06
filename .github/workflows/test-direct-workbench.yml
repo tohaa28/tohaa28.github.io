@@ -561,25 +561,61 @@ jobs:
           if (openWorkspaceState.orderEditorHidden !== false || openWorkspaceState.waitingHidden !== true || openWorkspaceState.orderState !== "open") {
             throw new Error("Workspace did not leave waiting mode after opening order: "+JSON.stringify(openWorkspaceState));
           }
+          await frame.evaluate(() => {
+            const overlay=document.getElementById("overlay"),stage=document.getElementById("stage");
+            const ctx=overlay?.getContext("2d");if(ctx){ctx.fillStyle="rgba(255,0,0,1)";ctx.fillRect(0,0,Math.min(20,overlay.width),Math.min(20,overlay.height));}
+            let detail=document.getElementById("detailOverlay");
+            if(!detail&&stage){detail=document.createElement("canvas");detail.id="detailOverlay";detail.width=Math.max(1,overlay?.width||20);detail.height=Math.max(1,overlay?.height||20);stage.append(detail);}
+            const dctx=detail?.getContext("2d");if(dctx){dctx.fillStyle="rgba(0,0,255,1)";dctx.fillRect(0,0,20,20);}
+            let errors=document.getElementById("logoErrorOverlay");
+            if(!errors){errors=document.createElement("aside");errors.id="logoErrorOverlay";document.querySelector(".workspace")?.append(errors);}
+            errors.hidden=false;errors.textContent="Старый PrintCheck";
+          });
           await frame.locator("#backToOrders").click();
           await frame.waitForFunction(() => document.getElementById("orderWaitingWorkspace")?.hidden === false && document.getElementById("orderEditor")?.hidden === true, null, {timeout:10000});
           const waitingWorkspaceState = await frame.evaluate(() => {
             const workspace=document.querySelector(".workspace"),waiting=document.getElementById("orderWaitingWorkspace"),stage=document.getElementById("stageScroll"),resume=document.getElementById("resumeEditor");
+            const alphaSum=id=>{
+              const canvas=document.getElementById(id);if(!canvas?.getContext)return -1;
+              const data=canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height).data;let sum=0;
+              for(let i=3;i<data.length;i+=4)sum+=data[i];
+              return sum;
+            };
+            const logoError=document.getElementById("logoErrorOverlay");
             return {
               text:waiting?.textContent?.replace(/\s+/g," ").trim()||"",
               orderState:workspace?.dataset.orderState||"",
+              artworkVisualState:workspace?.dataset.artworkVisualState||"",
               stageVisibility:stage?getComputedStyle(stage).visibility:"",
+              overlayVisibility:getComputedStyle(document.getElementById("overlay")).visibility,
+              detailVisibility:document.getElementById("detailOverlay")?getComputedStyle(document.getElementById("detailOverlay")).visibility:"",
+              overlayAlpha:alphaSum("overlay"),
+              detailAlpha:alphaSum("detailOverlay"),
+              errorOverlayHidden:logoError?.hidden===true,
               resumeHidden:resume?.hidden
             };
           });
           if (!/Ожидание выбора заказа/.test(waitingWorkspaceState.text) ||
               waitingWorkspaceState.orderState !== "waiting" ||
+              waitingWorkspaceState.artworkVisualState !== "unloaded" ||
               waitingWorkspaceState.stageVisibility !== "hidden" ||
+              waitingWorkspaceState.overlayVisibility !== "hidden" ||
+              waitingWorkspaceState.detailVisibility !== "hidden" ||
+              waitingWorkspaceState.overlayAlpha !== 0 ||
+              waitingWorkspaceState.detailAlpha !== 0 ||
+              waitingWorkspaceState.errorOverlayHidden !== true ||
               waitingWorkspaceState.resumeHidden !== false) {
             throw new Error("Returning to order list did not clear the right workspace: "+JSON.stringify(waitingWorkspaceState));
           }
           await frame.locator("#resumeEditor").click();
           await frame.waitForFunction(() => document.getElementById("orderWaitingWorkspace")?.hidden === true && document.getElementById("orderEditor")?.hidden === false, null, {timeout:10000});
+          const resumedArtworkLayerState=await frame.evaluate(()=>({
+            artworkVisualState:document.querySelector(".workspace")?.dataset.artworkVisualState||"",
+            overlayVisibility:getComputedStyle(document.getElementById("overlay")).visibility
+          }));
+          if(resumedArtworkLayerState.artworkVisualState!=="active"||resumedArtworkLayerState.overlayVisibility==="hidden"){
+            throw new Error("Artwork layers were not restored after returning to order: "+JSON.stringify(resumedArtworkLayerState));
+          }
           console.log("Order-list workspace waiting state:", JSON.stringify(waitingWorkspaceState));
           await frame.waitForFunction(() => {
             const img = document.querySelector("#orderTemplateList .article-thumb");
