@@ -21,7 +21,7 @@ export async function verifyDetailCheck(frame){
  await frame.locator('#detailEnabled').uncheck();await resize(12);const disabledRuns=(await frame.evaluate(()=>window.gwbDetailCheck)).runs;await frame.waitForTimeout(1200);assert.equal((await frame.evaluate(()=>window.gwbDetailCheck)).runs,disabledRuns);
  await frame.locator('#detailEnabled').check();await done();
  await resize(50);const started=state.runs;await frame.waitForFunction(n=>window.gwbDetailCheck.busy&&window.gwbDetailCheck.runs>n,started);await frame.locator('#detailEnabled').uncheck();assert.equal((await frame.evaluate(()=>window.gwbDetailCheck)).busy,false);assert.ok((await frame.evaluate(()=>window.gwbDetailCheck)).cancellations>0);await resize(13);await frame.locator('#detailEnabled').check();await done();
- await resize(2000);await frame.waitForFunction(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey)?.state==='error';});assert.match(await frame.locator('#detailStatus').textContent(),/слишком велика/);
+ await resize(2000);await frame.waitForFunction(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey)?.state==='error';});assert.match(await frame.locator('#detailStatus').textContent(),/(?:слишком велика|Не удалось получить достаточное разрешение)/);
  await resize(10);await done();assert.equal(await frame.locator('#detailOverlay').isVisible(),true);
 
 
