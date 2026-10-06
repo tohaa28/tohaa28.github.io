@@ -8,7 +8,10 @@ export async function verifyDetailCheck(frame){
  await resize(10);await frame.locator('#editorCenter').click();
  const done=()=>frame.waitForFunction(()=>{const d=window.gwbDetailCheck;return d?.entries.find(e=>e.key===d.selectedKey)?.state==='done';},{},{timeout:30000}).catch(async error=>{console.log("DETAIL TIMEOUT",await frame.evaluate(()=>window.gwbDetailCheck));throw error;});
  await done();let state=await frame.evaluate(()=>window.gwbDetailCheck),entry=state.entries.find(e=>e.key===state.selectedKey);
- assert.ok(entry.boxes.some(b=>b.kind==='positive'));assert.ok(entry.boxes.some(b=>b.kind==='negative'));
+ const positiveBoxes=entry.boxes.filter(b=>b.kind==='positive');
+ assert.ok(positiveBoxes.length>0);
+ assert.ok(positiveBoxes.every(b=>b.cx<.25),'Thick bars/caps must not create positive markers: '+JSON.stringify(positiveBoxes));
+ assert.ok(entry.boxes.some(b=>b.kind==='negative'));
  assert.equal(await frame.locator('#logoDetailCheck').getAttribute('open'),null);assert.equal(await frame.locator('#detailOverlay').isVisible(),true);await frame.locator('#logoDetailCheck summary').click();await frame.locator('#detailList button').first().click();assert.equal(await frame.locator('#detailPreview').isVisible(),true);if(process.env.DETAIL_SCREENSHOT)await frame.page().screenshot({path:process.env.DETAIL_SCREENSHOT});
  const before=state.runs;await frame.locator('#editorRotateRight').click();await frame.waitForTimeout(1200);assert.equal((await frame.evaluate(()=>window.gwbDetailCheck)).runs,before,'Rotation must reuse analysis');
  // Hold a real mouse gesture longer than the debounce interval.
@@ -36,14 +39,17 @@ export async function verifyDetailCheck(frame){
  await frame.locator('#artwork').setInputFiles({name:'detail-colour-boundary.svg',mimeType:'image/svg+xml',buffer:colourBoundary});
  await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-colour-boundary.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
  const boundary=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
- assert.match(boundary.algorithm,/true-gaps-only/);
+ assert.match(boundary.algorithm,/cross-section-v9/);
  assert.equal(boundary.boxes.filter(b=>b.kind==='positive'||b.kind==='negative').length,0,'Colour boundary must not create thin-element or gap markers: '+JSON.stringify(boundary));
  // Exercise PDF.js rerender and native PNG decoding through real upload controls.
  const files=await frame.evaluate(async()=>{const doc=await PDFLib.PDFDocument.create();const page=doc.addPage([100,100]);page.drawRectangle({x:10,y:10,width:2,height:70});const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillRect(10,10,2,70);return {pdf:Array.from(await doc.save()),png:canvas.toDataURL().split(',')[1]};});
  for(const [ext,buffer]of [['pdf',Buffer.from(files.pdf)],['png',Buffer.from(files.png,'base64')]]){
   await frame.locator('#artwork').setInputFiles({name:'detail-source.'+ext,mimeType:ext==='pdf'?'application/pdf':'image/png',buffer});
   await frame.waitForFunction(name=>document.getElementById('artworkName').textContent.includes(name),'detail-source.'+ext);await resize(10);await done();
-  const current=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});assert.ok(current.boxes.some(b=>b.kind==='positive'),ext+' thin feature');
+  const current=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
+  assert.ok(current.boxes.some(b=>b.kind==='positive'),ext+' thin feature');
+  if(ext==='png'){assert.equal(current.sourceLimited,true,'PNG scan must be capped to source pixels');assert.ok(current.samplesPerMinimum>=3);}
+  else assert.equal(current.sourceLimited,false,'PDF remains vector-rendered for detail scan');
  }
- console.log('PrintCheck detail browser: true-gap-only negative scan, same-colour positive scan, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
+ console.log('PrintCheck detail browser: cross-section positive scan, true-gap-only negative scan, raster source cap, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
 }
