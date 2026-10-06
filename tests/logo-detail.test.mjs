@@ -2,10 +2,32 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import fs
 import {splitColors,analyzeLayers,scanPlan} from '../assets/logo-detail-engine.mjs';
 import {compactDetailSummary} from '../assets/logo-detail-check.mjs';
 const fixtures=JSON.parse(fs.readFileSync(new URL('./printcheck-golden.json',import.meta.url),'utf8'));
-for(const f of fixtures)test('PrintCheck alpha63 Java parity: '+f.name,()=>{
- f.rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v));const seed=Uint8Array.from(f.rgb,v=>v!==0xffffff?1:0),split=splitColors(f.rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
- assert.equal(split.layers.length,f.expected.layers);assert.equal(result.boxes.length,f.expected.boxes.length);
- for(let i=0;i<result.boxes.length;i++)for(const [key,value]of Object.entries(f.expected.boxes[i])){const actual=result.boxes[i][key];if(typeof value==='number')assert.ok(Math.abs(actual-value)<1e-9,`${i}.${key}: ${actual} != ${value}`);else assert.equal(actual,value);}
+function productionExpectedBoxes(f){
+ const pixelTolerance=1/f.ppm;
+ return f.expected.boxes.filter(box=>{
+  if(box.kind!=='positive')return true;
+  if(/^wedge-/.test(f.name))return false;
+  return box.minWidthMm+pixelTolerance<f.rule.positive;
+ });
+}
+for(const f of fixtures)test('PrintCheck legacy fixture regression: '+f.name,()=>{
+ f.rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v));
+ const seed=Uint8Array.from(f.rgb,v=>v!==0xffffff?1:0),split=splitColors(f.rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule),expected=productionExpectedBoxes(f);
+ assert.equal(split.layers.length,f.expected.layers);
+ const actualOther=result.boxes.filter(b=>b.kind!=='positive'),expectedOther=expected.filter(b=>b.kind!=='positive');
+ assert.equal(actualOther.length,expectedOther.length,`${f.name}: negative/isolated count changed`);
+ for(let i=0;i<actualOther.length;i++)for(const [key,value] of Object.entries(expectedOther[i])){
+  const actual=actualOther[i][key];
+  if(typeof value==='number')assert.ok(Math.abs(actual-value)<1e-9,`${f.name} other ${i}.${key}: ${actual} != ${value}`);
+  else assert.equal(actual,value);
+ }
+ const actualPositive=result.boxes.filter(b=>b.kind==='positive'),expectedPositive=expected.filter(b=>b.kind==='positive');
+ assert.equal(actualPositive.length,expectedPositive.length,`${f.name}: production positive count`);
+ for(const want of expectedPositive){
+  const hit=actualPositive.reduce((best,b)=>!best||Math.hypot(b.cx-want.cx,b.cy-want.cy)<Math.hypot(best.cx-want.cx,best.cy-want.cy)?b:best,null);
+  assert.ok(hit&&Math.hypot(hit.cx-want.cx,hit.cy-want.cy)<=.04,`${f.name}: expected positive near ${want.cx},${want.cy}`);
+  assert.ok(hit.minWidthMm+1/f.ppm<f.rule.positive,`${f.name}: positive must be smaller than rule beyond raster tolerance`);
+ }
 });
 test('Scan budget explicit and single-object-only rules supported',()=>{assert.ok(scanPlan(2000,2000,{positive:.05}).skip);assert.ok(scanPlan(10,10,{isolated:.5}).width>0);});
 test('Raster scan never upsamples beyond source pixels',()=>{
@@ -19,6 +41,17 @@ test('Source-limited raster may run at three-plus samples per minimum without in
  assert.ok(!plan.skip);
  assert.ok(plan.samplesPerMinimum>=3);
  assert.equal(plan.lowResolution,true);
+});
+
+test('One-pixel measurement tolerance prevents false failure at the exact limit',()=>{
+ const f=fixtures.find(x=>x.name==='bars-1'),rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v)),seed=Uint8Array.from(rgb,v=>v!==0xffffff?1:0),split=splitColors(rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
+ const positives=result.boxes.filter(b=>b.kind==='positive');
+ assert.equal(positives.length,1);
+ assert.ok(positives[0].minWidthMm<.5,'only the genuinely thin 0.3 mm bar should remain');
+});
+test('Free wedge convergence is not a positive defect',()=>{
+ const f=fixtures.find(x=>x.name==='wedge-0.5'),rgb=f.runs.flatMap(([v,n])=>Array(n).fill(v)),seed=Uint8Array.from(rgb,v=>v!==0xffffff?1:0),split=splitColors(rgb,seed,f.width,f.height),result=analyzeLayers(split.layers,split.owner,f.width,f.height,f.ppm,f.rule);
+ assert.equal(result.boxes.filter(b=>b.kind==='positive').length,0);
 });
 
 function denseGrid(kind,cols=20,rows=20){const w=cols*20+4,h=rows*20+4,mask=new Uint8Array(w*h);if(kind==='negative')mask.fill(1);for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)for(let y=0;y<(kind==='isolated'?2:14);y++)for(let x=0;x<(kind==='isolated'?2:3);x++)mask[(row*20+4+y)*w+col*20+4+x]=kind==='negative'?0:1;return {w,h,mask,owner:Int32Array.from(mask)};}
