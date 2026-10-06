@@ -41,7 +41,7 @@ function persistent(bad,widths,w,h,ppm,rule,kind){
  }return result;
 }
 function positive(fg,owner,id,w,h,ppm,rule){
- const other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.4+6);
+ const other=chamfer(Int32Array.from(owner,v=>v!==0&&v!==id?0:INF),w,h),bad=new Uint8Array(fg.length),widths=new Float64Array(fg.length).fill(Infinity),guard=Math.max(1.5,rule*ppm*.55),maxRay=Math.ceil(rule*ppm*2.4+6),measurementTolerance=Math.max(.02,1/ppm);
  const exitDistance=(x,y,dx,dy,sign)=>{
   const norm=Math.hypot(dx,dy),ux=sign*dx/norm,uy=sign*dy/norm;let lx=x,ly=y;
   for(let step=1;step<=maxRay;step++){
@@ -80,7 +80,7 @@ function positive(fg,owner,id,w,h,ppm,rule){
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
   const i=y*w+x;if(!fg[i]||other[i]/3<=guard)continue;
   const section=crossSection(x,y);if(!section)continue;const mm=section.span;
-  if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+.02<rule)bad[i]=1;
+  if(mm<=rule*1.75+.05)widths[i]=mm;if(mm+measurementTolerance<rule)bad[i]=1;
  }
  return persistent(bad,widths,w,h,ppm,rule,'positive');
 }
