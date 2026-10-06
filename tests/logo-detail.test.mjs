@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
-import {splitColors,analyzeLayers,scanPlan} from '../assets/logo-detail-engine.mjs';
+import {splitColors,analyzeLayers,analyzeDetail,inferAutoMask,scanPlan} from '../assets/logo-detail-engine.mjs';
 import {compactDetailSummary} from '../assets/logo-detail-check.mjs';
 const fixtures=JSON.parse(fs.readFileSync(new URL('./printcheck-golden.json',import.meta.url),'utf8'));
 function productionExpectedBoxes(f){
@@ -204,4 +204,50 @@ test('Positive scan ignores a narrow corner convergence shorter than the persist
  const split=splitColors(rgb,localSeed,w,h,0xffffff,[[0,51,204]]);
  const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5},{sameComponentOpenGaps:false});
  assert.equal(result.counts.positive,0,'short taper/corner convergence must not become a defect');
+});
+
+
+function rgbaImage(width,height,pixel){
+ const data=new Uint8ClampedArray(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){const [r,g,b,a=255]=pixel(x,y),i=(y*width+x)*4;data[i]=r;data[i+1]=g;data[i+2]=b;data[i+3]=a;}
+ return data;
+}
+test('Automatic mask detects light opaque background without user settings',()=>{
+ const w=40,h=20,data=rgbaImage(w,h,(x,y)=>x>=10&&x<30&&y>=5&&y<15?[20,50,200,255]:[250,250,250,255]),auto=inferAutoMask(data,w,h);
+ assert.equal(auto.kind,'background');
+ assert.equal(auto.previewMode,'dark');
+ const r=analyzeDetail({data,width:w,height:h,wMm:4,hMm:2,rule:{positive:.5,negative:.5,isolated:.5},mode:'auto'});
+ assert.equal(r.autoMask.kind,'background');
+ assert.ok(r.layers>=1);
+});
+test('Automatic mask detects dark opaque background without user settings',()=>{
+ const w=40,h=20,data=rgbaImage(w,h,(x,y)=>x>=10&&x<30&&y>=5&&y<15?[245,245,245,255]:[10,10,10,255]),auto=inferAutoMask(data,w,h);
+ assert.equal(auto.kind,'background');
+ assert.equal(auto.previewMode,'light');
+ const r=analyzeDetail({data,width:w,height:h,wMm:4,hMm:2,rule:{positive:.5,negative:.5,isolated:.5},mode:'auto'});
+ assert.ok(r.layers>=1);
+});
+test('Automatic mask detects transparent artwork without user settings',()=>{
+ const w=40,h=20,data=rgbaImage(w,h,(x,y)=>x>=10&&x<30&&y>=5&&y<15?[20,50,200,255]:[0,0,0,0]),auto=inferAutoMask(data,w,h);
+ assert.equal(auto.kind,'transparent');
+ const r=analyzeDetail({data,width:w,height:h,wMm:4,hMm:2,rule:{positive:.5,negative:.5,isolated:.5},mode:'auto'});
+ assert.equal(r.autoMask.kind,'transparent');
+ assert.ok(r.layers>=1);
+});
+test('Visual isolated detection does not split one multicolour object into separate colour fragments',()=>{
+ const w=80,h=30,owner=new Int32Array(w*h),a=new Uint8Array(w*h),b=new Uint8Array(w*h);
+ for(let y=10;y<20;y++)for(let x=10;x<70;x++){const i=y*w+x,id=Math.floor((x-10)/4)%2?2:1;owner[i]=id;(id===1?a:b)[i]=1;}
+ const layers=[{id:1,rgb:0xff0000,mask:a},{id:2,rgb:0x0000ff,mask:b}];
+ const legacy=analyzeLayers(layers,owner,w,h,10,{isolated:1});
+ const visual=analyzeLayers(layers,owner,w,h,10,{isolated:1},{visualIsolated:true});
+ assert.ok(legacy.counts.isolated>0,'fixture must demonstrate former per-colour fragmentation');
+ assert.equal(visual.counts.isolated,0,'one connected visible drawing is not many isolated objects');
+});
+test('Visual isolated detection still finds a truly detached small object',()=>{
+ const w=80,h=40,owner=new Int32Array(w*h),mask=new Uint8Array(w*h);
+ for(let y=8;y<28;y++)for(let x=8;x<45;x++){const i=y*w+x;owner[i]=1;mask[i]=1;}
+ for(let y=12;y<15;y++)for(let x=65;x<68;x++){const i=y*w+x;owner[i]=1;mask[i]=1;}
+ const layers=[{id:1,rgb:0x0033cc,mask}],visual=analyzeLayers(layers,owner,w,h,10,{isolated:.5},{visualIsolated:true});
+ assert.equal(visual.counts.isolated,1);
+ const box=visual.boxes.find(b=>b.kind==='isolated');assert.ok(box&&box.cx>.75);
 });
