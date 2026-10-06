@@ -231,8 +231,8 @@ jobs:
           ! grep -q 'id="detailMode"' assets/logo-detail-check.mjs
           ! grep -q 'id="detailThreshold"' assets/logo-detail-check.mjs
           grep -q 'Маска и фон определяются автоматически' assets/logo-detail-check.mjs
-          grep -q 'medial-axis positive scan' tests/logo-detail-browser.mjs
-          grep -q 'raster+vector feature parity' tests/logo-detail-browser.mjs
+          grep -q 'auto-mask + medial-axis scan' tests/logo-detail-browser.mjs
+          grep -q 'automatic mask + raster/vector parity' tests/logo-detail-browser.mjs
           grep -q 'true-gap-only negative scan' tests/logo-detail-browser.mjs
           grep -q "overlay:true" assets/logo-detail-check.mjs
           grep -Fq "displayText:e.state==='error'?e.error:'поиск мелких элементов...'" assets/logo-detail-check.mjs
