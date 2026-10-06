@@ -1,5 +1,5 @@
 import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20260930-1';
-import {detailFindings} from './logo-detail-check.mjs?v=20261006-11';
+import {detailFindings} from './logo-detail-check.mjs?v=20261006-12';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20260929-2';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
