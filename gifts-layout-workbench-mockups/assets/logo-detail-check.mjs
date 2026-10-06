@@ -1,5 +1,5 @@
 import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
-import {scanPlan} from './logo-detail-engine.mjs?v=20261006-11';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261006-12';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
 let enabled=true,mode='auto',threshold=0,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
@@ -19,10 +19,13 @@ function sourcePalette(art){
  }
  return colors.slice(0,32);
 }
+export function detailSingleInk(rule){
+ return !!rule&&(rule.colorPolicy==='black-white'||rule.colorPolicy==='single-color'||Number(rule.maxColors)===1);
+}
 function entryFor(art,placement,field,rule){
- if(!ids.has(art))ids.set(art,++sequence);const scale=field?.templateScale||1,wMm=placement.w*scale,hMm=placement.h*scale;
- const key=JSON.stringify([ids.get(art),wMm,hMm,rule.positive,rule.negative,rule.isolated,mode,threshold]);placementKeys.set(placement,key);
- let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated},mode,threshold,palette:sourcePalette(art),sourceWidth:art?.pixelW||0,sourceHeight:art?.pixelH||0,state:'pending'};entries.set(key,entry);}
+ if(!ids.has(art))ids.set(art,++sequence);const scale=field?.templateScale||1,wMm=placement.w*scale,hMm=placement.h*scale,singleInk=detailSingleInk(rule);
+ const key=JSON.stringify([ids.get(art),wMm,hMm,rule.positive,rule.negative,rule.isolated,singleInk?1:0,mode,threshold]);placementKeys.set(placement,key);
+ let entry=entries.get(key);if(!entry){entry={key,art,wMm,hMm,rule:{positive:rule.positive,negative:rule.negative,isolated:rule.isolated,singleInk},mode,threshold,palette:sourcePalette(art),sourceWidth:art?.pixelW||0,sourceHeight:art?.pixelH||0,state:'pending'};entries.set(key,entry);}
  return entry;
 }
 const compactNames={positive:'линии',negative:'пробелы',isolated:'отдельные'};
