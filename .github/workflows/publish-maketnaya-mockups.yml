@@ -82,6 +82,9 @@ jobs:
           grep -q 'corsImg.onerror=()=>direct()' mockup.html
           grep -q 'id="mockupModeButton"' editor.html
           grep -q 'id="orderWaitingWorkspace"' editor.html
+          grep -q 'gwbSyncOrderIntroAuthState' editor.html
+          grep -q 'intro.hidden=authenticated' editor.html
+          grep -q 'Order login hint auth visibility is invalid' .github/workflows/test-direct-workbench.yml
           grep -q 'Ожидание выбора заказа' editor.html
           grep -q 'gwbSyncOrderWorkspaceWaiting' editor.html
           grep -q 'Returning to order list did not clear the right workspace' .github/workflows/test-direct-workbench.yml
