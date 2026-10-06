@@ -296,6 +296,14 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261006-9",
     "./logo-preflight.mjs?v=20261006-10"
+  ],
+  [
+    "./logo-detail-check.mjs?v=20261006-10",
+    "./logo-detail-check.mjs?v=20261006-11"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261006-10",
+    "./logo-preflight.mjs?v=20261006-11"
   ]];
 export function applyLogoPreflight(){
  let source=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
