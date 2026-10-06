@@ -18,8 +18,7 @@ main{
 #stage{
   min-width:0!important;
   min-height:0!important;
-  max-width:100%!important;
-  max-height:100%!important
+  max-width:100%!important
 }
 @media(max-width:780px){
   main{
