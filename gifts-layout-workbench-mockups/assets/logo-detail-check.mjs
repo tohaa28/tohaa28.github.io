@@ -1,5 +1,5 @@
 import {renderArtworkPreview} from './logo-artwork-view.mjs?v=20261001-1';
-import {scanPlan} from './logo-detail-engine.mjs?v=20261006-12';
+import {scanPlan} from './logo-detail-engine.mjs?v=20261006-13';
 const DELAY=800,labels={positive:'Тонкий печатный элемент',negative:'Узкий пробел / выворотка',isolated:'Мелкий отдельный элемент'};
 let api=null,timer=0,worker=null,renderTask=null,job=0,holding=false,idle=0,busy=false,watchdog=0,lastAction=0,runs=0,cancellations=0;
 let enabled=true,mode='auto',threshold=0,show=true,selected=-1,currentKey='',lastPanelKey='',lastDrawKey='';
@@ -48,7 +48,7 @@ export function detailFindings({art,placement,field,rule}){
  if(!rule||rule.settings?.enabled===false||rule.settings?.checks.details===false||![rule.positive,rule.negative,rule.isolated].some(v=>v>0)){placementKeys.delete(placement);return [];}const e=entryFor(art,placement,field,rule);schedule();
  if(!enabled)return [{id:'detail-scan',status:'manual',text:'Поиск мелких элементов выключен.',source}];
  if(e.state!=='done')return [{id:'detail-scan',status:'manual',text:e.state==='error'?e.error:'поиск мелких элементов...',displayText:e.state==='error'?e.error:'поиск мелких элементов...',overlay:true,transient:e.state!=='error',source}];
- const r=e.result,found=r.boxes.length>0,precision=r.lowResolution?' Разрешение исходного растра ограничивает точность проверки.':'';return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм.${precision} ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:r.autoMask?.kind||'auto',maskThreshold:r.autoMask?.threshold??null},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
+ const r=e.result,found=r.boxes.length>0,precision=r.pixelQuantized?' Проверка выполнена в нативном разрешении; размеры около порога квантованы шагом исходного пикселя.':r.lowResolution?' Разрешение исходного растра ограничивает точность проверки.':'';return [{id:'detail-scan',status:found?'manual':'ok',text:`PrintCheck: найдено областей для проверки — ${r.boxes.length}. Шаг анализа ${r.step.toFixed(4)} мм.${precision} ${found?'Это кандидаты, а не доказанный брак.':'Кандидаты на мелкие элементы не найдены.'}`,displayText:compactDetailSummary(r,e.rule),overlay:true,source,evidence:r.algorithm,candidateCount:r.boxes.length,counts:r.counts,step:r.step,maskMode:r.autoMask?.kind||'auto',maskThreshold:r.autoMask?.threshold??null},...r.notes.map(text=>({id:'detail-coverage',status:'manual',text,source}))];
 }
 function validEntries(){if(!api)return [];return [...new Set(api.getState().placements.filter(p=>p.art&&p.placement).map(p=>entries.get(placementKeys.get(p.placement))).filter(Boolean))];}
 function cancel(){clearTimeout(watchdog);clearTimeout(timer);timer=0;if(idle){(window.cancelIdleCallback||clearTimeout)(idle);idle=0;}job++;if(worker){worker.terminate();worker=null;cancellations++;}renderTask?.cancel();renderTask=null;busy=false;for(const e of entries.values())if(e.state==='running')e.state='pending';}
@@ -114,7 +114,7 @@ export function installDetailCheck({canvas,getState,redraw}){
     }
    }
   }
-  window.gwbDetailCheck={enabled,mode:e?.result?.autoMask?.kind||'auto',threshold:e?.result?.autoMask?.threshold??null,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,step:v.result?.step||0,autoMask:v.result?.autoMask||null,lowResolution:!!v.result?.lowResolution,sourceLimited:!!v.result?.sourceLimited,samplesPerMinimum:v.result?.samplesPerMinimum||null,error:v.error}))};schedule();
+  window.gwbDetailCheck={enabled,mode:e?.result?.autoMask?.kind||'auto',threshold:e?.result?.autoMask?.threshold??null,holding,busy,runs,cancellations,selectedKey:e?.key||null,entries:validEntries().map(v=>({key:v.key,state:v.state,boxes:v.result?.boxes||[],notes:v.result?.notes||[],algorithm:v.result?.algorithm||'',suppressedTransitions:v.result?.suppressedTransitions||0,layers:v.result?.layers||0,step:v.result?.step||0,autoMask:v.result?.autoMask||null,lowResolution:!!v.result?.lowResolution,sourceLimited:!!v.result?.sourceLimited,samplesPerMinimum:v.result?.samplesPerMinimum||null,pixelQuantized:!!v.result?.pixelQuantized,error:v.error}))};schedule();
  }
  api={getState,redraw,refresh};
  $('detailEnabled').onchange=event=>{enabled=event.target.checked;activity();lastPanelKey='';redraw();};$('detailShow').onchange=event=>{show=event.target.checked;refresh();};

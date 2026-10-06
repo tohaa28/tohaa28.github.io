@@ -10,8 +10,10 @@ export function scanPlan(wMm,hMm,rule,{maxPixels=MAX_PIXELS,sourceWidth=0,source
  const sourceLimited=sourceWidth>0&&sourceHeight>0;
  const sourceDpi=sourceLimited?25.4*Math.min(sourceWidth/wMm,sourceHeight/hMm):Infinity;
  const dpi=Math.min(preferred,budgetDpi,sourceDpi),width=Math.max(1,Math.min(sourceLimited?sourceWidth:Infinity,Math.ceil(wMm*dpi/25.4))),height=Math.max(1,Math.min(sourceLimited?sourceHeight:Infinity,Math.ceil(hMm*dpi/25.4))),step=Math.max(wMm/width,hMm/height),samples=minimum/step;
- if(width*height>maxPixels||samples<(sourceLimited?3:4))return {skip:'Область слишком велика или исходный растр недостаточно детален для точной фоновой проверки. Мелкие элементы не проверены.'};
- return {width,height,dpi,step,lowResolution:samples<4,sourceLimited,samplesPerMinimum:samples};
+ if(width*height>maxPixels)return {skip:'Область слишком велика для проверки мелких элементов в доступном лимите памяти.'};
+ if(sourceLimited&&samples<1)return {skip:'Минимально допустимый элемент меньше одного пикселя исходного растра. Геометрию такого размера достоверно проверить нельзя.'};
+ if(!sourceLimited&&samples<4)return {skip:'Не удалось получить достаточное разрешение для точной проверки мелких элементов.'};
+ return {width,height,dpi,step,lowResolution:samples<4,pixelQuantized:sourceLimited&&samples<3,sourceLimited,samplesPerMinimum:samples};
 }
 function neighbors(v,w,h,fn){const y=Math.floor(v/w),x=v-y*w;for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++)fn(yy*w+xx);}
 function groups(mask,w,h){const labels=new Int32Array(mask.length),q=new Int32Array(mask.length),items=[];let id=0;for(let i=0;i<mask.length;i++)if(mask[i]&&!labels[i]){id++;let a=0,b=1;q[0]=i;labels[i]=id;while(a<b)neighbors(q[a++],w,h,n=>{if(mask[n]&&!labels[n]){labels[n]=id;q[b++]=n;}});items.push(q.slice(0,b));}return {labels,items};}
@@ -295,9 +297,10 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   else if(auto)seed[i]=+(a>.06&&Math.hypot(r-br,g-bg0,b-bb)>maskThreshold);
   else seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);
  }
- const split=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),
+ const separated=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),
+  split=rule.singleInk?(()=>{const mask=Uint8Array.from(seed,v=>v?1:0),visible=mask.some(Boolean),rgb=separated.layers.slice().sort((a,b)=>(b.pixels||0)-(a.pixels||0))[0]?.rgb??0;return {layers:visible?[{id:1,rgb,mask,pixels:mask.reduce((n,v)=>n+v,0)}]:[],owner:Int32Array.from(mask),suppressedTransitions:separated.suppressedTransitions||0};})():separated,
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v16-exact-euclidean-opening',candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v18-native-raster-scan',singleInk:!!rule.singleInk,candidateOnly:true};
 }
