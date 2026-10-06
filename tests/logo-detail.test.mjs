@@ -236,7 +236,7 @@ test('Automatic mask detects transparent artwork without user settings',()=>{
 });
 test('Visual isolated detection does not split one multicolour object into separate colour fragments',()=>{
  const w=80,h=30,owner=new Int32Array(w*h),a=new Uint8Array(w*h),b=new Uint8Array(w*h);
- for(let y=10;y<20;y++)for(let x=10;x<70;x++){const i=y*w+x,id=Math.floor((x-10)/4)%2?2:1;owner[i]=id;(id===1?a:b)[i]=1;}
+ for(let y=13;y<17;y++)for(let x=10;x<70;x++){const i=y*w+x,id=Math.floor((x-10)/4)%2?2:1;owner[i]=id;(id===1?a:b)[i]=1;}
  const layers=[{id:1,rgb:0xff0000,mask:a},{id:2,rgb:0x0000ff,mask:b}];
  const legacy=analyzeLayers(layers,owner,w,h,10,{isolated:1});
  const visual=analyzeLayers(layers,owner,w,h,10,{isolated:1},{visualIsolated:true});
