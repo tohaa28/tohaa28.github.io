@@ -4,7 +4,7 @@ export async function verifyLogoPreflight(frame) {
   // Run against the real loaded module in the launcher frame, with real SVG DOM,
   // PDF.js, PDF-lib and browser image decoding. No application state is injected.
   const result=await frame.evaluate(async()=>{
-    const {inspectArtwork,checkLogo,resolveMethod}=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-8');
+    const {inspectArtwork,checkLogo,resolveMethod}=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261006-9');
     const svg='<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><path d="M1 2H9" fill="none" stroke="black" stroke-width=".2"/><rect x="1" y="5" width="8" height="3" fill="red"/></svg>';
     const root=new DOMParser().parseFromString(svg,'image/svg+xml').documentElement;
     const image=new Image();image.src='data:image/svg+xml;base64,'+btoa(svg);await image.decode();
