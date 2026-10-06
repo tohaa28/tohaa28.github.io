@@ -39,14 +39,14 @@ export async function verifyDetailCheck(frame){
  await frame.locator('#artwork').setInputFiles({name:'detail-colour-boundary.svg',mimeType:'image/svg+xml',buffer:colourBoundary});
  await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-colour-boundary.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
  const boundary=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
- assert.match(boundary.algorithm,/auto-mask-v11/);
+ assert.match(boundary.algorithm,/circle-probe-v12/);
  assert.equal(boundary.boxes.filter(b=>b.kind==='positive'||b.kind==='negative').length,0,'Colour boundary must not create thin-element or gap markers: '+JSON.stringify(boundary));
  // Positive scan must work on the medial axis, not on ordinary outer edges.
  const thickShape=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 200 100"><rect x="20" y="20" width="160" height="60" rx="18" fill="#1238c8"/></svg>');
  await frame.locator('#artwork').setInputFiles({name:'detail-thick-shape.svg',mimeType:'image/svg+xml',buffer:thickShape});
  await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('detail-thick-shape.svg'));await resize(20);await frame.locator('#editorCenter').click();await done();
  const thick=await frame.evaluate(()=>{const d=window.gwbDetailCheck;return d.entries.find(e=>e.key===d.selectedKey);});
- assert.match(thick.algorithm,/auto-mask-v11/);
+ assert.match(thick.algorithm,/circle-probe-v12/);
  assert.equal(thick.boxes.filter(b=>b.kind==='positive').length,0,'Thick object edges must not create positive markers: '+JSON.stringify(thick));
 
  const thinBridge=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 200 100"><rect x="15" y="15" width="45" height="70" fill="#1238c8"/><rect x="60" y="48" width="90" height="4" fill="#1238c8"/><rect x="150" y="15" width="35" height="70" fill="#1238c8"/></svg>');
@@ -92,5 +92,5 @@ export async function verifyDetailCheck(frame){
   if(ext==='png'){assert.equal(current.sourceLimited,true,'PNG scan must be capped to source pixels');assert.ok(current.samplesPerMinimum>=3);}
   else assert.equal(current.sourceLimited,false,'PDF remains vector-rendered for detail scan');
  }
- console.log('PrintCheck detail browser: automatic mask + raster/vector parity, auto-mask + medial-axis scan, true-gap-only negative scan, raster source cap, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
+ console.log('PrintCheck detail browser: automatic mask + raster/vector parity, control-circle local-thickness scan, true-gap-only negative scan, raster source cap, colour-boundary suppression, actual worker, preview, idle hold, rotation cache, resize, disable, size budget passed');
 }
