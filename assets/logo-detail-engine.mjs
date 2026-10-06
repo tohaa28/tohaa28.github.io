@@ -94,9 +94,9 @@ function angularSupport(comp,axis,bad,w,h){
  let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
  return {count:vectors.length,maxSep};
 }
-function circleProbe(mask,w,h,ppm,rule,kind,{wallMask=null}={}){
- const d=distance(mask,w,h),axis=medialAxis(mask,d,w,h),bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),tol=Math.max(.015,.45/ppm);
- for(let i=0;i<axis.length;i++)if(axis[i]){const mm=localDiameterMm(d,i,ppm);widths[i]=mm;if(mm+tol<rule)bad[i]=1;}
+function circleProbe(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
+ const d=distance(mask,w,h),axis=medialAxis(mask,d,w,h),bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),tol=Math.max(.015,.55/ppm),forbiddenDistance=forbiddenMask?distance(forbiddenMask,w,h,true):null,forbiddenGuard=Math.max(1.5,rule*ppm*.55);
+ for(let i=0;i<axis.length;i++)if(axis[i]){const mm=localDiameterMm(d,i,ppm);widths[i]=mm;if(forbiddenDistance&&forbiddenDistance[i]/3<=forbiddenGuard)continue;if(mm+tol<rule)bad[i]=1;}
  const out=[];
  for(const comp of groups(bad,w,h).items){
   if(comp.length<2)continue;
@@ -110,7 +110,11 @@ function circleProbe(mask,w,h,ppm,rule,kind,{wallMask=null}={}){
   }
   const support=angularSupport(comp,axis,bad,w,h),span=Math.max(...comp.map(i=>i%w))-Math.min(...comp.map(i=>i%w))+Math.max(...comp.map(i=>Math.floor(i/w)))-Math.min(...comp.map(i=>Math.floor(i/w)));
   const oneSided=support.count>0&&support.maxSep<Math.PI*.66;
-  const taper=oneSided&&(max-min)>rule*.28&&span<rule*ppm*5;
+  let q=new Int32Array(mask.length),seen=new Int32Array(mask.length),token=0;
+  const farthest=start=>{token++;let a=0,b=1,far=start;q[0]=start;seen[start]=token;const dist=new Int32Array(mask.length);while(a<b){const v=q[a++];neighbors(v,w,h,n=>{if(!bad[n]||seen[n]===token)return;seen[n]=token;dist[n]=dist[v]+1;q[b++]=n;if(dist[n]>dist[far])far=n;});}return far;};
+  const endA=farthest(comp[0]),endB=farthest(endA),wa=widths[endA],wb=widths[endB],hi=Math.max(wa,wb),lo=Math.min(wa,wb);
+  const asymmetricTaper=hi>rule*.68&&lo<rule*.58&&(hi-lo)>rule*.22&&span<rule*ppm*7;
+  const taper=(oneSided&&(max-min)>rule*.28&&span<rule*ppm*5)||asymmetricTaper;
   if(taper)continue;
   const centerCandidates=comp.filter(i=>widths[i]<=min+Math.max(.015,.5/ppm));
   let center=minI;if(centerCandidates.length>1){const cx=sx/comp.length,cy=sy/comp.length;center=centerCandidates.reduce((a,b)=>Math.hypot(b%w-cx,Math.floor(b/w)-cy)<Math.hypot(a%w-cx,Math.floor(a/w)-cy)?b:a,centerCandidates[0]);}
@@ -118,7 +122,7 @@ function circleProbe(mask,w,h,ppm,rule,kind,{wallMask=null}={}){
  }
  return out;
 }
-function positiveCircleProbe(fg,w,h,ppm,rule){return circleProbe(fg,w,h,ppm,rule,'positive');}
+function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){const other=Uint8Array.from(owner,v=>v!==0&&v!==id?1:0);return circleProbe(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
  const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
  for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
@@ -127,7 +131,7 @@ function negativeCircleProbe(owner,id,w,h,ppm,rule){
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0};
  for(const l of layers){
-  if(rule.positive>0){const found=positiveCircleProbe(l.mask,w,h,ppm,rule.positive);counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
+  if(rule.positive>0){const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive);counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
   if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
  }
  const isolatedThreshold=rule.isolated;
