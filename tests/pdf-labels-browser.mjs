@@ -199,6 +199,33 @@ function makeSelectedOrdinaryFieldsPdf(scale=0.1) {
   return Buffer.from(pdf,'ascii');
 }
 
+function makeUnitAwareSizePdf(geometryMm,label) {
+  const mm=72/25.4, size=geometryMm*mm;
+  const stream=[
+    'q',
+    '0.95 0.18 0.22 RG',
+    '2 w',
+    `150 100 ${size} ${size} re S`,
+    'Q',
+    `BT /F1 10 Tf 40 40 Td (${label}) Tj ET`,
+    ''
+  ].join('\n');
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 500 400] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream,'ascii')} >>\nstream\n${stream}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+  let pdf='%PDF-1.4\n',offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,'ascii');
+}
+
 function makeOpaqueConcaveFieldPdf() {
   // Ordinary opaque coloured field with a concave L-shaped contour.
   // The missing upper-right quadrant is inside the bbox but outside the field.
@@ -393,6 +420,38 @@ export async function verifyPdfLabels(frame) {
   assert.ok(serviceZoneState.options.slice(1).every(text=>/33\.51 × 22\.93 мм/.test(text)),JSON.stringify(serviceZoneState));
   assert.doesNotMatch(serviceZoneState.options.join(' '),/35\.28 × 19\.40|77\.61 × 47\.63/);
   console.log('Service header/table excluded from field search:',JSON.stringify(serviceZoneState));
+
+  // Size strings from PDF text are fallback metadata only. Units must be
+  // interpreted literally: mm stays mm, cm converts to mm. The old parser
+  // multiplied every A x B pair by 10 and could turn a real 32 mm field into
+  // a nominal 320 mm field through templateScale=10.
+  for (const fixture of [
+    {name:'explicit-mm-size.pdf',geometryMm:32,label:'32 x 32 mm'},
+    {name:'scaled-cm-size.pdf',geometryMm:3.2,label:'3.2 x 3.2 cm'}
+  ]) {
+    const pdf=makeUnitAwareSizePdf(fixture.geometryMm,fixture.label);
+    await frame.locator('#manualTemplate').setInputFiles({name:fixture.name,mimeType:'application/pdf',buffer:pdf});
+    await frame.waitForFunction(name=>
+      !/^Открываю/.test(document.getElementById('status')?.textContent||'') &&
+      document.getElementById('templateName')?.textContent===name &&
+      document.querySelectorAll('#fields option').length===2
+    ,fixture.name);
+    await frame.evaluate(()=>{
+      const select=document.getElementById('fields');
+      select.value='0';
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+    await frame.waitForFunction(()=>document.getElementById('fields')?.value==='0');
+    const sizeState=await frame.evaluate(()=>({
+      fieldSize:document.getElementById('fieldSize')?.textContent||'',
+      option:document.querySelector('#fields option:nth-child(2)')?.textContent||'',
+      dimensions:document.getElementById('dimensions')?.textContent||''
+    }));
+    assert.match(sizeState.fieldSize,/32\.00 × 32\.00 мм/,`${fixture.name}: ${JSON.stringify(sizeState)}`);
+    assert.doesNotMatch(sizeState.fieldSize,/320\.00/);
+    assert.match(sizeState.dimensions,/^Шаблон: /,'Page dimensions must be labelled as template size, not field size');
+    console.log('Unit-aware field size:',fixture.name,JSON.stringify(sizeState));
+  }
 
   const realPrintSequenceSignature=JSON.parse(fs.readFileSync('tests/fixtures/7980838_15637.real-signature.json','utf8'));
   assert.equal(realPrintSequenceSignature.sha256,'78da1027e24d8dc54ff9a431f812c0347b6b65d7220c591ba673c0de8d77bd3c');
