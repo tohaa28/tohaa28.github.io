@@ -255,7 +255,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
         <section class="panel">
           <h2>2. Найденные данные</h2>
           <div class="candidateHead"><strong>1. Фотографии артикула</strong><span id="photoCandidateCount">0</span></div>
-          <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий из заказа</div></div>
+          <div id="photoCandidates" class="candidateList"><div class="candidateEmpty">Пока нет фотографий подходящего размера</div></div>
           <label class="fileRow">Добавить фотографию вручную<input id="photoFile" type="file" accept="image/*"></label>
 
           <div class="candidateHead"><strong>2. Поле шаблона для выбранного фото</strong><span id="fieldCandidateCount">0</span></div>
@@ -530,9 +530,55 @@ function setAssetLoading(target,value){
 
 function htmlEscape(v){ return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
 function sourceIdentity(v={}){ return String(v.id||v.photoId||v.name||v.url||v.src||"").trim(); }
+const ARTICLE_PHOTO_MIN_LONG_SIDE=500,ARTICLE_PHOTO_MIN_SHORT_SIDE=300;
 function normalizedPhotoCandidate(raw,index=0){
   if(typeof raw==="string") raw={url:raw}; raw=raw||{};
-  return {id:String(raw.id||raw.photoId||raw.imageId||sourceIdentity(raw)||`photo-${index+1}`),name:String(raw.name||raw.filename||raw.title||`Фото ${index+1}`),url:String(raw.url||raw.src||raw.imageUrl||""),dataUrl:String(raw.dataUrl||raw.photoDataUrl||""),kind:String(raw.kind||raw.type||"photo")};
+  return {
+    id:String(raw.id||raw.photoId||raw.imageId||sourceIdentity(raw)||`photo-${index+1}`),
+    name:String(raw.name||raw.filename||raw.title||`Фото ${index+1}`),
+    url:String(raw.url||raw.src||raw.imageUrl||""),
+    dataUrl:String(raw.dataUrl||raw.photoDataUrl||""),
+    kind:String(raw.kind||raw.type||"photo"),
+    width:Number(raw.width||raw.pixelWidth||raw.naturalWidth||raw.w||0)||0,
+    height:Number(raw.height||raw.pixelHeight||raw.naturalHeight||raw.h||0)||0
+  };
+}
+function photoSizeUsable(width,height){
+  const w=Number(width)||0,h=Number(height)||0;
+  if(!(w>0&&h>0))return null;
+  return Math.max(w,h)>=ARTICLE_PHOTO_MIN_LONG_SIDE&&Math.min(w,h)>=ARTICLE_PHOTO_MIN_SHORT_SIDE;
+}
+function photoUrlDeclaredSmall(url){
+  const value=String(url||"");
+  const rect=value.match(/(?:_|-|\/)(\d{2,4})x(\d{2,4})(?=[_.?/-]|$)/i);
+  if(rect)return photoSizeUsable(Number(rect[1]),Number(rect[2]))===false;
+  const square=value.match(/_(200|240|250|300|320|350|400)(?=\.[a-z0-9]+(?:[?#]|$))/i);
+  return !!square;
+}
+function probePhotoSize(src,timeout=5000){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=value=>{if(done)return;done=true;clearTimeout(timer);resolve(value);};
+    const timer=setTimeout(()=>finish(null),timeout),img=new Image();
+    img.onload=()=>finish({width:img.naturalWidth||img.width||0,height:img.naturalHeight||img.height||0});
+    img.onerror=()=>finish(null);
+    img.src=src;
+  });
+}
+async function filterUsableArticlePhotos(candidates){
+  const accepted=[],rejected=[];
+  await Promise.all(candidates.map(async candidate=>{
+    const declared=photoSizeUsable(candidate.width,candidate.height);
+    if(declared===false||photoUrlDeclaredSmall(candidate.url)){rejected.push(candidate);return;}
+    if(declared===true){accepted.push(candidate);return;}
+    const src=candidate.dataUrl||candidate.url;
+    if(!src){rejected.push(candidate);return;}
+    const size=await probePhotoSize(src);
+    if(size){candidate.width=size.width;candidate.height=size.height;}
+    const measured=size?photoSizeUsable(size.width,size.height):null;
+    if(measured===false)rejected.push(candidate);else accepted.push(candidate);
+  }));
+  return {accepted,rejected};
 }
 function normalizedFieldCandidate(raw,index=0,baseW=0,baseH=0){
   raw=raw||{}; const sourceRect=raw.fieldRect||raw.bounds||raw.rect||raw, bounds=fieldRectFromAny(sourceRect,baseW,baseH);
@@ -610,7 +656,7 @@ function renderPhotoCandidates(){
   if(hint)hint.textContent=field
     ?`Выбрано поле «${field.place||state.activeFieldCandidate+1}». Можно выбрать любое фото артикула; для выбранной пары доступны сохранение, изменение и удаление.`
     :"Выберите любое фото артикула, затем поле шаблона. Фотография не будет переключаться при смене поля.";
-  if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Пока нет фотографий из заказа</div>';updateMappingActions();return;}
+  if(!state.photoCandidates.length){box.innerHTML='<div class="candidateEmpty">Нет фотографий подходящего размера (минимум 500 px по длинной стороне и 300 px по короткой)</div>';updateMappingActions();return;}
   box.innerHTML=state.photoCandidates.map((photo,i)=>{
     const allMappings=profilesForPhotoCandidate(photo);
     const exact=field&&allMappings.some(p=>profileMatchesFieldCandidate(p,field));
@@ -1350,7 +1396,10 @@ async function applyHandoff(payload){
   if(!rawPhotos.length&&item.imageUrl)rawPhotos.unshift({id:"order-main",name:item.imageName||"Фото из заказа",url:item.imageUrl});
   if(!rawPhotos.length&&payload.photoUrl)rawPhotos.unshift({id:"handoff-main",name:payload.photoName||"Фото handoff",url:payload.photoUrl});
   if(payload.photoDataUrl)rawPhotos.unshift({id:"handoff-data",name:payload.photoName||"Фото handoff",dataUrl:payload.photoDataUrl});
-  const seen=new Set(); state.photoCandidates=rawPhotos.map(normalizedPhotoCandidate).filter(c=>{const k=c.id+"|"+c.url+"|"+c.dataUrl.slice(0,80);if(seen.has(k))return false;seen.add(k);return c.url||c.dataUrl;});
+  const seen=new Set(),normalizedPhotos=rawPhotos.map(normalizedPhotoCandidate).filter(c=>{const k=c.id+"|"+c.url+"|"+c.dataUrl.slice(0,80);if(seen.has(k))return false;seen.add(k);return c.url||c.dataUrl;});
+  const photoFilter=await filterUsableArticlePhotos(normalizedPhotos);
+  state.photoCandidates=photoFilter.accepted;
+  const skippedSmallPhotos=photoFilter.rejected.length;
 
   const tW=Number(payload.templateWidth||item.templateWidth||payload.template?.width||0), tH=Number(payload.templateHeight||item.templateHeight||payload.template?.height||0);
   let rawFields=[...(payload.fieldCandidates||[]),...(item.fieldCandidates||[]),...(payload.fields||[]),...(item.fields||[])];
@@ -1369,10 +1418,10 @@ async function applyHandoff(payload){
   renderFieldCandidates(); renderPhotoCandidates();
   await Promise.all([setImageFromSource("template",template,payload.templateName||""),setImageFromSource("artwork",artwork,payload.artworkName||""),setImageFromSource("photo","","")]);
   renderAll();updateMappingActions();
-  const field=state.fieldCandidates[state.activeFieldCandidate];
+  const field=state.fieldCandidates[state.activeFieldCandidate],skippedText=skippedSmallPhotos?` Маленьких фото исключено: ${skippedSmallPhotos}.`:"";
   setStatus(field
-    ?`Артикул загружен: найдено ${state.photoCandidates.length} фото. Выберите любое фото и при необходимости другое поле «${field.place||state.activeFieldCandidate+1}».`
-    :`Артикул загружен: найдено ${state.photoCandidates.length} фото, полей не найдено`);
+    ?`Артикул загружен: найдено ${state.photoCandidates.length} подходящих фото.${skippedText} Выберите любое фото и при необходимости другое поле «${field.place||state.activeFieldCandidate+1}».`
+    :`Артикул загружен: найдено ${state.photoCandidates.length} подходящих фото, полей не найдено.${skippedText}`);
 }
 
 let bridgedHandoff=null;
@@ -1416,6 +1465,7 @@ async function createMockupPngBlob(){
 window.gwbCreateMockupPng=createMockupPngBlob;
 window.gwbApplyMockupProfile=applyProfile;
 window.gwbGetMockupBinding=buildProfile;
+window.gwbGetArticlePhotoFilter=()=>({minLongSide:ARTICLE_PHOTO_MIN_LONG_SIDE,minShortSide:ARTICLE_PHOTO_MIN_SHORT_SIDE,count:state.photoCandidates.length,photos:state.photoCandidates.map(p=>({id:p.id,name:p.name,width:p.width,height:p.height,url:p.url}))});
 window.gwbSetMappingOperationStatus=(stateName,text)=>setMappingOperationStatus(stateName,text);
 window.gwbGetMockupPhotoView=()=>{if(!state.photoView)return null;const {ctx,...view}=state.photoView;return view;};
 window.gwbGetCylinder3D=()=>({axis:state.cylinderAxis,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,targetQuad:state.cylinderQuad.map(p=>({...p}))});
