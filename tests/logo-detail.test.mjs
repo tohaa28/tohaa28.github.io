@@ -173,3 +173,35 @@ test('Positive scan ignores thick rounded/convex ends but keeps a narrow neck',(
  const neck=result.boxes.filter(b=>b.kind==='positive');
  assert.ok(neck.some(b=>b.cx>.35&&b.cx<.65),'marker should land on the narrow neck, not on the thick block caps');
 });
+
+
+test('Positive scan ignores ordinary edges of a thick same-colour object',()=>{
+ const w=80,h=50,{rgb,seed}=painted(w,h,set=>set(10,10,70,40,0x0033cc));
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[0,51,204]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5},{sameComponentOpenGaps:false});
+ assert.equal(result.counts.positive,0,'thick object edges must not create positive markers');
+});
+
+test('Positive scan finds a genuinely thin stroke on its medial axis',()=>{
+ const w=80,h=50,{rgb,seed}=painted(w,h,set=>{
+  set(8,8,28,42,0x0033cc);
+  set(28,23,64,25,0x0033cc);
+  set(64,8,72,42,0x0033cc);
+ });
+ const split=splitColors(rgb,seed,w,h,0xffffff,[[0,51,204]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5},{sameComponentOpenGaps:false});
+ assert.ok(result.counts.positive>0,'thin same-colour bridge must be detected');
+ const bridge=result.boxes.filter(b=>b.kind==='positive'&&b.cx>.32&&b.cx<.8);
+ assert.ok(bridge.length>0,'marker must be centered on the thin bridge, not on the outer edge');
+});
+
+test('Positive scan ignores a narrow corner convergence shorter than the persistence rule',()=>{
+ const w=70,h=50,{rgb,seed}=painted(w,h,(set,rgb)=>{
+  set(10,10,22,40,0x0033cc);
+  for(let y=10;y<26;y++){const x0=22+(y-10);for(let x=x0;x<x0+Math.max(1,6-Math.floor((y-10)/3));x++)rgb[y*w+x]=0x0033cc;}
+ });
+ const localSeed=Uint8Array.from(rgb,c=>c!==0xffffff?1:0);
+ const split=splitColors(rgb,localSeed,w,h,0xffffff,[[0,51,204]]);
+ const result=analyzeLayers(split.layers,split.owner,w,h,10,{positive:.5},{sameComponentOpenGaps:false});
+ assert.equal(result.counts.positive,0,'short taper/corner convergence must not become a defect');
+});
