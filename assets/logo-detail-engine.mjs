@@ -213,7 +213,7 @@ function adjacentLabels(labels,w,h,x,y){
 }
 function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind,sideLabels=null){
  const bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),
-  maxRay=Math.max(3,Math.ceil(rule*ppm+3)),tol=Math.max(.015,.55/ppm),dotLimit=-.5,step=.5;
+  maxRay=Math.max(3,Math.ceil(rule*ppm+3)),tol=Math.max(.015,.55/ppm),dotLimit=-Math.cos(Math.PI/6),step=.5;
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
   const i=y*w+x;if(!phaseBoundary(mask,w,h,x,y))continue;
   const adj=ownerAdjacency(owner,w,h,x,y,id);
