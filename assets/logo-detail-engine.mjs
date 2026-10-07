@@ -182,30 +182,65 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
  }
  return out;
 }
-function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){let other=null;for(let i=0;i<owner.length;i++)if(owner[i]!==0&&owner[i]!==id){if(!other)other=new Uint8Array(owner.length);other[i]=1;}return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
-function wallOppositionAt(i,wall,w,h,radius){
- const x=i%w,y=Math.floor(i/w);
- for(const [dx,dy] of dirs){
-  const norm=Math.hypot(dx,dy);let a=false,b=false;
-  for(let q=1;q<=radius;q++){
-   const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);
-   if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;
-   if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;
-   if(a&&b)return true;
-  }
+function phaseBoundary(mask,w,h,x,y){
+ const i=y*w+x;if(!mask[i])return false;
+ for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
+  if(xx===x&&yy===y)continue;
+  if(xx<0||xx>=w||yy<0||yy>=h||!mask[yy*w+xx])return true;
  }
  return false;
 }
-function negativeCircleProbe(owner,id,w,h,ppm,rule){
- const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
- for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
- const d=euclideanDistance(gap,w,h),axis=medialAxis(gap,d,w,h,rule*ppm),bad=new Uint8Array(owner.length),widths=new Float64Array(owner.length).fill(Infinity),
-  tol=Math.max(.015,.55/ppm),radius=Math.max(2,Math.ceil(rule*ppm*1.5));
- for(let i=0;i<axis.length;i++)if(axis[i]){
-  const mm=exactLocalDiameterMm(d,i,ppm);widths[i]=mm;
-  if(mm+tol<rule&&wallOppositionAt(i,wall,w,h,radius))bad[i]=1;
+function phaseNormal(mask,w,h,x,y){
+ const at=(xx,yy)=>xx>=0&&xx<w&&yy>=0&&yy<h&&mask[yy*w+xx]?1:0,
+  gx=at(x+1,y-1)+2*at(x+1,y)+at(x+1,y+1)-at(x-1,y-1)-2*at(x-1,y)-at(x-1,y+1),
+  gy=at(x-1,y+1)+2*at(x,y+1)+at(x+1,y+1)-at(x-1,y-1)-2*at(x,y-1)-at(x+1,y-1),
+  m=Math.hypot(gx,gy);
+ return m>=.5?[gx/m,gy/m]:null;
+}
+function ownerAdjacency(owner,w,h,x,y,id){
+ let target=false,background=false,foreign=false;
+ for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){
+  if(xx===x&&yy===y)continue;const v=owner[yy*w+xx];
+  if(v===id)target=true;else if(v===0)background=true;else foreign=true;
  }
- return persistent(bad,widths,w,h,ppm,rule,'negative',{allowOpenChannel:true});
+ return {target,background,foreign};
+}
+// Stroke Width Transform adapted to a binary print phase.
+// A candidate must have two opposed edges with roughly opposite inward normals.
+// This rejects ordinary one-sided contours and measures the physical band/gap itself.
+function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind){
+ const bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),
+  maxRay=Math.max(3,Math.ceil(rule*ppm+3)),tol=Math.max(.015,.55/ppm),dotLimit=-.5,step=.5;
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x;if(!phaseBoundary(mask,w,h,x,y))continue;
+  const adj=ownerAdjacency(owner,w,h,x,y,id);
+  if(kind==='positive'){if(!adj.background||adj.foreign)continue;}
+  else if(!adj.target||adj.foreign)continue;
+  const n=phaseNormal(mask,w,h,x,y);if(!n)continue;const [ux,uy]=n,path=[i];let last=i;
+  for(let s=step;s<=maxRay+1;s+=step){
+   const xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);
+   if(xx<0||xx>=w||yy<0||yy>=h)break;
+   const j=yy*w+xx;if(j===last)continue;last=j;
+   if(mask[j]){if(path[path.length-1]!==j)path.push(j);continue;}
+   if(kind==='positive'){if(owner[j]!==0)break;}else if(owner[j]!==id)break;
+   const q=path[path.length-1];if(q===i)break;const qx=q%w,qy=Math.floor(q/w),qAdj=ownerAdjacency(owner,w,h,qx,qy,id);
+   if(kind==='positive'){if(!qAdj.background||qAdj.foreign)break;}else if(!qAdj.target||qAdj.foreign)break;
+   const qn=phaseNormal(mask,w,h,qx,qy);if(!qn||ux*qn[0]+uy*qn[1]>dotLimit)break;
+   const widthPx=Math.hypot(qx-x,qy-y)+1,widthMm=widthPx/ppm;
+   if(widthMm+tol>=rule)break;
+   for(const p of path){bad[p]=1;if(widthMm<widths[p])widths[p]=widthMm;}
+   break;
+  }
+ }
+ return {bad,widths};
+}
+function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
+ const swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive');
+ return persistent(swt.bad,swt.widths,w,h,ppm,rule,'positive',{rejectOneSidedTaper:true,fieldDistance:distance(fg,w,h)});
+}
+function negativeCircleProbe(owner,id,w,h,ppm,rule){
+ const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
+ return persistent(swt.bad,swt.widths,w,h,ppm,rule,'negative',{allowOpenChannel:true});
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
@@ -313,5 +348,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v20-local-max-ridge',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-swt-v21-opposed-edge-rays',singleInk:!!rule.singleInk,candidateOnly:true};
 }
