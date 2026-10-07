@@ -151,12 +151,15 @@ function attachmentGeometry(comp,opened,w,h){
  return {count:vectors.length,maxSep};
 }
 function median(values){const a=values.slice().sort((x,y)=>x-y),n=a.length;if(!n)return Infinity;return n&1?a[n>>1]:(a[n/2-1]+a[n/2])/2;}
-function oneBodyTaper(medial,fromOpened,inside,w,h,ppm,rule){
+function oneBodyTaper(comp,medial,fromOpened,inside,w,h,ppm,rule){
  if(medial.length<4)return false;
  const rows=Array.from(medial,i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3)),
-  values=rows.map(v=>v[1]),near=median(rows.slice(0,q).map(v=>v[1])),far=median(rows.slice(-q).map(v=>v[1])),lo=Math.min(...values),hi=Math.max(...values),
-  trend=Math.max(rule*.12,.45/ppm),sharpSpread=Math.max(rule*.35,1.25/ppm);
- return near-far>trend||(hi-lo>sharpSpread&&lo<rule*.55);
+  near=median(rows.slice(0,q).map(v=>v[1])),far=median(rows.slice(-q).map(v=>v[1])),shells=new Map();
+ for(const i of comp){const d=Math.max(1,Math.round(fromOpened[i]));if(Number.isFinite(d))shells.set(d,(shells.get(d)||0)+1);}
+ const profile=[...shells].sort((a,b)=>a[0]-b[0]).map(v=>v[1]),sq=Math.max(2,Math.floor(profile.length/3)),
+  midShell=median(profile.slice(sq,Math.max(sq+1,profile.length-sq))),farShell=median(profile.slice(-sq)),
+  shellTaper=profile.length>=6&&Number.isFinite(midShell)&&Number.isFinite(farShell)&&midShell>=farShell*1.45&&midShell-farShell>=2;
+ return near-far>Math.max(rule*.12,.45/ppm)||shellTaper;
 }
 function wallOpposition(comp,wall,w,h,radius){
  for(const i of comp){const x=i%w,y=Math.floor(i/w);for(const [dx,dy] of dirs){const norm=Math.hypot(dx,dy);let a=false,b=false;for(let q=1;q<=radius;q++){const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;if(a&&b)return true;}}}
@@ -177,7 +180,7 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
   const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity;for(const i of medial){widths[i]=exactLocalDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);}
   const measurementTolerance=Math.max(.015,.45/ppm);
   if(min+measurementTolerance>=rule)continue;
-  const taperToOneBody=adjacentOpened.size===1&&oneBodyTaper(medial,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule);
+  const taperToOneBody=adjacentOpened.size===1&&oneBodyTaper(comp,medial,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule);
   const compactEndCap=kind==='positive'&&adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
   if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody)||compactEndCap)continue;
   const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
