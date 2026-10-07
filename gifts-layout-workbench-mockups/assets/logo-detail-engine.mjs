@@ -282,8 +282,29 @@ function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind,{fieldDistance=null
 }
 function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
  const background=Uint8Array.from(owner,v=>v===0?1:0),sideLabels=groups(background,w,h).labels,
-  swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive',sideLabels),fieldDistance=distance(fg,w,h);
- return strokeComponents(swt.bad,swt.widths,fg,w,h,ppm,rule,'positive',{fieldDistance});
+  swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive',sideLabels),diameterPx=rule*ppm,
+  {inside,opened}=circleOpening(fg,w,h,diameterPx),missing=new Uint8Array(fg.length),openedLabels=groups(opened,w,h).labels,out=[];
+ let other=null;for(let i=0;i<owner.length;i++)if(owner[i]!==0&&owner[i]!==id){if(!other)other=new Uint8Array(owner.length);other[i]=1;}
+ const forbiddenDistance=other?euclideanDistance(other,w,h,true):null,crossGuard=Math.max(1.5,diameterPx*.55),extentLimit=Math.max(4,diameterPx*3);
+ let openedDistance=null;
+ for(let i=0;i<fg.length;i++)if(fg[i]&&!opened[i])missing[i]=1;
+ for(const comp of groups(missing,w,h).items){
+  if(comp.length<2)continue;
+  if(forbiddenDistance&&comp.some(i=>forbiddenDistance[i]<=crossGuard))continue;
+  let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0;for(const i of comp){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;}cx/=comp.length;cy/=comp.length;
+  const attach=attachmentGeometry(comp,opened,w,h),extent=Math.max(x1-x0+1,y1-y0+1),oneSided=attach.count>0&&attach.maxSep<Math.PI*.66,adjacentOpened=new Set();
+  for(const i of comp)neighbors(i,w,h,n=>{if(openedLabels[n])adjacentOpened.add(openedLabels[n]);});
+  const stroke=comp.filter(i=>swt.bad[i]&&Number.isFinite(swt.widths[i]));if(!stroke.length)continue;
+  let min=Infinity;for(const i of stroke)min=Math.min(min,swt.widths[i]);
+  if(min+Math.max(.015,.55/ppm)>=rule)continue;
+  const taperToOneBody=adjacentOpened.size===1&&oneBodyTaper(comp,stroke,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule),
+   compactEndCap=adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
+  if((oneSided&&extent<=extentLimit)||taperToOneBody||compactEndCap)continue;
+  const eps=Math.max(.01,.45/ppm),centers=stroke.filter(i=>swt.widths[i]<=min+eps),
+   center=(centers.length?centers:stroke).reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,(centers.length?centers:stroke)[0]),
+   box=makeBox(stroke,swt.widths,w,h,'positive',rule,[center]);box.minWidthMm=min;out.push(box);
+ }
+ return out;
 }
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
  const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
@@ -302,16 +323,14 @@ export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
    b.minWidthMm=size;boxes.push({...b,rgb:layer?.rgb??0,layerId:dominant});counts.isolated++;
   }
  }
+ const hasIsolated=isolatedPixels.some(Boolean),detailOwner=hasIsolated?Int32Array.from(owner,(v,i)=>isolatedPixels[i]?-1:v):owner;
  for(const l of layers){
   if(rule.positive>0){
-   const found=positiveCircleProbe(l.mask,owner,l.id,w,h,ppm,rule.positive).filter(b=>{
-    const x0=Math.max(0,Math.floor(b.x*w)),y0=Math.max(0,Math.floor(b.y*h)),x1=Math.min(w,Math.ceil((b.x+b.w)*w)),y1=Math.min(h,Math.ceil((b.y+b.h)*h));
-    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)if(isolatedPixels[y*w+x])return false;
-    return true;
-   });
+   const detailMask=hasIsolated?Uint8Array.from(l.mask,(v,i)=>isolatedPixels[i]?0:v):l.mask,
+    found=positiveCircleProbe(detailMask,detailOwner,l.id,w,h,ppm,rule.positive);
    counts.positive+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});
   }
-  if(rule.negative>0){const found=negativeCircleProbe(owner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
+  if(rule.negative>0){const found=negativeCircleProbe(detailOwner,l.id,w,h,ppm,rule.negative);counts.negative+=found.length;for(const b of found)boxes.push({...b,rgb:l.rgb,layerId:l.id});}
  }
  return {boxes,counts};
 }
@@ -395,5 +414,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-swt-v21-opposed-edge-rays',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-swt-open-v22-control-circle-confirmed',singleInk:!!rule.singleInk,candidateOnly:true};
 }
