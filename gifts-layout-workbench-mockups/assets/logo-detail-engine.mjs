@@ -115,24 +115,18 @@ function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
 }
 function localDiameterMm(d,i,ppm){return Math.max(1,2*d[i]/3-1)/ppm;}
 function exactLocalDiameterMm(d,i,ppm){return Math.max(1,2*d[i]-1)/ppm;}
-function descendsBeforeRises(d,w,h,x,y,dx,dy,sign,steps,v){
- const norm=Math.hypot(dx,dy),eps=1e-7;let lx=x,ly=y;
- for(let q=1;q<=steps;q++){
-  const xx=Math.round(x+sign*dx*q/norm),yy=Math.round(y+sign*dy*q/norm);
-  if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;
-  if(xx<0||xx>=w||yy<0||yy>=h)return false;
-  const z=d[yy*w+xx];
-  if(z+eps<v)return true;
-  if(z>v+eps)return false;
- }
- return false;
-}
 function medialAxis(mask,d,w,h,maxDiameterPx=Infinity){
- const out=new Uint8Array(mask.length),steps=Number.isFinite(maxDiameterPx)?Math.max(2,Math.min(8,Math.ceil(maxDiameterPx*.75)+2)):6;
+ const out=new Uint8Array(mask.length);
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
   const i=y*w+x,v=d[i];if(!mask[i]||v<=0)continue;
   if(Number.isFinite(maxDiameterPx)&&Math.max(1,2*v-1)>maxDiameterPx+2)continue;
-  for(const [dx,dy]of dirs)if(descendsBeforeRises(d,w,h,x,y,dx,dy,1,steps,v)&&descendsBeforeRises(d,w,h,x,y,dx,dy,-1,steps,v)){out[i]=1;break;}
+  let ridge=true,lower=false;
+  for(let yy=y-1;yy<=y+1&&ridge;yy++)for(let xx=x-1;xx<=x+1;xx++){
+   if(xx===x&&yy===y)continue;const z=d[yy*w+xx];
+   if(z>v+1e-7){ridge=false;break;}
+   if(z+1e-7<v)lower=true;
+  }
+  if(ridge&&lower)out[i]=1;
  }
  return out;
 }
@@ -319,5 +313,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v19-two-sided-medial',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v20-local-max-ridge',singleInk:!!rule.singleInk,candidateOnly:true};
 }
