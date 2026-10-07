@@ -153,9 +153,10 @@ function attachmentGeometry(comp,opened,w,h){
 function median(values){const a=values.slice().sort((x,y)=>x-y),n=a.length;if(!n)return Infinity;return n&1?a[n>>1]:(a[n/2-1]+a[n/2])/2;}
 function oneBodyTaper(medial,fromOpened,inside,w,h,ppm,rule){
  if(medial.length<4)return false;
- const rows=Array.from(medial,i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3));
- const near=median(rows.slice(0,q).map(v=>v[1])),far=median(rows.slice(-q).map(v=>v[1]));
- return near-far>Math.max(rule*.12,.45/ppm);
+ const rows=Array.from(medial,i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3)),
+  values=rows.map(v=>v[1]),near=median(rows.slice(0,q).map(v=>v[1])),far=median(rows.slice(-q).map(v=>v[1])),lo=Math.min(...values),hi=Math.max(...values),
+  trend=Math.max(rule*.12,.45/ppm),sharpSpread=Math.max(rule*.35,1.25/ppm);
+ return near-far>trend||(hi-lo>sharpSpread&&lo<rule*.55);
 }
 function wallOpposition(comp,wall,w,h,radius){
  for(const i of comp){const x=i%w,y=Math.floor(i/w);for(const [dx,dy] of dirs){const norm=Math.hypot(dx,dy);let a=false,b=false;for(let q=1;q<=radius;q++){const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;if(a&&b)return true;}}}
