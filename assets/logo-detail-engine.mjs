@@ -246,15 +246,23 @@ function widthTrend(comp,widths,w){
  let num=0,dt=0,dv=0;for(const [t,v]of vals){const a=t-mt,b=v-mv;num+=a*b;dt+=a*a;dv+=b*b;}
  return {corr:dt>0&&dv>0?num/Math.sqrt(dt*dv):0,spread:Math.max(...vals.map(v=>v[1]))-Math.min(...vals.map(v=>v[1]))};
 }
-function widerSupport(comp,fieldDistance,w,h,ppm,rule){
- if(!fieldDistance)return {count:0,maxSep:0};let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
- const radius=Math.max(4,Math.ceil(rule*ppm*3)),vectors=[];
- for(let yy=Math.max(0,Math.floor(cy-radius));yy<=Math.min(h-1,Math.ceil(cy+radius));yy++)for(let xx=Math.max(0,Math.floor(cx-radius));xx<=Math.min(w-1,Math.ceil(cx+radius));xx++){
-  const i=yy*w+xx;if(fieldDistance[i]<=0)continue;const mm=Math.max(1,2*fieldDistance[i]/3-1)/ppm;if(mm+.02<rule)continue;
-  const dx=xx-cx,dy=yy-cy,m=Math.hypot(dx,dy);if(m<1||m>radius)continue;vectors.push([dx/m,dy/m]);
- }
- let maxSep=0;for(let a=0;a<vectors.length;a++)for(let b=a+1;b<vectors.length;b++){const dot=Math.max(-1,Math.min(1,vectors[a][0]*vectors[b][0]+vectors[a][1]*vectors[b][1]));maxSep=Math.max(maxSep,Math.acos(dot));if(maxSep>=Math.PI*.8)return {count:vectors.length,maxSep};}
- return {count:vectors.length,maxSep};
+function endpointWideSupport(comp,fieldDistance,w,h,ppm,rule){
+ if(!fieldDistance||comp.length<2)return {a:false,b:false};
+ let mx=0,my=0;for(const i of comp){mx+=i%w;my+=Math.floor(i/w);}mx/=comp.length;my/=comp.length;
+ let xx=0,xy=0,yy=0;for(const i of comp){const dx=i%w-mx,dy=Math.floor(i/w)-my;xx+=dx*dx;xy+=dx*dy;yy+=dy*dy;}
+ const angle=.5*Math.atan2(2*xy,xx-yy),ux=Math.cos(angle),uy=Math.sin(angle);let minT=Infinity,maxT=-Infinity;
+ for(const i of comp){const t=(i%w-mx)*ux+(Math.floor(i/w)-my)*uy;minT=Math.min(minT,t);maxT=Math.max(maxT,t);}
+ const radius=Math.max(6,Math.ceil(rule*ppm*4)),lateral=Math.max(2,rule*ppm*.8);
+ const sees=(endT,sign)=>{
+  const ex=mx+ux*endT,ey=my+uy*endT;
+  for(let y=Math.max(0,Math.floor(ey-radius));y<=Math.min(h-1,Math.ceil(ey+radius));y++)for(let x=Math.max(0,Math.floor(ex-radius));x<=Math.min(w-1,Math.ceil(ex+radius));x++){
+   const i=y*w+x;if(fieldDistance[i]<=0)continue;const dx=x-ex,dy=y-ey,forward=sign*(dx*ux+dy*uy),side=Math.abs(-dx*uy+dy*ux);
+   if(forward<1||forward>radius||side>lateral)continue;
+   const mm=Math.max(1,2*fieldDistance[i]/3-1)/ppm;if(mm+.02>=rule)return true;
+  }
+  return false;
+ };
+ return {a:sees(minT,-1),b:sees(maxT,1)};
 }
 function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind,{fieldDistance=null}={}){
  const out=[],eps=Math.max(.01,.45/ppm),shortLimit=Math.max(3,rule*ppm*2.5);
@@ -264,7 +272,7 @@ function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind,{fieldDistance=null
   for(const i of comp){const x=i%w,y=Math.floor(i/w),v=widths[i];x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;if(Number.isFinite(v)){values.push(v);min=Math.min(min,v);max=Math.max(max,v);}}
   if(!values.length||min+Math.max(.015,.45/ppm)>=rule)continue;cx/=comp.length;cy/=comp.length;
   if(kind==='positive'){
-   const support=widerSupport(comp,fieldDistance,w,h,ppm,rule),twoSidedWide=support.maxSep>=Math.PI*.66,oneSidedWide=support.count>0&&!twoSidedWide,
+   const support=endpointWideSupport(comp,fieldDistance,w,h,ppm,rule),twoSidedWide=support.a&&support.b,oneSidedWide=support.a!==support.b,
     extent=Math.max(x1-x0+1,y1-y0+1),trend=widthTrend(comp,widths,w),strongTaper=Math.abs(trend.corr)>=.68&&trend.spread>Math.max(.035,rule*.16);
    if(!twoSidedWide&&(strongTaper||(oneSidedWide&&extent<shortLimit)))continue;
   }
