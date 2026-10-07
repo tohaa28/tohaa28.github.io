@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-07",
+  "repository": "tohaa28/tohaa28.github.io",
+  "source_branch": "gifts-layout-workbench-mockups-source",
+  "functional_source_commit": "3485e8104d61cb7eb862504b7850bd66b782882b",
+  "documentation_head_before_snapshot": "c12f52124eb5d9d2b5355fd0f0c12a776fdf3f5a",
+  "published_main": "e54c4df170fab45d8ea028794e488f5604409143",
+  "workflow_run": 37614678089,
+  "workflow": {
+    "precheck": "success",
+    "publish": "success",
+    "browser_verify": "success"
+  },
+  "algorithm": "PrintCheck-swt-open-v22-control-circle-confirmed",
+  "cache": "20261007-4",
+  "expected_bundle_sha256": "daa4951a08f695e89d6263d21dda58eec5a4edcbd56bfcda3d2b3c87ffb40511",
+  "unit_tests": "106/106 passed",
+  "next_required_test": "User must rerun the same blue LM1 raster and provide a screenshot; v22 has CI confirmation but no user visual confirmation yet.",
+  "do_not_use_as_final": [
+    "4df947bf33c7515f3aaedece53dd5f1d81bdf2aa",
+    "c5dff70edefcd2558923fa8bfe2c1466c6c159db",
+    "8dc252b11a631513cae5919b65031f5944127368",
+    "7c8e4da6e21bcbdbac18cd3d04d86a3b8853ee60",
+    "805a2378c1f8890df4d5ecd4c3eada7b2083aaef",
+    "27c8174f48796b17dfe6bd4b597a13ba4eed38ee"
+  ]
+}
