@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="c4460e0e1c41075c3c8969c6dce8b1bc3c90c8599756f4076772e5b33438f929";
+const expected="af8d3ac130572333b1a69dbc5c4a5ddcf219348e6c1f929295a4253207b80b31";
 const edits=[
   [
     "",
@@ -339,6 +339,14 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261006-14",
     "./logo-preflight.mjs?v=20261007-1"
+  ],
+  [
+    "./logo-detail-check.mjs?v=20261007-1",
+    "./logo-detail-check.mjs?v=20261007-2"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261007-1",
+    "./logo-preflight.mjs?v=20261007-2"
   ]
 ];
 export function applyLogoPreflight(){
