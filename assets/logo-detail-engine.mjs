@@ -237,18 +237,36 @@ function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind,sideLabels=null
  }
  return {bad,widths};
 }
-function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind){
- const out=[],eps=Math.max(.01,.45/ppm),shortLimit=Math.max(3,rule*ppm*1.5);
+function widthTrend(comp,widths,w){
+ const rows=[];let mx=0,my=0;for(const i of comp)if(Number.isFinite(widths[i])){const x=i%w,y=Math.floor(i/w);rows.push([x,y,widths[i]]);mx+=x;my+=y;}
+ if(rows.length<4)return {corr:0,spread:0};mx/=rows.length;my/=rows.length;
+ let xx=0,xy=0,yy=0;for(const [x,y]of rows){const dx=x-mx,dy=y-my;xx+=dx*dx;xy+=dx*dy;yy+=dy*dy;}
+ const angle=.5*Math.atan2(2*xy,xx-yy),ux=Math.cos(angle),uy=Math.sin(angle),vals=rows.map(([x,y,v])=>[(x-mx)*ux+(y-my)*uy,v]),
+  mt=vals.reduce((s,v)=>s+v[0],0)/vals.length,mv=vals.reduce((s,v)=>s+v[1],0)/vals.length;
+ let num=0,dt=0,dv=0;for(const [t,v]of vals){const a=t-mt,b=v-mv;num+=a*b;dt+=a*a;dv+=b*b;}
+ return {corr:dt>0&&dv>0?num/Math.sqrt(dt*dv):0,spread:Math.max(...vals.map(v=>v[1]))-Math.min(...vals.map(v=>v[1]))};
+}
+function widerSupport(comp,fieldDistance,w,h,ppm,rule){
+ if(!fieldDistance)return {count:0,maxSep:0};let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
+ const radius=Math.max(4,Math.ceil(rule*ppm*3)),vectors=[];
+ for(let yy=Math.max(0,Math.floor(cy-radius));yy<=Math.min(h-1,Math.ceil(cy+radius));yy++)for(let xx=Math.max(0,Math.floor(cx-radius));xx<=Math.min(w-1,Math.ceil(cx+radius));xx++){
+  const i=yy*w+xx;if(fieldDistance[i]<=0)continue;const mm=Math.max(1,2*fieldDistance[i]/3-1)/ppm;if(mm+.02<rule)continue;
+  const dx=xx-cx,dy=yy-cy,m=Math.hypot(dx,dy);if(m<1||m>radius)continue;vectors.push([dx/m,dy/m]);
+ }
+ let maxSep=0;for(let a=0;a<vectors.length;a++)for(let b=a+1;b<vectors.length;b++){const dot=Math.max(-1,Math.min(1,vectors[a][0]*vectors[b][0]+vectors[a][1]*vectors[b][1]));maxSep=Math.max(maxSep,Math.acos(dot));if(maxSep>=Math.PI*.8)return {count:vectors.length,maxSep};}
+ return {count:vectors.length,maxSep};
+}
+function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind,{fieldDistance=null}={}){
+ const out=[],eps=Math.max(.01,.45/ppm),shortLimit=Math.max(3,rule*ppm*2.5);
  for(const comp of groups(bad,w,h).items){
   if(comp.length<2)continue;
   let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0,min=Infinity,max=0;const values=[];
   for(const i of comp){const x=i%w,y=Math.floor(i/w),v=widths[i];x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;if(Number.isFinite(v)){values.push(v);min=Math.min(min,v);max=Math.max(max,v);}}
   if(!values.length||min+Math.max(.015,.45/ppm)>=rule)continue;cx/=comp.length;cy/=comp.length;
   if(kind==='positive'){
-   const vectors=[];for(const i of comp)neighbors(i,w,h,n=>{if(!phase[n]||bad[n])return;const dx=n%w-cx,dy=Math.floor(n/w)-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});
-   let maxSep=0;for(let a=0;a<vectors.length;a++)for(let b=a+1;b<vectors.length;b++){const dot=Math.max(-1,Math.min(1,vectors[a][0]*vectors[b][0]+vectors[a][1]*vectors[b][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
-   const oneSided=vectors.length>0&&maxSep<Math.PI*.66,extent=Math.max(x1-x0+1,y1-y0+1),spread=max-min;
-   if(oneSided&&(spread>Math.max(.03,rule*.18)||extent<shortLimit))continue;
+   const support=widerSupport(comp,fieldDistance,w,h,ppm,rule),twoSidedWide=support.maxSep>=Math.PI*.66,oneSidedWide=support.count>0&&!twoSidedWide,
+    extent=Math.max(x1-x0+1,y1-y0+1),trend=widthTrend(comp,widths,w),strongTaper=Math.abs(trend.corr)>=.68&&trend.spread>Math.max(.035,rule*.16);
+   if(!twoSidedWide&&(strongTaper||(oneSidedWide&&extent<shortLimit)))continue;
   }
   const centers=comp.filter(i=>Number.isFinite(widths[i])&&widths[i]<=min+eps),box=makeBox(comp,widths,w,h,kind,rule,centers.length?centers:comp);box.minWidthMm=min;out.push(box);
  }
@@ -256,8 +274,8 @@ function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind){
 }
 function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
  const background=Uint8Array.from(owner,v=>v===0?1:0),sideLabels=groups(background,w,h).labels,
-  swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive',sideLabels);
- return strokeComponents(swt.bad,swt.widths,fg,w,h,ppm,rule,'positive');
+  swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive',sideLabels),fieldDistance=distance(fg,w,h);
+ return strokeComponents(swt.bad,swt.widths,fg,w,h,ppm,rule,'positive',{fieldDistance});
 }
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
  const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
