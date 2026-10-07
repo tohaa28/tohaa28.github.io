@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="bf9a660304f4c53a5af4bc19cb364721cf7b744c0e51b03b9f0a65fc167de37f";
+const expected="68c8e79d93efad2d49e9dad6f8e2cf02ed2da1cc91ee527d8414a4923906d589";
 const edits=[
   [
     "",
@@ -323,6 +323,10 @@ const edits=[
   [
     "function cn(c){const t=i=>Number(i.replace(\",\",\".\")),e=[...c.matchAll(/(\\d+(?:[.,]\\d+)?)\\s*[xх×]\\s*(\\d+(?:[.,]\\d+)?)/gi)].map(i=>({w:t(i[1])*10,h:t(i[2])*10})),s=i=>c.match(i)?.[1]||\"\";return{order:s(/№\\s*(\\d+)/),article:s(/Арт\\.\\s*([\\d.]+)/),method:s(/\\b([A-Z]+[\\w-]*\\d[\\w-]*)\\s*:/),sizes:e,minDpi:s(/Разрешение\\s+растрового\\s+изображения\\s+от\\s+(\\d+)\\s*dpi/i),requirements:c.includes(\"Технические требования\")?c.slice(c.indexOf(\"Технические требования\")):\"\"}}",
     "function cn(c){const t=i=>Number(i.replace(\",\",\".\")),e=[...c.matchAll(/(\\d+(?:[.,]\\d+)?)\\s*[xх×]\\s*(\\d+(?:[.,]\\d+)?)\\s*(мм|mm|см|cm)(?=\\s|[),.;]|$)/gi)].map(i=>{const n=t(i[1]),r=t(i[2]),a=/^(?:см|cm)$/i.test(i[3])?10:1;return{w:n*a,h:r*a,unit:i[3].toLowerCase()}}),s=i=>c.match(i)?.[1]||\"\";return{order:s(/№\\s*(\\d+)/),article:s(/Арт\\.\\s*([\\d.]+)/),method:s(/\\b([A-Z]+[\\w-]*\\d[\\w-]*)\\s*:/),sizes:e,minDpi:s(/Разрешение\\s+растрового\\s+изображения\\s+от\\s+(\\d+)\\s*dpi/i),requirements:c.includes(\"Технические требования\")?c.slice(c.indexOf(\"Технические требования\")):\"\"}}"
+  ],
+  [
+    "v(\"fieldSize\").textContent=r?`${a>=0?\"Поле \"+(a+1)+\" · \":\"\"}${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм · ${r.source===\"pdf-vector\"?\"из векторного шаблона\":r.source===\"pdf-opacity-98-fill\"?\"по прозрачной заливке\":\"выделено вручную\"}`:\"Поле не выбрано\",n?",
+    "const gwbFieldSizeText=r?`${a>=0?\"Поле \"+(a+1)+\" · \":\"\"}${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм · ${r.source===\"pdf-vector\"?\"из векторного шаблона\":r.source===\"pdf-opacity-98-fill\"?\"по прозрачной заливке\":\"выделено вручную\"}`:\"Поле не выбрано\";v(\"fieldSize\").textContent=gwbFieldSizeText;const gwbSelectedFieldSize=v(\"selectedFieldSize\");gwbSelectedFieldSize&&(gwbSelectedFieldSize.hidden=!r,gwbSelectedFieldSize.textContent=r?`Размер поля: ${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм`:\"\");n?"
   ]
 ];
 export function applyLogoPreflight(){
