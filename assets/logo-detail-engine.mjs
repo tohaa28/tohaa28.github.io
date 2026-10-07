@@ -208,7 +208,10 @@ function ownerAdjacency(owner,w,h,x,y,id){
 // Stroke Width Transform adapted to a binary print phase.
 // A candidate must have two opposed edges with roughly opposite inward normals.
 // This rejects ordinary one-sided contours and measures the physical band/gap itself.
-function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind){
+function adjacentLabels(labels,w,h,x,y){
+ const out=new Set();for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){const v=labels[yy*w+xx];if(v>0)out.add(v);}return out;
+}
+function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind,sideLabels=null){
  const bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),
   maxRay=Math.max(3,Math.ceil(rule*ppm+3)),tol=Math.max(.015,.55/ppm),dotLimit=-.5,step=.5;
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
@@ -216,13 +219,13 @@ function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind){
   const adj=ownerAdjacency(owner,w,h,x,y,id);
   if(kind==='positive'){if(!adj.background||adj.foreign)continue;}
   else if(!adj.target||adj.foreign)continue;
-  const n=phaseNormal(mask,w,h,x,y);if(!n)continue;const [ux,uy]=n,path=[i];let last=i;
+  const n=phaseNormal(mask,w,h,x,y);if(!n)continue;const startSides=sideLabels?adjacentLabels(sideLabels,w,h,x,y):null,[ux,uy]=n,path=[i];let last=i;
   for(let s=step;s<=maxRay+1;s+=step){
    const xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);
    if(xx<0||xx>=w||yy<0||yy>=h)break;
    const j=yy*w+xx;if(j===last)continue;last=j;
    if(mask[j]){if(path[path.length-1]!==j)path.push(j);continue;}
-   if(kind==='positive'){if(owner[j]!==0)break;}else if(owner[j]!==id)break;
+   if(kind==='positive'){if(owner[j]!==0)break;if(sideLabels&&(!sideLabels[j]||!startSides.has(sideLabels[j])))break;}else if(owner[j]!==id)break;
    const q=path[path.length-1];if(q===i)break;const qx=q%w,qy=Math.floor(q/w),qAdj=ownerAdjacency(owner,w,h,qx,qy,id);
    if(kind==='positive'){if(!qAdj.background||qAdj.foreign)break;}else if(!qAdj.target||qAdj.foreign)break;
    const qn=phaseNormal(mask,w,h,qx,qy);if(!qn||ux*qn[0]+uy*qn[1]>dotLimit)break;
@@ -234,29 +237,31 @@ function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind){
  }
  return {bad,widths};
 }
-function pruneOneSidedWidthTapers(bad,widths,phase,w,h,rule){
+function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind){
+ const out=[],eps=Math.max(.01,.45/ppm),shortLimit=Math.max(3,rule*ppm*1.5);
  for(const comp of groups(bad,w,h).items){
-  let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
-  const vectors=[],values=[];
-  for(const i of comp){
-   if(Number.isFinite(widths[i]))values.push(widths[i]);
-   neighbors(i,w,h,n=>{if(!phase[n]||bad[n])return;const dx=n%w-cx,dy=Math.floor(n/w)-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});
+  if(comp.length<2)continue;
+  let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0,min=Infinity,max=0;const values=[];
+  for(const i of comp){const x=i%w,y=Math.floor(i/w),v=widths[i];x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;if(Number.isFinite(v)){values.push(v);min=Math.min(min,v);max=Math.max(max,v);}}
+  if(!values.length||min+Math.max(.015,.45/ppm)>=rule)continue;cx/=comp.length;cy/=comp.length;
+  if(kind==='positive'){
+   const vectors=[];for(const i of comp)neighbors(i,w,h,n=>{if(!phase[n]||bad[n])return;const dx=n%w-cx,dy=Math.floor(n/w)-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});
+   let maxSep=0;for(let a=0;a<vectors.length;a++)for(let b=a+1;b<vectors.length;b++){const dot=Math.max(-1,Math.min(1,vectors[a][0]*vectors[b][0]+vectors[a][1]*vectors[b][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
+   const oneSided=vectors.length>0&&maxSep<Math.PI*.66,extent=Math.max(x1-x0+1,y1-y0+1),spread=max-min;
+   if(oneSided&&(spread>Math.max(.03,rule*.18)||extent<shortLimit))continue;
   }
-  if(!vectors.length||values.length<3)continue;
-  let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
-  if(maxSep>=Math.PI*.66)continue;
-  const spread=Math.max(...values)-Math.min(...values);
-  if(spread>Math.max(.03,rule*.18))for(const i of comp)bad[i]=0;
+  const centers=comp.filter(i=>Number.isFinite(widths[i])&&widths[i]<=min+eps),box=makeBox(comp,widths,w,h,kind,rule,centers.length?centers:comp);box.minWidthMm=min;out.push(box);
  }
+ return out;
 }
 function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
- const swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive');
- pruneOneSidedWidthTapers(swt.bad,swt.widths,fg,w,h,rule);
- return persistent(swt.bad,swt.widths,w,h,ppm,rule,'positive');
+ const background=Uint8Array.from(owner,v=>v===0?1:0),sideLabels=groups(background,w,h).labels,
+  swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive',sideLabels);
+ return strokeComponents(swt.bad,swt.widths,fg,w,h,ppm,rule,'positive');
 }
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
  const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
- return persistent(swt.bad,swt.widths,w,h,ppm,rule,'negative',{allowOpenChannel:true});
+ return strokeComponents(swt.bad,swt.widths,gap,w,h,ppm,rule,'negative');
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
