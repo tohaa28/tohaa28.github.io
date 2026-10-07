@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="a154037b8854be7c2c6fa62af0f51ac450d6d141d0ae3e81a63ac614b44471ee";
+const expected="e457a6be3ff3399d7081847ac60e7e893fa9dbbe0d801eb2c256095b85fc4a01";
 const edits=[
   [
     "",
@@ -355,6 +355,10 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261007-2",
     "./logo-preflight.mjs?v=20261007-3"
+  ],
+  [
+    "function X(){const c=y.template;if(H.clearRect(0,0,pt.width,pt.height),!c){gwbRotationTool?.refresh();gwbDetailTool?.refresh();gwbFieldZoom?.refresh();gwbArtworkView?.refresh();return;}const t=y.view||{x:0,y:0,w:c.w,h:c.h}",
+    "function X(){const c=y.template;if(H.clearRect(0,0,pt.width,pt.height),!c){gwbRotationTool?.refresh();gwbDetailTool?.refresh();gwbFieldZoom?.refresh();gwbArtworkView?.refresh();return;}v(\"dimensions\").textContent=y.view?\"\":`Размер шаблона: ${ft(c.w)} × ${ft(c.h)} мм`;const t=y.view||{x:0,y:0,w:c.w,h:c.h}"
   ]
 ];
 export function applyLogoPreflight(){
