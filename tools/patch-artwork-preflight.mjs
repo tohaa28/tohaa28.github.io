@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="eb2653f434628b909898e63c2bfd0cf3d610df5f94ac74e3973d426c46124d35";
+const expected="5efd0039b470220e23408475bde644bb50a77bb32b8f58700537cce3eded12af";
 const edits=[
   [
     "",
@@ -326,7 +326,11 @@ const edits=[
   ],
   [
     "v(\"fieldSize\").textContent=r?`${a>=0?\"Поле \"+(a+1)+\" · \":\"\"}${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм · ${r.source===\"pdf-vector\"?\"из векторного шаблона\":r.source===\"pdf-opacity-98-fill\"?\"по прозрачной заливке\":\"выделено вручную\"}`:\"Поле не выбрано\",n?",
-    "const gwbFieldSizeText=r?`${a>=0?\"Поле \"+(a+1)+\" · \":\"\"}${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм · ${r.source===\"pdf-vector\"?\"из векторного шаблона\":r.source===\"pdf-opacity-98-fill\"?\"по прозрачной заливке\":\"выделено вручную\"}`:\"Поле не выбрано\";v(\"fieldSize\").textContent=gwbFieldSizeText;const gwbSelectedFieldSize=v(\"selectedFieldSize\");gwbSelectedFieldSize&&(gwbSelectedFieldSize.hidden=!r,gwbSelectedFieldSize.textContent=r?`Размер поля: ${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм`:\"\");n?"
+    "const gwbFieldOpened=!!(r&&y.view),gwbFieldSizeText=gwbFieldOpened?`${a>=0?\"Поле \"+(a+1)+\" · \":\"\"}${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм · ${r.source===\"pdf-vector\"?\"из векторного шаблона\":r.source===\"pdf-opacity-98-fill\"?\"по прозрачной заливке\":\"выделено вручную\"}`:r?\"Поле выбрано\":\"Поле не выбрано\";v(\"fieldSize\").textContent=gwbFieldSizeText;const gwbSelectedFieldSize=v(\"selectedFieldSize\");gwbSelectedFieldSize&&(gwbSelectedFieldSize.hidden=!gwbFieldOpened,gwbSelectedFieldSize.textContent=gwbFieldOpened?`Размер поля: ${ft(r.nominalW||r.w)} × ${ft(r.nominalH||r.h)} мм`:\"\");n?"
+  ],
+  [
+    "v(\"dimensions\").textContent=`${ft(c.w)} × ${ft(c.h)} мм`",
+    "v(\"dimensions\").textContent=y.view?\"\":`Размер шаблона: ${ft(c.w)} × ${ft(c.h)} мм`"
   ]
 ];
 export function applyLogoPreflight(){
