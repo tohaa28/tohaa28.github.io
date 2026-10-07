@@ -39,9 +39,11 @@ export async function verifyLogoPreflight(frame) {
   await frame.waitForFunction(()=>!document.getElementById('logoErrorOverlay')?.textContent.includes('поиск мелких элементов...'));
   const completedDetail=await frame.locator('#logoErrorOverlay').textContent();
   assert.match(completedDetail,/PrintCheck · мелкие элементы(?: проверены)?:/,'Transient PrintCheck status must be replaced by the completed detail result');
-  let state=await frame.evaluate(()=>({reports:window.gwbLogoPreflight,disabled:document.getElementById('simpleExport').disabled,field:document.getElementById('fieldSize').textContent}));
+  let state=await frame.evaluate(()=>({reports:window.gwbLogoPreflight,disabled:document.getElementById('simpleExport').disabled,field:document.getElementById('fieldSize').textContent,visibleFieldSize:document.getElementById('selectedFieldSize')?.textContent||'',visibleFieldSizeHidden:document.getElementById('selectedFieldSize')?.hidden}));
   assert.equal(state.reports[0].method,'B4');assert.equal(state.reports[0].rule.positive,.4);assert.equal(state.disabled,true);
   assert.match(state.field,/200\.00 × 100\.00/);
+  assert.equal(state.visibleFieldSize,'Размер поля: 200.00 × 100.00 мм');
+  assert.equal(state.visibleFieldSizeHidden,false);
   assert.equal(await frame.locator('#preflightMarkers').isChecked(),true);assert.equal(await frame.locator('#preflightMarkers').isVisible(),false);
   await frame.locator('#logoPreflight summary').click();
   if(process.env.PREFLIGHT_SCREENSHOT)await frame.page().screenshot({path:process.env.PREFLIGHT_SCREENSHOT,fullPage:false});
