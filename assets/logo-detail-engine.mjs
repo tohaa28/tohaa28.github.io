@@ -115,18 +115,31 @@ function negative(fg,owner,id,w,h,ppm,rule,{sameComponentOpenGaps=true}={}){
 }
 function localDiameterMm(d,i,ppm){return Math.max(1,2*d[i]/3-1)/ppm;}
 function exactLocalDiameterMm(d,i,ppm){return Math.max(1,2*d[i]-1)/ppm;}
-function medialAxis(mask,d,w,h){
- const out=new Uint8Array(mask.length),pairs=[[-1,0,1,0],[0,-1,0,1],[-1,-1,1,1],[-1,1,1,-1]];
+function descendsBeforeRises(d,w,h,x,y,dx,dy,sign,steps,v){
+ const norm=Math.hypot(dx,dy),eps=1e-7;let lx=x,ly=y;
+ for(let q=1;q<=steps;q++){
+  const xx=Math.round(x+sign*dx*q/norm),yy=Math.round(y+sign*dy*q/norm);
+  if(xx===lx&&yy===ly)continue;lx=xx;ly=yy;
+  if(xx<0||xx>=w||yy<0||yy>=h)return false;
+  const z=d[yy*w+xx];
+  if(z+eps<v)return true;
+  if(z>v+eps)return false;
+ }
+ return false;
+}
+function medialAxis(mask,d,w,h,maxDiameterPx=Infinity){
+ const out=new Uint8Array(mask.length),steps=Number.isFinite(maxDiameterPx)?Math.max(2,Math.min(8,Math.ceil(maxDiameterPx*.75)+2)):6;
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
   const i=y*w+x,v=d[i];if(!mask[i]||v<=0)continue;
-  for(const [ax,ay,bx,by] of pairs){const a=d[(y+ay)*w+x+ax],b=d[(y+by)*w+x+bx];if(v>=a&&v>=b&&(v>a||v>b)){out[i]=1;break;}}
+  if(Number.isFinite(maxDiameterPx)&&Math.max(1,2*v-1)>maxDiameterPx+2)continue;
+  for(const [dx,dy]of dirs)if(descendsBeforeRises(d,w,h,x,y,dx,dy,1,steps,v)&&descendsBeforeRises(d,w,h,x,y,dx,dy,-1,steps,v)){out[i]=1;break;}
  }
  return out;
 }
 function circleOpening(mask,w,h,diameterPx){
- const radius=Math.max(.5,diameterPx/2),inside=euclideanDistance(mask,w,h),centers=new Uint8Array(mask.length);
- for(let i=0;i<mask.length;i++)if(mask[i]&&inside[i]>=radius)centers[i]=1;
- if(!centers.some(Boolean))return {inside,opened:new Uint8Array(mask.length),centers};
+ const radius=Math.max(.5,diameterPx/2),inside=euclideanDistance(mask,w,h),centers=new Uint8Array(mask.length);let hasCenter=false;
+ for(let i=0;i<mask.length;i++)if(mask[i]&&inside[i]>=radius){centers[i]=1;hasCenter=true;}
+ if(!hasCenter)return {inside,opened:new Uint8Array(mask.length),centers};
  const fromCenter=euclideanDistance(centers,w,h,true),opened=new Uint8Array(mask.length);
  for(let i=0;i<mask.length;i++)if(mask[i]&&fromCenter[i]<=radius+.55)opened[i]=1;
  return {inside,opened,centers};
@@ -138,9 +151,9 @@ function attachmentGeometry(comp,opened,w,h){
  return {count:vectors.length,maxSep};
 }
 function median(values){const a=values.slice().sort((x,y)=>x-y),n=a.length;if(!n)return Infinity;return n&1?a[n>>1]:(a[n/2-1]+a[n/2])/2;}
-function oneBodyTaper(medial,opened,inside,w,h,ppm,rule){
+function oneBodyTaper(medial,fromOpened,inside,w,h,ppm,rule){
  if(medial.length<4)return false;
- const fromOpened=euclideanDistance(opened,w,h,true),rows=Array.from(medial,i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3));
+ const rows=Array.from(medial,i=>[fromOpened[i],exactLocalDiameterMm(inside,i,ppm)]).sort((a,b)=>a[0]-b[0]),q=Math.max(2,Math.floor(rows.length/3));
  const near=median(rows.slice(0,q).map(v=>v[1])),far=median(rows.slice(-q).map(v=>v[1]));
  return near-far>Math.max(rule*.12,.45/ppm);
 }
@@ -149,7 +162,7 @@ function wallOpposition(comp,wall,w,h,radius){
  return false;
 }
 function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMask=null}={}){
- const diameterPx=rule*ppm,{inside,opened}=circleOpening(mask,w,h,diameterPx),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h),forbiddenDistance=forbiddenMask?euclideanDistance(forbiddenMask,w,h,true):null;
+ const diameterPx=rule*ppm,{inside,opened}=circleOpening(mask,w,h,diameterPx),missing=new Uint8Array(mask.length),axis=medialAxis(mask,inside,w,h,diameterPx),forbiddenDistance=forbiddenMask?euclideanDistance(forbiddenMask,w,h,true):null;let openedDistance=null;
  for(let i=0;i<mask.length;i++)if(mask[i]&&!opened[i])missing[i]=1;
  const openedLabels=groups(opened,w,h).labels,out=[],extentLimit=Math.max(4,diameterPx*3),wallRadius=Math.max(2,Math.ceil(diameterPx*1.25)),crossGuard=Math.max(1.5,diameterPx*.55);
  for(const comp of groups(missing,w,h).items){
@@ -163,7 +176,7 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
   const widths=new Float64Array(mask.length).fill(Infinity);let min=Infinity;for(const i of medial){widths[i]=exactLocalDiameterMm(inside,i,ppm);min=Math.min(min,widths[i]);}
   const measurementTolerance=Math.max(.015,.45/ppm);
   if(min+measurementTolerance>=rule)continue;
-  const taperToOneBody=adjacentOpened.size===1&&oneBodyTaper(medial,opened,inside,w,h,ppm,rule);
+  const taperToOneBody=adjacentOpened.size===1&&oneBodyTaper(medial,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule);
   const compactEndCap=kind==='positive'&&adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
   if((oneSided&&extent<=extentLimit)||(kind==='positive'&&taperToOneBody)||compactEndCap)continue;
   const center=medial.reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,medial[0]);
@@ -171,7 +184,7 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
  }
  return out;
 }
-function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){const other=Uint8Array.from(owner,v=>v!==0&&v!==id?1:0);return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
+function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){let other=null;for(let i=0;i<owner.length;i++)if(owner[i]!==0&&owner[i]!==id){if(!other)other=new Uint8Array(owner.length);other[i]=1;}return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
 function wallOppositionAt(i,wall,w,h,radius){
  const x=i%w,y=Math.floor(i/w);
  for(const [dx,dy] of dirs){
@@ -188,7 +201,7 @@ function wallOppositionAt(i,wall,w,h,radius){
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
  const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
  for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
- const d=euclideanDistance(gap,w,h),axis=medialAxis(gap,d,w,h),bad=new Uint8Array(owner.length),widths=new Float64Array(owner.length).fill(Infinity),
+ const d=euclideanDistance(gap,w,h),axis=medialAxis(gap,d,w,h,rule*ppm),bad=new Uint8Array(owner.length),widths=new Float64Array(owner.length).fill(Infinity),
   tol=Math.max(.015,.55/ppm),radius=Math.max(2,Math.ceil(rule*ppm*1.5));
  for(let i=0;i<axis.length;i++)if(axis[i]){
   const mm=exactLocalDiameterMm(d,i,ppm);widths[i]=mm;
@@ -302,5 +315,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v18-native-raster-scan',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v19-two-sided-medial',singleInk:!!rule.singleInk,candidateOnly:true};
 }

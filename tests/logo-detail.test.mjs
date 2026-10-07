@@ -364,3 +364,17 @@ test('Control-circle negative scan ignores open background beside a single ink w
  const result=analyzeLayers(split.layers,split.owner,w,h,10,{negative:.5});
  assert.equal(result.counts.negative,0,'outside background next to one edge is not a printable gap');
 });
+
+test('Two-sided medial scan ignores a wide open channel even when both walls are within the search radius',()=>{
+ const w=160,h=90,ppm=40,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ for(let y=8;y<82;y++)for(const [x0,x1]of [[35,50],[61,76]])for(let x=x0;x<x1;x++){const i=y*w+x;mask[i]=1;owner[i]=1;}
+ const result=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{negative:.2});
+ assert.equal(result.counts.negative,0,'0.275 mm channel must pass a 0.2 mm gap rule; its wall pixels are not a medial axis');
+});
+
+test('Two-sided medial scan does not turn rasterized curved edges into one-pixel positive defects',()=>{
+ const w=220,h=160,ppm=40,mask=new Uint8Array(w*h),owner=new Int32Array(w*h),cx=110,cy=80,r=52,half=6;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const d=Math.hypot(x-cx,y-cy);if(Math.abs(d-r)<=half){const i=y*w+x;mask[i]=1;owner[i]=1;}}
+ const result=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
+ assert.equal(result.counts.positive,0,'0.3 mm curved stroke must not produce 0.025 mm markers along its raster contour');
+});
