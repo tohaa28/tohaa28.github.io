@@ -518,3 +518,34 @@ Regression tests добавлены для:
 - patcher expected bundle SHA-256: `c4460e0e1c41075c3c8969c6dce8b1bc3c90c8599756f4076772e5b33438f929`.
 
 Следующая проверка пользователем: повторно загрузить тот же синий рисунок. Ожидаемый результат — исчезновение цепочек жёлтых/голубых кружков по обычным контурам и существенно более быстрое завершение поиска. Оставшиеся маркеры разбирать уже как конкретные геометрические false positive / false negative.
+
+
+## Дополнение 2026-10-07 — PrintCheck v20: ridge maxima вместо направленной эвристики
+
+После пользовательской проверки v19 на том же синем LM1-растре результат остался неправильным: positive осталось ровно 485, negative выросло до 235; маркеры продолжали идти по обычным контурам. Это подтвердило, что двухсторонняя направленная эвристика не устраняет главный класс edge-noise.
+
+v20 меняет сам критерий медиальной оси:
+- кандидат оси теперь должен быть локальным максимумом Euclidean distance transform среди всех 8 соседей;
+- обычный краевой пиксель толстой линии автоматически исключается, потому что внутрь формы есть сосед с большим расстоянием;
+- plateau максимум разрешён, поэтому двухпиксельные/чётные тонкие линии не теряются;
+- сохранён фильтр по максимальной релевантной толщине;
+- удалена дорогая функция descendsBeforeRises и многократные направленные трассировки на каждом пикселе;
+- остаются оптимизации v19: lazy single EDT для opened-distance и отсутствие EDT пустой other-ink mask в single-ink.
+
+Regression suite подтверждает:
+- thick ordinary edges = 0 positive;
+- rasterized curved thick stroke = 0 one-pixel positive;
+- wide gap > threshold = 0 negative;
+- real thin straight/diagonal/zigzag/spur остаются detectable;
+- short corner convergence не считается defect;
+- все прежние color-boundary, antialias, isolated, raster/vector, native-raster и browser tests сохранены.
+
+Финальная версия:
+- source commit: `9c0890886e01b2458c817a2557de177262520bf7`;
+- workflow: `37597917328` — precheck success, publish success, browser_verify success;
+- published main: `bf4692e19e727dceb5dd904da0c556672910bc2a`;
+- algorithm: `PrintCheck-control-circle-v20-local-max-ridge`;
+- cache chain: `20261007-2`;
+- patcher expected bundle SHA-256: `af8d3ac130572333b1a69dbc5c4a5ddcf219348e6c1f929295a4253207b80b31`.
+
+Следующая пользовательская проверка: тот же синий рисунок LM1. Сравнить не только количество markers, но и их положение: нормальные внешние/внутренние края толстых линий не должны иметь markers; true defect marker должен стоять на centerline узкого элемента или по центру узкого white gap.
