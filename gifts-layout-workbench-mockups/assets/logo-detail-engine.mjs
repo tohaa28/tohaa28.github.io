@@ -182,30 +182,112 @@ function controlCircleDefects(mask,w,h,ppm,rule,kind,{wallMask=null,forbiddenMas
  }
  return out;
 }
-function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){let other=null;for(let i=0;i<owner.length;i++)if(owner[i]!==0&&owner[i]!==id){if(!other)other=new Uint8Array(owner.length);other[i]=1;}return controlCircleDefects(fg,w,h,ppm,rule,'positive',{forbiddenMask:other});}
-function wallOppositionAt(i,wall,w,h,radius){
- const x=i%w,y=Math.floor(i/w);
- for(const [dx,dy] of dirs){
-  const norm=Math.hypot(dx,dy);let a=false,b=false;
-  for(let q=1;q<=radius;q++){
-   const x1=Math.round(x+dx*q/norm),y1=Math.round(y+dy*q/norm),x2=Math.round(x-dx*q/norm),y2=Math.round(y-dy*q/norm);
-   if(x1>=0&&x1<w&&y1>=0&&y1<h&&wall[y1*w+x1])a=true;
-   if(x2>=0&&x2<w&&y2>=0&&y2<h&&wall[y2*w+x2])b=true;
-   if(a&&b)return true;
-  }
+function phaseBoundary(mask,w,h,x,y){
+ const i=y*w+x;if(!mask[i])return false;
+ for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
+  if(xx===x&&yy===y)continue;
+  if(xx<0||xx>=w||yy<0||yy>=h||!mask[yy*w+xx])return true;
  }
  return false;
 }
-function negativeCircleProbe(owner,id,w,h,ppm,rule){
- const gap=new Uint8Array(owner.length),wall=new Uint8Array(owner.length);
- for(let i=0;i<owner.length;i++){wall[i]=owner[i]===id?1:0;gap[i]=owner[i]===0?1:0;}
- const d=euclideanDistance(gap,w,h),axis=medialAxis(gap,d,w,h,rule*ppm),bad=new Uint8Array(owner.length),widths=new Float64Array(owner.length).fill(Infinity),
-  tol=Math.max(.015,.55/ppm),radius=Math.max(2,Math.ceil(rule*ppm*1.5));
- for(let i=0;i<axis.length;i++)if(axis[i]){
-  const mm=exactLocalDiameterMm(d,i,ppm);widths[i]=mm;
-  if(mm+tol<rule&&wallOppositionAt(i,wall,w,h,radius))bad[i]=1;
+function phaseNormal(mask,w,h,x,y){
+ const at=(xx,yy)=>xx>=0&&xx<w&&yy>=0&&yy<h&&mask[yy*w+xx]?1:0,
+  gx=at(x+1,y-1)+2*at(x+1,y)+at(x+1,y+1)-at(x-1,y-1)-2*at(x-1,y)-at(x-1,y+1),
+  gy=at(x-1,y+1)+2*at(x,y+1)+at(x+1,y+1)-at(x-1,y-1)-2*at(x,y-1)-at(x+1,y-1),
+  m=Math.hypot(gx,gy);
+ return m>=.5?[gx/m,gy/m]:null;
+}
+function ownerAdjacency(owner,w,h,x,y,id){
+ let target=false,background=false,foreign=false;
+ for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){
+  if(xx===x&&yy===y)continue;const v=owner[yy*w+xx];
+  if(v===id)target=true;else if(v===0)background=true;else foreign=true;
  }
- return persistent(bad,widths,w,h,ppm,rule,'negative',{allowOpenChannel:true});
+ return {target,background,foreign};
+}
+// Stroke Width Transform adapted to a binary print phase.
+// A candidate must have two opposed edges with roughly opposite inward normals.
+// This rejects ordinary one-sided contours and measures the physical band/gap itself.
+function adjacentLabels(labels,w,h,x,y){
+ const out=new Set();for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){const v=labels[yy*w+xx];if(v>0)out.add(v);}return out;
+}
+function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind,sideLabels=null){
+ const bad=new Uint8Array(mask.length),widths=new Float64Array(mask.length).fill(Infinity),
+  maxRay=Math.max(3,Math.ceil(rule*ppm+3)),tol=Math.max(.015,.55/ppm),dotLimit=-Math.cos(Math.PI/6),step=.5;
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x;if(!phaseBoundary(mask,w,h,x,y))continue;
+  const adj=ownerAdjacency(owner,w,h,x,y,id);
+  if(kind==='positive'){if(!adj.background||adj.foreign)continue;}
+  else if(!adj.target||adj.foreign)continue;
+  const n=phaseNormal(mask,w,h,x,y);if(!n)continue;const startSides=sideLabels?adjacentLabels(sideLabels,w,h,x,y):null,[ux,uy]=n,path=[i];let last=i;
+  for(let s=step;s<=maxRay+1;s+=step){
+   const xx=Math.round(x+ux*s),yy=Math.round(y+uy*s);
+   if(xx<0||xx>=w||yy<0||yy>=h)break;
+   const j=yy*w+xx;if(j===last)continue;last=j;
+   if(mask[j]){if(path[path.length-1]!==j)path.push(j);continue;}
+   if(kind==='positive'){if(owner[j]!==0)break;if(sideLabels&&(!sideLabels[j]||!startSides.has(sideLabels[j])))break;}else if(owner[j]!==id)break;
+   const q=path[path.length-1];if(q===i)break;const qx=q%w,qy=Math.floor(q/w),qAdj=ownerAdjacency(owner,w,h,qx,qy,id);
+   if(kind==='positive'){if(!qAdj.background||qAdj.foreign)break;}else if(!qAdj.target||qAdj.foreign)break;
+   const qn=phaseNormal(mask,w,h,qx,qy);if(!qn||ux*qn[0]+uy*qn[1]>dotLimit)break;
+   const widthPx=Math.hypot(qx-x,qy-y),widthMm=widthPx/ppm;
+   if(widthMm+tol>=rule)break;
+   for(const p of path){bad[p]=1;if(widthMm<widths[p])widths[p]=widthMm;}
+   break;
+  }
+ }
+ return {bad,widths};
+}
+function widthTrend(comp,widths,w){
+ const rows=[];let mx=0,my=0;for(const i of comp)if(Number.isFinite(widths[i])){const x=i%w,y=Math.floor(i/w);rows.push([x,y,widths[i]]);mx+=x;my+=y;}
+ if(rows.length<4)return {corr:0,spread:0};mx/=rows.length;my/=rows.length;
+ let xx=0,xy=0,yy=0;for(const [x,y]of rows){const dx=x-mx,dy=y-my;xx+=dx*dx;xy+=dx*dy;yy+=dy*dy;}
+ const angle=.5*Math.atan2(2*xy,xx-yy),ux=Math.cos(angle),uy=Math.sin(angle),vals=rows.map(([x,y,v])=>[(x-mx)*ux+(y-my)*uy,v]),
+  mt=vals.reduce((s,v)=>s+v[0],0)/vals.length,mv=vals.reduce((s,v)=>s+v[1],0)/vals.length;
+ let num=0,dt=0,dv=0;for(const [t,v]of vals){const a=t-mt,b=v-mv;num+=a*b;dt+=a*a;dv+=b*b;}
+ return {corr:dt>0&&dv>0?num/Math.sqrt(dt*dv):0,spread:Math.max(...vals.map(v=>v[1]))-Math.min(...vals.map(v=>v[1]))};
+}
+function endpointWideSupport(comp,fieldDistance,w,h,ppm,rule){
+ if(!fieldDistance||comp.length<2)return {a:false,b:false};
+ let mx=0,my=0;for(const i of comp){mx+=i%w;my+=Math.floor(i/w);}mx/=comp.length;my/=comp.length;
+ let xx=0,xy=0,yy=0;for(const i of comp){const dx=i%w-mx,dy=Math.floor(i/w)-my;xx+=dx*dx;xy+=dx*dy;yy+=dy*dy;}
+ const angle=.5*Math.atan2(2*xy,xx-yy),ux=Math.cos(angle),uy=Math.sin(angle);let minT=Infinity,maxT=-Infinity;
+ for(const i of comp){const t=(i%w-mx)*ux+(Math.floor(i/w)-my)*uy;minT=Math.min(minT,t);maxT=Math.max(maxT,t);}
+ const radius=Math.max(6,Math.ceil(rule*ppm*4)),lateral=Math.max(2,rule*ppm*.8);
+ const sees=(endT,sign)=>{
+  const ex=mx+ux*endT,ey=my+uy*endT;
+  for(let y=Math.max(0,Math.floor(ey-radius));y<=Math.min(h-1,Math.ceil(ey+radius));y++)for(let x=Math.max(0,Math.floor(ex-radius));x<=Math.min(w-1,Math.ceil(ex+radius));x++){
+   const i=y*w+x;if(fieldDistance[i]<=0)continue;const dx=x-ex,dy=y-ey,forward=sign*(dx*ux+dy*uy),side=Math.abs(-dx*uy+dy*ux);
+   if(forward<1||forward>radius||side>lateral)continue;
+   const mm=Math.max(1,2*fieldDistance[i]/3-1)/ppm;if(mm+.02>=rule)return true;
+  }
+  return false;
+ };
+ return {a:sees(minT,-1),b:sees(maxT,1)};
+}
+function strokeComponents(bad,widths,phase,w,h,ppm,rule,kind,{fieldDistance=null}={}){
+ const out=[],eps=Math.max(.01,.45/ppm),shortLimit=Math.max(3,rule*ppm*2.5);
+ for(const comp of groups(bad,w,h).items){
+  if(comp.length<2)continue;
+  let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0,min=Infinity,max=0;const values=[];
+  for(const i of comp){const x=i%w,y=Math.floor(i/w),v=widths[i];x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;if(Number.isFinite(v)){values.push(v);min=Math.min(min,v);max=Math.max(max,v);}}
+  if(!values.length||min+Math.max(.015,.45/ppm)>=rule)continue;cx/=comp.length;cy/=comp.length;
+  if(kind==='positive'){
+   const support=endpointWideSupport(comp,fieldDistance,w,h,ppm,rule),twoSidedWide=support.a&&support.b,oneSidedWide=support.a!==support.b,
+    extent=Math.max(x1-x0+1,y1-y0+1),trend=widthTrend(comp,widths,w),strongTaper=Math.abs(trend.corr)>=.68&&trend.spread>Math.max(.035,rule*.16);
+   if(!twoSidedWide&&(strongTaper||(oneSidedWide&&extent<shortLimit)))continue;
+  }
+  const centers=comp.filter(i=>Number.isFinite(widths[i])&&widths[i]<=min+eps),box=makeBox(comp,widths,w,h,kind,rule,centers.length?centers:comp);box.minWidthMm=min;out.push(box);
+ }
+ return out;
+}
+function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
+ const background=Uint8Array.from(owner,v=>v===0?1:0),sideLabels=groups(background,w,h).labels,
+  swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive',sideLabels),fieldDistance=distance(fg,w,h);
+ return strokeComponents(swt.bad,swt.widths,fg,w,h,ppm,rule,'positive',{fieldDistance});
+}
+function negativeCircleProbe(owner,id,w,h,ppm,rule){
+ const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
+ return strokeComponents(swt.bad,swt.widths,gap,w,h,ppm,rule,'negative');
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
@@ -313,5 +395,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-control-circle-v20-local-max-ridge',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-swt-v21-opposed-edge-rays',singleInk:!!rule.singleInk,candidateOnly:true};
 }
