@@ -226,7 +226,7 @@ function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind){
    const q=path[path.length-1];if(q===i)break;const qx=q%w,qy=Math.floor(q/w),qAdj=ownerAdjacency(owner,w,h,qx,qy,id);
    if(kind==='positive'){if(!qAdj.background||qAdj.foreign)break;}else if(!qAdj.target||qAdj.foreign)break;
    const qn=phaseNormal(mask,w,h,qx,qy);if(!qn||ux*qn[0]+uy*qn[1]>dotLimit)break;
-   const widthPx=Math.hypot(qx-x,qy-y)+1,widthMm=widthPx/ppm;
+   const widthPx=Math.hypot(qx-x,qy-y),widthMm=widthPx/ppm;
    if(widthMm+tol>=rule)break;
    for(const p of path){bad[p]=1;if(widthMm<widths[p])widths[p]=widthMm;}
    break;
@@ -234,9 +234,25 @@ function opposedStrokeCandidates(mask,owner,id,w,h,ppm,rule,kind){
  }
  return {bad,widths};
 }
+function pruneOneSidedWidthTapers(bad,widths,phase,w,h,rule){
+ for(const comp of groups(bad,w,h).items){
+  let cx=0,cy=0;for(const i of comp){cx+=i%w;cy+=Math.floor(i/w);}cx/=comp.length;cy/=comp.length;
+  const vectors=[],values=[];
+  for(const i of comp){
+   if(Number.isFinite(widths[i]))values.push(widths[i]);
+   neighbors(i,w,h,n=>{if(!phase[n]||bad[n])return;const dx=n%w-cx,dy=Math.floor(n/w)-cy,m=Math.hypot(dx,dy);if(m>.25)vectors.push([dx/m,dy/m]);});
+  }
+  if(!vectors.length||values.length<3)continue;
+  let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
+  if(maxSep>=Math.PI*.66)continue;
+  const spread=Math.max(...values)-Math.min(...values);
+  if(spread>Math.max(.03,rule*.18))for(const i of comp)bad[i]=0;
+ }
+}
 function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
  const swt=opposedStrokeCandidates(fg,owner,id,w,h,ppm,rule,'positive');
- return persistent(swt.bad,swt.widths,w,h,ppm,rule,'positive',{rejectOneSidedTaper:true,fieldDistance:distance(fg,w,h)});
+ pruneOneSidedWidthTapers(swt.bad,swt.widths,fg,w,h,rule);
+ return persistent(swt.bad,swt.widths,w,h,ppm,rule,'positive');
 }
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
  const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
