@@ -53,7 +53,7 @@ export async function verifyLogoPreflight(frame) {
   assert.equal(wholeView.visibleFieldSizeHidden,true);
   assert.doesNotMatch(wholeView.fieldSize,/×/,'Field dimensions must be hidden in whole-template view');
   await frame.locator('#orderFieldChoice').evaluate(el=>el.dispatchEvent(new Event('change',{bubbles:true})));
-  await frame.waitForFunction(()=>document.getElementById('selectedFieldSize')?.hidden===false);
+  await frame.waitForFunction(()=>document.getElementById('selectedFieldSize')?.hidden===false&&document.getElementById('dimensions')?.textContent==='');
   assert.equal(await frame.locator('#dimensions').textContent(),'');
   assert.equal(await frame.locator('#preflightMarkers').isChecked(),true);assert.equal(await frame.locator('#preflightMarkers').isVisible(),false);
   await frame.locator('#logoPreflight summary').click();
