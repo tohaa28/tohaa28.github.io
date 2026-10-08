@@ -1,0 +1,178 @@
+{
+  "context": "PrintCheck v24 LM1 manual validation anchors: 2026-10-08",
+  "original_upload": "che.pdf",
+  "upload_kept_in_conversation_only": true,
+  "embedded_bitmap": {
+    "pixels": [
+      354,
+      354
+    ],
+    "physical_mm": [
+      30,
+      30
+    ],
+    "effective_dpi": 299.7,
+    "source_file_dpi_reported_in_maketnaya": 1048,
+    "source_equivalent": false
+  },
+  "markup": {
+    "count": 10,
+    "vector_disks": true,
+    "disk_diameter_mm": 0.1,
+    "coordinate_frame": "bitmap normalized from image inner rect, not whole PDF"
+  },
+  "technical_rules": {
+    "positive_mm": 0.1,
+    "negative_mm": 0.2
+  },
+  "marker_semantics": "User-suspected problem regions only; do not treat disk center as exact defect pixel or as independently verified failure",
+  "recommended_matching": "Use local spatial tolerance, align native original artwork to embedded bitmap; compare positive/negative candidate coverage near anchors, not exact x-y match. Require native uploaded source for meaningful 0.1 mm compliance.",
+  "points": [
+    {
+      "id": 1,
+      "relative": [
+        0.462768,
+        0.667938
+      ],
+      "image_pixel": [
+        163.82,
+        236.45
+      ],
+      "region": "under-seat narrow stroke",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 2,
+      "relative": [
+        0.56935,
+        0.670847
+      ],
+      "image_pixel": [
+        201.55,
+        237.48
+      ],
+      "region": "lower-right thin slanted/horizontal stroke",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 3,
+      "relative": [
+        0.487429,
+        0.70565
+      ],
+      "image_pixel": [
+        172.55,
+        249.8
+      ],
+      "region": "lower short horizontal line",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 4,
+      "relative": [
+        0.57709,
+        0.551921
+      ],
+      "image_pixel": [
+        204.29,
+        195.38
+      ],
+      "region": "thin junction near the mug/bottom-right of character",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 5,
+      "relative": [
+        0.230311,
+        0.484435
+      ],
+      "image_pixel": [
+        81.53,
+        171.49
+      ],
+      "region": "left flame line / convergence",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 6,
+      "relative": [
+        0.671864,
+        0.601215
+      ],
+      "image_pixel": [
+        237.84,
+        212.83
+      ],
+      "region": "right flame pointed junction",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 7,
+      "relative": [
+        0.685593,
+        0.58952
+      ],
+      "image_pixel": [
+        242.7,
+        208.69
+      ],
+      "region": "right flame thin junction",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 8,
+      "relative": [
+        0.540282,
+        0.437006
+      ],
+      "image_pixel": [
+        191.26,
+        154.7
+      ],
+      "region": "eye/nose nearby small detail",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 9,
+      "relative": [
+        0.621328,
+        0.631949
+      ],
+      "image_pixel": [
+        219.95,
+        223.71
+      ],
+      "region": "zig-zag stroke at lower-right flame",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    },
+    {
+      "id": 10,
+      "relative": [
+        0.563136,
+        0.705367
+      ],
+      "image_pixel": [
+        199.35,
+        249.7
+      ],
+      "region": "lower-right short horizontal line",
+      "expected": "manual_review",
+      "kind": "unclassified"
+    }
+  ],
+  "known_v24_limitation": "Positive scan reports one candidate per connected disk-opening missing region. When an SWT response exists on a variable-width region, the one-pixel fallback is not evaluated for the remaining unsupported subsection; a marker may land on a thicker segment rather than the thinnest one.",
+  "reproduction": "Synthetic thick blue body with a 2px connector followed by a 1px long tail: v24 reports one positive centered at width-transition, but not the center of the 1px tail.",
+  "warnings": [
+    "Do not upscale 354px PDF to 1048 dpi and claim physical validation",
+    "Do not upload the customer's bitmap to public GitHub without explicit authorization"
+  ]
+}
