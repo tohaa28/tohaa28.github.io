@@ -28,6 +28,29 @@ export async function verifyLogoPreflight(frame) {
   assert.ok(Math.abs(result.transformed-.4)<.02);
   assert.equal(result.unknown.rule,null);
 
+  // The field-upload prompt must be visible only inside a selected template field,
+  // and must not persist on the whole-template view or after deselection.
+  const fieldChoice=frame.locator('#orderFieldChoice');
+  await fieldChoice.selectOption('');
+  assert.equal((await frame.locator('#status').textContent()).includes('Загрузите логотип для выбранного поля.'),
+    false,'field-upload prompt must be cleared or hidden on deselection');
+  await fieldChoice.selectOption('0');
+  await frame.waitForFunction(()=>{
+    const e=document.querySelector('#status');
+    return e?.textContent==='Загрузите логотип для выбранного поля.'&&!e.hidden;
+  });
+  await frame.locator('#zoomPage').click();
+  await frame.waitForFunction(()=>document.querySelector('#status')?.hidden===true);
+  const wholeTemplateStatus=await frame.evaluate(()=>({
+    message:document.querySelector('#status').textContent,
+    hidden:document.querySelector('#status').hidden,
+    pickHintHidden:document.querySelector('#templatePickHint').hidden
+  }));
+  assert.equal(wholeTemplateStatus.hidden,true,'prompt must disappear on whole-template view');
+  await fieldChoice.selectOption('0');
+  await frame.waitForFunction(()=>document.querySelector('#status')?.hidden===false);
+  assert.equal(await frame.locator('#status').textContent(),'Загрузите логотип для выбранного поля.');
+
   // Current fixture is the real-signature umbrella template / B4 application 3.
   const upload=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><text x="1" y="5" font-size="2">Logo</text><path d="M1 7H9" fill="none" stroke="black" stroke-width="0.01"/></svg>');
   await frame.locator('#artwork').setInputFiles({name:'preflight-text.svg',mimeType:'image/svg+xml',buffer:upload});

@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="78e2262b9ab8a35ce435624627e095d79b051de6c9597dc229c3d325e718f68a";
+const expected="b5abeef89d602cf25fb896c11fa4f1a385badffcda6df5f37c8ef1da5bdc4d4b";
 const edits=[
   [
     "",
@@ -391,6 +391,14 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261008-2",
     "./logo-preflight.mjs?v=20261008-3"
+  ],
+  [
+    'Q=c=>v("status").textContent=c;function Ys(c)',
+    'Q=c=>{v("status").textContent=c;gwbSyncLogoUploadHint()};function gwbSyncLogoUploadHint(){const e=v("status");e.hidden=e.textContent==="Загрузите логотип для выбранного поля."&&!(y.template&&y.view&&y.field&&y.active>=0&&Number.isInteger(y.placements[y.active]?.fieldIndex))}function Ys(c)'
+  ],
+  [
+    'function X(){const c=y.template;if(H.clearRect(0,0,pt.width,pt.height),!c){',
+    'function X(){gwbSyncLogoUploadHint();const c=y.template;if(H.clearRect(0,0,pt.width,pt.height),!c){'
   ]
 ];
 export function applyLogoPreflight(){
