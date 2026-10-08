@@ -144,6 +144,21 @@ function attachmentGeometry(comp,opened,w,h){
  let maxSep=0;for(let i=0;i<vectors.length;i++)for(let j=i+1;j<vectors.length;j++){const dot=Math.max(-1,Math.min(1,vectors[i][0]*vectors[j][0]+vectors[i][1]*vectors[j][1]));maxSep=Math.max(maxSep,Math.acos(dot));}
  return {count:vectors.length,maxSep};
 }
+function componentOpeningDepth(comp,opened,w,h){
+ const pos=new Map(),dist=new Int32Array(comp.length);dist.fill(-1);
+ for(let i=0;i<comp.length;i++)pos.set(comp[i],i);
+ const q=new Int32Array(comp.length);let a=0,b=0,max=0;
+ for(let pi=0;pi<comp.length;pi++){
+  let touch=false;neighbors(comp[pi],w,h,n=>{if(opened[n])touch=true;});
+  if(touch){dist[pi]=0;q[b++]=pi;}
+ }
+ if(!b)return Infinity;
+ while(a<b){
+  const pi=q[a++],v=comp[pi],dv=dist[pi];if(dv>max)max=dv;
+  neighbors(v,w,h,n=>{const pj=pos.get(n);if(pj!==undefined&&dist[pj]<0){dist[pj]=dv+1;q[b++]=pj;}});
+ }
+ return max;
+}
 function median(values){const a=values.slice().sort((x,y)=>x-y),n=a.length;if(!n)return Infinity;return n&1?a[n>>1]:(a[n/2-1]+a[n/2])/2;}
 function oneBodyTaper(comp,medial,fromOpened,inside,w,h,ppm,rule){
  if(medial.length<4)return false;
@@ -297,9 +312,11 @@ function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
   const stroke=comp.filter(i=>swt.bad[i]&&Number.isFinite(swt.widths[i]));if(!stroke.length)continue;
   let min=Infinity;for(const i of stroke)min=Math.min(min,swt.widths[i]);
   if(min+Math.max(.015,.55/ppm)>=rule)continue;
-  const taperToOneBody=adjacentOpened.size===1&&oneBodyTaper(comp,stroke,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule),
+  const depthPx=componentOpeningDepth(comp,opened,w,h),
+   shallowOneBody=adjacentOpened.size===1&&Number.isFinite(depthPx)&&depthPx<Math.max(2,diameterPx*.9),
+   taperToOneBody=adjacentOpened.size===1&&!shallowOneBody&&oneBodyTaper(comp,stroke,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule),
    compactEndCap=adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
-  if((oneSided&&extent<=extentLimit)||taperToOneBody||compactEndCap)continue;
+  if((oneSided&&extent<=extentLimit)||shallowOneBody||taperToOneBody||compactEndCap)continue;
   const eps=Math.max(.01,.45/ppm),centers=stroke.filter(i=>swt.widths[i]<=min+eps),
    center=(centers.length?centers:stroke).reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,(centers.length?centers:stroke)[0]),
    box=makeBox(stroke,swt.widths,w,h,'positive',rule,[center]);box.minWidthMm=min;out.push(box);
@@ -307,8 +324,23 @@ function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
  return out;
 }
 function negativeCircleProbe(owner,id,w,h,ppm,rule){
- const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative');
- return strokeComponents(swt.bad,swt.widths,gap,w,h,ppm,rule,'negative');
+ const gap=Uint8Array.from(owner,v=>v===0?1:0),swt=opposedStrokeCandidates(gap,owner,id,w,h,ppm,rule,'negative'),
+  diameterPx=rule*ppm,{opened}=circleOpening(gap,w,h,diameterPx),missing=new Uint8Array(gap.length),
+  target=Uint8Array.from(owner,v=>v===id?1:0),targetLabels=groups(target,w,h).labels,out=[],tol=Math.max(.015,.55/ppm);
+ for(let i=0;i<gap.length;i++)if(gap[i]&&!opened[i])missing[i]=1;
+ for(const comp of groups(missing,w,h).items){
+  const stroke=comp.filter(i=>swt.bad[i]&&Number.isFinite(swt.widths[i]));if(!stroke.length)continue;
+  let min=Infinity,cx=0,cy=0;for(const i of stroke){min=Math.min(min,swt.widths[i]);cx+=i%w;cy+=Math.floor(i/w);}
+  if(min+tol>=rule)continue;cx/=stroke.length;cy/=stroke.length;
+  const walls=new Set();for(const i of comp)neighbors(i,w,h,n=>{const lab=targetLabels[n];if(lab>0)walls.add(lab);});
+  const depthPx=componentOpeningDepth(comp,opened,w,h),enclosed=!Number.isFinite(depthPx),separateWalls=walls.size>=2,
+   meaningfulOpen=Number.isFinite(depthPx)&&depthPx>=Math.max(2,diameterPx*.9);
+  if(!enclosed&&!separateWalls&&!meaningfulOpen)continue;
+  const eps=Math.max(.01,.45/ppm),centers=stroke.filter(i=>swt.widths[i]<=min+eps),
+   center=(centers.length?centers:stroke).reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,(centers.length?centers:stroke)[0]),
+   box=makeBox(stroke,swt.widths,w,h,'negative',rule,[center]);box.minWidthMm=min;out.push(box);
+ }
+ return out;
 }
 export function analyzeLayers(layers,owner,w,h,ppm,rule,options={}){
  const boxes=[],counts={positive:0,negative:0,isolated:0},isolatedPixels=new Uint8Array(owner.length),isolatedThreshold=rule.isolated;
@@ -399,6 +431,21 @@ export function inferAutoMask(data,width,height){
  const noise=border.map(p=>Math.hypot(p.r-br,p.g-bg,p.b-bb)).sort((a,b)=>a-b),p95=noise[Math.min(noise.length-1,Math.floor(noise.length*.95))]||0,threshold=Math.max(14,Math.min(46,Math.ceil(p95+8))),lum=.2126*br+.7152*bg+.0722*bb;
  return {kind:'background',background,threshold,previewMode:lum<128?'light':'dark'};
 }
+function singleInkCoverageMask(data,rgb,seed,w,h,background,separated,auto,mode){
+ const mask=new Uint8Array(seed.length),br=background>>16&255,bg=background>>8&255,bb=background&255,
+  refs=(separated.layers||[]).map(l=>({r:l.r,g:l.g,b:l.b,m:Math.max(1,Number(l.coreMagnitude)||0)})).filter(l=>Number.isFinite(l.r)&&Number.isFinite(l.g)&&Number.isFinite(l.b));
+ let fallback=1;
+ for(let i=0;i<seed.length;i++)if(seed[i]){const c=rgb[i],dr=(c>>16&255)-br,dg=(c>>8&255)-bg,db=(c&255)-bb;fallback=Math.max(fallback,Math.hypot(dr,dg,db));}
+ const alphaGeometry=auto?.kind==='transparent'||mode==='alpha';
+ for(let i=0;i<seed.length;i++)if(seed[i]){
+  if(alphaGeometry){if(data[i*4+3]>=128)mask[i]=1;continue;}
+  const c=rgb[i],dr=(c>>16&255)-br,dg=(c>>8&255)-bg,db=(c&255)-bb,mag=Math.hypot(dr,dg,db);let coverage=0;
+  for(const ref of refs){const proj=dr*ref.r+dg*ref.g+db*ref.b;if(proj<=0)continue;const cosine=proj/Math.max(1e-6,mag);if(cosine<.82)continue;coverage=Math.max(coverage,proj/ref.m);}
+  if(!refs.length)coverage=mag/fallback;
+  if(coverage>=.5)mask[i]=1;
+ }
+ return mask;
+}
 export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',threshold=0,palette=[],lowResolution=false,sourceLimited=false,samplesPerMinimum=null}){
  if(width*height>MAX_PIXELS)throw Error('Превышен лимит размера маски.');
  const N=width*height,rgb=new Int32Array(N),seed=new Uint8Array(N),auto=mode==='auto'?inferAutoMask(data,width,height):null,background=auto?.background??(mode==='light'?0:0xffffff),maskThreshold=auto?.threshold??threshold;
@@ -410,9 +457,9 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   else seed[i]=mode==='alpha'?+(a>.5):mode==='light'?+(Math.max(r,g,b)>255-threshold):+(Math.min(r,g,b)<threshold);
  }
  const separated=mode==='alpha'?{layers:[{id:1,rgb:0,mask:seed}],owner:Int32Array.from(seed),suppressedTransitions:0}:splitColors(rgb,seed,width,height,background,palette),
-  split=rule.singleInk?(()=>{const mask=Uint8Array.from(seed,v=>v?1:0),visible=mask.some(Boolean),rgb=separated.layers.slice().sort((a,b)=>(b.pixels||0)-(a.pixels||0))[0]?.rgb??0;return {layers:visible?[{id:1,rgb,mask,pixels:mask.reduce((n,v)=>n+v,0)}]:[],owner:Int32Array.from(mask),suppressedTransitions:separated.suppressedTransitions||0};})():separated,
+  split=rule.singleInk?(()=>{const mask=singleInkCoverageMask(data,rgb,seed,width,height,background,separated,auto,mode),visible=mask.some(Boolean),rgb=separated.layers.slice().sort((a,b)=>(b.pixels||0)-(a.pixels||0))[0]?.rgb??0;return {layers:visible?[{id:1,rgb,mask,pixels:mask.reduce((n,v)=>n+v,0)}]:[],owner:Int32Array.from(mask),suppressedTransitions:separated.suppressedTransitions||0};})():separated,
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-swt-open-v22-control-circle-confirmed',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-coverage-local-v23-control-circle-topology',singleInk:!!rule.singleInk,candidateOnly:true};
 }
