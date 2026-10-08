@@ -616,3 +616,21 @@ Regression:
 - cache: `20261007-4`.
 
 Критично: v22 ещё не подтверждена новым пользовательским скрином того же синего LM1-растра. Следующий шаг — именно реальный повторный прогон, а не новая смена алгоритма вслепую.
+
+
+## UPDATE 2026-10-08 — PrintCheck v23
+
+Актуальная точка продолжения перенесена в `PRINTCHECK_HANDOFF_2026-10-08.md`.
+
+Подтверждённая функциональная версия:
+- source: `6a8d800a5d0006c1577f229704b91663baec691c`
+- main: `6db3059d78e81b67e41c3d59ee9cab4625610b9d`
+- workflow: `37755818416`
+- algorithm: `PrintCheck-coverage-local-v23-control-circle-topology`
+- cache: `20261008-1`
+- tests: 110/110
+- precheck/publish/browser_verify: success
+
+v22 на реальном синем LM1 artwork дал 724 markers (392 positive / 332 negative) и продолжал ловить ~1 px contour artifacts. v23 вводит 50% coverage geometry для single-ink и topology/depth filtering для shallow contour fringe/open notch.
+
+Следующая проверка: тот же реальный artwork пользователя на опубликованном v23.
