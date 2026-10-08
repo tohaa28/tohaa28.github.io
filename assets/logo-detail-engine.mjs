@@ -301,7 +301,7 @@ function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
   {inside,opened}=circleOpening(fg,w,h,diameterPx),missing=new Uint8Array(fg.length),openedLabels=groups(opened,w,h).labels,out=[];
  let other=null;for(let i=0;i<owner.length;i++)if(owner[i]!==0&&owner[i]!==id){if(!other)other=new Uint8Array(owner.length);other[i]=1;}
  const forbiddenDistance=other?euclideanDistance(other,w,h,true):null,crossGuard=Math.max(1.5,diameterPx*.55),extentLimit=Math.max(4,diameterPx*3);
- let openedDistance=null,fallbackWidths=null;
+ let openedDistance=null,fallbackWidths=null,supplementalWidths=null;
  for(let i=0;i<fg.length;i++)if(fg[i]&&!opened[i])missing[i]=1;
  for(const comp of groups(missing,w,h).items){
   if(comp.length<2)continue;
@@ -332,6 +332,27 @@ function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
   const eps=Math.max(.01,.45/ppm),centers=stroke.filter(i=>widths[i]<=min+eps),
    center=(centers.length?centers:stroke).reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,(centers.length?centers:stroke)[0]),
    box=makeBox(stroke,widths,w,h,'positive',rule,[center]);box.minWidthMm=min;out.push(box);
+  // Recover persistent skinny continuations where SWT stopped at a wider segment.
+  // No other phases or colour boundaries are allowed to supply candidates.
+  if(!fallback){
+   const limit=Math.max(4,Math.ceil(diameterPx*1.1)),
+    fromOpened=openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),
+    pool=new Set(comp.filter(i=>!swt.bad[i]&&exactLocalDiameterMm(inside,i,ppm)+Math.max(.015,.55/ppm)<rule
+      && fromOpened[i]>=Math.max(2,diameterPx*.9)));
+   while(pool.size){
+    const first=pool.values().next().value,queue=[first];pool.delete(first);
+    for(let qi=0;qi<queue.length;qi++)neighbors(queue[qi],w,h,n=>{if(pool.delete(n))queue.push(n);});
+    if(queue.length<limit)continue;
+    let ex=0,ey=0,emin=Infinity;
+    for(const i of queue){ex+=i%w;ey+=Math.floor(i/w);emin=Math.min(emin,exactLocalDiameterMm(inside,i,ppm));}
+    ex/=queue.length;ey/=queue.length;
+    const chosen=queue.reduce((best,i)=>Math.hypot(i%w-ex,Math.floor(i/w)-ey)<Math.hypot(best%w-ex,Math.floor(best/w)-ey)?i:best,queue[0]);
+    if(Math.hypot(chosen%w-center%w,Math.floor(chosen/w)-Math.floor(center/w))<diameterPx*1.5)continue;
+    if(!supplementalWidths)supplementalWidths=Float32Array.from(inside,v=>Math.max(1,2*v-1)/ppm);
+    const b=makeBox(queue,supplementalWidths,w,h,'positive',rule,[chosen]);
+    b.minWidthMm=emin;out.push(b);
+   }
+  }
  }
  return out;
 }
@@ -473,5 +494,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-coverage-swt-v24-pixel-stroke-recovery',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-coverage-swt-v25-multisegment-ink',singleInk:!!rule.singleInk,candidateOnly:true};
 }

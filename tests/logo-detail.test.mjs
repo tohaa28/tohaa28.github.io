@@ -454,3 +454,27 @@ test('LM1 1048 dpi thick curved contour remains free of positive markers',()=>{
  const r=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
  assert.equal(r.counts.positive,0);
 });
+
+test('LM1 1048 dpi two-pixel stroke followed by one-pixel tail creates separate control circles',()=>{
+ const w=220,h=130,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ const ink=(x,y)=>{mask[y*w+x]=1;owner[y*w+x]=1;};
+ for(let y=20;y<100;y++)for(let x=10;x<50;x++)ink(x,y);
+ for(let x=50;x<80;x++)for(let y=60;y<62;y++)ink(x,y);
+ for(let x=80;x<120;x++)ink(x,61);
+ const r=analyzeLayers([{id:1,rgb:0x1234cc,mask}],owner,w,h,ppm,{positive:.1});
+ const xs=r.boxes.filter(b=>b.kind==='positive').map(b=>b.cx*w).sort((a,b)=>a-b);
+ assert.ok(xs.some(x=>x>=75&&x<90),'SWT marker preserved');
+ assert.ok(xs.some(x=>x>=90&&x<115),'missing thin tail gains own circle');
+ for(let j=1;j<xs.length;j++)assert.ok(xs[j]-xs[j-1]>=.1*ppm);
+});
+test('LM1 1048 dpi: v25 still skips thick curved ring',()=>{
+ const w=190,h=160,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(Math.abs(Math.hypot(x-90,y-80)-55)<=7){mask[y*w+x]=1;owner[y*w+x]=1;}
+ assert.equal(analyzeLayers([{id:1,rgb:0,mask}],owner,w,h,ppm,{positive:.1}).counts.positive,0);
+});
+test('LM1 1048 dpi: 2px edge protrusion remains excluded',()=>{
+ const w=140,h=90,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ for(let y=15;y<75;y++)for(let x=10;x<50;x++){mask[y*w+x]=1;owner[y*w+x]=1;}
+ for(let x=50;x<52;x++){mask[44*w+x]=1;owner[44*w+x]=1;}
+ assert.equal(analyzeLayers([{id:1,rgb:0,mask}],owner,w,h,ppm,{positive:.1}).counts.positive,0);
+});
