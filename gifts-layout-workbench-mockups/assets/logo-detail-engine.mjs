@@ -301,7 +301,7 @@ function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
   {inside,opened}=circleOpening(fg,w,h,diameterPx),missing=new Uint8Array(fg.length),openedLabels=groups(opened,w,h).labels,out=[];
  let other=null;for(let i=0;i<owner.length;i++)if(owner[i]!==0&&owner[i]!==id){if(!other)other=new Uint8Array(owner.length);other[i]=1;}
  const forbiddenDistance=other?euclideanDistance(other,w,h,true):null,crossGuard=Math.max(1.5,diameterPx*.55),extentLimit=Math.max(4,diameterPx*3);
- let openedDistance=null;
+ let openedDistance=null,fallbackWidths=null;
  for(let i=0;i<fg.length;i++)if(fg[i]&&!opened[i])missing[i]=1;
  for(const comp of groups(missing,w,h).items){
   if(comp.length<2)continue;
@@ -309,17 +309,29 @@ function positiveCircleProbe(fg,owner,id,w,h,ppm,rule){
   let x0=w,y0=h,x1=0,y1=0,cx=0,cy=0;for(const i of comp){const x=i%w,y=Math.floor(i/w);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);cx+=x;cy+=y;}cx/=comp.length;cy/=comp.length;
   const attach=attachmentGeometry(comp,opened,w,h),extent=Math.max(x1-x0+1,y1-y0+1),oneSided=attach.count>0&&attach.maxSep<Math.PI*.66,adjacentOpened=new Set();
   for(const i of comp)neighbors(i,w,h,n=>{if(openedLabels[n])adjacentOpened.add(openedLabels[n]);});
-  const stroke=comp.filter(i=>swt.bad[i]&&Number.isFinite(swt.widths[i]));if(!stroke.length)continue;
-  let min=Infinity;for(const i of stroke)min=Math.min(min,swt.widths[i]);
+  // One-pixel physical ink can have a zero Sobel normal: SWT alone misses it.
+  // The control-circle remnant is accepted only if it persists beyond the edge rim.
+  let stroke=comp.filter(i=>swt.bad[i]&&Number.isFinite(swt.widths[i]));const fallback=!stroke.length;
+  if(fallback){
+   const tol=Math.max(.015,.55/ppm),limit=Math.max(4,Math.ceil(diameterPx*1.1)),
+    fromOpened=adjacentOpened.size?openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)):null;
+   stroke=comp.filter(i=>exactLocalDiameterMm(inside,i,ppm)+tol<rule
+    && (!fromOpened||fromOpened[i]>=Math.max(2,diameterPx*.9)));
+   if(stroke.length<limit)continue;
+   if(!fallbackWidths)fallbackWidths=new Float64Array(fg.length);
+   for(const i of stroke)fallbackWidths[i]=exactLocalDiameterMm(inside,i,ppm);
+  }
+  const widths=fallback?fallbackWidths:swt.widths;let min=Infinity;for(const i of stroke)min=Math.min(min,widths[i]);
   if(min+Math.max(.015,.55/ppm)>=rule)continue;
   const depthPx=componentOpeningDepth(comp,opened,w,h),
    shallowOneBody=adjacentOpened.size===1&&Number.isFinite(depthPx)&&depthPx<Math.max(2,diameterPx*.9),
-   taperToOneBody=adjacentOpened.size===1&&!shallowOneBody&&oneBodyTaper(comp,stroke,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule),
+   persistentFilament=fallback&&stroke.length>=Math.max(4,Math.ceil(diameterPx*1.1))&&depthPx>=Math.max(2,diameterPx*1.15),
+   taperToOneBody=adjacentOpened.size===1&&!shallowOneBody&&!persistentFilament&&oneBodyTaper(comp,stroke,openedDistance||(openedDistance=euclideanDistance(opened,w,h,true)),inside,w,h,ppm,rule),
    compactEndCap=adjacentOpened.size===1&&extent<=Math.max(3,diameterPx*1.25);
-  if((oneSided&&extent<=extentLimit)||shallowOneBody||taperToOneBody||compactEndCap)continue;
-  const eps=Math.max(.01,.45/ppm),centers=stroke.filter(i=>swt.widths[i]<=min+eps),
+  if((oneSided&&extent<=extentLimit&&!persistentFilament)||shallowOneBody||taperToOneBody||(compactEndCap&&!persistentFilament))continue;
+  const eps=Math.max(.01,.45/ppm),centers=stroke.filter(i=>widths[i]<=min+eps),
    center=(centers.length?centers:stroke).reduce((best,i)=>Math.hypot(i%w-cx,Math.floor(i/w)-cy)<Math.hypot(best%w-cx,Math.floor(best/w)-cy)?i:best,(centers.length?centers:stroke)[0]),
-   box=makeBox(stroke,swt.widths,w,h,'positive',rule,[center]);box.minWidthMm=min;out.push(box);
+   box=makeBox(stroke,widths,w,h,'positive',rule,[center]);box.minWidthMm=min;out.push(box);
  }
  return out;
 }
@@ -461,5 +473,5 @@ export function analyzeDetail({data,width,height,wMm,hMm,rule,mode='auto',thresh
   step=Math.max(wMm/width,hMm/height),result=analyzeLayers(split.layers,split.owner,width,height,1/step,rule,{sameComponentOpenGaps:false,visualIsolated:true}),notes=[];
  if(!split.layers.length)notes.push('Не найдены видимые элементы. Автоматическая маска не смогла уверенно отделить нанесение от фона.');
  const total=Object.values(result.counts).reduce((a,b)=>a+b,0);if(total>result.boxes.length)notes.push(`Найдено ${total} областей; число отображаемых примеров ограничено.`);
- return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-coverage-local-v23-control-circle-topology',singleInk:!!rule.singleInk,candidateOnly:true};
+ return {...result,notes,step,width,height,layers:split.layers.length,suppressedTransitions:split.suppressedTransitions||0,autoMask:auto||{kind:mode,background,threshold},lowResolution:!!lowResolution,sourceLimited:!!sourceLimited,samplesPerMinimum:Number(samplesPerMinimum)||null,algorithm:'PrintCheck-coverage-swt-v24-pixel-stroke-recovery',singleInk:!!rule.singleInk,candidateOnly:true};
 }
