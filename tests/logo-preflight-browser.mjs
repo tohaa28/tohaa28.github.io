@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 export async function verifyLogoPreflight(frame) {
+  const compiled=fs.readFileSync(new URL('../assets/index-BpU9kvz8.js',import.meta.url),'utf8');
+  assert.ok(compiled.includes('Q("Выберите место нанесения.")'), 'automatic article selection must preserve the place-selection hint');
+  assert.ok(!compiled.includes('Артикул выбран автоматически.'), 'redundant automatic selection notice must not be displayed');
   // Run against the real loaded module in the launcher frame, with real SVG DOM,
   // PDF.js, PDF-lib and browser image decoding. No application state is injected.
   const result=await frame.evaluate(async()=>{

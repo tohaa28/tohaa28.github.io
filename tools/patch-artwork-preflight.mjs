@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="b5abeef89d602cf25fb896c11fa4f1a385badffcda6df5f37c8ef1da5bdc4d4b";
+const expected="f74a165471c9a4c90d0cd8ebbefd285fa6a522acbced35747c3ad2613faee32b";
 const edits=[
   [
     "",
@@ -399,6 +399,10 @@ const edits=[
   [
     'function X(){const c=y.template;if(H.clearRect(0,0,pt.width,pt.height),!c){',
     'function X(){gwbSyncLogoUploadHint();const c=y.template;if(H.clearRect(0,0,pt.width,pt.height),!c){'
+  ],
+  [
+    'Q("Артикул выбран автоматически. Выберите место нанесения.")',
+    'Q("Выберите место нанесения.")'
   ]
 ];
 export function applyLogoPreflight(){
