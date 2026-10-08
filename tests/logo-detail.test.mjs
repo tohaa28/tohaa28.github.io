@@ -411,3 +411,46 @@ test('Two-sided medial scan does not turn rasterized curved edges into one-pixel
  const result=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
  assert.equal(result.counts.positive,0,'0.3 mm curved stroke must not produce 0.025 mm markers along its raster contour');
 });
+
+test('LM1 1048 dpi one-pixel independent long',()=>{
+ const w=140,h=90,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ const ink=(x,y)=>{mask[y*w+x]=1;owner[y*w+x]=1;};
+ 
+ for(let x=12;x<12+96;x++)ink(x,44);
+ const r=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
+ assert.ok(r.counts.positive>0);
+});
+
+test('LM1 1048 dpi one-pixel attached long',()=>{
+ const w=140,h=90,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ const ink=(x,y)=>{mask[y*w+x]=1;owner[y*w+x]=1;};
+ for(let y=15;y<75;y++)for(let x=10;x<50;x++)ink(x,y);
+ for(let x=50;x<50+34;x++)ink(x,44);
+ const r=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
+ assert.ok(r.counts.positive>0);
+});
+
+test('LM1 1048 dpi one-pixel attached 9px',()=>{
+ const w=140,h=90,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ const ink=(x,y)=>{mask[y*w+x]=1;owner[y*w+x]=1;};
+ for(let y=15;y<75;y++)for(let x=10;x<50;x++)ink(x,y);
+ for(let x=50;x<50+9;x++)ink(x,44);
+ const r=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
+ assert.ok(r.counts.positive>0);
+});
+
+test('LM1 1048 dpi one-pixel boundary bump 2px',()=>{
+ const w=140,h=90,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ const ink=(x,y)=>{mask[y*w+x]=1;owner[y*w+x]=1;};
+ for(let y=15;y<75;y++)for(let x=10;x<50;x++)ink(x,y);
+ for(let x=50;x<50+2;x++)ink(x,44);
+ const r=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
+ assert.equal(r.counts.positive,0);
+});
+
+test('LM1 1048 dpi thick curved contour remains free of positive markers',()=>{
+ const w=190,h=160,ppm=1048/25.4,mask=new Uint8Array(w*h),owner=new Int32Array(w*h);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(Math.abs(Math.hypot(x-90,y-80)-55)<=7){mask[y*w+x]=1;owner[y*w+x]=1;}
+ const r=analyzeLayers([{id:1,rgb:0x163dc5,mask}],owner,w,h,ppm,{positive:.1});
+ assert.equal(r.counts.positive,0);
+});
