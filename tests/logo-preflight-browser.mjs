@@ -32,8 +32,8 @@ export async function verifyLogoPreflight(frame) {
   // and must not persist on the whole-template view or after deselection.
   const fieldChoice=frame.locator('#orderFieldChoice');
   await fieldChoice.selectOption('');
-  assert.equal((await frame.locator('#status').textContent()).includes('Загрузите логотип для выбранного поля.'),
-    false,'field-upload prompt must be cleared or hidden on deselection');
+  assert.equal(await frame.locator('#status').isVisible(),false,
+    'field-upload prompt must be hidden after removing the selected field');
   await fieldChoice.selectOption('0');
   await frame.waitForFunction(()=>{
     const e=document.querySelector('#status');
