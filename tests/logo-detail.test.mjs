@@ -248,6 +248,39 @@ test('Single-ink geometry merges source colours before measuring thin elements',
  assert.equal(merged.singleInk,true);
  assert.equal(merged.counts.positive,0,'three colour bands forming one 0.9 mm stroke must not become three 0.3 mm defects');
 });
+test('Single-ink coverage geometry removes a faint antialias fringe from a thick stroke',()=>{
+ const w=120,h=80,data=rgbaImage(w,h,(x,y)=>{
+  const core=x>=15&&x<105&&y>=30&&y<50,fringe=x>=14&&x<106&&y>=29&&y<51&&!core;
+  if(core)return [20,65,210,255];
+  if(fringe)return [208,217,246,255];
+  return [255,255,255,255];
+ });
+ const r=analyzeDetail({data,width:w,height:h,wMm:3,hMm:2,rule:{positive:.1,negative:.2,isolated:0,singleInk:true},mode:'auto'});
+ assert.equal(r.counts.positive,0,'20% antialias fringe must not become a one-pixel positive');
+ assert.equal(r.counts.negative,0,'ordinary antialiased contour must not become a negative gap');
+});
+test('Single-ink coverage geometry keeps a real solid sub-threshold stroke',()=>{
+ const w=120,h=80,data=rgbaImage(w,h,(x,y)=>x>=20&&x<100&&y>=39&&y<41?[20,65,210,255]:[255,255,255,255]);
+ const r=analyzeDetail({data,width:w,height:h,wMm:3,hMm:2,rule:{positive:.1,negative:0,isolated:0,singleInk:true},mode:'auto'});
+ assert.ok(r.counts.positive>0,'a real 0.05 mm solid line must still fail a 0.10 mm rule');
+});
+test('Negative control-circle ignores a shallow open raster notch',()=>{
+ const w=120,h=80,data=rgbaImage(w,h,(x,y)=>{
+  const block=x>=20&&x<100&&y>=15&&y<65,notch=x>=59&&x<61&&y>=15&&y<18;
+  return block&&!notch?[20,65,210,255]:[255,255,255,255];
+ });
+ const r=analyzeDetail({data,width:w,height:h,wMm:3,hMm:2,rule:{positive:0,negative:.2,isolated:0,singleInk:true},mode:'auto'});
+ assert.equal(r.counts.negative,0,'a 0.075 mm-deep open notch is contour roughness, not a printable gap');
+});
+test('Negative control-circle keeps a deep narrow open channel',()=>{
+ const w=120,h=80,data=rgbaImage(w,h,(x,y)=>{
+  const block=x>=20&&x<100&&y>=10&&y<70,channel=x>=59&&x<61&&y>=10&&y<38;
+  return block&&!channel?[20,65,210,255]:[255,255,255,255];
+ });
+ const r=analyzeDetail({data,width:w,height:h,wMm:3,hMm:2,rule:{positive:0,negative:.2,isolated:0,singleInk:true},mode:'auto'});
+ assert.ok(r.counts.negative>0,'a long 0.05 mm channel must fail a 0.20 mm gap rule');
+});
+
 test('Single-ink merge still detects a true white gap',()=>{
  const w=100,h=60,data=rgbaImage(w,h,(x,y)=>{
   const ink=x>=15&&x<85&&y>=10&&y<50&&!(x>=49&&x<52);
