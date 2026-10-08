@@ -622,3 +622,8 @@ Regression:
 На пользовательском синем LM1 макете v23 сократил ложные маркеры до 70, но обнаружил только 16 positive при 54 negative; тонкие настоящие синие штрихи явно пропускались. Установлен нулевой Sobel normal для 1px линий, из-за чего SWT не давал ни одного candidate.
 
 Введён резервный детектор по geometry `fg - diskOpening(fg)` и точному Euclidean diameter, с обязательным подтверждением глубины/протяжённости missing-компоненты; исходный SWT и negative v23 сохранены. Добавлено 5 регрессий на 1048 dpi. Алгоритм: `PrintCheck-coverage-swt-v24-pixel-stroke-recovery`. Source `eea6d0688bb15790beb3d2e539f173ff74841cad`, published main `430d8e7f71c96375efac55e5d832d6710560093a`, workflow `37757876595` success (115/115 tests; precheck/publish/browser_verify green). Актуальный handoff: `PRINTCHECK_HANDOFF_2026-10-08-v24.md`.
+
+
+## 2026-10-08 — PrintCheck v25, user-source matching & multisegment positive markers
+
+Сопоставлен оригинал 1254×1254 px с 354×354 px подложкой из che.pdf, перенесены 10 пользовательских контрольных точек. После v24 проблема: на одной mixed-width positive connected missing-компоненте только один SWT-кружок. В v25 добавлена адресная проверка длинных неподтверждённых SWT сегментов с отсечением коротких edge-bump и непересечением кружков. Negative, поле, размеры, редактор, мокапы не изменены. Functional SHA `3b18d0afb8ea5edc090077d5cd4227823ac66703`, published main `747558fd70709be280f44f4523daf58203465a7f`, workflow 37761617860 success, 118/118 tests. См. `PRINTCHECK_HANDOFF_2026-10-08-v25.md`. Реальный v25 прогон пользователем ещё требуется.

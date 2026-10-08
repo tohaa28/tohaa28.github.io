@@ -641,3 +641,10 @@ v22 на реальном синем LM1 artwork дал 724 markers (392 positiv
 См. `PRINTCHECK_HANDOFF_2026-10-08-v24.md`, `PRINTCHECK_CHANGES_2026-10-08-v24.md` и `PRINTCHECK_STATE_2026-10-08-v24.json`.
 
 Functional source `eea6d0688bb15790beb3d2e539f173ff74841cad`; published main `430d8e7f71c96375efac55e5d832d6710560093a`; workflow `37757876595` success. Algorithm `PrintCheck-coverage-swt-v24-pixel-stroke-recovery`, cache `20261008-2`, 115/115 tests. v24 восстанавливает обнаружение реальных однопиксельных positive штрихов без возврата к ложным edge markers. Negative v23 не менялся. Следующий шаг — реальная пользовательская проверка этого же LM1 синего макета.
+
+
+## UPDATE 2026-10-08 — PrintCheck v25 (самый актуальный)
+
+**Handoff:** `PRINTCHECK_HANDOFF_2026-10-08-v25.md`. Functional source `3b18d0afb8ea5edc090077d5cd4227823ac66703`, published main `747558fd70709be280f44f4523daf58203465a7f`, workflow `37761617860` passed all jobs, unit `118/118`. Algorithm `PrintCheck-coverage-swt-v25-multisegment-ink`; cache `20261008-3`.
+
+Получен полный пользовательский оригинал 1254×1254 px, десять контрольных меток из che.pdf совмещены. Оригинальный файл хранится лишь в чате, не в публичном репозитории. v25 добавляет контрольные кружки для длинных неохваченных SWT продолжений смешанно-толщинных положительных линий; negative оставлен как в v24. Попросить реальный повторный тест с исходником; **не** утверждать, что все дефекты устранены.
