@@ -634,3 +634,10 @@ Regression:
 v22 на реальном синем LM1 artwork дал 724 markers (392 positive / 332 negative) и продолжал ловить ~1 px contour artifacts. v23 вводит 50% coverage geometry для single-ink и topology/depth filtering для shallow contour fringe/open notch.
 
 Следующая проверка: тот же реальный artwork пользователя на опубликованном v23.
+
+
+## UPDATE 2026-10-08 — PrintCheck v24 (актуально)
+
+См. `PRINTCHECK_HANDOFF_2026-10-08-v24.md`, `PRINTCHECK_CHANGES_2026-10-08-v24.md` и `PRINTCHECK_STATE_2026-10-08-v24.json`.
+
+Functional source `eea6d0688bb15790beb3d2e539f173ff74841cad`; published main `430d8e7f71c96375efac55e5d832d6710560093a`; workflow `37757876595` success. Algorithm `PrintCheck-coverage-swt-v24-pixel-stroke-recovery`, cache `20261008-2`, 115/115 tests. v24 восстанавливает обнаружение реальных однопиксельных positive штрихов без возврата к ложным edge markers. Negative v23 не менялся. Следующий шаг — реальная пользовательская проверка этого же LM1 синего макета.

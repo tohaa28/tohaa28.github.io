@@ -615,3 +615,10 @@ Regression:
 - cache: `20261007-4`.
 
 Критично: v22 ещё не подтверждена новым пользовательским скрином того же синего LM1-растра. Следующий шаг — именно реальный повторный прогон, а не новая смена алгоритма вслепую.
+
+
+## 2026-10-08 — PrintCheck v24, восстановление однопиксельных линий
+
+На пользовательском синем LM1 макете v23 сократил ложные маркеры до 70, но обнаружил только 16 positive при 54 negative; тонкие настоящие синие штрихи явно пропускались. Установлен нулевой Sobel normal для 1px линий, из-за чего SWT не давал ни одного candidate.
+
+Введён резервный детектор по geometry `fg - diskOpening(fg)` и точному Euclidean diameter, с обязательным подтверждением глубины/протяжённости missing-компоненты; исходный SWT и negative v23 сохранены. Добавлено 5 регрессий на 1048 dpi. Алгоритм: `PrintCheck-coverage-swt-v24-pixel-stroke-recovery`. Source `eea6d0688bb15790beb3d2e539f173ff74841cad`, published main `430d8e7f71c96375efac55e5d832d6710560093a`, workflow `37757876595` success (115/115 tests; precheck/publish/browser_verify green). Актуальный handoff: `PRINTCHECK_HANDOFF_2026-10-08-v24.md`.
