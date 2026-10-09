@@ -33,7 +33,7 @@ def drawpath(c,pts,closed=False):
 def fetch():
     cache='osm_map_data.json'
     if os.path.isfile(cache):return json.load(open(cache,encoding='utf8'))
-    servers=['https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter']
+    servers=['https://overpass-api.de/api/interpreter','https://overpass.osm.ch/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter']
     found={}
     for i in range(2):
       for j in range(2):
