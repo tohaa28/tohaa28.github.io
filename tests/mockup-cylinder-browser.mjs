@@ -140,7 +140,7 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(await page.locator("#cylinderBottomArc").inputValue(),"6");
   assert.match(summary,/задняя сторона скрывается/);
   const projection=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261005-3");
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4");
     const range=mod.cylinderVisibleRange(.84);
     return {range,left:mod.cylinderProjection(0,.84),center:mod.cylinderProjection(.5,.84),right:mod.cylinderProjection(1,.84)};
   });
@@ -158,6 +158,50 @@ export async function verifyMockupCylinder(browserContext){
   assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёный 3D-каркас/);
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю развёртку/);
+  await page.evaluate(async()=>{
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4");
+    const surface=[{x:.08,y:.12},{x:.92,y:.14},{x:.94,y:.88},{x:.06,y:.86}];
+    const opts={axis:"vertical",curvature:.72,topArc:.12,bottomArc:.07};
+    const fieldLocal=[{x:.28,y:.3},{x:.52,y:.3},{x:.52,y:.5},{x:.28,y:.5}];
+    const targetQuad=fieldLocal.map(p=>mod.cylinder3DSurfacePoint(surface,p.x,p.y,opts)).map(p=>({x:p.x,y:p.y}));
+    await window.gwbApplyMockupProfile({
+      schema:"gifts-mockup-profile/v1",article:"CYL-ASPECT-TEST",place:"поле",method:"TEST",
+      field:{id:"field-1",printId:"print1",place:"поле"},fieldRect:{x:.2,y:.2,w:.4,h:.3},
+      targetQuad,surface:"cylinder",
+      cylinder:{geometry:"3d",axis:"vertical",curvature:.72,topArc:.12,bottomArc:.07,targetQuad:surface},
+      render:{opacity:.9,blend:"source-over",mesh:32}
+    });
+  });
+  const aspectLabel=page.locator("#preserveFieldAspectLabel");
+  assert.equal(await aspectLabel.isVisible(),true,"aspect-lock option must be visible in cylinder field-placement mode");
+  assert.equal(await page.locator("#preserveFieldAspect").isChecked(),false);
+  const beforeAspect=await page.evaluate(async()=>{
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4"),b=window.gwbGetMockupBinding(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
+    const q=b.targetQuad.map(p=>mod.cylinder3DInverseSurfacePoint(b.cylinder.targetQuad,p,opts));
+    const width=(Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y)+Math.hypot(q[2].x-q[3].x,q[2].y-q[3].y))/2;
+    const height=(Math.hypot(q[3].x-q[0].x,q[3].y-q[0].y)+Math.hypot(q[2].x-q[1].x,q[2].y-q[1].y))/2;
+    return {ratio:width/height,anchor:q[0]};
+  });
+  await page.locator("#preserveFieldAspect").check();
+  const dragPoints=await page.evaluate(async()=>{
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4"),b=window.gwbGetMockupBinding(),view=window.gwbGetMockupPhotoView(),canvas=document.getElementById("photoCanvas"),r=canvas.getBoundingClientRect(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
+    const client=p=>({x:r.left+(view.photoX+p.x*view.photoW)*(r.width/canvas.width),y:r.top+(view.photoY+p.y*view.photoH)*(r.height/canvas.height)});
+    return {start:client(b.targetQuad[2]),end:client(mod.cylinder3DSurfacePoint(b.cylinder.targetQuad,.78,.78,opts))};
+  });
+  await page.mouse.move(dragPoints.start.x,dragPoints.start.y);
+  await page.mouse.down();
+  await page.mouse.move(dragPoints.end.x,dragPoints.end.y,{steps:8});
+  await page.mouse.up();
+  const afterAspect=await page.evaluate(async()=>{
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4"),b=window.gwbGetMockupBinding(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
+    const q=b.targetQuad.map(p=>mod.cylinder3DInverseSurfacePoint(b.cylinder.targetQuad,p,opts));
+    const width=(Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y)+Math.hypot(q[2].x-q[3].x,q[2].y-q[3].y))/2;
+    const height=(Math.hypot(q[3].x-q[0].x,q[3].y-q[0].y)+Math.hypot(q[2].x-q[1].x,q[2].y-q[1].y))/2;
+    return {ratio:width/height,anchor:q[0],preserved:b.cylinder.preserveFieldAspect};
+  });
+  assert.ok(Math.abs(afterAspect.ratio-beforeAspect.ratio)<1e-5,"field ratio changed despite aspect lock: "+JSON.stringify({beforeAspect,afterAspect}));
+  assert.ok(Math.abs(afterAspect.anchor.x-beforeAspect.anchor.x)<1e-6&&Math.abs(afterAspect.anchor.y-beforeAspect.anchor.y)<1e-6,"opposite corner must stay anchored");
+  assert.equal(afterAspect.preserved,true,"aspect-lock preference must persist in the profile");
   await page.close();
   console.log("Mockup cylinder: small-photo filtering, mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
 }
