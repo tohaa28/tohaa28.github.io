@@ -482,8 +482,31 @@
   const orders=document.getElementById("basketOrders");
   if(!layout||!editor||!orders)return;
 
-  const updateLayout=()=>layout.classList.toggle("gwb-orders-full",editor.hidden);
+  const workspace=layout.querySelector(":scope > .workspace");
+  let canvasResizeTimer;
+  const refreshCanvasAfterLayout=()=>{
+    if(editor.hidden||!workspace||workspace.getBoundingClientRect().width<100)return;
+    // The bundled editor responds to a window resize by recalculating the
+    // physical canvas size; the width transition does not dispatch one.
+    window.dispatchEvent(new Event("resize"));
+    try{window.gwbRefreshEditorState?.()}catch{}
+  };
+  const scheduleCanvasResize=()=>{
+    clearTimeout(canvasResizeTimer);
+    canvasResizeTimer=setTimeout(refreshCanvasAfterLayout,65);
+  };
+  const updateLayout=()=>{
+    const picking=editor.hidden;
+    layout.classList.toggle("gwb-orders-full",picking);
+    if(!picking)scheduleCanvasResize();
+  };
   new MutationObserver(updateLayout).observe(editor,{attributes:true,attributeFilter:["hidden"]});
+  const rail=layout.querySelector(":scope > .rail");
+  rail?.addEventListener("transitionend",event=>{
+    if(event.propertyName==="width")scheduleCanvasResize();
+  });
+  if(typeof ResizeObserver==="function"&&workspace)
+    new ResizeObserver(scheduleCanvasResize).observe(workspace);
   updateLayout();
 
   const detailRequests=new Map();
