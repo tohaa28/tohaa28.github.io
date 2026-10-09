@@ -535,6 +535,16 @@ jobs:
           }));
           if(compactBasketState.cards!==2||compactBasketState.rows<3||!compactBasketState.hasOrderWideHitbox||compactBasketState.orderGrid!=="grid")
             throw Error("Compact basket grouping or full-width grid regression: "+JSON.stringify(compactBasketState));
+          await frame.waitForFunction(()=>{
+            const first=document.querySelector('#basketOrders .basket-order[data-test-order] .gwb-basket-thumb img')
+              ||document.querySelector('#basketOrders .gwb-basket-thumb img');
+            return first?.complete&&first.naturalWidth>0;
+          },null,{timeout:15000});
+          const loadedBasketThumbnail=await frame.evaluate(()=>{
+            const image=document.querySelector('#basketOrders .gwb-basket-thumb img');
+            return {loaded:!!image?.complete,width:image?.naturalWidth||0,src:image?.currentSrc||''};
+          });
+          if(!loadedBasketThumbnail.loaded||!loadedBasketThumbnail.width)throw Error('Order image thumbnail did not load: '+JSON.stringify(loadedBasketThumbnail));
           const basketRows = await frame.locator("#basketOrders .basket-method").allTextContents();
           const basketSummary = await frame.locator("#basketStatus").textContent();
           if (!basketRows.some(x => /13317\.00/.test(x)) ||

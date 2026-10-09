@@ -526,7 +526,7 @@
   new MutationObserver(updateLayout).observe(editor,{attributes:true,attributeFilter:["hidden"]});
   layout.classList.toggle("gwb-orders-full",showingOrders);
 
-  const detailRequests=new Map();
+  const detailRequests=new WeakMap();
   const photoRequests=new WeakSet();
   const visibleImages=typeof IntersectionObserver==="function"
     ?new IntersectionObserver(entries=>{
@@ -587,13 +587,15 @@
     if(src)img.src=src;
     else proxyImage(img,thumb,order,itemId);
   }
-  function detailFor(order){
-    if(!detailRequests.has(order)){
-      detailRequests.set(order,fetch("/api/orders/"+order,{cache:"no-store"})
+  function detailFor(card,order){
+    // The cache belongs to the rendered card, not the order number:
+    // basket refresh replaces cards, forcing a fresh read from gifts.ru.
+    if(!detailRequests.has(card)){
+      detailRequests.set(card,fetch("/api/orders/"+order,{cache:"no-store"})
         .then(r=>{if(!r.ok)throw Error("Order unavailable");return r.json()})
         .catch(()=>null));
     }
-    return detailRequests.get(order);
+    return detailRequests.get(card);
   }
   function renderBasic(row){
     if(row.dataset.gwbCompact==="1")return;
@@ -631,7 +633,7 @@
       card.insertBefore(element("span","gwb-basket-count",rows.length+" поз."),title.nextSibling);
     if(card.dataset.gwbEnriched==="1")return;
     card.dataset.gwbEnriched="1";
-    const response=await detailFor(order);
+    const response=await detailFor(card,order);
     if(!response||!card.isConnected)return;
     const items=Array.isArray(response.orderItems)?response.orderItems:response.items||[];
     for(const row of rows){
