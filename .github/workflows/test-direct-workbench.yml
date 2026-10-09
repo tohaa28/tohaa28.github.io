@@ -217,7 +217,19 @@ jobs:
           },null,{timeout:5000});
           const frame = page.frames().find(f => f.parentFrame() === page.mainFrame());
           if (!frame) throw new Error("Workbench iframe not created");
-          await frame.waitForSelector(".app", {timeout:30000});
+          try {
+            await frame.waitForSelector(".app", {timeout:12000});
+          } catch(error) {
+            const diagnostics=await page.evaluate(() => {
+              const host=document.getElementById("gifts-layout-workbench-host");
+              const f=host?.querySelector("iframe");
+              return {hostClass:host?.className,srcdocLength:f?.srcdoc?.length,
+                iframeDocument:f?.contentDocument?.documentElement?.outerHTML?.slice(0,1800),
+                frameSrc:f?.getAttribute("src"),iframeReady:f?.contentDocument?.readyState};
+            });
+            const frameData=await frame.evaluate(()=>({href:location.href,html:document.documentElement.outerHTML.slice(0,2400),ready:document.readyState})).catch(e=>({error:String(e)}));
+            throw Error("Workbench root did not appear: "+JSON.stringify({diagnostics,frameData,errors,error:String(error)}));
+          }
           // Before selecting an order there must be no empty right-hand panel.
           const initialOrderLayout=await frame.evaluate(()=>{
             const main=document.querySelector(".app>main"),rail=main?.querySelector(":scope>.rail"),workspace=main?.querySelector(":scope>.workspace");
