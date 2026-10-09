@@ -6,7 +6,7 @@ const html=readFileSync(new URL('../editor.html',import.meta.url),'utf8');
 test('order overview is expanded before first order is selected',()=>{
  assert.match(html,/<main class="gwb-orders-full">/);
  assert.match(html,/classList\.toggle\("gwb-orders-full",picking\)/);
- assert.match(html,/transition:--gwb-order-rail-width \.52s/);
+ assert.match(html,/transition:width \.52s/);
 });
 test('basket overview preserves the order click contracts and derives photos from genuine items',()=>{
  assert.match(html,/querySelectorAll\("\.basket-order"\)/);

@@ -51,19 +51,14 @@
 @media(max-width:620px){.gwb-build-versions{right:5px;bottom:5px}.gwb-build-versions span{font-size:9px}}
 
 /* 2026-10-09: Full-width order overview, animated return to the existing editor size. */
-@property --gwb-order-rail-width{
- syntax:"<length-percentage>";inherits:false;initial-value:100%;
+/* Keep the original editor grid untouched; animate only the overlaid order rail. */
+.app>main{position:relative!important}
+.app>main>.workspace{grid-column:2;min-width:0}
+.app>main.gwb-orders-full>.rail,.app>main.gwb-orders-animating>.rail{
+ position:absolute;left:0;top:0;bottom:0;width:100%;height:100%;
+ z-index:8;min-width:0;overflow:auto;
+ transition:width .52s cubic-bezier(.22,.8,.22,1)
 }
-.app>main{
- --gwb-order-rail-width:clamp(317px,38.9vw,490px);
- display:grid!important;
- grid-template-columns:minmax(0,var(--gwb-order-rail-width)) minmax(0,1fr)!important;
- min-width:0!important;
- transition:--gwb-order-rail-width .52s cubic-bezier(.22,.8,.22,1);
-}
-.app>main>.rail{min-width:0}
-.app>main>.workspace{min-width:0;overflow:hidden;transition:opacity .38s ease}
-.app>main.gwb-orders-full{--gwb-order-rail-width:100%}
 .app>main.gwb-orders-full>.rail{border-right:0}
 .app>main.gwb-orders-full>.workspace{opacity:0;visibility:hidden;pointer-events:none}
 .app>main.gwb-orders-full #basketOrders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px;align-items:start}
@@ -87,7 +82,7 @@
  .app>main{display:flex!important;flex-direction:column!important}
  .app>main:not(.gwb-orders-full)>.rail{display:contents!important}
  .app>main:not(.gwb-orders-full)>.workspace{overflow:visible!important;flex:0 1 auto!important}
- .app>main.gwb-orders-full>.rail{display:block!important;width:100%!important;height:auto!important;overflow:visible!important;flex:none!important}
+ .app>main.gwb-orders-full>.rail{position:relative!important;display:block!important;width:100%!important;height:auto!important;overflow:visible!important;flex:none!important}
  .app>main.gwb-orders-full>.workspace{display:none!important}
  .app>main.gwb-orders-full #basketOrders{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
 }
@@ -493,30 +488,43 @@
   if(!layout||!editor||!orders)return;
 
   const workspace=layout.querySelector(":scope > .workspace");
-  let canvasResizeTimer;
-  const refreshCanvasAfterLayout=()=>{
-    if(editor.hidden||!workspace||workspace.getBoundingClientRect().width<100)return;
-    // The bundled editor responds to a window resize by recalculating the
-    // physical canvas size; the width transition does not dispatch one.
-    window.dispatchEvent(new Event("resize"));
-    try{window.gwbRefreshEditorState?.()}catch{}
-  };
-  const scheduleCanvasResize=()=>{
-    clearTimeout(canvasResizeTimer);
-    canvasResizeTimer=setTimeout(refreshCanvasAfterLayout,65);
+  const rail=layout.querySelector(":scope > .rail");
+  let showingOrders=editor.hidden,animationTimer=0,animationFrame=0;
+  const refreshEditorSize=()=>{
+    if(!editor.hidden){
+      window.dispatchEvent(new Event("resize"));
+      try{window.gwbRefreshEditorState?.()}catch{}
+    }
   };
   const updateLayout=()=>{
     const picking=editor.hidden;
+    if(picking===showingOrders)return;
+    showingOrders=picking;
+    clearTimeout(animationTimer);
+    cancelAnimationFrame(animationFrame);
+    if(window.innerWidth<=780){
+      rail.style.removeProperty("width");
+      layout.classList.remove("gwb-orders-animating");
+      layout.classList.toggle("gwb-orders-full",picking);
+      if(!picking)requestAnimationFrame(refreshEditorSize);
+      return;
+    }
+    const from=rail.getBoundingClientRect().width;
+    layout.classList.add("gwb-orders-animating");
     layout.classList.toggle("gwb-orders-full",picking);
-    if(!picking)scheduleCanvasResize();
+    rail.style.width=from+"px";
+    // Flush starting width after positioning the rail over the normal grid.
+    void rail.offsetWidth;
+    const target=picking?layout.clientWidth:Math.min(490,Math.max(317,window.innerWidth*.389));
+    animationFrame=requestAnimationFrame(()=>{rail.style.width=target+"px"});
+    animationTimer=setTimeout(()=>{
+      layout.classList.remove("gwb-orders-animating");
+      rail.style.removeProperty("width");
+      if(!picking)requestAnimationFrame(refreshEditorSize);
+    },560);
   };
   new MutationObserver(updateLayout).observe(editor,{attributes:true,attributeFilter:["hidden"]});
-  layout.addEventListener("transitionend",event=>{
-    if(event.propertyName==="--gwb-order-rail-width")scheduleCanvasResize();
-  });
-  if(typeof ResizeObserver==="function"&&workspace)
-    new ResizeObserver(scheduleCanvasResize).observe(workspace);
-  updateLayout();
+  layout.classList.toggle("gwb-orders-full",showingOrders);
 
   const detailRequests=new Map();
   const photoRequests=new WeakSet();
