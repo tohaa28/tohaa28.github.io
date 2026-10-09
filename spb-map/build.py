@@ -31,31 +31,51 @@ def drawpath(c,pts,closed=False):
     if closed:p.close()
     c.drawPath(p,fill=int(closed),stroke=1)
 def fetch():
-    cache='osm_map_data.json'
-    if os.path.isfile(cache):return json.load(open(cache,encoding='utf8'))
-    servers=['https://overpass-api.de/api/interpreter','https://overpass-api.de/api/interpreter','https://overpass-api.de/api/interpreter','https://overpass.osm.ch/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter']
-    found={}
-    for i in range(4):
-      for j in range(4):
-        a,b=S+(N-S)*i/4,S+(N-S)*(i+1)/4
-        d,e=W+(E-W)*j/4,W+(E-W)*(j+1)/4
-        bbox=f'({a},{d},{b},{e})'
-        q='[out:json][timeout:180];('+''.join('way["'+x+'"]'+bbox+';' for x in ['highway','building','waterway'])+'way["natural"="water"]'+bbox+';way["leisure"="park"]'+bbox+';node["addr:housenumber"]'+bbox+';);out body geom;'
-        error=None
-        for url in servers:
-          try:
-            print('Request',i,j,url,flush=True)
-            r=requests.post(url,data={'data':q},timeout=210,headers={'User-Agent':'OSM print atlas (noncommercial map)'});r.raise_for_status()
-            records=r.json()['elements']
-            if len(records)<100:raise ValueError('Empty Overpass response')
-            for el in records:found[str(el['type'])+'/'+str(el['id'])]=el
-            print('Received',len(records),flush=True);time.sleep(1)
-            error=None;break
-          except Exception as ex:
-            error=ex;print('Retry:',str(ex)[:160],flush=True);time.sleep(1)
-        if error:raise RuntimeError('No OSM data quadrant '+str((i,j))+': '+str(error))
-    data=list(found.values());json.dump(data,open(cache,'w',encoding='utf8'),ensure_ascii=False)
-    return data
+    import osmium
+    archive='SanktPetersburg.osm.pbf'
+    if not os.path.isfile(archive) or os.path.getsize(archive)<10_000_000:
+      urls=['https://download.bbbike.org/osm/bbbike/SanktPetersburg/SanktPetersburg.osm.pbf',
+            'https://download3.bbbike.org/osm/bbbike/SanktPetersburg/SanktPetersburg.osm.pbf']
+      err=None
+      for url in urls:
+        try:
+          print('Download OSM city extract:',url,flush=True)
+          response=requests.get(url,stream=True,timeout=(25,180));response.raise_for_status()
+          with open(archive,'wb') as fh:
+            for chunk in response.iter_content(chunk_size=1024*1024):
+              if chunk:fh.write(chunk)
+          if os.path.getsize(archive)<10_000_000:raise ValueError('Truncated OSM extract')
+          print('Downloaded bytes',os.path.getsize(archive),flush=True)
+          err=None;break
+        except Exception as ex:
+          err=ex;print('Download failed:',repr(ex),flush=True)
+          if os.path.exists(archive):os.unlink(archive)
+      if err:raise RuntimeError('BBBike download failed: '+str(err))
+    collected=[]
+    class Extract(osmium.SimpleHandler):
+      def node(self,n):
+        if not n.location.valid():return
+        if not (S<=n.location.lat<=N and W<=n.location.lon<=E):return
+        h=n.tags.get('addr:housenumber')
+        if h:collected.append({'type':'node','lat':n.location.lat,'lon':n.location.lon,
+                               'tags':{'addr:housenumber':h}})
+      def way(self,w):
+        tags={str(k):str(v) for k,v in w.tags}
+        if not any(k in tags for k in ('highway','building','waterway','natural','leisure')):return
+        geom=[]
+        for v in w.nodes:
+          if v.location.valid():
+            geom.append({'lat':v.location.lat,'lon':v.location.lon})
+        if len(geom)<2:return
+        latmin=min(v['lat'] for v in geom);latmax=max(v['lat'] for v in geom)
+        lonmin=min(v['lon'] for v in geom);lonmax=max(v['lon'] for v in geom)
+        if latmax<S or latmin>N or lonmax<W or lonmin>E:return
+        collected.append({'type':'way','geometry':geom,'tags':tags})
+    print('Parsing PBF extract',flush=True)
+    Extract().apply_file(archive,locations=True,idx='flex_mem')
+    print('PBF parsed, usable elements',len(collected),flush=True)
+    return collected
+
 def process(data):
     lyr=defaultdict(list)
     for o in data:
