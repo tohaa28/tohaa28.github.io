@@ -233,9 +233,9 @@ jobs:
           // Before selecting an order there must be no empty right-hand panel.
           const initialOrderLayout=await frame.evaluate(()=>{
             const main=document.querySelector(".app>main"),rail=main?.querySelector(":scope>.rail"),workspace=main?.querySelector(":scope>.workspace");
-            return {expanded:main?.classList.contains("gwb-orders-full"),mainWidth:main?.getBoundingClientRect().width,railWidth:rail?.getBoundingClientRect().width,workspaceWidth:workspace?.getBoundingClientRect().width};
+            return {expanded:main?.classList.contains("gwb-orders-full"),mainWidth:main?.getBoundingClientRect().width,railWidth:rail?.getBoundingClientRect().width,workspaceVisibility:workspace?getComputedStyle(workspace).visibility:null,workspacePointerEvents:workspace?getComputedStyle(workspace).pointerEvents:null};
           });
-          if(!initialOrderLayout.expanded||initialOrderLayout.railWidth<initialOrderLayout.mainWidth*.96||initialOrderLayout.workspaceWidth>3)
+          if(!initialOrderLayout.expanded||initialOrderLayout.railWidth<initialOrderLayout.mainWidth*.96||initialOrderLayout.workspaceVisibility!=="hidden"||initialOrderLayout.workspacePointerEvents!=="none")
             throw Error("Initial order-list full width regression: "+JSON.stringify(initialOrderLayout));
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
