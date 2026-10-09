@@ -13,8 +13,15 @@ export async function verifyMockupCylinder(browserContext){
     await route.fulfill({body:fs.readFileSync(relative),contentType:type,headers:{"access-control-allow-origin":"*"}});
   });
   await page.route("https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json**",route=>route.fulfill({contentType:"application/json",body:'{"schema":"gifts-mockup-profile-registry/v1","version":1,"profiles":[],"candidates":[],"articleSources":[]}'}));
+  const runtimeErrors=[];
+  page.on("pageerror",e=>runtimeErrors.push("pageerror: "+e.message));
+  page.on("console",m=>{if(m.type()==="error")runtimeErrors.push("console: "+m.text());});
   await page.goto(base+"mockup.html",{waitUntil:"domcontentloaded",timeout:30000});
-  await page.waitForFunction(()=>typeof window.gwbGetMockupBinding==="function");
+  try{await page.waitForFunction(()=>typeof window.gwbGetMockupBinding==="function",null,{timeout:12000});}
+  catch(error){
+    const diagnostics=await page.evaluate(()=>({href:location.href,readyState:document.readyState,scripts:[...document.scripts].map(s=>({src:s.src||"",type:s.type||"",inline:!s.src})),status:document.getElementById("status")?.textContent||""})).catch(e=>({diagnosticError:String(e)}));
+    throw new Error("Mockup cylinder editor failed to initialize: "+JSON.stringify({runtimeErrors,diagnostics,error:String(error)}));
+  }
   const smallPhoto="data:image/svg+xml;base64,"+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="gray"/></svg>').toString("base64");
   const largePhoto="data:image/svg+xml;base64,"+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="white"/></svg>').toString("base64");
   await page.evaluate(async ({smallPhoto,largePhoto})=>{

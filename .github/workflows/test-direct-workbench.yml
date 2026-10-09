@@ -31,6 +31,8 @@ jobs:
       - run: npm init -y
       - run: npm install playwright
       - run: npx playwright install --with-deps chromium
+      - name: Verify cylinder mockup independently
+        run: node tests/mockup-cylinder-browser-runner.mjs
       - name: Launch Workbench on gifts.ru
         run: |
           node --input-type=module - <<'NODE'
