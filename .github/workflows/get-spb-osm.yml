@@ -1,4 +1,4 @@
-name: Acquire Saint Petersburg OSM extract
+name: Acquire full metro Saint Petersburg map data
 on:
   push:
     branches: [spb-a3-print-map]
@@ -9,23 +9,22 @@ permissions:
 jobs:
   extract:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 30
     steps:
-      - name: Download ready city OSM extract
+      - name: Download northwestern Russia OSM extract
         run: |
-          curl -L --fail --retry 3 --connect-timeout 20 -o SaintPetersburg.osm.pbf 'https://download.bbbike.org/osm/bbbike/SanktPetersburg/SanktPetersburg.osm.pbf'
-          ls -lh SaintPetersburg.osm.pbf
-      - name: Inspect extract footprint
+          curl -L --fail --retry 4 --connect-timeout 25 --max-time 600 -o northwest.osm.pbf 'https://download.geofabrik.de/russia/northwestern-fed-district-latest.osm.pbf'
+          ls -lh northwest.osm.pbf
+      - name: Install osmium
         run: |
-          python -m pip install osmium
-          python - <<'PY'
-          import osmium
-          f=osmium.io.Reader("SaintPetersburg.osm.pbf")
-          print("HEADER bbox:",f.header().box(),flush=True)
-          f.close()
-          PY
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+      - name: Clip Petersburg and all suburbs
+        run: |
+          osmium extract --overwrite -s complete_ways -b 29.36,59.56,30.94,60.34 northwest.osm.pbf -o spb_full_metro.osm.pbf
+          ls -lh spb_full_metro.osm.pbf
+          osmium fileinfo -e spb_full_metro.osm.pbf | head -20
       - uses: actions/upload-artifact@v4
         with:
-          name: SaintPetersburg-OSM-vector-data
-          path: SaintPetersburg.osm.pbf
-          retention-days: 1
+          name: SaintPetersburg-entire-metro-OSM-vector-data
+          path: spb_full_metro.osm.pbf
+          retention-days: 2
