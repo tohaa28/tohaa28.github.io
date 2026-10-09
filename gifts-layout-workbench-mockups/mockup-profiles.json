@@ -1,9 +1,99 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-09T10:02:21.185Z",
+  "updatedAt": "2026-10-09T10:03:28.895Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "7224.14",
+      "variant": "",
+      "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+      "method": "H1: Деколь,1",
+      "photo": {
+        "id": "7224.14-2",
+        "name": "Фото 2 · арт. 7224.14",
+        "url": "https://files.gifts.ru/reviewer/webp/66/7224.14_25_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+        "sizeCm": [
+          6,
+          5
+        ]
+      },
+      "constructor": {
+        "name": "8023221_7224.14_49528225.pdf",
+        "url": "",
+        "width": 1121,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.42227505946040406,
+        "y": 0.3873048515193977,
+        "w": 0.15557100981827093,
+        "h": 0.11624938587880353
+      },
+      "targetQuad": [
+        {
+          "x": 0.41521875,
+          "y": 0.388
+        },
+        {
+          "x": 0.66121875,
+          "y": 0.378
+        },
+        {
+          "x": 0.66721875,
+          "y": 0.754
+        },
+        {
+          "x": 0.41121875,
+          "y": 0.75
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.72,
+        "topArc": 0.14509221221921167,
+        "bottomArc": 0.22432736751723675,
+        "targetQuad": [
+          {
+            "x": 0.27321875,
+            "y": 0.268
+          },
+          {
+            "x": 0.76521875,
+            "y": 0.278
+          },
+          {
+            "x": 0.76521875,
+            "y": 0.718
+          },
+          {
+            "x": 0.28321875,
+            "y": 0.716
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-09T10:03:28.895Z",
+      "confirmedAt": "2026-10-09T10:03:28.895Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "7224.14",
