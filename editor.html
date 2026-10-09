@@ -70,7 +70,7 @@
 .basket-methods .basket-method{padding:6px 1px!important}
 .gwb-basket-item{display:grid;grid-template-columns:58px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
 .gwb-basket-thumb{width:58px;height:58px;display:grid;place-items:center;overflow:hidden;background:#f6f8f8;border:1px solid #e2e8e6;border-radius:5px;color:#a3aca9;position:relative;font:500 10px/1.1 system-ui,sans-serif}
-.gwb-basket-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+.gwb-basket-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#fff;opacity:0;transition:opacity .15s ease}
 .gwb-basket-details{display:grid;gap:4px;min-width:0}
 .gwb-basket-first{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;line-height:1.25}
 .gwb-basket-art{color:#3e5a24;font-size:12.5px;font-weight:750;overflow-wrap:anywhere}
@@ -576,11 +576,10 @@
     img.alt="";
     img.loading="lazy";
     img.decoding="async";
-    img.hidden=true;
     const fallback=thumb.querySelector(".gwb-basket-placeholder");
-    img.addEventListener("load",()=>{img.hidden=false;if(fallback)fallback.hidden=true});
+    img.addEventListener("load",()=>{img.style.opacity="1";if(fallback)fallback.hidden=true});
     img.addEventListener("error",()=>{
-      img.hidden=true;if(fallback)fallback.hidden=false;
+      img.style.opacity="0";if(fallback)fallback.hidden=false;
       proxyImage(img,thumb,order,itemId);
     });
     thumb.append(img);
