@@ -1,0 +1,24 @@
+name: Transfer Python osmium wheel
+on:
+  push:
+    branches: [spb-a3-print-map]
+    paths: ['.github/workflows/get-osmium-wheel.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download wheel for Python 3.13
+        run: |
+          mkdir -p dist
+          python -m pip download --no-deps --only-binary=:all: osmium -d dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osmium-cpython313-linux-wheel
+          path: dist/*
+          retention-days: 1
