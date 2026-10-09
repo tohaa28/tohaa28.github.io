@@ -1,0 +1,31 @@
+name: Acquire Saint Petersburg OSM extract
+on:
+  push:
+    branches: [spb-a3-print-map]
+    paths: ['.github/workflows/get-spb-osm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download ready city OSM extract
+        run: |
+          curl -L --fail --retry 3 --connect-timeout 20 -o SaintPetersburg.osm.pbf 'https://download.bbbike.org/osm/bbbike/SanktPetersburg/SanktPetersburg.osm.pbf'
+          ls -lh SaintPetersburg.osm.pbf
+      - name: Inspect extract footprint
+        run: |
+          python -m pip install osmium
+          python - <<'PY'
+          import osmium
+          f=osmium.io.Reader("SaintPetersburg.osm.pbf")
+          print("HEADER bbox:",f.header().box(),flush=True)
+          f.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SaintPetersburg-OSM-vector-data
+          path: SaintPetersburg.osm.pbf
+          retention-days: 1
