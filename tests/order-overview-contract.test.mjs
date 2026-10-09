@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const html=readFileSync(new URL('../editor.html',import.meta.url),'utf8');
+test('mockup badge reserves space beside compact basket quantity',()=>{
+ assert.match(html,/\.basket-method\.has-mockup-map \.gwb-basket-details\{padding-right:28px;box-sizing:border-box\}/);
+ assert.match(html,/\.mockup-map-badge\{position:absolute;right:7px;top:7px/);
+});
 test('order overview is expanded before first order is selected',()=>{
  assert.match(html,/<main class="gwb-orders-full">/);
  assert.match(html,/classList\.toggle\("gwb-orders-full",picking\)/);

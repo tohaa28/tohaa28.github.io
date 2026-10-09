@@ -554,6 +554,20 @@ jobs:
             return {loaded:!!image?.complete,width:image?.naturalWidth||0,src:image?.currentSrc||''};
           });
           if(!loadedBasketThumbnail.loaded||!loadedBasketThumbnail.width)throw Error('Order image thumbnail did not load: '+JSON.stringify(loadedBasketThumbnail));
+          const basketBadgeLayout=await frame.evaluate(()=>{
+            const row=document.querySelector("#basketOrders .basket-method");
+            const quantity=row?.querySelector(".gwb-basket-quantity");
+            if(!row||!quantity)return null;
+            row.classList.add("has-mockup-map");
+            let badge=row.querySelector(":scope > .mockup-map-badge");
+            if(!badge){badge=document.createElement("span");badge.className="mockup-map-badge";badge.setAttribute("aria-hidden","true");row.append(badge)}
+            const details=row.querySelector(".gwb-basket-details");
+            const q=quantity.getBoundingClientRect(),b=badge.getBoundingClientRect();
+            return {detailsPaddingRight:parseFloat(getComputedStyle(details).paddingRight),gap:b.left-q.right,overlap:q.left<b.right&&q.right>b.left&&q.top<b.bottom&&q.bottom>b.top};
+          });
+          if(!basketBadgeLayout||basketBadgeLayout.detailsPaddingRight<28||basketBadgeLayout.overlap||basketBadgeLayout.gap<2)
+            throw Error("Mockup badge overlaps basket quantity: "+JSON.stringify(basketBadgeLayout));
+          console.log("Mockup badge quantity clearance:",JSON.stringify(basketBadgeLayout));
           const basketRows = await frame.locator("#basketOrders .basket-method").allTextContents();
           const basketSummary = await frame.locator("#basketStatus").textContent();
           if (!basketRows.some(x => /13317\.00/.test(x)) ||
@@ -699,6 +713,14 @@ jobs:
             const choice = document.querySelector("#orderTemplateList .article-choice");
             const info = choice?.querySelector(".article-choice-info");
             const summary = document.getElementById("orderTemplateSummary");
+            const mockupBadge=choice?.querySelector(".mockup-map-badge");
+            const quantityRow=[...(choice?.querySelectorAll(".article-row")||[])].find(row=>row.querySelector(".detail-key")?.textContent?.trim()==="Тираж");
+            const quantityValue=quantityRow?.querySelector(".detail-value");
+            const badgeOverlapsQuantity=(()=>{
+              if(!mockupBadge||!quantityValue)return false;
+              const a=mockupBadge.getBoundingClientRect(),b=quantityValue.getBoundingClientRect();
+              return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
+            })();
             const rows = {};
             for (const row of choice?.querySelectorAll(".article-row") || []) {
               const key = row.querySelector(".detail-key")?.textContent?.trim();
@@ -713,7 +735,8 @@ jobs:
               previewLoaded: (() => { const img=choice?.querySelector(".article-thumb"); return !!img && !img.hidden && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0; })(),
               redundantSummaryHidden: !!summary && getComputedStyle(summary).display === "none",
               badgeRemoved: !/Выбрано/.test(badgeContent || ""),
-              hasMockupBadge: !!choice?.querySelector(".mockup-map-badge"),
+              hasMockupBadge: !!mockupBadge,
+              badgeOverlapsQuantity,
               selectedPaddingRight: choice ? parseFloat(getComputedStyle(choice).paddingRight) : 999,
               infoPaddingRight: info ? parseFloat(getComputedStyle(info).paddingRight) : 999,
               rows,
@@ -727,6 +750,7 @@ jobs:
               !articleChoiceState.badgeRemoved ||
               articleChoiceState.selectedPaddingRight > (articleChoiceState.hasMockupBadge ? 32 : 20) ||
               articleChoiceState.infoPaddingRight > 4 ||
+              articleChoiceState.badgeOverlapsQuantity ||
               articleChoiceState.legacySeparateBlocks ||
               articleChoiceState.rows["Артикул"] !== "15637" ||
               articleChoiceState.rows["Название"] !== "Брелок" ||
