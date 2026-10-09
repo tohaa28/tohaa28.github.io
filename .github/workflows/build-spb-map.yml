@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install PDF dependencies
-        run: python -m pip install --disable-pip-version-check requests reportlab osmium
+        run: python -m pip install --disable-pip-version-check requests reportlab osmium pypdf
       - name: Render vector map PDF
         working-directory: spb-map
         env:
@@ -31,8 +31,15 @@ jobs:
         run: python build.py
       - name: Verify PDF and page count
         run: |
-          pdfinfo spb-map/Saint_Petersburg_Center_A3_Map.pdf | head -25
-          test "$(pdfinfo spb-map/Saint_Petersburg_Center_A3_Map.pdf | awk '/Pages:/ {print $2}')" = 13
+          python - <<'PY'
+          from pypdf import PdfReader
+          r=PdfReader("spb-map/Saint_Petersburg_Center_A3_Map.pdf")
+          assert len(r.pages)==13, f"Expected 13 A3 pages, got {len(r.pages)}"
+          for i,p in enumerate(r.pages):
+              w,h=float(p.mediabox.width),float(p.mediabox.height)
+              assert 840 < w < 843 and 1189 < h < 1192,(i,w,h)
+          print("Verified 13 pages, all A3 portrait")
+          PY
       - name: Upload finished PDF
         uses: actions/upload-artifact@v4
         with:
