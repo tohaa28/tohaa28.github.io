@@ -6,7 +6,7 @@ const base=()=>({
  editor:'<span id="maketnayaVersion">old</span><span id="printcheckVersion">old</span>',
  mockup:'<span id="mockupVersion">old</span>',
  directMode:'orders',launcherBuilder:'launcher',editorAssets:['index-bundle'],
- mockupAssets:['mockup-canvas'],detailAssets:["logo-detail-engine.mjs\\nreturn {algorithm:'PrintCheck-coverage-swt-v25-multisegment-ink'};"],
+ mockupAssets:['mockup-canvas'],detailAssets:["logo-detail-engine.mjs\nreturn {algorithm:'PrintCheck-coverage-swt-v25-multisegment-ink'};"],
  profiles:'profiles',saveProfile:'save'
 });
 test('Three component version labels are independent',()=>{
@@ -18,7 +18,7 @@ test('Three component version labels are independent',()=>{
  assert.equal(nextMockup.maketnaya,original.maketnaya);
  assert.equal(nextMockup.printcheck,original.printcheck);
  assert.notEqual(nextMockup.mockup,original.mockup);
- const nextPrintCheck=deriveComponentVersions({...base(),detailAssets:["logo-detail-engine.mjs\\nreturn {algorithm:'PrintCheck-coverage-swt-v26-next'};"]});
+ const nextPrintCheck=deriveComponentVersions({...base(),detailAssets:["logo-detail-engine.mjs\nreturn {algorithm:'PrintCheck-coverage-swt-v26-next'};"]});
  assert.equal(nextPrintCheck.maketnaya,original.maketnaya);
  assert.equal(nextPrintCheck.mockup,original.mockup);
  assert.match(nextPrintCheck.printcheck,/^PrintCheck v26 r[0-9a-f]{8}$/);
