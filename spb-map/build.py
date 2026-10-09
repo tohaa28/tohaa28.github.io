@@ -33,12 +33,12 @@ def drawpath(c,pts,closed=False):
 def fetch():
     cache='osm_map_data.json'
     if os.path.isfile(cache):return json.load(open(cache,encoding='utf8'))
-    servers=['https://overpass-api.de/api/interpreter','https://overpass.osm.ch/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter']
+    servers=['https://overpass-api.de/api/interpreter','https://overpass-api.de/api/interpreter','https://overpass-api.de/api/interpreter','https://overpass.osm.ch/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter']
     found={}
-    for i in range(2):
-      for j in range(2):
-        a,b=S+(N-S)*i/2,S+(N-S)*(i+1)/2
-        d,e=W+(E-W)*j/2,W+(E-W)*(j+1)/2
+    for i in range(4):
+      for j in range(4):
+        a,b=S+(N-S)*i/4,S+(N-S)*(i+1)/4
+        d,e=W+(E-W)*j/4,W+(E-W)*(j+1)/4
         bbox=f'({a},{d},{b},{e})'
         q='[out:json][timeout:180];('+''.join('way["'+x+'"]'+bbox+';' for x in ['highway','building','waterway'])+'way["natural"="water"]'+bbox+';way["leisure"="park"]'+bbox+';node["addr:housenumber"]'+bbox+';);out body geom;'
         error=None
@@ -49,7 +49,7 @@ def fetch():
             records=r.json()['elements']
             if len(records)<100:raise ValueError('Empty Overpass response')
             for el in records:found[str(el['type'])+'/'+str(el['id'])]=el
-            print('Received',len(records),flush=True)
+            print('Received',len(records),flush=True);time.sleep(1)
             error=None;break
           except Exception as ex:
             error=ex;print('Retry:',str(ex)[:160],flush=True);time.sleep(1)
