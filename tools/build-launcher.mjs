@@ -1,5 +1,7 @@
 import {applyLogoPreflight} from './patch-artwork-preflight.mjs';
+import {stampComponentVersions} from './stamp-component-versions.mjs';
 applyLogoPreflight();
+stampComponentVersions();
 import fs from "node:fs";
 
 const base = "https://tohaa28.github.io/gifts-layout-workbench-mockups/";

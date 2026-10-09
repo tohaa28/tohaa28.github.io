@@ -40,6 +40,9 @@ jobs:
           set -euo pipefail
           node --test tests/*.test.mjs
           node tools/build-launcher.mjs
+          grep -Eq 'id="maketnayaVersion">Макетная r[0-9a-f]{8}<' editor.html
+          grep -Eq 'id="printcheckVersion">PrintCheck v25 r[0-9a-f]{8}<' editor.html
+          grep -Eq 'id="mockupVersion" class="mockup-build-version">Редактор мокапов r[0-9a-f]{8}<' mockup.html
           test -f launcher.js
           test -f mockup.html
           test -f save-profile.html
