@@ -218,6 +218,13 @@ jobs:
           const frame = page.frames().find(f => f.parentFrame() === page.mainFrame());
           if (!frame) throw new Error("Workbench iframe not created");
           await frame.waitForSelector(".app", {timeout:30000});
+          // Before selecting an order there must be no empty right-hand panel.
+          const initialOrderLayout=await frame.evaluate(()=>{
+            const main=document.querySelector(".app>main"),rail=main?.querySelector(":scope>.rail"),workspace=main?.querySelector(":scope>.workspace");
+            return {expanded:main?.classList.contains("gwb-orders-full"),mainWidth:main?.getBoundingClientRect().width,railWidth:rail?.getBoundingClientRect().width,workspaceWidth:workspace?.getBoundingClientRect().width};
+          });
+          if(!initialOrderLayout.expanded||initialOrderLayout.railWidth<initialOrderLayout.mainWidth*.96||initialOrderLayout.workspaceWidth>3)
+            throw Error("Initial order-list full width regression: "+JSON.stringify(initialOrderLayout));
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];
@@ -502,6 +509,20 @@ jobs:
             const rows=[...document.querySelectorAll("#basketOrders .basket-method")].map(x=>x.textContent||"");
             return rows.some(x => /13317\.00/.test(x)) && rows.some(x => /99999/.test(x));
           });
+          await frame.waitForFunction(()=>{
+            const rows=[...document.querySelectorAll("#basketOrders .basket-method")];
+            return rows.length>=3&&rows.every(x=>x.dataset.gwbCompact==="1"&&x.querySelector(".gwb-basket-thumb")&&x.querySelector(".gwb-basket-art")&&x.querySelector(".gwb-basket-method"));
+          },null,{timeout:12000});
+          const compactBasketState=await frame.evaluate(()=>({
+            cards:document.querySelectorAll("#basketOrders .basket-order").length,
+            rows:document.querySelectorAll("#basketOrders .gwb-basket-item").length,
+            images:document.querySelectorAll("#basketOrders .gwb-basket-thumb img").length,
+            productNames:[...document.querySelectorAll("#basketOrders .gwb-basket-name")].map(n=>n.textContent),
+            orderGrid:getComputedStyle(document.querySelector("#basketOrders")).display,
+            hasOrderWideHitbox:[...document.querySelectorAll("#basketOrders .basket-order")].every(n=>n.getAttribute("role")==="button"&&n.tabIndex===0)
+          }));
+          if(compactBasketState.cards!==2||compactBasketState.rows<3||!compactBasketState.hasOrderWideHitbox||compactBasketState.orderGrid!=="grid")
+            throw Error("Compact basket grouping or full-width grid regression: "+JSON.stringify(compactBasketState));
           const basketRows = await frame.locator("#basketOrders .basket-method").allTextContents();
           const basketSummary = await frame.locator("#basketStatus").textContent();
           if (!basketRows.some(x => /13317\.00/.test(x)) ||
@@ -575,6 +596,10 @@ jobs:
             waitingHidden:document.getElementById("orderWaitingWorkspace")?.hidden,
             orderState:document.querySelector(".workspace")?.dataset.orderState || ""
           }));
+          await frame.waitForTimeout(590);
+          const openedPanel=await frame.evaluate(()=>{const main=document.querySelector(".app>main"),rail=main?.querySelector(":scope>.rail"),workspace=main?.querySelector(":scope>.workspace");return {expanded:main?.classList.contains("gwb-orders-full"),mainWidth:main?.getBoundingClientRect().width,railWidth:rail?.getBoundingClientRect().width,workspaceWidth:workspace?.getBoundingClientRect().width};});
+          if(openedPanel.expanded||openedPanel.railWidth>openedPanel.mainWidth*.65||openedPanel.workspaceWidth<openedPanel.mainWidth*.25)
+            throw Error("Order-opening panel animation did not restore the editor: "+JSON.stringify(openedPanel));
           if (openWorkspaceState.orderEditorHidden !== false || openWorkspaceState.waitingHidden !== true || openWorkspaceState.orderState !== "open") {
             throw new Error("Workspace did not leave waiting mode after opening order: "+JSON.stringify(openWorkspaceState));
           }
