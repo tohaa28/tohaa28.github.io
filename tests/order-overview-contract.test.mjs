@@ -18,4 +18,5 @@ test('basket overview preserves the order click contracts and derives photos fro
  assert.match(html,/detailRequests=new WeakMap\(\)/);
  assert.match(html,/detailFor\(card,order\)/);
  assert.match(html,/photos\/0/);
+ assert.match(html,/visibleImages\.observe\(thumb\)/);
 });

@@ -535,11 +535,20 @@ jobs:
           }));
           if(compactBasketState.cards!==2||compactBasketState.rows<3||!compactBasketState.hasOrderWideHitbox||compactBasketState.orderGrid!=="grid")
             throw Error("Compact basket grouping or full-width grid regression: "+JSON.stringify(compactBasketState));
-          await frame.waitForFunction(()=>{
-            const first=document.querySelector('#basketOrders .basket-order[data-test-order] .gwb-basket-thumb img')
-              ||document.querySelector('#basketOrders .gwb-basket-thumb img');
-            return first?.complete&&first.naturalWidth>0;
-          },null,{timeout:15000});
+          const firstBasketThumb=frame.locator("#basketOrders .gwb-basket-thumb").first();
+          await firstBasketThumb.scrollIntoViewIfNeeded();
+          try{
+            await frame.waitForFunction(()=>{
+              const first=document.querySelector('#basketOrders .gwb-basket-thumb img');
+              return first?.complete&&first.naturalWidth>0;
+            },null,{timeout:12000});
+          }catch(error){
+            const snapshot=await frame.evaluate(()=>({
+              image:[...document.querySelectorAll("#basketOrders .gwb-basket-thumb img")].map(x=>({src:x.getAttribute("src"),current:x.currentSrc,complete:x.complete,width:x.naturalWidth,hidden:x.hidden})),
+              thumb:[...document.querySelectorAll("#basketOrders .gwb-basket-thumb")].map(x=>({r:x.getBoundingClientRect().toJSON(),visible:x.isConnected}))
+            }));
+            throw Error("Basket preview did not load when visible: "+JSON.stringify({snapshot,error:String(error),errors}));
+          }
           const loadedBasketThumbnail=await frame.evaluate(()=>{
             const image=document.querySelector('#basketOrders .gwb-basket-thumb img');
             return {loaded:!!image?.complete,width:image?.naturalWidth||0,src:image?.currentSrc||''};
