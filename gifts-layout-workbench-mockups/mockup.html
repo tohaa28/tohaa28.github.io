@@ -25,7 +25,7 @@
 .mappingOperationStatus[data-state="error"]::before{background:#c93b2f}
 @keyframes mappingOperationSpin{to{transform:rotate(360deg)}}.candidate.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f2f7ff}.candidateThumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#e8ebef}.candidateMeta{min-width:0}.candidateMeta strong,.candidateMeta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.candidateMeta strong{font-size:11px;color:#202124}.candidateMeta span{font-size:10px;color:var(--muted);margin-top:2px}.candidateTag{font-size:9px;border-radius:999px;padding:3px 5px;background:#eef2f7;color:#596273}.profileLibrary{display:grid;gap:5px;max-height:190px;overflow:auto}.libraryItem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;border:1px solid #dfe3e9;border-radius:8px;padding:7px;cursor:pointer;user-select:none}.libraryItem:hover,.libraryItem:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#f7faff;outline:none}.libraryItem button{padding:4px 7px;pointer-events:none}.libraryItemText{min-width:0;font-size:10px;line-height:1.4}.libraryItemText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tiny{padding:3px 6px;font-size:10px}.danger{color:#b42318}.libraryHead{margin-top:12px}
 .fieldMini{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#5b6471;border:1px dashed #cfd5df;background:#f6f7f9;word-break:break-all;text-align:center;padding:3px}
-.cylinderControls{border:1px solid #cfe0c5;background:#f7fbf4;border-radius:8px;padding:9px;margin:8px 0}.cylinderControls[hidden]{display:none!important}.cylinderModeButtons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:6px 0}.cylinderHint{font-size:10px;line-height:1.4;color:var(--muted);margin:5px 0 0}.cylinderValue{font-variant-numeric:tabular-nums}.cylinderControls .primary{background:var(--green,#81b315);border-color:var(--green,#81b315)}
+.cylinderControls{border:1px solid #cfe0c5;background:#f7fbf4;border-radius:8px;padding:9px;margin:8px 0}.cylinderControls[hidden]{display:none!important}.cylinderModeButtons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:6px 0}.cylinderHint{font-size:10px;line-height:1.4;color:var(--muted);margin:5px 0 0}.cylinderValue{font-variant-numeric:tabular-nums}.cylinderControls .primary{background:var(--green,#81b315);border-color:var(--green,#81b315)}.cylinderAspectLock{display:flex;align-items:center;gap:7px;margin:8px 0;color:#3d4d37;font-size:11px;font-weight:650;line-height:1.35}.cylinderAspectLock input{width:14px;height:14px;flex:0 0 auto;margin:0;accent-color:var(--green,#81b315)}.cylinderAspectLock[hidden]{display:none!important}
 
 
 .gitTokenPrompt{border-color:#e3c16f;background:#fff9e8}.gitTokenPrompt input{width:100%;box-sizing:border-box}.assetReadiness{display:grid;gap:8px}.assetProgressRow{display:grid;grid-template-columns:82px minmax(110px,1fr) minmax(92px,auto);gap:8px;align-items:center;font-size:10px;color:var(--muted)}.assetProgressRow strong{font-size:10px;color:#39434c}.assetProgressRow progress{width:100%;height:8px;accent-color:var(--accent)}.assetProgressRow[data-state="ready"] span{color:#24713a;font-weight:700}.assetProgressRow[data-state="loading"] span{color:#8a5c00;font-weight:700}button:disabled{opacity:.48;cursor:not-allowed}.panel.disabledHint{background:#fbfcfd}@media(max-width:580px){.assetProgressRow{grid-template-columns:68px 1fr}.assetProgressRow span{grid-column:1/-1}}
@@ -303,6 +303,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
               <button id="editCylinder" type="button">Разместить цилиндр</button>
               <button id="editField" type="button">Разместить поле</button>
             </div>
+            <label id="preserveFieldAspectLabel" class="cylinderAspectLock" hidden title="При изменении размера поля сохраняет его текущие пропорции в развёртке цилиндра."><input id="preserveFieldAspect" type="checkbox"> Сохранять пропорции поля</label>
             <button id="resetCylinder" type="button">Сбросить границы цилиндра</button>
             <p class="cylinderHint">Зелёный 3D-каркас ставится по видимому корпусу: четыре угла задают боковые касательные, оранжевые точки — кривизну верхней кромки и дна. Синяя рамка — развёртка нанесения и может уходить в серые зоны за пределами фото.</p>
           </div>
@@ -356,7 +357,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261005-3";
+import {mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261009-4";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -374,6 +375,9 @@ const state = {
   cylinderCurvature: .72,
   cylinderTopArc: .075,
   cylinderBottomArc: .045,
+  preserveFieldAspect: false,
+  localQuadSnapshot: null,
+  quadDragStartLocal: null,
   photoEditTarget: "field",
   photoDragTarget: "field",
   fieldSnapshot: null,
@@ -415,8 +419,9 @@ function ensureCylinderGuide(force=false){
   state.cylinderQuad=cylinderGuideFromField();state.cylinderInitialized=true;
 }
 function fieldBoundToCylinder(fromQuad,toQuad,fieldQuad){
-  try{return fieldQuad.map(p=>photoPoint(mapPointBetweenQuads(p,fromQuad,toQuad),true));}
-  catch{return fieldQuad.map(p=>photoPoint(p,true));}
+  const opts=cylinder3DOptions();
+  try{return fieldQuad.map(p=>{const local=cylinder3DInverseSurfacePoint(fromQuad,p,opts);return photoPoint(cylinder3DSurfacePoint(toQuad,local.x,local.y,opts),true);});}
+  catch{try{return fieldQuad.map(p=>photoPoint(mapPointBetweenQuads(p,fromQuad,toQuad),true));}catch{return fieldQuad.map(p=>photoPoint(p,true));}}
 }
 function setPhotoEditTarget(target){
   state.photoEditTarget=target==="cylinder"&&$("surface")?.value==="cylinder"?"cylinder":"field";
@@ -435,6 +440,9 @@ function updateCylinderControls(){
   if($("cylinderBottomArc"))$("cylinderBottomArc").value=String(Math.round(state.cylinderBottomArc*100));
   if($("cylinderTopArcValue"))$("cylinderTopArcValue").textContent=Math.round(state.cylinderTopArc*100)+"%";
   if($("cylinderBottomArcValue"))$("cylinderBottomArcValue").textContent=Math.round(state.cylinderBottomArc*100)+"%";
+  const aspectLabel=$("preserveFieldAspectLabel"),aspectInput=$("preserveFieldAspect");
+  if(aspectLabel)aspectLabel.hidden=!isCylinder||state.photoEditTarget!=="field";
+  if(aspectInput)aspectInput.checked=!!state.preserveFieldAspect;
   if($("photoCanvasHint"))$("photoCanvasHint").textContent=isCylinder
     ?(state.photoEditTarget==="cylinder"?"совместите зелёный 3D-каркас с корпусом, верхом и дном":"растяните синюю развёртку поля; невидимая часть сама уйдёт за цилиндр")
     :"перетаскивайте 4 маркера области нанесения";
@@ -928,9 +936,11 @@ const UNIT_QUAD=[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];
 function drawWarpedCylinder3D(ctx,img,q,cylinder={}){
   if(!Array.isArray(cylinder.surfaceQuad)||cylinder.surfaceQuad.length!==4)return false;
   const iw=img.naturalWidth,ih=img.naturalHeight,along=96,across=36;
-  const localQuad=q.map(p=>mapPointBetweenQuads(p,cylinder.surfaceQuad,UNIT_QUAD));
-  const localMap=homographyForQuad(localQuad);
-  const opts={axis:cylinder.axis==="horizontal"?"horizontal":"vertical",curvature:.72,topArc:Number(cylinder.topArc??.075),bottomArc:Number(cylinder.bottomArc??.045)};
+  const opts={axis:cylinder.axis==="horizontal"?"horizontal":"vertical",curvature:Number(cylinder.curvature??.72),topArc:Number(cylinder.topArc??.075),bottomArc:Number(cylinder.bottomArc??.045)};
+  let fitted;
+  try{fitted=cylinder3DArtworkQuad(cylinder.surfaceQuad,q,iw/Math.max(1,ih),opts);}
+  catch{fitted={localArtworkQuad:q.map(p=>mapPointBetweenQuads(p,cylinder.surfaceQuad,UNIT_QUAD))};}
+  const localMap=homographyForQuad(fitted.localArtworkQuad);
   const pointAt=(u,v)=>{const local=localMap(u,v);return cylinder3DSurfacePoint(cylinder.surfaceQuad,local.x,local.y,opts);};
   const src=(u,v)=>({x:u*iw,y:v*ih});
   for(let y=0;y<across;y++)for(let x=0;x<along;x++){
@@ -998,7 +1008,7 @@ function drawPhotoGuide(ctx,points,{color,fill,label,handles=true,dashed=false})
 }
 
 function cylinder3DOptions(){
-  return {axis:state.cylinderAxis,curvature:.72,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc};
+  return {axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc};
 }
 function drawCylinder3DGuide(ctx,cq,{handles=true}={}){
   const opts=cylinder3DOptions(),steps=64,start=[],end=[];
@@ -1055,7 +1065,7 @@ function renderPhoto(){
     ctx.save();
     ctx.beginPath();ctx.rect(photoX,photoY,photoW,photoH);ctx.clip();
     ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;
-    drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:.72,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:surface==="cylinder"?state.cylinderQuad.map(p=>photoToCanvasPoint(p,view)):null});
+    drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:surface==="cylinder"?state.cylinderQuad.map(p=>photoToCanvasPoint(p,view)):null});
     ctx.restore();
   }
   if(surface==="cylinder"){
@@ -1067,7 +1077,7 @@ function renderPhoto(){
 
 function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); updateAssetReadiness(); }
 function updateSummary(){
-  const profile=buildProfile(); const saved=getProfileLibrary().some(p=>profileKey(p)===profileKey(profile)),surfaceText=profile.surface==="cylinder"?`цилиндр 3D · ${profile.cylinder?.axis==="horizontal"?"горизонтальная":"вертикальная"} ось · верх ${Math.round((profile.cylinder?.topArc??.075)*100)}% · дно ${Math.round((profile.cylinder?.bottomArc??.045)*100)}%`:profile.surface; $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||"ручное"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${surfaceText}${profile.surface==="cylinder"?" · задняя сторона скрывается":""}`,`Библиотека: ${saved?"сопоставление сохранено":"новое сопоставление"}`].join("\n");
+  const profile=buildProfile(); const saved=getProfileLibrary().some(p=>profileKey(p)===profileKey(profile)),surfaceText=profile.surface==="cylinder"?`цилиндр 3D · ${profile.cylinder?.axis==="horizontal"?"горизонтальная":"вертикальная"} ось · верх ${Math.round((profile.cylinder?.topArc??.075)*100)}% · дно ${Math.round((profile.cylinder?.bottomArc??.045)*100)}%${profile.cylinder?.preserveFieldAspect?" · пропорции поля сохранены":""}`:profile.surface; $("profileSummary").textContent=[`Артикул: ${profile.article||"—"}`,`Место: ${profile.place||"—"}`,`Метод: ${profile.method||"—"}`,`Фото: ${profile.photo.name||profile.photo.url||"—"}`,`Поле: ${profile.field?.printId||profile.field?.applicationId||"ручное"}`,`Поле конструктора: ${Math.round(profile.fieldRect.w*100)}% × ${Math.round(profile.fieldRect.h*100)}%`,`Поверхность: ${surfaceText}${profile.surface==="cylinder"?" · задняя сторона скрывается":""}`,`Библиотека: ${saved?"сопоставление сохранено":"новое сопоставление"}`].join("\n");
 }
 
 function resetQuad(){ state.quad=[{x:.3,y:.3},{x:.7,y:.3},{x:.7,y:.7},{x:.3,y:.7}]; renderPhoto(); updateSummary(); }
@@ -1094,6 +1104,8 @@ function applyEditedPhotoQuad(next){
 $("photoCanvas").addEventListener("pointerdown",e=>{
   if(!state.photo)return;const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode),r=c.getBoundingClientRect(),target=cylinderMode&&state.photoEditTarget==="cylinder"?"cylinder":"field",quad=editablePhotoQuad();
   state.photoDragTarget=target;state.quadSnapshot=quad.map(q=>({...q}));state.fieldSnapshot=state.quad.map(q=>({...q}));
+  state.localQuadSnapshot=cylinderMode&&target==="field"&&state.preserveFieldAspect?state.quad.map(q=>cylinder3DInverseSurfacePoint(state.cylinderQuad,q,cylinder3DOptions())):null;
+  state.quadDragStartLocal=cylinderMode&&target==="field"&&state.preserveFieldAspect?cylinder3DInverseSurfacePoint(state.cylinderQuad,p,cylinder3DOptions()):null;
   const hit=canvasPointerPixel(c,e);
   if(cylinderMode&&target==="cylinder"){
     const cq=state.cylinderQuad.map(q=>photoToCanvasPoint(q,state.photoView)),opts=cylinder3DOptions();
@@ -1115,11 +1127,19 @@ $("photoCanvas").addEventListener("pointermove",e=>{
     updateCylinderControls();renderPhoto();updateSummary();return;
   }
   if(state.activeHandle>=0&&state.quadSnapshot){
-    const next=state.quadSnapshot.map(q=>({...q}));next[state.activeHandle]=p;applyEditedPhotoQuad(next);renderPhoto();updateSummary();return;
+    if(cylinderMode&&state.photoDragTarget==="field"&&state.preserveFieldAspect){
+      state.quad=cylinder3DResizeFieldPreservingAspect(state.cylinderQuad,state.quadSnapshot,state.activeHandle,p,cylinder3DOptions()).map(q=>photoPoint(q,true));
+    }else{
+      const next=state.quadSnapshot.map(q=>({...q}));next[state.activeHandle]=p;applyEditedPhotoQuad(next);
+    }
+    renderPhoto();updateSummary();return;
   }
   if(state.draggingQuad&&state.quadSnapshot){
     const dx=p.x-state.quadDragStart.x,dy=p.y-state.quadDragStart.y;
-    if(cylinderMode){
+    if(cylinderMode&&state.photoDragTarget==="field"&&state.preserveFieldAspect&&state.localQuadSnapshot&&state.quadDragStartLocal){
+      const currentLocal=cylinder3DInverseSurfacePoint(state.cylinderQuad,p,cylinder3DOptions()),localDx=currentLocal.x-state.quadDragStartLocal.x,localDy=currentLocal.y-state.quadDragStartLocal.y;
+      state.quad=state.localQuadSnapshot.map(q=>photoPoint(cylinder3DSurfacePoint(state.cylinderQuad,q.x+localDx,q.y+localDy,cylinder3DOptions()),true));
+    }else if(cylinderMode){
       applyEditedPhotoQuad(state.quadSnapshot.map(q=>({x:q.x+dx,y:q.y+dy})));
     }else{
       const shifted=state.quadSnapshot.map(q=>({x:q.x+dx,y:q.y+dy})),minX=Math.min(...shifted.map(q=>q.x)),maxX=Math.max(...shifted.map(q=>q.x)),minY=Math.min(...shifted.map(q=>q.y)),maxY=Math.max(...shifted.map(q=>q.y));
@@ -1129,7 +1149,7 @@ $("photoCanvas").addEventListener("pointermove",e=>{
     renderPhoto();updateSummary();
   }
 });
-function endPhotoDrag(){state.activeHandle=-1;state.draggingQuad=false;state.quadDragStart=null;state.quadSnapshot=null;state.fieldSnapshot=null;}
+function endPhotoDrag(){state.activeHandle=-1;state.draggingQuad=false;state.quadDragStart=null;state.quadSnapshot=null;state.fieldSnapshot=null;state.localQuadSnapshot=null;state.quadDragStartLocal=null;}
 $("photoCanvas").addEventListener("pointerup",endPhotoDrag); $("photoCanvas").addEventListener("pointercancel",endPhotoDrag);
 
 $("templateCanvas").addEventListener("pointerdown",e=>{ if(!state.template||!state.selectingField) return; const p=normalizedPoint(e.currentTarget,e); state.fieldDragStart=p; e.currentTarget.setPointerCapture(e.pointerId); });
@@ -1151,6 +1171,7 @@ $("cylinderTopArc").oninput=()=>{state.cylinderTopArc=clamp(Number($("cylinderTo
 $("cylinderBottomArc").oninput=()=>{state.cylinderBottomArc=clamp(Number($("cylinderBottomArc").value)/100,-.15,.25);updateCylinderControls();renderPhoto();updateSummary();};
 $("editCylinder").onclick=()=>{ensureCylinderGuide();setPhotoEditTarget("cylinder");setStatus("Совместите 4 зелёные точки с боковыми касательными корпуса, а оранжевые «Верх» и «Дно» — с кривизной кружки.");};
 $("editField").onclick=()=>{setPhotoEditTarget("field");setStatus("Разместите синюю рамку по реальному полю нанесения на цилиндре.");};
+$("preserveFieldAspect").onchange=()=>{state.preserveFieldAspect=$("preserveFieldAspect").checked;updateCylinderControls();renderPhoto();updateSummary();};
 $("resetCylinder").onclick=resetCylinderAroundField;
 ["article","place","method","variant"].forEach(id=>$(id).addEventListener("input",updateSummary));
 $("photoFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await imageFromFile(f,"photo");const c={id:`local:${f.name}:${f.size}`,name:f.name,url:"",dataUrl:await fileToDataUrl(f),kind:"manual"};state.photoCandidates.push(c);state.activePhotoCandidate=state.photoCandidates.length-1;state.photoSource={id:c.id,name:c.name,url:""};renderPhotoCandidates();renderAll();}catch{setStatus("Не удалось открыть фотографию");}};
@@ -1161,7 +1182,7 @@ function buildProfile(){
   const fc=state.fieldCandidates[state.activeFieldCandidate]||null;
   const field=fc?{id:fc.id,printId:fc.printId,applicationId:fc.applicationId,place:fc.place,sizeCm:Array.isArray(fc.sizeMm)?fc.sizeMm.map(v=>Number((v/10).toFixed(4))):null}:{id:"manual",printId:"",applicationId:"",place:$("place").value.trim(),sizeCm:null};
   const surface=$("surface").value;if(surface==="cylinder")ensureCylinderGuide();
-  return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{id:state.photoSource.id||"",name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},field,constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface,cylinder:surface==="cylinder"?{geometry:"3d",axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,targetQuad:state.cylinderQuad.map(p=>({...p}))}:undefined,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:surface==="cylinder"?32:18}};
+  return {schema:"gifts-mockup-profile/v1",article:$("article").value.trim(),variant:$("variant").value.trim(),place:$("place").value.trim(),method:$("method").value.trim(),photo:{id:state.photoSource.id||"",name:state.photoSource.name||"",url:state.photoSource.url||"",width:state.photo?.naturalWidth||0,height:state.photo?.naturalHeight||0},field,constructor:{name:state.templateSource.name||"",url:state.templateSource.url||"",width:state.template?.naturalWidth||0,height:state.template?.naturalHeight||0},fieldRect:{...state.fieldRect},targetQuad:state.quad.map(p=>({...p})),surface,cylinder:surface==="cylinder"?{geometry:"3d",axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,preserveFieldAspect:state.preserveFieldAspect,targetQuad:state.cylinderQuad.map(p=>({...p}))}:undefined,render:{opacity:Number($("opacity").value)/100,blend:$("blend").value,mesh:surface==="cylinder"?32:18}};
 }
 
 function encodeProfileForSave(profile,action="save"){
@@ -1357,9 +1378,10 @@ async function applyProfile(p){
     state.cylinderCurvature=clamp(Number(p.cylinder?.curvature??.72));
     state.cylinderTopArc=clamp(Number(p.cylinder?.topArc??.075),-.15,.25);
     state.cylinderBottomArc=clamp(Number(p.cylinder?.bottomArc??.045),-.15,.25);
+    state.preserveFieldAspect=p.cylinder?.preserveFieldAspect===true;
     if(Array.isArray(p.cylinder?.targetQuad)&&p.cylinder.targetQuad.length===4){state.cylinderQuad=p.cylinder.targetQuad.map(x=>photoPoint(x,true));state.cylinderInitialized=true;}
     else{state.cylinderInitialized=false;ensureCylinderGuide(true);}
-  }
+  }else state.preserveFieldAspect=false;
   state.photoEditTarget="field";updateCylinderControls();
   $("opacity").value=Math.round((p.render?.opacity??.9)*100);$("opacityValue").textContent=$("opacity").value+"%";
   $("blend").value=p.render?.blend||"source-over";
@@ -1461,7 +1483,7 @@ async function createMockupPngBlob(){
   if(!state.artwork)throw new Error("Сначала загрузите логотип");
   if(!state.photo)throw new Error("Сначала загрузите фотографию");
   const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
-  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:.72,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
+  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
   const blob=await new Promise((resolve,reject)=>{try{c.toBlob(b=>b?resolve(b):reject(new Error("Не удалось сформировать PNG")),"image/png")}catch(err){reject(err)}});
   const p=buildProfile();
   return{blob,filename:`mockup-${slug(p.article)}-${slug(p.place)}.png`,profile:p};
@@ -1483,6 +1505,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r44aa8335</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r1363b4a7</span>
 </body>
 </html>

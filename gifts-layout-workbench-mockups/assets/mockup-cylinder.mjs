@@ -121,6 +121,108 @@ export function cylinder3DSurfacePoint(surfaceQuad,localX,localY,{axis="vertical
   return {x:p.x,y:p.y,visible:cs>=-EPS,depth:cs,theta,wrapped,axial};
 }
 
+
+const UNIT_QUAD=[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];
+
+function quadEdgeMetrics(q){
+  return {
+    width:(len(sub(q[1],q[0]))+len(sub(q[2],q[3])))/2,
+    height:(len(sub(q[3],q[0]))+len(sub(q[2],q[1])))/2
+  };
+}
+
+function cylinder3DSurfaceMetricScales(surfaceQuad,opts={}){
+  const q=normalizedQuad(surfaceQuad),{width,height}=quadEdgeMetrics(q);
+  const arcFactor=Math.PI/2*cylinder3DWrapScale(opts.curvature??.72);
+  return opts.axis==="horizontal"
+    ?{x:width,y:height*arcFactor}
+    :{x:width*arcFactor,y:height};
+}
+
+/** Invert the curved cylinder projection rather than approximating it with a planar homography. */
+export function cylinder3DInverseSurfacePoint(surfaceQuad,target,{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
+  const q=normalizedQuad(surfaceQuad),goal=point(target),opts={axis,curvature,topArc,bottomArc};
+  let seed;
+  try{seed=mapPointBetweenQuads(goal,q,UNIT_QUAD);}
+  catch{seed={x:.5,y:.5};}
+  const initial={x:seed.x,y:seed.y};
+  let x=seed.x,y=seed.y;
+  const {width,height}=quadEdgeMetrics(q),scale=Math.max(1,width,height),tolerance=scale*1e-8;
+  const at=(xx,yy)=>cylinder3DSurfacePoint(q,xx,yy,opts);
+  for(let i=0;i<32;i++){
+    const cur=at(x,y),rx=cur.x-goal.x,ry=cur.y-goal.y,error=Math.hypot(rx,ry);
+    if(error<=tolerance)break;
+    const step=1e-4;
+    const xp=at(x+step,y),xm=at(x-step,y),yp=at(x,y+step),ym=at(x,y-step);
+    const j11=(xp.x-xm.x)/(2*step),j21=(xp.y-xm.y)/(2*step);
+    const j12=(yp.x-ym.x)/(2*step),j22=(yp.y-ym.y)/(2*step);
+    const det=j11*j22-j12*j21;
+    if(!Number.isFinite(det)||Math.abs(det)<1e-12)break;
+    const dx=(rx*j22-ry*j12)/det,dy=(j11*ry-j21*rx)/det;
+    if(!Number.isFinite(dx)||!Number.isFinite(dy))break;
+    let factor=1,improved=false;
+    for(let attempt=0;attempt<12;attempt++,factor*=.5){
+      const nx=x-factor*dx,ny=y-factor*dy;
+      if(Math.abs(nx)>20||Math.abs(ny)>20)continue;
+      const next=at(nx,ny),nextError=Math.hypot(next.x-goal.x,next.y-goal.y);
+      if(nextError<error){x=nx;y=ny;improved=true;break;}
+    }
+    if(!improved)break;
+  }
+  const final=at(x,y);
+  if(Math.hypot(final.x-goal.x,final.y-goal.y)>Math.max(tolerance*100,scale*1e-4))return initial;
+  return {x,y};
+}
+
+/** Fit artwork inside a cylindrical field without changing its intrinsic aspect ratio. */
+export function cylinder3DArtworkQuad(surfaceQuad,fieldQuad,artworkAspect,{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
+  const opts={axis,curvature,topArc,bottomArc};
+  const localFieldQuad=normalizedQuad(fieldQuad).map(p=>cylinder3DInverseSurfacePoint(surfaceQuad,p,opts));
+  const {width,height}=quadEdgeMetrics(localFieldQuad),metrics=cylinder3DSurfaceMetricScales(surfaceQuad,opts);
+  const fieldAspect=(width*metrics.x)/(Math.max(EPS,height)*Math.max(EPS,metrics.y));
+  const aspect=Number(artworkAspect);
+  if(!Number.isFinite(aspect)||aspect<=EPS||!Number.isFinite(fieldAspect)||fieldAspect<=EPS){
+    return {localFieldQuad,localArtworkQuad:localFieldQuad,fieldAspect,artworkAspect:aspect,bounds:{u0:0,u1:1,v0:0,v1:1}};
+  }
+  let u0=0,u1=1,v0=0,v1=1;
+  if(aspect>fieldAspect){
+    const innerV=Math.max(.0001,Math.min(1,fieldAspect/aspect));
+    v0=(1-innerV)/2;v1=(1+innerV)/2;
+  }else if(aspect<fieldAspect){
+    const innerU=Math.max(.0001,Math.min(1,aspect/fieldAspect));
+    u0=(1-innerU)/2;u1=(1+innerU)/2;
+  }
+  const matrix=homographyMatrix(localFieldQuad);
+  const localArtworkQuad=[
+    applyMatrix(matrix,{x:u0,y:v0}),
+    applyMatrix(matrix,{x:u1,y:v0}),
+    applyMatrix(matrix,{x:u1,y:v1}),
+    applyMatrix(matrix,{x:u0,y:v1})
+  ];
+  return {localFieldQuad,localArtworkQuad,fieldAspect,artworkAspect:aspect,bounds:{u0,u1,v0,v1}};
+}
+
+/** Resize one field corner while keeping its unwrapped surface width/height ratio. */
+export function cylinder3DResizeFieldPreservingAspect(surfaceQuad,fieldQuad,activeIndex,draggedPoint,opts={}){
+  const local=normalizedQuad(fieldQuad).map(p=>cylinder3DInverseSurfacePoint(surfaceQuad,p,opts));
+  const i=Math.max(0,Math.min(3,Math.trunc(Number(activeIndex)||0)));
+  const target=cylinder3DInverseSurfacePoint(surfaceQuad,draggedPoint,opts);
+  const {width,height}=quadEdgeMetrics(local),ratio=Math.max(.0001,width/Math.max(EPS,height));
+  const anchor=local[(i+2)%4],dx=Math.abs(target.x-anchor.x),dy=Math.abs(target.y-anchor.y);
+  const h=Math.max(.002,(ratio*dx+dy)/(ratio*ratio+1)),w=Math.max(.002,ratio*h);
+  const next=new Array(4);
+  if(i===0){
+    next[2]=anchor;next[1]={x:anchor.x,y:anchor.y-h};next[3]={x:anchor.x-w,y:anchor.y};next[0]={x:anchor.x-w,y:anchor.y-h};
+  }else if(i===1){
+    next[3]=anchor;next[0]={x:anchor.x,y:anchor.y-h};next[2]={x:anchor.x+w,y:anchor.y};next[1]={x:anchor.x+w,y:anchor.y-h};
+  }else if(i===2){
+    next[0]=anchor;next[1]={x:anchor.x+w,y:anchor.y};next[3]={x:anchor.x,y:anchor.y+h};next[2]={x:anchor.x+w,y:anchor.y+h};
+  }else{
+    next[1]=anchor;next[0]={x:anchor.x-w,y:anchor.y};next[2]={x:anchor.x,y:anchor.y+h};next[3]={x:anchor.x-w,y:anchor.y+h};
+  }
+  return next.map(p=>cylinder3DSurfacePoint(surfaceQuad,p.x,p.y,opts)).map(p=>({x:p.x,y:p.y}));
+}
+
 export function cylinder3DArcHandle(surfaceQuad,which="top",{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
   const horizontal=axis==="horizontal";
   const localX=horizontal?(which==="top"?0:1):.5;
