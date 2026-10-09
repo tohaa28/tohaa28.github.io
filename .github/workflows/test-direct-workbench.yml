@@ -198,6 +198,23 @@ jobs:
           const launcherSource = fs.readFileSync("launcher.js", "utf8");
           await page.addScriptTag({content: launcherSource});
           await page.waitForSelector("#gifts-layout-workbench-host iframe", {timeout:30000});
+          // Check the visible hover bubble; the browser-native title is deliberately not used.
+          const closeButton=page.locator("#gifts-layout-workbench-host .gwb-close");
+          if(await closeButton.getAttribute("aria-label")!=="Закрыть Макетную")throw Error("Close button accessible name missing");
+          if(await closeButton.getAttribute("data-tooltip")!=="Закрыть Макетную")throw Error("Close tooltip text missing");
+          await page.waitForSelector("#gifts-layout-workbench-host.gwb-opened .gwb-close",{timeout:15000});
+          await closeButton.hover();
+          await page.waitForFunction(()=>{
+            const n=document.querySelector("#gifts-layout-workbench-host .gwb-close");
+            const t=n&&getComputedStyle(n,"::after");
+            return t?.content==='"Закрыть Макетную"'&&t.visibility==="visible"&&Number(t.opacity)>.9;
+          },null,{timeout:5000});
+          await page.mouse.move(7,7);
+          await page.waitForFunction(()=>{
+            const n=document.querySelector("#gifts-layout-workbench-host .gwb-close");
+            const t=n&&getComputedStyle(n,"::after");
+            return t?.visibility==="hidden"&&Number(t.opacity)<.1;
+          },null,{timeout:5000});
           const frame = page.frames().find(f => f.parentFrame() === page.mainFrame());
           if (!frame) throw new Error("Workbench iframe not created");
           await frame.waitForSelector(".app", {timeout:30000});
