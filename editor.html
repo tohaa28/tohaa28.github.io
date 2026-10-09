@@ -51,11 +51,21 @@
 @media(max-width:620px){.gwb-build-versions{right:5px;bottom:5px}.gwb-build-versions span{font-size:9px}}
 
 /* 2026-10-09: Full-width order overview, animated return to the existing editor size. */
-.app>main{display:flex!important;min-width:0!important;align-items:stretch}
-.app>main>.rail{display:block;flex:none;min-width:0;width:clamp(317px,38.9vw,490px);transition:width .52s cubic-bezier(.22,.8,.22,1);will-change:width}
-.app>main>.workspace{flex:1 1 0;min-width:0;overflow:hidden;transition:opacity .38s ease}
-.app>main.gwb-orders-full>.rail{width:100%!important;border-right:0}
-.app>main.gwb-orders-full>.workspace{flex:0 0 0!important;min-width:0!important;width:0!important;opacity:0;visibility:hidden;pointer-events:none}
+@property --gwb-order-rail-width{
+ syntax:"<length-percentage>";inherits:false;initial-value:100%;
+}
+.app>main{
+ --gwb-order-rail-width:clamp(317px,38.9vw,490px);
+ display:grid!important;
+ grid-template-columns:minmax(0,var(--gwb-order-rail-width)) minmax(0,1fr)!important;
+ min-width:0!important;
+ transition:--gwb-order-rail-width .52s cubic-bezier(.22,.8,.22,1);
+}
+.app>main>.rail{min-width:0}
+.app>main>.workspace{min-width:0;overflow:hidden;transition:opacity .38s ease}
+.app>main.gwb-orders-full{--gwb-order-rail-width:100%}
+.app>main.gwb-orders-full>.rail{border-right:0}
+.app>main.gwb-orders-full>.workspace{opacity:0;visibility:hidden;pointer-events:none}
 .app>main.gwb-orders-full #basketOrders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px;align-items:start}
 .app>main.gwb-orders-full .basket-order{margin:0}
 .basket-order{position:relative;min-width:0;overflow:hidden;border-radius:7px!important;padding:9px 11px!important;box-shadow:0 2px 8px #263b4410}
@@ -501,9 +511,8 @@
     if(!picking)scheduleCanvasResize();
   };
   new MutationObserver(updateLayout).observe(editor,{attributes:true,attributeFilter:["hidden"]});
-  const rail=layout.querySelector(":scope > .rail");
-  rail?.addEventListener("transitionend",event=>{
-    if(event.propertyName==="width")scheduleCanvasResize();
+  layout.addEventListener("transitionend",event=>{
+    if(event.propertyName==="--gwb-order-rail-width")scheduleCanvasResize();
   });
   if(typeof ResizeObserver==="function"&&workspace)
     new ResizeObserver(scheduleCanvasResize).observe(workspace);
