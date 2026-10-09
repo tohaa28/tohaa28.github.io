@@ -202,6 +202,10 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
 #assetReadinessPanel{display:none!important}
 
 .handoffManualControls{display:none!important}
+
+/* Visible in standalone and embedded Mockup Editor, without intercepting clicks. */
+.mockup-build-version{position:fixed;right:12px;bottom:10px;z-index:65;pointer-events:none;background:rgba(255,255,255,.88);border-radius:3px;padding:2px 5px;color:#67777d;font:400 10px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap}
+@media(max-width:580px){.mockup-build-version{right:5px;bottom:5px;font-size:9px}}
 </style>
 </head>
 <body>
@@ -1479,5 +1483,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r5cdc36fc</span>
 </body>
 </html>
