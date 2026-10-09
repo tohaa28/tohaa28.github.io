@@ -3,7 +3,7 @@ on:
   push:
     branches: [spb-a3-print-map]
     paths:
-      - "spb-map/build_spb_map.py.gz.b64"
+      - "spb-map/build.py"
       - ".github/workflows/build-spb-map.yml"
   workflow_dispatch:
 
