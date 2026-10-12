@@ -1,20 +1,20 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "8f02f72fc8004e6d7e0059b3c5136db82afa9227",
+  "verified_functional_source_commit": "15d1817d6f9af42216e2671666a0b54e65497cca",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "08879a3d26121cc81b5efa677c51920be9180290",
-  "verified_publication_main_commit": "9309ba703d8e1ee429df1f6518c6c0feb171770e",
+  "source_tree_sha": "a01b0910073fbb296ddfb34f67be52066a4b0f8d",
+  "verified_publication_main_commit": "253113aeec77edd195c7d0b2a66f7e2f0e4310b1",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38247326682,
+    "run": 38249503509,
     "conclusion": "success",
-    "unit_tests": 132,
+    "unit_tests": 134,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success"
   },
-  "last_feature": "Remove duplicate green frame from Step 1 template-picker, keep outer article-card border",
+  "last_feature": "Approved modern CSS/SVG motion design replaces startup doors at gifts.ru bookmarklet launch",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,7 +30,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest VERIFIED functional source 8f02f72f; published main 9309ba70. Docs-only source HEAD may advance; re-fetch before changes.",
+  "note": "Latest verified functional source 15d1817d; deployed main 253113ae. This docs-only commit may advance source HEAD. Do not restore old door splash checks or modify unrelated modules.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -88,5 +88,24 @@
     "selected_article_highlight_preserved": true,
     "verified_source_commit": "8f02f72fc8004e6d7e0059b3c5136db82afa9227",
     "verified_workflow": 38247326682
+  },
+  "startup_animation": {
+    "kind": "HTML CSS SVG motion design",
+    "duration_ms": 2600,
+    "source": "tools/launcher-motion.mjs",
+    "builder": "tools/build-launcher.mjs",
+    "stage": ".gwb-motion-stage",
+    "old_door_stage_removed": true,
+    "generated_launcher": "launcher.js",
+    "browser_test": "test-direct-workbench.yml",
+    "unit_test": "tests/launcher-motion.test.mjs",
+    "four_beats": [
+      "abstract panels",
+      "brand logo",
+      "vector layout and finished art",
+      "live workbench reveal"
+    ],
+    "verified_source_commit": "15d1817d6f9af42216e2671666a0b54e65497cca",
+    "verified_workflow": 38249503509
   }
 }

@@ -3,11 +3,17 @@
 ## Точка восстановления
 - GitHub: https://github.com/tohaa28/tohaa28.github.io
 - Рабочая ветка: `gifts-layout-workbench-mockups-source`. Публикация: `main`.
-- **Последняя проверенная функциональная исходная версия**: `8f02f72fc8004e6d7e0059b3c5136db82afa9227`.
-- Соответствующая публикация: `main` `9309ba703d8e1ee429df1f6518c6c0feb171770e`.
-- Workflow `38247326682`: `precheck`, `publish`, `browser_verify` — SUCCESS; **132/132 unit**.
+- **Последняя проверенная функциональная исходная версия**: `15d1817d6f9af42216e2671666a0b54e65497cca`.
+- Соответствующая публикация: `main` `253113aeec77edd195c7d0b2a66f7e2f0e4310b1`.
+- Workflow `38249503509`: `precheck`, `publish`, `browser_verify` — SUCCESS; **134/134 unit**.
 - Сайт: https://tohaa28.github.io/gifts-layout-workbench-mockups/
 - Полная история: `PROJECT_HISTORY_MAKETNAYA.md`. Новые изменения: `handoff/MAKETNAYA_CHANGES_2026-10-12.md`. Машинные SHAs/статус: `handoff/MAKETNAYA_STATE_2026-10-12.json`.
+
+## Стартовая заставка — новая архитектура
+- Анимация реализована средствами HTML/CSS/SVG в `tools/launcher-motion.mjs`, длительность 2.6 сек.
+- `tools/build-launcher.mjs` собирает `launcher.js`: `gwb-motion-stage`, смена `gwb-opening` → `gwb-opened`, затем удаление сцены. Старых `gwb-door-*` больше нет.
+- `tools/stamp-component-versions.mjs` учитывает новый CSS/markup при вычислении ревизии.
+- Не возвращать проверки старых дверей в CI. Придерживаться `tests/launcher-motion.test.mjs` и соответствующего browser smoke.
 
 ## Что сейчас работает
 1. Стартовая Макетная: без выбранного заказа список заказов занимает всю ширину, правая рабочая панель скрыта. При выборе заказа переход по ширине анимирован.
@@ -33,7 +39,7 @@
 - Выпуск подтверждать только после `precheck`, `publish`, `browser_verify` и проверки `main`.
 
 ## Последнее изменение
-В шаге 1 убрана внутренняя зелёная рамка `#orderTemplatePicker` и её тень, внешняя зелёная рамка `.article-card` осталась. Подсветка выбранного артикула и шрифт параметров 10px сохранены. Source `8f02f72f`, main `9309ba70`, workflow `38247326682`: 132/132 тестов, все jobs SUCCESS.
+Утверждённый моушен-дизайн вместо старых раздвижных дверей: 2600 мс CSS/SVG-сцена (бренд, геометрические пластины, макет и «Макет готов»), затем реальный интерфейс. Source `15d1817d`, main `253113ae`, workflow `38249503509`: 134/134, все jobs SUCCESS. Источник анимации `tools/launcher-motion.mjs`, сборка `tools/build-launcher.mjs`, проверка `tests/launcher-motion.test.mjs`.
 
 ## Следующий шаг
 История и новая защита клавиатурного управления сохранены. При следующем запросе сперва проверить свежую ветку. Если пользователь продолжит тесты мокапа — запросить/посмотреть повторный PNG с реальной бейсболкой; если займётся PrintCheck — использовать v25 handoff и реальные контрольные метки. Подробнее см. `PROJECT_HISTORY_MAKETNAYA.md`.
