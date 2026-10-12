@@ -12,6 +12,59 @@
     ], {duration, easing: 'cubic-bezier(.22,1,.36,1)'});
     animations.set(node, animation);
   }
+  const windowClosures = new WeakMap(), disclosures = new WeakMap();
+  function cancelClose(node) {
+    const pending = windowClosures.get(node); if (!pending) return;
+    windowClosures.delete(node); pending.animation.cancel(); node.inert = pending.inert;
+  }
+  function closeWindow(node, finish) {
+    if (!node || node.hidden || (node.tagName === 'DIALOG' && !node.open) || reduced.matches || !node.animate) {
+      cancelClose(node); finish(); return Promise.resolve();
+    }
+    const pending = windowClosures.get(node); if (pending) return pending.promise;
+    animations.get(node)?.cancel();
+    const inert = node.inert; node.inert = true;
+    const animation = node.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(8px)'}],
+      {duration:180,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'});
+    const record = {animation,inert,promise:null}; windowClosures.set(node,record); animations.set(node,animation);
+    record.promise = animation.finished.then(() => {
+      if (windowClosures.get(node) !== record) return;
+      windowClosures.delete(node); node.inert = inert; finish(); animation.cancel();
+    }, () => {});
+    return record.promise;
+  }
+  function restoreDisclosure(node, record) {
+    node.style.height = record.height; node.style.overflow = record.overflow;
+    for (const [child,inert] of record.children) child.inert = inert;
+  }
+  function cancelDisclosure(node) {
+    const record = disclosures.get(node); if (!record) return;
+    disclosures.delete(node); record.animation?.cancel(); restoreDisclosure(node,record);
+  }
+  function toggleDisclosure(node) {
+    const summary = node.querySelector(':scope > summary'); if (!summary) return;
+    const pending = disclosures.get(node), desired = !(pending ? pending.desired : node.open);
+    const start = node.getBoundingClientRect().height;
+    const original = pending || {height:node.style.height,overflow:node.style.overflow,
+      children:[...node.children].filter(child=>child!==summary).map(child=>[child,child.inert])};
+    cancelDisclosure(node);
+    node.dispatchEvent(new CustomEvent('gwb-disclosure-target',{detail:{open:desired}}));
+    if (reduced.matches || !node.animate) { node.open = desired; return; }
+    node.open = true;
+    const style = getComputedStyle(node), summaryStyle = getComputedStyle(summary), number = value => parseFloat(value)||0;
+    const closed = summary.getBoundingClientRect().height + number(style.paddingTop) + number(style.paddingBottom) +
+      number(style.borderTopWidth) + number(style.borderBottomWidth) + number(summaryStyle.marginTop) + number(summaryStyle.marginBottom);
+    const end = desired ? node.getBoundingClientRect().height : closed;
+    node.style.overflow = 'hidden';
+    const record = {...original,desired,animation:null}; disclosures.set(node,record);
+    if (!desired) for (const [child] of record.children) child.inert = true;
+    record.animation = node.animate([{height:start+'px'},{height:end+'px'}],
+      {duration:260,easing:'cubic-bezier(.22,1,.36,1)',fill:'forwards'});
+    record.animation.finished.then(() => {
+      if (disclosures.get(node) !== record) return;
+      disclosures.delete(node); node.open = desired; restoreDisclosure(node,record); record.animation.cancel();
+    },()=>{});
+  }
   const reports = new WeakSet();
   function foldReport(panel) {
     if (panel?.id !== 'logoErrorOverlay' || reports.has(panel)) return;
@@ -25,7 +78,8 @@
       const pending = [...list.children].find(node => node.textContent.includes('поиск мелких элементов'));
       if (pending) { const status = document.createElement('span'); status.className = 'flow-report-status'; status.textContent = pending.textContent; summary.append(status); }
       disclosure.append(summary,list); panel.append(disclosure);
-      disclosure.addEventListener('toggle', () => { open = disclosure.open; });
+      disclosure.addEventListener('gwb-disclosure-target', event => { open = event.detail.open; });
+      disclosure.addEventListener('toggle', () => { open = disclosures.get(disclosure)?.desired ?? disclosure.open; });
     };
     new MutationObserver(wrap).observe(panel,{childList:true}); wrap();
   }
@@ -34,6 +88,7 @@
     const observer = new MutationObserver(records => {
       const changed = new Set(records.filter(record => (record.oldValue !== null) !== record.target.hasAttribute(record.attributeName)).map(record => record.target));
       for (const node of changed) {
+        if (disclosures.has(node)) { if (!node.open) cancelDisclosure(node); else continue; }
         if (node.matches('[hidden],details:not([open])')) continue;
         if (node.matches('details')) {
           for (const child of node.children) if (child.tagName !== 'SUMMARY') enter(child);
@@ -52,6 +107,18 @@
       for (const record of records) for (const node of record.addedNodes)
         if (node.nodeType === 1) watch(node);
     }).observe(document.body, {childList: true, subtree: true});
+    window.gwbMotion = {closeWindow,cancelClose,isClosing:node=>windowClosures.has(node)};
+    document.addEventListener('click', event => {
+      const summary = event.target.closest('summary');
+      const disclosure = summary?.parentElement;
+      if (!disclosure?.matches('#logoPreflight,#logoDetailCheck,.flow-canvas-report,.metadata,#giftsLogin') ||
+          event.target.closest('a,button,input,select')) return;
+      event.preventDefault(); toggleDisclosure(disclosure);
+    },true);
+    // A view transition must not shift the canvas under an active drag.
+    document.addEventListener('pointerdown', event => {
+      if (event.target.closest('#stage')) animations.get($('stage'))?.cancel();
+    },true);
     document.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
@@ -79,6 +146,12 @@
     dock.setAttribute('aria-label', 'Тонкая настройка макета');
     dock.innerHTML = '<div class="flow-dock-head"><strong>Тонкая настройка</strong><button id="flowCloseSettings" type="button" aria-label="Закрыть тонкую настройку">×</button></div><div id="flowSettingsContent"></div>';
     main.append(dock);
+    const mobileLayout = matchMedia('(max-width:780px)');
+    const placeNavigation = () => {
+      if (mobileLayout.matches) main.closest('.app').insertBefore(shell,main);
+      else editor.prepend(shell);
+    };
+    mobileLayout.addEventListener('change',placeNavigation); placeNavigation();
     const content = $('flowSettingsContent');
     // Move the actual controls; do not clone or create parallel editor state.
     for (const id of ['transformControls', 'fieldsPanel', 'checksPanel']) if ($(id)) content.append($(id));
@@ -92,7 +165,7 @@
     const article = editor.querySelector('.article-card'); if (article) article.dataset.flowPart = 'article';
     $('artwork')?.closest('label')?.setAttribute('data-flow-part', 'artwork');
     const review = document.createElement('div'); review.id = 'flowReview';
-    review.innerHTML = '<div class="flow-review-mark" aria-hidden="true">✓</div><strong>Макет готов к просмотру</strong><span>Проверьте положение логотипов и результат PrintCheck перед скачиванием.</span><button id="flowReviewEdit" type="button">Вернуться к размещению</button>';
+    review.innerHTML = '<div class="flow-review-mark" aria-hidden="true">✓</div><strong>Проверьте готовый макет</strong><button id="flowReviewEdit" type="button">Изменить</button>';
     $('simpleControls').before(review);
     let step = 1, settingsOpen = false, previous = {}, frame = 0, lastSignature = '', lastReadyArticle = '', closingSettings = false, closeTimer = 0;
     const setHidden = (node, hidden) => { if (node && node.hidden !== hidden) node.hidden = hidden; };
@@ -115,7 +188,13 @@
       $('flowSettings').setAttribute('aria-expanded', String(open)); more.setAttribute('aria-expanded', String(open));
       const layout = () => {
         main.classList.toggle('flow-settings-open', settingsOpen || closingSettings);
-        requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+          if (mobileLayout.matches && !closingSettings) {
+            const target = settingsOpen ? dock : main.querySelector('.workspace');
+            target?.scrollIntoView({block:'start',behavior:reduced.matches?'auto':'smooth'});
+          }
+        });
       };
       if (!open && !dock.hidden && !reduced.matches) {
         closingSettings = true; dock.classList.add('flow-settings-closing');
@@ -128,7 +207,10 @@
     function go(target, focus = false) {
       const s = state(); if (!available(target, s)) return;
       const direction = target >= step ? 1 : -1; step = target;
-      render(s); enter(title, direction); enter(article?.getClientRects().length ? article : $('orderFieldChoiceBox'), direction);
+      render(s);
+      main.querySelector('.rail').scrollTop = 0;
+      if (innerWidth <= 780) main.scrollTop = 0;
+      enter(title, direction); enter(article?.getClientRects().length ? article : $('orderFieldChoiceBox'), direction);
       if (focus) $('flowNavigation').querySelector(`[data-flow-step="${step}"]`)?.focus({preventScroll:true});
     }
     function render(s = state()) {
@@ -137,6 +219,8 @@
       setHidden(shell, !s.open); setHidden(dock, !s.open || !(settingsOpen || closingSettings));
       const status = [s.order ? 'Заказ ' + s.order : '', s.article ? 'Арт. ' + s.article : ''].filter(Boolean).join(' · ');
       setText($('flowContext'), status);
+      const fieldCaption = $('orderFieldChoiceBox')?.querySelector('.simple-label');
+      setText(fieldCaption, step === 2 ? 'Выберите место нанесения' : 'Место нанесения');
       setText($('flowHeading'), labels[step - 1]); setText($('flowDescription'), descriptions[step - 1]);
       for (const button of $('flowNavigation').querySelectorAll('button')) {
         const target = Number(button.dataset.flowStep);
@@ -167,7 +251,7 @@
       if (s.open && !s.logoReady && step === 4) step = s.hasSelectedField ? 3 : 2;
       // Keep PrintCheck's detailed disclosure local to the current step.
       const detail = $('detailPanel'); if (detail && detail.parentElement === main.querySelector('.rail')) {
-        detail.classList.add('flow-check-details');
+        detail.classList.add('flow-check-details'); editor.insertBefore(detail,footer);
       }
       if (!s.open && previous.open) { clearTimeout(closeTimer); closingSettings = false; settingsOpen = false; dock.inert = true; main.classList.remove('flow-settings-open'); }
       if (s.open && previous.open && (s.field !== previous.field || s.hasSelectedField !== previous.hasSelectedField || s.article !== previous.article)) enter($('stage'),1,320);
@@ -180,8 +264,8 @@
     $('flowPrevious').onclick = () => go(step - 1);
     $('flowNext').onclick = () => go(step + 1);
     $('flowReviewEdit').onclick = () => go(3);
-    $('flowSettings').onclick = () => setSettings(!settingsOpen);
-    more.onclick = () => setSettings(!settingsOpen);
+    $('flowSettings').onclick = () => setSettings(!settingsOpen,true);
+    more.onclick = () => setSettings(!settingsOpen,true);
     $('flowCloseSettings').onclick = () => setSettings(false, true);
     dock.addEventListener('keydown', event => { if (event.key === 'Escape') { event.stopPropagation(); setSettings(false,true); } });
     for (const id of ['orderFieldChoice', 'fields']) $(id)?.addEventListener('change', schedule);

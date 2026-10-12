@@ -31,7 +31,9 @@ jobs:
       - run: node --check assets/index-BpU9kvz8.js
       - run: npm init -y
       - run: npm install playwright
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox
+      - name: Verify disclosures and window motion in Chromium and Firefox
+        run: node tests/motion-disclosure-browser-runner.mjs
       - name: Verify cylinder mockup independently
         run: node tests/mockup-cylinder-browser-runner.mjs
       - name: Launch Workbench on gifts.ru
