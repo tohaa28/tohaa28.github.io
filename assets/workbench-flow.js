@@ -12,6 +12,23 @@
     ], {duration, easing: 'cubic-bezier(.22,1,.36,1)'});
     animations.set(node, animation);
   }
+  const reports = new WeakSet();
+  function foldReport(panel) {
+    if (panel?.id !== 'logoErrorOverlay' || reports.has(panel)) return;
+    reports.add(panel); let open = false;
+    const wrap = () => {
+      if (panel.querySelector(':scope > .flow-canvas-report')) return;
+      const heading = panel.querySelector(':scope > strong'), list = panel.querySelector(':scope > ul');
+      if (!heading || !list) return;
+      const disclosure = document.createElement('details'); disclosure.className = 'flow-canvas-report'; disclosure.open = open;
+      const summary = document.createElement('summary'); summary.append(heading);
+      const pending = [...list.children].find(node => node.textContent.includes('поиск мелких элементов'));
+      if (pending) { const status = document.createElement('span'); status.className = 'flow-report-status'; status.textContent = pending.textContent; summary.append(status); }
+      disclosure.append(summary,list); panel.append(disclosure);
+      disclosure.addEventListener('toggle', () => { open = disclosure.open; });
+    };
+    new MutationObserver(wrap).observe(panel,{childList:true}); wrap();
+  }
   function installMotion() {
     // Observe only visibility and disclosure changes, never canvas pixels or input values.
     const observer = new MutationObserver(records => {
@@ -24,6 +41,8 @@
       }
     });
     const watch = node => {
+      foldReport(node);
+      if (node.querySelector) foldReport(node.querySelector('#logoErrorOverlay'));
       if (node.matches('[hidden],details,dialog,#mockupShell,#orderEditor,#orderBrowser'))
         observer.observe(node, {attributes: true, attributeFilter: ['hidden', 'open'], attributeOldValue: true});
       node.querySelectorAll('[hidden],details,dialog,#orderBrowser,#orderEditor,#mockupShell').forEach(child => observer.observe(child, {attributes: true, attributeFilter: ['hidden', 'open'], attributeOldValue: true}));

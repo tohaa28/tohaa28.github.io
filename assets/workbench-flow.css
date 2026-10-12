@@ -99,3 +99,10 @@ body:has(#photoCanvas) button:not(:disabled):active{transform:scale(.98)}
 /* The read-only report must never capture dragging or rotation on the canvas.
    The complete interactive diagnostics remain in the PrintCheck disclosures. */
 .gwb-step-interface .logo-error-overlay{pointer-events:none}
+.gwb-step-interface .logo-error-overlay{width:240px;max-width:calc(100% - 24px)}
+.gwb-step-interface .logo-error-overlay:has(.flow-canvas-report[open]){width:360px}
+.flow-canvas-report{margin:0;border:0;padding:0}
+.flow-canvas-report>summary{font-size:12px;font-weight:500;pointer-events:auto;line-height:1.4;list-style-position:outside;margin-left:13px}
+.flow-canvas-report strong{font-size:12px;font-weight:500}
+.flow-canvas-report>ul{pointer-events:auto}
+.flow-report-status{display:block;margin-top:3px;color:#986600;font-size:11px;font-weight:400}
