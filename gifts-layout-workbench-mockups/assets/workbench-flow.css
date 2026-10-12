@@ -111,3 +111,27 @@ body:has(#photoCanvas) button:not(:disabled):active{transform:scale(.98)}
 .gwb-step-interface #simpleFill:disabled{display:none!important}
 .gwb-step-interface #step4Box>p.help:not([id]){display:none}
 .gwb-step-interface #orderEditor>.row:has(#prevPage:disabled):has(#nextPage:disabled){display:none}
+/* Navigation and settings stay reachable while reading long reports. */
+#flowHeader{position:sticky;top:-20px;z-index:12;background:#fff;padding:12px 0;box-shadow:0 8px 12px #ffffffed}
+.flow-dock-head{position:sticky;top:-16px;z-index:5;background:#fff;padding:8px 0;border-bottom:1px solid #e4e9e1}
+#flowReview{grid-template-columns:32px minmax(0,1fr) auto;align-items:center;padding:12px;gap:10px}
+#flowReview>strong{font-size:13px;font-weight:500}
+#flowReview button{font-size:12px;white-space:nowrap}
+#flowNavigation button{transition:background .24s,color .24s,box-shadow .24s}
+#flowNavigation button[aria-current=step]{box-shadow:0 3px 12px #4351590e,inset 0 -2px 0 #81b315}
+@media(max-width:780px){
+ #flowHeader{top:0;padding:6px 0;margin-bottom:8px}
+ #flowNavigation button{min-height:40px}
+ #flowStepTitle{margin-bottom:8px}
+ #flowFooter{margin-top:12px;padding-top:12px}
+ #flowReview{grid-template-columns:26px minmax(0,1fr) auto;padding:10px;gap:8px}
+ #flowReview .flow-review-mark{width:26px;height:26px;font-size:17px}
+ .gwb-step-interface #editorStep3{padding:7px 12px}
+ .gwb-step-interface .flow-context{margin-top:8px}
+}
+@media(max-width:780px){
+ .gwb-step-interface .app>#flowHeader{position:relative;top:auto;flex:none;margin:0;padding:8px 12px;border-bottom:1px solid #e4e9e1;box-shadow:0 4px 14px #43515908}
+ .gwb-step-interface .app:has(>#flowHeader)>main{flex:1 1 0!important;height:0!important;min-height:0!important;overflow:auto!important}
+ .gwb-step-interface .app>#flowHeader .flow-context{margin-top:6px}
+ .gwb-step-interface .app>#flowHeader #flowSettings{min-height:30px}
+}
