@@ -48,6 +48,16 @@ jobs:
             const contentType = /\.m?js$/.test(relative) ? "application/javascript" : /\.css$/.test(relative) ? "text/css" : "application/octet-stream";
             await route.fulfill({body:fs.readFileSync(relative),contentType,headers:{"access-control-allow-origin":"*"}});
           });
+          // Deterministic smoke testing: use assets from this source commit,
+          // not the asynchronously updated GitHub Pages CDN (which can be stale
+          // while publish/browser_verify are running in the same workflow).
+          await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/**",async route=>{
+            const pathname=new URL(route.request().url()).pathname;
+            const relative=pathname.replace("/gifts-layout-workbench-mockups/","");
+            if(!/^assets\/[a-zA-Z0-9._-]+$/.test(relative))return route.abort();
+            const contentType=/\.m?js$/.test(relative)?"application/javascript":/\.css$/.test(relative)?"text/css":"application/octet-stream";
+            await route.fulfill({body:fs.readFileSync(relative),contentType,headers:{"access-control-allow-origin":"*"}});
+          });
           const errors = [];
           page.on("pageerror", e => errors.push("pageerror: "+e.message));
           page.on("console", m => { if (m.type()==="error") errors.push("console: "+m.text()); });
