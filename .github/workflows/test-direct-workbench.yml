@@ -537,6 +537,65 @@ jobs:
           }));
           if(compactBasketState.cards!==2||compactBasketState.rows<3||!compactBasketState.hasOrderWideHitbox||compactBasketState.orderGrid!=="grid")
             throw Error("Compact basket grouping or full-width grid regression: "+JSON.stringify(compactBasketState));
+          // Initial overview is compact: the two-position order is folded,
+          // the single-position order is immediately selectable.
+          const foldedOrder=frame.locator("#basketOrders .basket-order").first();
+          await frame.waitForFunction(()=>{
+            const cards=[...document.querySelectorAll("#basketOrders .basket-order")];
+            return cards.length===2&&cards[0].dataset.gwbAccordion==="1"&&cards[0].dataset.gwbExpanded==="false";
+          },null,{timeout:12000});
+          const collapsedOrder=await frame.evaluate(()=>{
+            const [multi,single]=document.querySelectorAll("#basketOrders .basket-order");
+            const panel=multi.querySelector(":scope > .basket-methods");
+            const button=multi.querySelector(".gwb-order-accordion-toggle");
+            return {
+              count:multi.querySelectorAll(".basket-method").length,
+              height:panel.getBoundingClientRect().height,
+              panelInert:panel.inert,
+              expanded:button?.getAttribute("aria-expanded"),
+              grid:getComputedStyle(document.querySelector("#basketOrders")).display,
+              singleNoToggle:!single.querySelector(".gwb-order-accordion-toggle"),
+              orderTitle:multi.querySelector(".basket-order-title")?.textContent?.trim(),
+              rowsStillInDom:multi.querySelectorAll(".basket-method").length===2
+            };
+          });
+          if(collapsedOrder.count!==2||collapsedOrder.height>1||!collapsedOrder.panelInert||
+             collapsedOrder.expanded!=="false"||collapsedOrder.grid!=="grid"||
+             !collapsedOrder.singleNoToggle||collapsedOrder.orderTitle!=="Заказ №7920509"||
+             !collapsedOrder.rowsStillInDom)
+            throw Error("Multi-position orders are not initially compact: "+JSON.stringify(collapsedOrder));
+          await foldedOrder.locator(".basket-order-title").click();
+          await frame.waitForFunction(()=>{
+            const card=document.querySelector("#basketOrders .basket-order");
+            const panel=card?.querySelector(":scope > .basket-methods");
+            return card?.dataset.gwbExpanded==="true"&&!panel?.inert&&
+              panel.getBoundingClientRect().height>40;
+          },null,{timeout:3000});
+          const expandedOrder=await frame.evaluate(()=>{
+            const multi=document.querySelector("#basketOrders .basket-order"),
+                  panel=multi.querySelector(".basket-methods"),
+                  toggle=multi.querySelector(".gwb-order-accordion-toggle");
+            return {
+              height:panel.getBoundingClientRect().height,
+              transition:getComputedStyle(panel).transitionProperty,
+              expanded:toggle?.getAttribute("aria-expanded"),
+              editorStillWaiting:document.getElementById("orderEditor")?.hidden===true,
+              articleCount:multi.querySelectorAll(".basket-method").length
+            };
+          });
+          if(expandedOrder.height<40||!expandedOrder.transition.includes("height")||
+             expandedOrder.expanded!=="true"||!expandedOrder.editorStillWaiting||
+             expandedOrder.articleCount!==2)
+            throw Error("Order expansion is not animated or accidentally opens the editor: "+JSON.stringify(expandedOrder));
+          await foldedOrder.locator(".basket-order-title").click();
+          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="false");
+          await frame.waitForTimeout(420);
+          const closedHeight=await foldedOrder.locator(".basket-methods").evaluate(node=>node.getBoundingClientRect().height);
+          if(closedHeight>1)throw Error("Expanded order did not fold smoothly: "+closedHeight);
+          // Reopen to keep the existing thumbnail and mockup badge regressions valid.
+          await foldedOrder.locator(".gwb-order-accordion-toggle").click();
+          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="true");
+          console.log("Compact order accordion:",JSON.stringify({collapsedOrder,expandedOrder,closedHeight}));
           const firstBasketThumb=frame.locator("#basketOrders .gwb-basket-thumb").first();
           await firstBasketThumb.scrollIntoViewIfNeeded();
           try{

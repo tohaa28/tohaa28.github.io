@@ -24,3 +24,15 @@ test('basket overview preserves the order click contracts and derives photos fro
  assert.match(html,/photos\/0/);
  assert.match(html,/visibleImages\.observe\(thumb\)/);
 });
+
+test('multi-item orders start collapsed, keep source card handler, and animate expansion',()=>{
+ assert.match(html,/function prepareOrderAccordion\(card,rows\)/);
+ assert.match(html,/rows\.length<=1/);
+ assert.match(html,/card\.dataset\.gwbExpanded="false"/);
+ assert.match(html,/panel\.inert=true/);
+ assert.match(html,/stopImmediatePropagation\(\)/);
+ assert.match(html,/insideItem&&card\.dataset\.gwbExpanded==="true"/);
+ assert.match(html,/panel\.style\.height=expand\?panel\.scrollHeight\+"px":"0px"/);
+ assert.match(html,/transition:height \.38s cubic-bezier/);
+ assert.match(html,/aria-expanded/);
+});
