@@ -922,9 +922,23 @@ function affineFromTriangles(s0,s1,s2,d0,d1,d2){
   const X=solve(d0.x,d1.x,d2.x), Y=solve(d0.y,d1.y,d2.y); return [X.a,Y.a,X.b,Y.b,X.c,Y.c];
 }
 
+// Canvas anti-aliases the clipping edges of every mesh triangle. Without
+// overlap those sub-pixel gaps expose the product photo as a grey hatch pattern.
+function expandedTriangleClip(d0,d1,d2,overscan=.85){
+  const center={x:(d0.x+d1.x+d2.x)/3,y:(d0.y+d1.y+d2.y)/3};
+  const edges=[[d0,d1],[d1,d2],[d2,d0]];
+  const minDistance=Math.min(...edges.map(([a,b])=>{
+    const length=Math.hypot(b.x-a.x,b.y-a.y);
+    return length>1e-8?Math.abs((b.x-a.x)*(center.y-a.y)-(b.y-a.y)*(center.x-a.x))/length:Infinity;
+  }));
+  const scale=1+Math.min(3,overscan/Math.max(.25,minDistance));
+  return [d0,d1,d2].map(p=>({x:center.x+(p.x-center.x)*scale,y:center.y+(p.y-center.y)*scale}));
+}
 function drawTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
   const m=affineFromTriangles(s0,s1,s2,d0,d1,d2); if(!m) return;
-  ctx.save(); ctx.beginPath(); ctx.moveTo(d0.x,d0.y); ctx.lineTo(d1.x,d1.y); ctx.lineTo(d2.x,d2.y); ctx.closePath(); ctx.clip(); ctx.setTransform(...m); ctx.drawImage(img,0,0); ctx.restore();
+  const [a,b,c]=expandedTriangleClip(d0,d1,d2);
+  ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.closePath();ctx.clip();
+  ctx.setTransform(...m);ctx.drawImage(img,0,0);ctx.restore();
 }
 
 function clipToQuad(ctx,q){
@@ -988,6 +1002,19 @@ function drawWarped(ctx,img,q,surface,cylinder={}){
     }
   }
   ctx.restore();
+}
+
+// Render the warped mesh to a transparent artwork-only layer, then apply the
+// requested opacity and blend exactly once. Applying opacity to each triangle
+// individually makes its anti-aliased edges visible as a triangular grid.
+function drawWarpedComposited(ctx,img,q,surface,cylinder={},viewport={x:0,y:0,w:ctx.canvas.width,h:ctx.canvas.height}){
+  const w=Math.max(1,Math.ceil(viewport.w)),h=Math.max(1,Math.ceil(viewport.h));
+  const layer=document.createElement("canvas");layer.width=w;layer.height=h;
+  const layerCtx=layer.getContext("2d");
+  layerCtx.clearRect(0,0,w,h);
+  layerCtx.translate(-viewport.x,-viewport.y);
+  drawWarped(layerCtx,img,q,surface,cylinder);
+  ctx.drawImage(layer,viewport.x,viewport.y);
 }
 
 function photoGeometry(){
@@ -1065,7 +1092,7 @@ function renderPhoto(){
     ctx.save();
     ctx.beginPath();ctx.rect(photoX,photoY,photoW,photoH);ctx.clip();
     ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;
-    drawWarped(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:surface==="cylinder"?state.cylinderQuad.map(p=>photoToCanvasPoint(p,view)):null});
+    drawWarpedComposited(ctx,state.artwork,qp,surface,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:surface==="cylinder"?state.cylinderQuad.map(p=>photoToCanvasPoint(p,view)):null},{x:photoX,y:photoY,w:photoW,h:photoH});
     ctx.restore();
   }
   if(surface==="cylinder"){
@@ -1483,7 +1510,7 @@ async function createMockupPngBlob(){
   if(!state.artwork)throw new Error("Сначала загрузите логотип");
   if(!state.photo)throw new Error("Сначала загрузите фотографию");
   const c=document.createElement("canvas");c.width=state.photo.naturalWidth;c.height=state.photo.naturalHeight;const ctx=c.getContext("2d");ctx.drawImage(state.photo,0,0);
-  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarped(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
+  if(state.artwork&&state.showArtwork){const q=state.quad.map(p=>({x:p.x*c.width,y:p.y*c.height}));ctx.save();ctx.globalAlpha=Number($("opacity").value)/100;ctx.globalCompositeOperation=$("blend").value;drawWarpedComposited(ctx,state.artwork,q,$("surface").value,{axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc,surfaceQuad:$("surface").value==="cylinder"?state.cylinderQuad.map(p=>({x:p.x*c.width,y:p.y*c.height})):null});ctx.restore();}
   const blob=await new Promise((resolve,reject)=>{try{c.toBlob(b=>b?resolve(b):reject(new Error("Не удалось сформировать PNG")),"image/png")}catch(err){reject(err)}});
   const p=buildProfile();
   return{blob,filename:`mockup-${slug(p.article)}-${slug(p.place)}.png`,profile:p};

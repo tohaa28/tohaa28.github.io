@@ -209,6 +209,62 @@ export async function verifyMockupCylinder(browserContext){
   assert.ok(Math.abs(afterAspect.ratio-beforeAspect.ratio)<1e-5,"field ratio changed despite aspect lock: "+JSON.stringify({beforeAspect,afterAspect}));
   assert.ok(Math.abs(afterAspect.anchor.x-beforeAspect.anchor.x)<1e-6&&Math.abs(afterAspect.anchor.y-beforeAspect.anchor.y)<1e-6,"opposite corner must stay anchored");
   assert.equal(afterAspect.preserved,true,"aspect-lock preference must persist in the profile");
+  // Reproduce the visible grey triangle hatch on opaque white-background artwork.
+  // The old renderer composited 18x18 (perspective) / 96x36 (cylinder)
+  // anti-aliased tiles directly over a dark photo, revealing the photo at seams.
+  await page.locator("#templateFile").setInputFiles({
+    name:"mockup-white-template.svg",mimeType:"image/svg+xml",
+    buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="white"/></svg>')
+  });
+  await page.locator("#photoFile").setInputFiles({
+    name:"dark-product.svg",mimeType:"image/svg+xml",
+    buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="rgb(0,0,0)"/></svg>')
+  });
+  await page.locator("#artworkFile").setInputFiles({
+    name:"white-background-logo.svg",mimeType:"image/svg+xml",
+    buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="rgb(255,255,255)"/></svg>')
+  });
+  const seamMeasurements=await page.evaluate(async()=>{
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4");
+    const cylinderQuad=[{x:.12,y:.13},{x:.88,y:.13},{x:.88,y:.87},{x:.12,y:.87}];
+    const opts={axis:"vertical",curvature:.72,topArc:.06,bottomArc:.04};
+    const localField=[{x:.24,y:.2},{x:.76,y:.2},{x:.76,y:.8},{x:.24,y:.8}];
+    const curvedField=localField.map(p=>{
+      const pt=mod.cylinder3DSurfacePoint(cylinderQuad,p.x,p.y,opts);
+      return {x:pt.x,y:pt.y};
+    });
+    const imageStats=async()=>{
+      const exported=await window.gwbCreateMockupPng();
+      const image=await createImageBitmap(exported.blob),canvas=document.createElement("canvas");
+      canvas.width=image.width;canvas.height=image.height;
+      const cx=canvas.getContext("2d");cx.drawImage(image,0,0);
+      const p=cx.getImageData(240,240,120,120).data;
+      let min=255,max=0,sum=0,count=0;
+      for(let i=0;i<p.length;i+=4){
+        const value=p[i];min=Math.min(min,value);max=Math.max(max,value);
+        sum+=value;count++;
+      }
+      image.close();
+      return {min,max,mean:sum/count,count};
+    };
+    const profile={schema:"gifts-mockup-profile/v1",article:"SEAM-TEST",place:"front",
+      field:{id:"manual",printId:"print1",place:"front"},fieldRect:{x:.1,y:.1,w:.8,h:.8},
+      surface:"perspective",targetQuad:[{x:.19,y:.22},{x:.83,y:.18},{x:.79,y:.83},{x:.22,y:.79}],
+      render:{opacity:.82,blend:"source-over",mesh:18}};
+    await window.gwbApplyMockupProfile(profile);
+    const perspective=await imageStats();
+    await window.gwbApplyMockupProfile({...profile,surface:"cylinder",targetQuad:curvedField,
+      cylinder:{geometry:"3d",axis:"vertical",curvature:.72,topArc:.06,bottomArc:.04,targetQuad:cylinderQuad}});
+    const cylinder=await imageStats();
+    return {perspective,cylinder};
+  });
+  for(const [surface,stats] of Object.entries(seamMeasurements)){
+    // 82% white onto black = 209 grey, constant across all internal mesh joins.
+    assert.ok(stats.min>=201&&stats.max<=216,
+      surface+" mockup exposes triangle seams or applies opacity per triangle: "+JSON.stringify(stats));
+    assert.ok(stats.max-stats.min<=15,
+      surface+" mockup creates a visible hatch across a solid source: "+JSON.stringify(stats));
+  }
   await page.close();
-  console.log("Mockup cylinder: small-photo filtering, mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence and back-face clipping passed");
+  console.log("Mockup cylinder: small-photo filtering, mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence, back-face clipping, white-background seam-free perspective and cylinder exports passed");
 }
