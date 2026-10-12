@@ -28,3 +28,9 @@ test("Motion covers order, step, field, tools, checks, mockup and export",()=>{
  for(const id of ["photoCandidates","fieldCandidates","mappingOperationStatus","cylinderAxis"])
   assert.ok(mockJs.includes(id),id);
 });
+
+test("Embedded browser smoke routes release assets from the checked out source",()=>{
+ const workflow=read("../.github/workflows/test-direct-workbench.yml");
+ assert.match(workflow,/gifts-layout-workbench-mockups\\/assets\\/\\*\\*/);
+ assert.match(workflow,/fs\\.readFileSync\\(relative\\)/);
+});
