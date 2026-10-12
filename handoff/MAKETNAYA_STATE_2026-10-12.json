@@ -1,20 +1,20 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "cf1626cc970e9efa44d9d314cf2d8e0b43b5a5ec",
+  "verified_functional_source_commit": "8059af21bfb92f2273cf7ca9ce5bfadfcc47b48e",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "6148ba5f7636498db42c7c69c3cea0489d03fe8f",
-  "verified_publication_main_commit": "cce8c01ca43ffc0ca1caafa7a07474f984b76192",
+  "source_tree_sha": "1bbe0057f25f1bc17d31619fce337c9dd606af6a",
+  "verified_publication_main_commit": "5292c22d8868dcbe59ac7451b9e336aa013345c2",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38244954569,
+    "run": 38246031123,
     "conclusion": "success",
-    "unit_tests": 130,
+    "unit_tests": 131,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success"
   },
-  "last_feature": "Equal-height basket cards per grid row; bold 12.5px position count",
+  "last_feature": "Compact regular-weight article description and parameters in left editor step 1",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,7 +30,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest verified functional source cf1626cc; published main cce8c01c. Documentation-only handoff commit advances branch HEAD, so re-fetch before changes.",
+  "note": "Functional commit 8059af21 verified with CI and browser smoke; published main 5292c22d. Docs-only head may advance, re-fetch first.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -66,5 +66,17 @@
     "count_font_weight": 750,
     "verified_source_commit": "cf1626cc970e9efa44d9d314cf2d8e0b43b5a5ec",
     "verified_workflow": 38244954569
+  },
+  "article_card_typography": {
+    "scope": "#orderTemplateList",
+    "detail_font_size_px": 12.5,
+    "detail_weight": 400,
+    "label_font_size_px": 12,
+    "label_weight": 400,
+    "thumbnail_width_px": 76,
+    "columns_label_width_px": 64,
+    "error_marker_weight": 800,
+    "verified_source_commit": "8059af21bfb92f2273cf7ca9ce5bfadfcc47b48e",
+    "verified_workflow": 38246031123
   }
 }
