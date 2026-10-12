@@ -311,6 +311,23 @@ jobs:
           if(!embeddedMotion.cssReady||!embeddedMotion.geometrySafe||!embeddedMotion.canvasStyle.includes("box-shadow"))
             throw Error("Embedded Mockup Motion System missing: "+JSON.stringify(embeddedMotion));
 
+          const mockupStudio=await embeddedMockup.evaluate(()=>{
+            const shell=window.__gwbMockupStudio;
+            const panel=document.querySelector(".canvasPanel");
+            const sidebar=document.querySelector(".sidebar");
+            return {
+              enabled:document.documentElement.classList.contains("gwb-mockup-studio-v2"),
+              version:shell?.version,canvasSafe:shell?.changesCanvas===false,
+              radius:parseFloat(getComputedStyle(panel).borderTopLeftRadius),
+              workspaceBackground:getComputedStyle(document.querySelector(".workspace")).backgroundImage,
+              sidebarBackground:getComputedStyle(sidebar).backgroundImage
+            };
+          });
+          if(!mockupStudio.enabled||mockupStudio.version!=="2.0"||!mockupStudio.canvasSafe||
+             mockupStudio.radius<17||!mockupStudio.workspaceBackground.includes("gradient")||
+             !mockupStudio.sidebarBackground.includes("gradient"))
+            throw Error("Embedded mockup visual redesign missing: "+JSON.stringify(mockupStudio));
+          console.log("Mockup Studio UI:",JSON.stringify(mockupStudio));
           const templateSvg = "data:image/svg+xml;base64," + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="white"/></svg>').toString("base64");
           await embeddedMockup.evaluate(async ({templateSvg}) => {
             await window.gwbApplyMockupHandoff({
@@ -889,6 +906,36 @@ jobs:
             return !!img && img.hidden === false && img.complete && img.naturalWidth > 0;
           }, null, {timeout:30000});
 
+          const studioLayout=await frame.evaluate(()=>{
+            const shell=window.__gwbStudioShell;
+            const nav=document.querySelector(".gwb-shell-tabs");
+            const top=document.querySelector(".site-header .topbar");
+            const hero=document.querySelector("#orderBrowser .gwb-shell-intro");
+            const steps=document.querySelectorAll("#orderEditor .gwb-step");
+            const card=document.querySelector(".basket-order");
+            const rail=document.querySelector(".app>main>.rail");
+            return {
+              enabled:document.documentElement.classList.contains("gwb-studio-v2"),
+              version:shell?.version,canvasSafe:shell?.changesCanvas===false,
+              tabs:[...(nav?.querySelectorAll("button")||[])].map(n=>n.textContent),
+              active:nav?.querySelector("[aria-current='page']")?.textContent,
+              hero:hero?.querySelector("strong")?.textContent,
+              steps:steps.length,
+              headerImage:getComputedStyle(top).backgroundImage,
+              cardRadius:parseFloat(getComputedStyle(card).borderTopLeftRadius),
+              leftPanelRadius:parseFloat(getComputedStyle(document.querySelector("#orderPanel")).borderTopLeftRadius),
+              backgroundImage:getComputedStyle(rail).backgroundImage,
+              stepTrackDisplay:getComputedStyle(document.querySelector(".gwb-step-track")).display
+            };
+          });
+          if(!studioLayout.enabled||studioLayout.version!=="2.0"||!studioLayout.canvasSafe||
+             studioLayout.tabs.join("|")!=="Заказы|Макет|Мокапы"||
+             !studioLayout.hero?.includes("готового макета")||
+             studioLayout.steps!==4||studioLayout.cardRadius<12||
+             studioLayout.leftPanelRadius<12||studioLayout.stepTrackDisplay!=="grid"||
+             !studioLayout.headerImage.includes("gradient")||!studioLayout.backgroundImage.includes("gradient"))
+            throw Error("Visual studio redesign was not actually applied: "+JSON.stringify(studioLayout));
+          console.log("Studio layout version 2:",JSON.stringify(studioLayout));
           const motionState=await frame.evaluate(()=>{
             const ctrl=window.__gwbMotionController;
             return {ready:document.documentElement.classList.contains("gwb-motion-ready"),
