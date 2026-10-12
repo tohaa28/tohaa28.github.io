@@ -35,4 +35,6 @@ test("CSS never transforms any artwork or mockup canvases",()=>{
  for(const x of ["#templateCanvas{transform:","#overlay{transform:","#photoCanvas{transform:","#stage{transform:"])
   assert.ok(!css.includes(x)&&!mockCss.includes(x),x);
  assert.match(mockJs,/gwb-mockup-studio-v2/);
+ assert.match(mockCss, /\.canvasPanel\{border-radius:13px\}/);
+ assert.match(mockCss, /\.canvasPanel\{[^}]*border-radius:21px/);
 });

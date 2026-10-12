@@ -319,12 +319,14 @@ jobs:
               enabled:document.documentElement.classList.contains("gwb-mockup-studio-v2"),
               version:shell?.version,canvasSafe:shell?.changesCanvas===false,
               radius:parseFloat(getComputedStyle(panel).borderTopLeftRadius),
+              narrow:window.innerWidth<=580,
               workspaceBackground:getComputedStyle(document.querySelector(".workspace")).backgroundImage,
               sidebarBackground:getComputedStyle(sidebar).backgroundImage
             };
           });
           if(!mockupStudio.enabled||mockupStudio.version!=="2.0"||!mockupStudio.canvasSafe||
-             mockupStudio.radius<17||!mockupStudio.workspaceBackground.includes("gradient")||
+             mockupStudio.radius<(mockupStudio.narrow?12:17)||
+             !mockupStudio.workspaceBackground.includes("gradient")||
              !mockupStudio.sidebarBackground.includes("gradient"))
             throw Error("Embedded mockup visual redesign missing: "+JSON.stringify(mockupStudio));
           console.log("Mockup Studio UI:",JSON.stringify(mockupStudio));
