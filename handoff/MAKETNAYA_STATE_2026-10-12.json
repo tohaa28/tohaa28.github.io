@@ -1,20 +1,20 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "702136d52ebf4334f4abaf983653ecca058cdde8",
+  "verified_functional_source_commit": "d18d63ffd363edc13aacc8bbdc921d5fb8877736",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "b6353801653af25b902bce80efee52c97cecfbc8",
-  "verified_publication_main_commit": "83dd7fd0a5cdd6191649b9059efc25095628d054",
+  "source_tree_sha": "dd4c90d8c7f4e2017a70c06a6145092b10f11de7",
+  "verified_publication_main_commit": "f8641f908ff3f5844ada5ee2099d24e3207e25cb",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38232186554,
+    "run": 38241952910,
     "conclusion": "success",
-    "unit_tests": 128,
+    "unit_tests": 129,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success"
   },
-  "last_feature": "Compact initial order accordion for >1 positions, 380ms",
+  "last_feature": "Order accordion keyboard Enter/Space regression test with original keydown guard preserved",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,5 +30,12 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "This is a checkpoint of the verified functional code; resolve GitHub HEAD again on next session because a docs-only handoff commit may move the branch."
+  "note": "Verified functional source is d18d63ff; docs-only handoff commit may advance HEAD. Always inspect current GitHub source ref before changing code.",
+  "keyboard_regression": {
+    "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
+    "failed_workflow": 38241596249,
+    "restored_source_commit": "d18d63ffd363edc13aacc8bbdc921d5fb8877736",
+    "verified_workflow": 38241952910,
+    "notes": "Parent basket order has its own keyboard handler; preventDefault and stopImmediatePropagation are required."
+  }
 }
