@@ -36,3 +36,7 @@ test('multi-item orders start collapsed, keep source card handler, and animate e
  assert.match(html,/transition:height \.38s cubic-bezier/);
  assert.match(html,/aria-expanded/);
 });
+test('accordion lets the native button handle Enter and Space once',()=>{
+ assert.match(html,/if\(toggle\.contains\(event\.target\)\)return;/);
+ assert.match(html,/if\(card\.dataset\.gwbExpanded==="true"\)return;/);
+});

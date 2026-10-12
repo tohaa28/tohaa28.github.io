@@ -595,7 +595,18 @@ jobs:
           // Reopen to keep the existing thumbnail and mockup badge regressions valid.
           await foldedOrder.locator(".gwb-order-accordion-toggle").click();
           await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="true");
-          console.log("Compact order accordion:",JSON.stringify({collapsedOrder,expandedOrder,closedHeight}));
+          // Enter/Space generate native button clicks. Never toggle twice via keydown.
+          const keyboardToggle=foldedOrder.locator(".gwb-order-accordion-toggle");
+          await keyboardToggle.focus();
+          await keyboardToggle.press("Enter");
+          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="false");
+          const enterState=await keyboardToggle.getAttribute("aria-expanded");
+          if(enterState!=="false")throw Error("Accordion Enter key must close only once: "+enterState);
+          await keyboardToggle.press("Space");
+          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="true");
+          const spaceState=await keyboardToggle.getAttribute("aria-expanded");
+          if(spaceState!=="true")throw Error("Accordion Space key must open only once: "+spaceState);
+          console.log("Compact order accordion:",JSON.stringify({collapsedOrder,expandedOrder,closedHeight,enterState,spaceState}));
           const firstBasketThumb=frame.locator("#basketOrders .gwb-basket-thumb").first();
           await firstBasketThumb.scrollIntoViewIfNeeded();
           try{
