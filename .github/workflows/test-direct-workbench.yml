@@ -1135,3 +1135,10 @@ jobs:
           if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
           await browser.close();
           NODE
+      - name: Save motion-interface screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maketnaya-step-motion-screenshots
+          path: step-motion-*.png
+          if-no-files-found: ignore

@@ -12,6 +12,7 @@ export async function verifyStepMotion(frame) {
   }));
   await frame.evaluate(() => window.gwbFlow.setSettings(false));
   const before = await data();
+  await frame.page().screenshot({path:'step-motion-desktop.png'});
   await frame.locator('[data-flow-step="2"]').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '2');
   assert.equal(await frame.locator('[data-flow-part="artwork"]').isVisible(), false);
@@ -21,6 +22,7 @@ export async function verifyStepMotion(frame) {
   await frame.locator('#flowSettingsDock').waitFor({state:'visible'});
   assert.equal(await frame.locator('#width').isVisible(), true);
   assert.equal(await frame.locator('#editorAngle').isVisible(), true);
+  await frame.page().screenshot({path:'step-motion-settings.png'});
   await frame.locator('#flowCloseSettings').focus();
   await frame.page().keyboard.press('Escape');
   assert.equal(await frame.locator('#flowSettingsDock').isVisible(), false);
@@ -28,6 +30,7 @@ export async function verifyStepMotion(frame) {
   await frame.locator('#flowNext').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '4');
   assert.equal(await frame.locator('#simpleExport').isVisible(), true);
+  await frame.page().screenshot({path:'step-motion-export.png'});
   await frame.locator('#flowReviewEdit').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '3');
   assert.deepEqual(await data(), before, 'Backtracking must preserve files, dimensions, rotation, selection, zoom and native readiness');
@@ -45,6 +48,7 @@ export async function verifyStepMotion(frame) {
   assert.equal(mobile.overflow, false, JSON.stringify(mobile));
   assert.equal(mobile.position, 'relative');
   assert.ok(mobile.widths.every(w=>w>0));
+  await frame.page().screenshot({path:'step-motion-mobile.png',fullPage:true});
   await frame.locator('#flowCloseSettings').click();
   if(originalViewport) await frame.page().setViewportSize(originalViewport);
   await frame.page().emulateMedia({reducedMotion:'reduce'});

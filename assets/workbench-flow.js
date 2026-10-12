@@ -26,7 +26,7 @@
     const watch = node => {
       if (node.matches('[hidden],details,dialog,#mockupShell,#orderEditor,#orderBrowser'))
         observer.observe(node, {attributes: true, attributeFilter: ['hidden', 'open'], attributeOldValue: true});
-      node.querySelectorAll('[hidden],details,dialog').forEach(child => observer.observe(child, {attributes: true, attributeFilter: ['hidden', 'open'], attributeOldValue: true}));
+      node.querySelectorAll('[hidden],details,dialog,#orderBrowser,#orderEditor,#mockupShell').forEach(child => observer.observe(child, {attributes: true, attributeFilter: ['hidden', 'open'], attributeOldValue: true}));
     };
     watch(document.body);
     new MutationObserver(records => {
@@ -93,6 +93,8 @@
       settingsOpen = open; dock.hidden = !open;
       $('flowSettings').setAttribute('aria-expanded', String(open)); more.setAttribute('aria-expanded', String(open));
       main.classList.toggle('flow-settings-open', open);
+      // Native resize renders the canvas at its new pixel ratio; no artwork data changes.
+      requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
       if (focus) (open ? $('flowCloseSettings') : $('flowSettings')).focus({preventScroll: true});
     }
     function go(target, focus = false) {
@@ -140,6 +142,7 @@
         detail.classList.add('flow-check-details');
       }
       if (!s.open && previous.open) { settingsOpen = false; main.classList.remove('flow-settings-open'); }
+      if (s.open && previous.open && (s.field !== previous.field || s.hasSelectedField !== previous.hasSelectedField || s.article !== previous.article)) enter($('stage'),1,320);
       previous = s; render(s);
     }
     const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };
