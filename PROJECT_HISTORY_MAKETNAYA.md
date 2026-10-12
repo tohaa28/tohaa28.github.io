@@ -750,3 +750,9 @@ Regression:
 В `editor.html` добавлены строго scoped стили `#orderTemplateList`: значения параметров 12.5px / font-weight 400; подписи 12px / 400; строки сетки `64px minmax(0,1fr)`, внутренний межколоночный gap 5px и vertical padding 1px; фото товара 76×76, отступ между фотографией и информацией 8px, padding карточки 8px 9px. Предупреждение `.place-count-audit.bad .detail-value` осталось жирным (800), без изменения смысловых статусов. Заголовки шагов, остальные компоненты макетной, корзина и PrintCheck не затронуты.
 
 Добавлены unit CSS-контракт и browser regression computed styles: вычисленные размеры подписей/значений, weight, превью, сохранность информации о заказе и отметки мокапа. Функциональный исходный commit `8059af21bfb92f2273cf7ca9ce5bfadfcc47b48e`, опубликованный main `5292c22d8868dcbe59ac7451b9e336aa013345c2`, GitHub Actions workflow `38246031123`: **131/131 unit; precheck, publish, browser_verify SUCCESS**. Браузерное тестирование на synthetic gifts.ru order; реальное пользовательское отображение требует визуального контроля.
+
+## 2026-10-12 — Подписи и значения параметров артикула в шаге 1: 10 px
+
+По уточнению пользователя в `editor.html` внутри `#orderTemplateList` установлено **10 px** для текста самой карточки, подписей `.article-row .detail-key` и значений `.article-row .detail-value`. Их font-weight остаётся обычным **400**; размер миниатюры 76px, сетка подписей 64px и прочие параметры компактной карточки сохранены от `8059af21`. Только значения предупреждений `.place-count-audit.bad` остаются жирными (800). Никакие остальные редакторы, интерфейс заказов, PrintCheck и mockup-код не менялись.
+
+Обновлён регрессионный CSS-тест на 10px и браузерная проверка computed font sizes `Math.abs(size-10)<=0.1`. Проверенная исходная версия `bd9d1327832864b9cfa8dfb855fdf935dc4e3db6`, опубликованная `main` `98f1330f3087b768a04cbdbda3dd74d6e329083e`. Workflow `38246654143`: **131/131 unit, precheck, publish, browser_verify SUCCESS**.

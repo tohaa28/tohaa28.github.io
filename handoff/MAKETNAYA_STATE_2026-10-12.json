@@ -1,20 +1,20 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "8059af21bfb92f2273cf7ca9ce5bfadfcc47b48e",
+  "verified_functional_source_commit": "bd9d1327832864b9cfa8dfb855fdf935dc4e3db6",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "1bbe0057f25f1bc17d31619fce337c9dd606af6a",
-  "verified_publication_main_commit": "5292c22d8868dcbe59ac7451b9e336aa013345c2",
+  "source_tree_sha": "08a74a27bdf6b85e51a4100ae692215b0f60825b",
+  "verified_publication_main_commit": "98f1330f3087b768a04cbdbda3dd74d6e329083e",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38246031123,
+    "run": 38246654143,
     "conclusion": "success",
     "unit_tests": 131,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success"
   },
-  "last_feature": "Compact regular-weight article description and parameters in left editor step 1",
+  "last_feature": "Step 1 article labels and values set to 10px normal-weight",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,7 +30,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Functional commit 8059af21 verified with CI and browser smoke; published main 5292c22d. Docs-only head may advance, re-fetch first.",
+  "note": "Verified source bd9d1327, published main 98f1330f. Docs-only commit may follow. Last user direction: 10px for descriptions and parameters in step-one article card.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -69,14 +69,14 @@
   },
   "article_card_typography": {
     "scope": "#orderTemplateList",
-    "detail_font_size_px": 12.5,
+    "detail_font_size_px": 10,
     "detail_weight": 400,
-    "label_font_size_px": 12,
+    "label_font_size_px": 10,
     "label_weight": 400,
     "thumbnail_width_px": 76,
     "columns_label_width_px": 64,
     "error_marker_weight": 800,
-    "verified_source_commit": "8059af21bfb92f2273cf7ca9ce5bfadfcc47b48e",
-    "verified_workflow": 38246031123
+    "verified_source_commit": "bd9d1327832864b9cfa8dfb855fdf935dc4e3db6",
+    "verified_workflow": 38246654143
   }
 }
