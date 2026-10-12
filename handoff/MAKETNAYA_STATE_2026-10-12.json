@@ -1,23 +1,22 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "49e603833af0d2ac4239260acaa0309cefe92c16",
+  "verified_functional_source_commit": "a3be5615d4adfbc067162f080502de1bceb2bef1",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "a14bbb7e895a0885ba0c1e14ed63a835aed24fcc",
-  "verified_publication_main_commit": "636831de75e9760b2ba6a95fac8e685a99860644",
+  "source_tree_sha": "b684f3f9245eddc9fe387712de7e5c7bd69f4e19",
+  "verified_publication_main_commit": "c57afa4553bba5f8fe67b064d85c078a443af847",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38299919634,
+    "run": 38301614323,
     "conclusion": "success",
-    "unit_tests": 137,
+    "unit_tests": 134,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success",
-    "pages_deploy_run": 38299959931,
-    "pages_deploy": "success",
-    "prepublication_browser_run": 38299623038
+    "pages_deploy_run": 38301654483,
+    "pages_deploy": "success"
   },
-  "last_feature": "Motion polish: animated disclosures/window closing, sticky/mobile step navigation and preserved new 77700.60 profile",
+  "last_feature": "User-requested rollback to fixed pre-step-motion interface with startup intro and current mockup profiles preserved",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -33,7 +32,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest verified published UI r49d1b0a5; docs-only commits may advance HEAD. Always re-fetch; retain user profile changes and historical backups.",
+  "note": "Current published UI ra19dceb7. Motion release r49d1b0a5 is archived. Always retain current mockup-profiles.json on UI rollback.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -122,47 +121,74 @@
     "workflow_run": 38290413508,
     "pages_run": 38290486575
   },
-  "motion_interface": {
-    "version": "r49d1b0a5",
-    "steps": [
-      "article",
-      "field",
-      "artwork",
-      "download"
-    ],
-    "source_files": [
-      "assets/workbench-flow.js",
-      "assets/workbench-flow.css"
-    ],
-    "drawer": "desktop side panel; mobile in normal flow",
-    "reduced_motion": true,
-    "native_data_preserved": true,
-    "rollback_source": "8fbdbb7e59819243724c040a17bf560f7ada226a",
-    "rollback_publication": "57d23feb558c10aa8ccec475c9b0956752b7db1f",
-    "rollback_branches": [
-      "backup/maketnaya-source-before-step-motion-2026-10-12",
-      "backup/maketnaya-published-before-step-motion-2026-10-12"
-    ],
-    "handoff": "handoff/MAKETNAYA_STEP_MOTION_2026-10-12.md"
+  "archived_motion_release": {
+    "verified_functional_source_commit": "49e603833af0d2ac4239260acaa0309cefe92c16",
+    "verified_publication_main_commit": "636831de75e9760b2ba6a95fac8e685a99860644",
+    "workflow": {
+      "run": 38299919634,
+      "conclusion": "success",
+      "unit_tests": 137,
+      "precheck": "success",
+      "publish": "success",
+      "browser_verify": "success",
+      "pages_deploy_run": 38299959931,
+      "pages_deploy": "success",
+      "prepublication_browser_run": 38299623038
+    },
+    "motion_interface": {
+      "version": "r49d1b0a5",
+      "steps": [
+        "article",
+        "field",
+        "artwork",
+        "download"
+      ],
+      "source_files": [
+        "assets/workbench-flow.js",
+        "assets/workbench-flow.css"
+      ],
+      "drawer": "desktop side panel; mobile in normal flow",
+      "reduced_motion": true,
+      "native_data_preserved": true,
+      "rollback_source": "8fbdbb7e59819243724c040a17bf560f7ada226a",
+      "rollback_publication": "57d23feb558c10aa8ccec475c9b0956752b7db1f",
+      "rollback_branches": [
+        "backup/maketnaya-source-before-step-motion-2026-10-12",
+        "backup/maketnaya-published-before-step-motion-2026-10-12"
+      ],
+      "handoff": "handoff/MAKETNAYA_STEP_MOTION_2026-10-12.md"
+    },
+    "motion_polish": {
+      "handoff": "handoff/MAKETNAYA_MOTION_POLISH_2026-10-12.md",
+      "component_browser_engines": [
+        "Chromium",
+        "Firefox"
+      ],
+      "complete_browser_suite": "Chromium",
+      "mobile_navigation": "outside scrolling workspace",
+      "mobile_min_tested_width_px": 320,
+      "disclosures": "interruptible measured-height WAAPI",
+      "windows": "single native completion and cancellable close",
+      "preserved_profile_commit": "91569795fb3d433919f20802d1c253ebfad8b781",
+      "preserved_profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
+      "preserved_mapping": "77700.60 · Стандартное · 77700.60-1",
+      "backup_with_profiles": [
+        "backup/maketnaya-source-before-motion-polish-with-profiles-2026-10-12",
+        "backup/maketnaya-published-before-motion-polish-with-profiles-2026-10-12"
+      ],
+      "rollback_rule": "Keep current mockup-profiles.json when reverting UI"
+    }
   },
-  "motion_polish": {
-    "handoff": "handoff/MAKETNAYA_MOTION_POLISH_2026-10-12.md",
-    "component_browser_engines": [
-      "Chromium",
-      "Firefox"
+  "requested_rollback": {
+    "checkpoint": "8fbdbb7e59819243724c040a17bf560f7ada226a",
+    "source": "a3be5615d4adfbc067162f080502de1bceb2bef1",
+    "published_main": "c57afa4553bba5f8fe67b064d85c078a443af847",
+    "profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
+    "startup_preserved": true,
+    "backup_branches": [
+      "backup/maketnaya-source-before-requested-rollback-2026-10-12",
+      "backup/maketnaya-published-before-requested-rollback-2026-10-12"
     ],
-    "complete_browser_suite": "Chromium",
-    "mobile_navigation": "outside scrolling workspace",
-    "mobile_min_tested_width_px": 320,
-    "disclosures": "interruptible measured-height WAAPI",
-    "windows": "single native completion and cancellable close",
-    "preserved_profile_commit": "91569795fb3d433919f20802d1c253ebfad8b781",
-    "preserved_profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
-    "preserved_mapping": "77700.60 · Стандартное · 77700.60-1",
-    "backup_with_profiles": [
-      "backup/maketnaya-source-before-motion-polish-with-profiles-2026-10-12",
-      "backup/maketnaya-published-before-motion-polish-with-profiles-2026-10-12"
-    ],
-    "rollback_rule": "Keep current mockup-profiles.json when reverting UI"
+    "handoff": "handoff/MAKETNAYA_REQUESTED_ROLLBACK_2026-10-12.md"
   }
 }
