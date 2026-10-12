@@ -26,6 +26,8 @@
 .asset-readiness-row[data-state="ready"] span{color:#3f6f0d;font-weight:700}
 .asset-readiness-row[data-state="loading"] span{color:#8b6410;font-weight:700}
 .readiness-locked{opacity:.45!important;cursor:not-allowed!important;filter:saturate(.45)}
+/* Step 1: one green frame around the article section; no duplicate around its list. */
+#orderEditor .article-card #orderTemplatePicker{border:0!important;box-shadow:none!important;border-radius:0}
 /* Step 1: compact order item details without bold, cramped value columns. */
 #orderTemplateList .article-choice{font-size:10px;line-height:1.3;font-weight:400;padding:8px 9px}
 #orderTemplateList .article-choice-content{grid-template-columns:76px minmax(0,1fr);gap:8px}

@@ -880,6 +880,13 @@ jobs:
               thumbWidth:thumb.getBoundingClientRect().width,
               rowColumns:getComputedStyle(detailRow).gridTemplateColumns
             };
+            const articleContainer=choice?.closest(".article-card");
+            const picker=document.getElementById("orderTemplatePicker");
+            const borders={
+              outer:articleContainer?parseFloat(getComputedStyle(articleContainer).borderTopWidth):0,
+              inner:picker?parseFloat(getComputedStyle(picker).borderTopWidth):-1,
+              innerShadow:picker?getComputedStyle(picker).boxShadow:"unknown"
+            };
             const badgeContent = choice ? getComputedStyle(choice, "::after").content : "";
             return {
               choiceExists: !!choice,
@@ -894,6 +901,7 @@ jobs:
               infoPaddingRight: info ? parseFloat(getComputedStyle(info).paddingRight) : 999,
               rows,
               detailStyling,
+              borders,
               legacySeparateBlocks: ["selectedArticleBody","orderDetails","productCard"].some(id => !!document.getElementById(id))
             };
           });
@@ -906,6 +914,9 @@ jobs:
               articleChoiceState.infoPaddingRight > 4 ||
               articleChoiceState.badgeOverlapsQuantity ||
               articleChoiceState.legacySeparateBlocks ||
+              articleChoiceState.borders.outer<1.5 ||
+              articleChoiceState.borders.inner!==0 ||
+              articleChoiceState.borders.innerShadow!=="none" ||
               articleChoiceState.detailStyling.valueWeight>500 ||
               articleChoiceState.detailStyling.labelWeight>500 ||
               Math.abs(articleChoiceState.detailStyling.valueSize-10)>0.1 ||

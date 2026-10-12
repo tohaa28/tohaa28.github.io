@@ -64,3 +64,9 @@ test('step 1 article details use regular 10px typography and wider value column'
  assert.match(html,/#orderTemplateList \.article-row \.detail-value\{font-size:10px;line-height:1\.3;font-weight:400/);
  assert.match(html,/#orderTemplateList \.article-row\.place-count-audit\.bad \.detail-value\{font-weight:800\}/);
 });
+
+test('step 1 has only outer green frame and no duplicate list outline',()=>{
+ assert.match(html,/#orderEditor \.article-card #orderTemplatePicker\{border:0!important;box-shadow:none!important;border-radius:0\}/);
+ assert.match(html,/<div class="article-card"><div class="article-picker">/);
+ assert.match(html,/<details id="orderTemplatePicker" class="template-picker">/);
+});
