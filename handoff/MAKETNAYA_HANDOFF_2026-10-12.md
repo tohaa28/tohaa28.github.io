@@ -3,11 +3,14 @@
 ## Точка восстановления
 - GitHub: https://github.com/tohaa28/tohaa28.github.io
 - Рабочая ветка: `gifts-layout-workbench-mockups-source`. Публикация: `main`.
-- **Последняя проверенная функциональная исходная версия**: `15d1817d6f9af42216e2671666a0b54e65497cca`.
-- Соответствующая публикация: `main` `253113aeec77edd195c7d0b2a66f7e2f0e4310b1`.
-- Workflow `38249503509`: `precheck`, `publish`, `browser_verify` — SUCCESS; **134/134 unit**.
+- **Последняя проверенная функциональная исходная версия**: `85bab4b183db1f419512559490cb97a415d7bd0c`.
+- Соответствующая публикация: `main` `57d23feb558c10aa8ccec475c9b0956752b7db1f`.
+- Workflow `38290413508`: `precheck`, `publish`, `browser_verify` — SUCCESS; **134/134 unit**. GitHub Pages deploy `38290486575` — SUCCESS.
 - Сайт: https://tohaa28.github.io/gifts-layout-workbench-mockups/
 - Полная история: `PROJECT_HISTORY_MAKETNAYA.md`. Новые изменения: `handoff/MAKETNAYA_CHANGES_2026-10-12.md`. Машинные SHAs/статус: `handoff/MAKETNAYA_STATE_2026-10-12.json`.
+
+## Откат визуальных изменений — 2026-10-12
+Пользователь запросил откат последних изменений. Текущая версия восстановлена **байт-в-байт** из `backup/maketnaya-source-before-motion-system-2026-10-12` (checkpoint `2886e79f7501d60b52cb26bf97862938e3403174`), опубликована новым commit `85bab4b183db1f419512559490cb97a415d7bd0c`; `main` `57d23feb558c10aa8ccec475c9b0956752b7db1f`. Убраны и Studio UI 2.0, и внутренние motion-переходы, но современная стартовая заставка **сохранена**. Прежние алгоритмы заказов, макетов, PrintCheck v25, цилиндров и профилей сохранены. Код контрольной точки проверен сопоставлением Git tree, CI `38290413508` и Pages `38290486575` SUCCESS. Ветки с ранее реализованными дизайнами сохранены. Подробности — `handoff/MAKETNAYA_ROLLBACK_2026-10-12.md`.
 
 ## Стартовая заставка — новая архитектура
 - Анимация реализована средствами HTML/CSS/SVG в `tools/launcher-motion.mjs`, длительность 2.6 сек.
