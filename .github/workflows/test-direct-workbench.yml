@@ -931,6 +931,7 @@ jobs:
           if(!studioLayout.enabled||studioLayout.version!=="2.0"||!studioLayout.canvasSafe||
              studioLayout.tabs.join("|")!=="Заказы|Макет|Мокапы"||
              !studioLayout.hero?.includes("готового макета")||
+             studioLayout.active!=="Макет"||
              studioLayout.steps!==4||studioLayout.cardRadius<12||
              studioLayout.leftPanelRadius<12||studioLayout.stepTrackDisplay!=="grid"||
              !studioLayout.headerImage.includes("gradient")||!studioLayout.backgroundImage.includes("gradient"))

@@ -19,6 +19,7 @@ test("Real step tracker and section navigation delegate to existing buttons",()=
  for(const control of ["backToOrders","resumeEditor","mockupModeButton","orderFieldChoice","step4Box","orderTemplateList"])
   assert.ok(js.includes(control),control);
  assert.match(js,/changesCanvas:false/);
+ assert.match(js,/if\(isShown\(\$\("mockupShell"\)\)\)\$\("mockupBackButton"\)\?\.click\(\)/);
  assert.match(mockJs,/changesCanvas:false/);
  new vm.Script(js);new vm.Script(mockJs);
 });
