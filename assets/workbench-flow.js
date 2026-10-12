@@ -75,7 +75,7 @@
     const review = document.createElement('div'); review.id = 'flowReview';
     review.innerHTML = '<div class="flow-review-mark" aria-hidden="true">✓</div><strong>Макет готов к просмотру</strong><span>Проверьте положение логотипов и результат PrintCheck перед скачиванием.</span><button id="flowReviewEdit" type="button">Вернуться к размещению</button>';
     $('simpleControls').before(review);
-    let step = 1, settingsOpen = false, previous = {}, frame = 0, lastSignature = '', lastReadyArticle = '';
+    let step = 1, settingsOpen = false, previous = {}, frame = 0, lastSignature = '', lastReadyArticle = '', closingSettings = false, closeTimer = 0;
     const setHidden = (node, hidden) => { if (node && node.hidden !== hidden) node.hidden = hidden; };
     const state = () => {
       let native = {}; try { native = window.gwbGetEditorReadiness?.() || {}; } catch {}
@@ -90,11 +90,20 @@
       return !!s.templateReady && !!s.logoReady;
     }
     function setSettings(open, focus = false) {
-      settingsOpen = open; dock.hidden = !open;
+      clearTimeout(closeTimer); closingSettings = false;
+      dock.classList.remove('flow-settings-closing');
+      settingsOpen = open; dock.inert = !open;
       $('flowSettings').setAttribute('aria-expanded', String(open)); more.setAttribute('aria-expanded', String(open));
-      main.classList.toggle('flow-settings-open', open);
-      // Native resize renders the canvas at its new pixel ratio; no artwork data changes.
-      requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+      const layout = () => {
+        main.classList.toggle('flow-settings-open', settingsOpen || closingSettings);
+        requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+      };
+      if (!open && !dock.hidden && !reduced.matches) {
+        closingSettings = true; dock.classList.add('flow-settings-closing');
+        closeTimer = setTimeout(() => {
+          closingSettings = false; dock.hidden = true; dock.classList.remove('flow-settings-closing'); layout();
+        },180);
+      } else { setHidden(dock,!open); layout(); }
       if (focus) (open ? $('flowCloseSettings') : $('flowSettings')).focus({preventScroll: true});
     }
     function go(target, focus = false) {
@@ -106,7 +115,7 @@
     function render(s = state()) {
       // Backtracking changes the presentation only; no file reload or redraw is required.
       if (editor.dataset.flowStep !== String(step)) editor.dataset.flowStep = String(step);
-      setHidden(shell, !s.open); setHidden(dock, !s.open || !settingsOpen);
+      setHidden(shell, !s.open); setHidden(dock, !s.open || !(settingsOpen || closingSettings));
       const status = [s.order ? 'Заказ ' + s.order : '', s.article ? 'Арт. ' + s.article : ''].filter(Boolean).join(' · ');
       setText($('flowContext'), status);
       setText($('flowHeading'), labels[step - 1]); setText($('flowDescription'), descriptions[step - 1]);
@@ -141,7 +150,7 @@
       const detail = $('detailPanel'); if (detail && detail.parentElement === main.querySelector('.rail')) {
         detail.classList.add('flow-check-details');
       }
-      if (!s.open && previous.open) { settingsOpen = false; main.classList.remove('flow-settings-open'); }
+      if (!s.open && previous.open) { clearTimeout(closeTimer); closingSettings = false; settingsOpen = false; dock.inert = true; main.classList.remove('flow-settings-open'); }
       if (s.open && previous.open && (s.field !== previous.field || s.hasSelectedField !== previous.hasSelectedField || s.article !== previous.article)) enter($('stage'),1,320);
       previous = s; render(s);
     }

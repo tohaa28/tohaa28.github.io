@@ -25,6 +25,7 @@ export async function verifyStepMotion(frame) {
   await frame.page().screenshot({path:'step-motion-settings.png'});
   await frame.locator('#flowCloseSettings').focus();
   await frame.page().keyboard.press('Escape');
+  await frame.locator('#flowSettingsDock').waitFor({state:'hidden'});
   assert.equal(await frame.locator('#flowSettingsDock').isVisible(), false);
   assert.equal(await frame.locator('#flowSettings').getAttribute('aria-expanded'), 'false');
   await frame.locator('#flowNext').click();

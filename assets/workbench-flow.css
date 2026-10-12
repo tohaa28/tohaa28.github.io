@@ -90,6 +90,9 @@ body:has(#photoCanvas) button:not(:disabled):active{transform:scale(.98)}
 #orderEditor[data-flow-step="2"] #simpleControls{display:grid!important}
 #orderEditor[data-flow-step="2"] #simpleFill,#orderEditor[data-flow-step="2"] #step4Box{display:none!important}
 @media(min-width:781px){
- .gwb-step-interface .app>main.flow-settings-open:not(.gwb-orders-full){grid-template-columns:minmax(280px,340px) minmax(0,1fr) 310px}
+ .gwb-step-interface .app>main.flow-settings-open:not(.gwb-orders-full){grid-template-columns:clamp(280px,28vw,340px) minmax(0,1fr) 300px!important}
  #flowSettingsDock{position:relative;right:auto;top:auto;bottom:auto;grid-column:3;width:auto;height:calc(100% - 28px);margin:14px 12px 14px 0;min-width:0;min-height:0}
 }
+
+#flowSettingsDock.flow-settings-closing{animation:flow-settings-out .18s ease-in both;pointer-events:none}
+@keyframes flow-settings-out{to{opacity:0;transform:translateX(12px)}}
