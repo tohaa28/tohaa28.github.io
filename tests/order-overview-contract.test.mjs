@@ -46,4 +46,6 @@ test('arrow is decorative and order click delegation is unchanged',()=>{
  assert.match(html,/\.gwb-order-multi-indicator\{[^}]*pointer-events:none/);
  assert.doesNotMatch(html,/element\("button","gwb-order-accordion-toggle"\)/);
  assert.doesNotMatch(html,/const toggleExpanded=/);
+ assert.doesNotMatch(html,/card\.addEventListener\("click",event=>/);
+ assert.match(html,/card\.setAttribute\("aria-expanded",String\(expand\)\)/);
 });
