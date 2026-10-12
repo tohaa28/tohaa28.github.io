@@ -10,7 +10,12 @@ export async function verifyStepMotion(frame) {
     frame: document.getElementById('mockupFrame').contentWindow.location.href,
     factor: document.getElementById('fieldZoom')?.dataset.factor
   }));
-  await frame.evaluate(() => window.gwbFlow.setSettings(false));
+  await frame.evaluate(() => {
+    window.gwbFlow.setSettings(false); window.gwbFlow.go(3);
+    for (const id of ['logoPreflight','logoDetailCheck']) { const node=document.getElementById(id); if(node)node.open=false; }
+    document.querySelector('.rail').scrollTop=0;
+  });
+  await frame.locator('#flowSettingsDock').waitFor({state:'hidden'});
   const before = await data();
   await frame.page().screenshot({path:'step-motion-desktop.png'});
   await frame.locator('[data-flow-step="2"]').click();
@@ -31,6 +36,7 @@ export async function verifyStepMotion(frame) {
   await frame.locator('#flowNext').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '4');
   assert.equal(await frame.locator('#simpleExport').isVisible(), true);
+  await frame.evaluate(()=>document.querySelector('.rail').scrollTop=0);
   await frame.page().screenshot({path:'step-motion-export.png'});
   await frame.locator('#flowReviewEdit').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '3');
@@ -49,6 +55,7 @@ export async function verifyStepMotion(frame) {
   assert.equal(mobile.overflow, false, JSON.stringify(mobile));
   assert.equal(mobile.position, 'relative');
   assert.ok(mobile.widths.every(w=>w>0));
+  await frame.evaluate(()=>{document.querySelector('.app>main').scrollTop=0;window.scrollTo(0,0)});
   await frame.page().screenshot({path:'step-motion-mobile.png',fullPage:true});
   await frame.locator('#flowCloseSettings').click();
   if(originalViewport) await frame.page().setViewportSize(originalViewport);

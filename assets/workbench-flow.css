@@ -106,3 +106,8 @@ body:has(#photoCanvas) button:not(:disabled):active{transform:scale(.98)}
 .flow-canvas-report strong{font-size:12px;font-weight:500}
 .flow-canvas-report>ul{pointer-events:auto}
 .flow-report-status{display:block;margin-top:3px;color:#986600;font-size:11px;font-weight:400}
+/* The current step and compact order context replace repeated captions. */
+.gwb-step-interface #editorTitle{display:none}
+.gwb-step-interface #simpleFill:disabled{display:none!important}
+.gwb-step-interface #step4Box>p.help:not([id]){display:none}
+.gwb-step-interface #orderEditor>.row:has(#prevPage:disabled):has(#nextPage:disabled){display:none}
