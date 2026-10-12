@@ -48,6 +48,16 @@ jobs:
             const contentType = /\.m?js$/.test(relative) ? "application/javascript" : /\.css$/.test(relative) ? "text/css" : "application/octet-stream";
             await route.fulfill({body:fs.readFileSync(relative),contentType,headers:{"access-control-allow-origin":"*"}});
           });
+          // Deterministic smoke testing: use assets from this source commit,
+          // not the asynchronously updated GitHub Pages CDN (which can be stale
+          // while publish/browser_verify are running in the same workflow).
+          await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/**",async route=>{
+            const pathname=new URL(route.request().url()).pathname;
+            const relative=pathname.replace("/gifts-layout-workbench-mockups/","");
+            if(!/^assets\/[a-zA-Z0-9._-]+$/.test(relative))return route.abort();
+            const contentType=/\.m?js$/.test(relative)?"application/javascript":/\.css$/.test(relative)?"text/css":"application/octet-stream";
+            await route.fulfill({body:fs.readFileSync(relative),contentType,headers:{"access-control-allow-origin":"*"}});
+          });
           const errors = [];
           page.on("pageerror", e => errors.push("pageerror: "+e.message));
           page.on("console", m => { if (m.type()==="error") errors.push("console: "+m.text()); });
@@ -292,6 +302,15 @@ jobs:
           const embeddedMockup = await mockupElement.contentFrame();
           if (!embeddedMockup) throw new Error("Embedded Mockup Editor frame is unavailable");
           await embeddedMockup.waitForFunction(() => typeof window.gwbApplyMockupHandoff === "function", null, {timeout:30000});
+          await embeddedMockup.waitForFunction(() => window.__gwbMockupMotionController?.version === "1.0",null,{timeout:10000});
+          const embeddedMotion=await embeddedMockup.evaluate(()=>({
+            cssReady:document.documentElement.classList.contains("gwb-mockup-motion-ready"),
+            geometrySafe:window.__gwbMockupMotionController?.changesGeometry===false,
+            canvasStyle:getComputedStyle(document.querySelector(".canvasPanel")).transitionProperty
+          }));
+          if(!embeddedMotion.cssReady||!embeddedMotion.geometrySafe||!embeddedMotion.canvasStyle.includes("box-shadow"))
+            throw Error("Embedded Mockup Motion System missing: "+JSON.stringify(embeddedMotion));
+
           const templateSvg = "data:image/svg+xml;base64," + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="white"/></svg>').toString("base64");
           await embeddedMockup.evaluate(async ({templateSvg}) => {
             await window.gwbApplyMockupHandoff({
@@ -870,6 +889,15 @@ jobs:
             return !!img && img.hidden === false && img.complete && img.naturalWidth > 0;
           }, null, {timeout:30000});
 
+          const motionState=await frame.evaluate(()=>{
+            const ctrl=window.__gwbMotionController;
+            return {ready:document.documentElement.classList.contains("gwb-motion-ready"),
+              version:ctrl?.version,geometrySafe:ctrl?.changesGeometry===false,
+              hoverStyle:getComputedStyle(document.querySelector(".basket-order")).transitionProperty};
+          });
+          if(!motionState.ready||motionState.version!=="1.0"||!motionState.geometrySafe||
+             !motionState.hoverStyle.includes("box-shadow"))
+            throw Error("Maketnaya motion system is unavailable: "+JSON.stringify(motionState));
           const articleChoiceState = await frame.evaluate(() => {
             const choice = document.querySelector("#orderTemplateList .article-choice");
             const info = choice?.querySelector(".article-choice-info");
