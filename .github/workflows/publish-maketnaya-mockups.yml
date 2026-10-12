@@ -55,24 +55,17 @@ jobs:
           node --check launcher.js
           grep -q "gifts-layout-workbench-mockups" launcher.js
           grep -q "Mockup Lab" launcher.js
-          grep -q 'gwb-door-stage' launcher.js
-          grep -q 'gwb-door-left' launcher.js
-          grep -q 'gwb-door-right' launcher.js
-          if grep -q 'gwb-seam' launcher.js; then echo "green center seam must be absent from door animation"; exit 1; fi
-          grep -q 'gwb-door-lock' launcher.js
-          grep -Fq '<div class="gwb-door gwb-door-left"><div class="gwb-door-lock">М</div></div>' launcher.js
-          grep -q 'right:-38px;left:auto' launcher.js
-          if grep -q 'gwbLockOpen' launcher.js; then echo "Maketnaya mark must ride with the door, not animate independently"; exit 1; fi
-          grep -q 'gwbDoorGlow' launcher.js
-          grep -q 'const OPEN_MS = 2000' launcher.js
-          grep -q 'requestAnimationFrame(() => requestAnimationFrame(() =>' launcher.js
+          grep -q 'gwb-motion-stage' launcher.js
+          grep -q 'gwb-motion-brand' launcher.js
+          grep -q 'gwb-motion-project' launcher.js
+          grep -q 'gwb-motion-floatcard' launcher.js
+          grep -q 'gwbFrameReveal 2600ms' launcher.js
+          grep -q 'gwbMotionExit 2600ms' launcher.js
+          grep -q 'const OPEN_MS = 2600' launcher.js
           grep -q 'gwb-opening' launcher.js
           grep -q 'gwb-opened' launcher.js
-          grep -q 'gwbDoorOpenLeft 2000ms' launcher.js
-          grep -q 'gwbDoorOpenRight 2000ms' launcher.js
-          if grep -q 'prefers-reduced-motion' launcher.js; then echo "door animation must not be skipped by system reduced-motion setting"; exit 1; fi
           grep -q 'gwb-closing' launcher.js
-          grep -q 'gwb-door-stage' launcher.js
+          if grep -q 'gwb-door-stage' launcher.js; then echo "Old door splash still present" >&2; exit 1; fi
           grep -q "const targetOrigin=location.origin" launcher.js
           grep -q 'embeddedMockup = mockup' tools/build-launcher.mjs
           grep -Fq 'https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/mockup-cylinder.mjs' launcher.js

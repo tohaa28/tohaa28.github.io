@@ -36,7 +36,7 @@ export function stampComponentVersions(){
  const editor=read('editor.html'),mockup=read('mockup.html');
  const versions=deriveComponentVersions({
   editor,mockup,directMode:read('direct-mode.js'),
-  launcherBuilder:read('tools/build-launcher.mjs'),
+  launcherBuilder:read('tools/build-launcher.mjs')+'\n'+read('tools/launcher-motion.mjs'),
   editorAssets:assetContents(/^index-.*\.(?:js|css)$/),
   mockupAssets:assetContents(/^mockup[-.].*\.(?:mjs|js|css)$/),
   detailAssets:assetContents(/^(?:logo-detail-.*|logo-preflight\.mjs|logo-artwork-view\.mjs)$/),

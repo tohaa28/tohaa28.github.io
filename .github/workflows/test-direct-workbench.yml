@@ -200,11 +200,31 @@ jobs:
           const launcherSource = fs.readFileSync("launcher.js", "utf8");
           await page.addScriptTag({content: launcherSource});
           await page.waitForSelector("#gifts-layout-workbench-host iframe", {timeout:30000});
+          const intro=await page.evaluate(()=>{
+            const host=document.getElementById("gifts-layout-workbench-host");
+            const stage=host?.querySelector(".gwb-motion-stage");
+            return {exists:!!stage,brand:stage?.querySelector(".gwb-motion-copy strong")?.textContent,
+              hasProject:!!stage?.querySelector(".gwb-motion-project"),
+              hasFloatingArtwork:!!stage?.querySelector(".gwb-motion-floatcard"),
+              oldDoors:!!host?.querySelector(".gwb-door-stage")};
+          });
+          if(!intro.exists||intro.brand!=="Макетная"||!intro.hasProject||!intro.hasFloatingArtwork||intro.oldDoors)
+            throw Error("New intro missing or legacy door intro still active: "+JSON.stringify(intro));
           // Check the visible hover bubble; the browser-native title is deliberately not used.
           const closeButton=page.locator("#gifts-layout-workbench-host .gwb-close");
           if(await closeButton.getAttribute("aria-label")!=="Закрыть Макетную")throw Error("Close button accessible name missing");
           if(await closeButton.getAttribute("data-tooltip")!=="Закрыть Макетную")throw Error("Close tooltip text missing");
           await page.waitForSelector("#gifts-layout-workbench-host.gwb-opened .gwb-close",{timeout:15000});
+          const introDone=await page.evaluate(()=>{
+            const host=document.getElementById("gifts-layout-workbench-host");
+            const frame=host?.querySelector("iframe");
+            return {removed:!host?.querySelector(".gwb-motion-stage"),
+              opacity:parseFloat(getComputedStyle(frame).opacity),
+              filter:getComputedStyle(frame).filter};
+          });
+          if(!introDone.removed||introDone.opacity<.99||introDone.filter!=="none")
+            throw Error("Intro did not reveal the real workbench iframe: "+JSON.stringify(introDone));
+
           await closeButton.hover();
           await page.waitForFunction(()=>{
             const n=document.querySelector("#gifts-layout-workbench-host .gwb-close");
