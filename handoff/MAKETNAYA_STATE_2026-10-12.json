@@ -1,20 +1,20 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "fd69dadb830e746cddcee663859fdfd80bcee48d",
+  "verified_functional_source_commit": "9919596e562ea9675deb2f6f44aee34dd4262826",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "30a42fb627cefb56dd7276e65147d46d6347041a",
-  "verified_publication_main_commit": "7bb17c53aebdef920433981f10b0aaec768c12b3",
+  "source_tree_sha": "0a953eaa9c71b96743a692c6176898ac0349f5da",
+  "verified_publication_main_commit": "71fb3dfcc15a5efd92ba1b35351790a5ac1065c5",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38243011348,
+    "run": 38244216693,
     "conclusion": "success",
     "unit_tests": 129,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success"
   },
-  "last_feature": "Multi-item orders initially show the first article; arrow unfolds other articles (380 ms)",
+  "last_feature": "Multi-item orders expand on hover, collapse on mouseleave; arrow is visual-only",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,7 +30,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Functional commit fd69dadb, published main 7bb17c53. Docs-only commit may advance branch HEAD; re-fetch before edits.",
+  "note": "Latest VERIFIED functional source 9919596e; docs-only HEAD may advance. Hover-only interaction is specifically requested; on touch devices hover is not available, so future touch UX should be specified if needed.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -40,12 +40,22 @@
   },
   "order_accordion": {
     "initial_visible_articles": 1,
-    "additional_rows_container": ".gwb-order-extra",
+    "expanded_by": "mouseenter",
+    "collapsed_by": "mouseleave",
+    "keyboard_accessibility": "focusin/focusout",
+    "decorative_marker": ".gwb-order-multi-indicator",
+    "marker_clickable": false,
     "animation_ms": 380,
     "single_article_no_arrow": true,
-    "first_article_click_opens_order": true,
-    "keyboard_guard_preserved": true,
-    "source_commit": "fd69dadb830e746cddcee663859fdfd80bcee48d",
-    "workflow_run": 38243011348
+    "article_click_opens_order": true,
+    "source_commit": "9919596e562ea9675deb2f6f44aee34dd4262826",
+    "workflow_run": 38244216693
+  },
+  "broken_test_resolved": {
+    "failed_commit": "1dd948d26bc7e1549ffeee2a21a0ad3c138545f1",
+    "failed_run": 38243932606,
+    "cause": "Legacy test clicked hidden second article without hovering",
+    "fix_commit": "49bf00896e04789c09c4b349e13ee25cb3580762",
+    "success_run": 38244216693
   }
 }
