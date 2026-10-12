@@ -908,8 +908,8 @@ jobs:
               articleChoiceState.legacySeparateBlocks ||
               articleChoiceState.detailStyling.valueWeight>500 ||
               articleChoiceState.detailStyling.labelWeight>500 ||
-              articleChoiceState.detailStyling.valueSize>13 ||
-              articleChoiceState.detailStyling.labelSize>12.5 ||
+              Math.abs(articleChoiceState.detailStyling.valueSize-10)>0.1 ||
+              Math.abs(articleChoiceState.detailStyling.labelSize-10)>0.1 ||
               articleChoiceState.detailStyling.thumbWidth>80 ||
               articleChoiceState.rows["Артикул"] !== "15637" ||
               articleChoiceState.rows["Название"] !== "Брелок" ||
