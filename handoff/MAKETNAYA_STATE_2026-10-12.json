@@ -1,23 +1,23 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "e10ba4447b173ea17959cb2fb25bb8335b7591d2",
+  "verified_functional_source_commit": "49e603833af0d2ac4239260acaa0309cefe92c16",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "efa30e3fc855394b4bfea7fbb2e623b15dd7c0c8",
-  "verified_publication_main_commit": "d8cb827ed0a0ee2200c0138c70d409d268667968",
+  "source_tree_sha": "a14bbb7e895a0885ba0c1e14ed63a835aed24fcc",
+  "verified_publication_main_commit": "636831de75e9760b2ba6a95fac8e685a99860644",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38295179096,
+    "run": 38299919634,
     "conclusion": "success",
     "unit_tests": 137,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success",
-    "pages_deploy_run": 38295214985,
+    "pages_deploy_run": 38299959931,
     "pages_deploy": "success",
-    "prepublication_browser_run": 38294976352
+    "prepublication_browser_run": 38299623038
   },
-  "last_feature": "Progressive four-step interface with fine controls, interruptible motion and compact PrintCheck",
+  "last_feature": "Motion polish: animated disclosures/window closing, sticky/mobile step navigation and preserved new 77700.60 profile",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -33,7 +33,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest published functional code e10ba444, Maketnaya r4ef7ed4f; docs-only HEAD may advance. Preserve baseline backups and historical rollback records.",
+  "note": "Latest verified published UI r49d1b0a5; docs-only commits may advance HEAD. Always re-fetch; retain user profile changes and historical backups.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -123,7 +123,7 @@
     "pages_run": 38290486575
   },
   "motion_interface": {
-    "version": "r4ef7ed4f",
+    "version": "r49d1b0a5",
     "steps": [
       "article",
       "field",
@@ -144,5 +144,25 @@
       "backup/maketnaya-published-before-step-motion-2026-10-12"
     ],
     "handoff": "handoff/MAKETNAYA_STEP_MOTION_2026-10-12.md"
+  },
+  "motion_polish": {
+    "handoff": "handoff/MAKETNAYA_MOTION_POLISH_2026-10-12.md",
+    "component_browser_engines": [
+      "Chromium",
+      "Firefox"
+    ],
+    "complete_browser_suite": "Chromium",
+    "mobile_navigation": "outside scrolling workspace",
+    "mobile_min_tested_width_px": 320,
+    "disclosures": "interruptible measured-height WAAPI",
+    "windows": "single native completion and cancellable close",
+    "preserved_profile_commit": "91569795fb3d433919f20802d1c253ebfad8b781",
+    "preserved_profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
+    "preserved_mapping": "77700.60 · Стандартное · 77700.60-1",
+    "backup_with_profiles": [
+      "backup/maketnaya-source-before-motion-polish-with-profiles-2026-10-12",
+      "backup/maketnaya-published-before-motion-polish-with-profiles-2026-10-12"
+    ],
+    "rollback_rule": "Keep current mockup-profiles.json when reverting UI"
   }
 }
