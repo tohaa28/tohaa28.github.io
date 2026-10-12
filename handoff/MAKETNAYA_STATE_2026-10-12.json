@@ -1,0 +1,34 @@
+{
+  "snapshot_date": "2026-10-12",
+  "verified_functional_source_commit": "702136d52ebf4334f4abaf983653ecca058cdde8",
+  "source_branch": "gifts-layout-workbench-mockups-source",
+  "source_tree_sha": "b6353801653af25b902bce80efee52c97cecfbc8",
+  "verified_publication_main_commit": "83dd7fd0a5cdd6191649b9059efc25095628d054",
+  "repository": "tohaa28/tohaa28.github.io",
+  "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
+  "workflow": {
+    "run": 38232186554,
+    "conclusion": "success",
+    "unit_tests": 128,
+    "precheck": "success",
+    "publish": "success",
+    "browser_verify": "success"
+  },
+  "last_feature": "Compact initial order accordion for >1 positions, 380ms",
+  "test_failure_resolved": {
+    "run": 38232054983,
+    "cause": "reduced-motion CSS violated the existing door animation contract",
+    "fix_commit": "702136d52ebf4334f4abaf983653ecca058cdde8"
+  },
+  "mockup": {
+    "cylinder_aspect_lock": true,
+    "mesh_seam_artifact_fix": true,
+    "user_real_photo_retest": "pending"
+  },
+  "printcheck": {
+    "latest_algorithm": "PrintCheck-coverage-swt-v25-multisegment-ink",
+    "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
+    "customer_retest": "pending"
+  },
+  "note": "This is a checkpoint of the verified functional code; resolve GitHub HEAD again on next session because a docs-only handoff commit may move the branch."
+}
