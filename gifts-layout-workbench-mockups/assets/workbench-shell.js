@@ -49,7 +49,6 @@
    }
    const editorVisible=isShown($("orderEditor"))&&!ordersOpen;
    const fieldSet=$("orderFieldChoice")?.value;
-   const logoCount=Number(($("placementCount")?.textContent||"").match(/(\d+)/)?.[1]||0);
    const downloadVisible=isShown($("step4Box"));
    const current=!editorVisible?1:downloadVisible?4:fieldSet?3:2;
    for(const node of track.children){
@@ -67,7 +66,10 @@
     if(isShown($("mockupShell")))$("mockupBackButton")?.click();
     if(isShown($("orderEditor")))$("backToOrders")?.click();
   }else if(v==="editor"){
-    if(isShown($("resumeEditor")))$("resumeEditor").click();
+    // Return from the mockup overlay via the existing control instead of
+    // relying on a hidden "resume editor" button.
+    if(isShown($("mockupShell")))$("mockupBackButton")?.click();
+    else if(isShown($("resumeEditor")))$("resumeEditor").click();
   }else if(v==="mockups"){
     const real=$("mockupModeButton");
     if(real&&!real.disabled&&!real.hidden)real.click();
