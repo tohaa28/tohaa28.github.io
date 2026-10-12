@@ -29,10 +29,10 @@ export async function verifyStepMotion(frame) {
   await frame.locator('#flowSettingsDock').waitFor({state:'hidden'});
   const before = await data();
   await capture('step-motion-desktop.png');
-  await frame.locator('[data-flow-step="2"]').click();
+  await frame.locator('#flowNavigation [data-flow-step="2"]').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '2');
   assert.equal(await frame.locator('[data-flow-part="artwork"]').isVisible(), false);
-  await frame.locator('[data-flow-step="3"]').click();
+  await frame.locator('#flowNavigation [data-flow-step="3"]').click();
   assert.equal(await frame.locator('[data-flow-part="artwork"]').isVisible(), true);
   await frame.locator('#flowSettings').click();
   await frame.locator('#flowSettingsDock').waitFor({state:'visible'});
@@ -78,7 +78,7 @@ export async function verifyStepMotion(frame) {
   await capture('step-motion-mobile-settings.png');
   await frame.locator('#flowCloseSettings').click();
   await frame.locator('#flowSettingsDock').waitFor({state:'hidden'});
-  await frame.locator('[data-flow-step="3"]').click();
+  await frame.locator('#flowNavigation [data-flow-step="3"]').click();
   await capture('step-motion-mobile.png');
   const mobileHeader=await frame.locator('#flowHeader').boundingBox();
   await frame.evaluate(()=>document.querySelector('.app>main').scrollTop=400);
@@ -88,10 +88,12 @@ export async function verifyStepMotion(frame) {
   const narrow=await frame.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth+1,header:document.getElementById('flowHeader').getBoundingClientRect().width}));
   assert.equal(narrow.overflow,false,JSON.stringify(narrow));
   await capture('step-motion-mobile-narrow.png');
+  const afterMobile=await data();
+  for(const key of ['name','width','height','angle','field']) assert.equal(afterMobile[key],before[key],'Mobile navigation must preserve '+key);
   if(originalViewport) await frame.page().setViewportSize(originalViewport);
   await frame.page().emulateMedia({reducedMotion:'reduce'});
-  await frame.locator('[data-flow-step="2"]').click();
-  await frame.locator('[data-flow-step="3"]').click();
+  await frame.locator('#flowNavigation [data-flow-step="2"]').click();
+  await frame.locator('#flowNavigation [data-flow-step="3"]').click();
   assert.equal(await frame.evaluate(()=>window.gwbFlow.getState().step),3);
   await frame.page().emulateMedia({reducedMotion:'no-preference'});
   await frame.evaluate(()=>window.gwbFlow.setSettings(true));
