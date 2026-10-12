@@ -705,7 +705,9 @@ export async function verifyPdfLabels(frame) {
   // new color-model error before testing the unchanged PDF clipping exporter.
   await frame.waitForFunction(()=>window.gwbLogoPreflight?.some(r=>r.findings.some(f=>f.id==='rgb-color-model')));
   await frame.locator('#confirmErrors').check();
+  await frame.evaluate(()=>window.gwbFlow?.go(4));
   await frame.locator('#simpleExport').click();
+  await frame.evaluate(()=>window.gwbFlow?.go(3));
   await frame.waitForFunction(()=>{
     const link=document.getElementById('downloadResult');
     return !!link && link.hidden===false && /^blob:/.test(link.href||'');
