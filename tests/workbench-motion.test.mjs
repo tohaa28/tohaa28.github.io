@@ -17,6 +17,7 @@ test("Motion never modifies drawing canvases or engine geometry",()=>{
  assert.doesNotMatch(css,/#stage(?:\{| |,)/);
  assert.doesNotMatch(mockCss,/#(?:templateCanvas|photoCanvas)\s*\{/);
  assert.match(css,/prefers-reduced-motion:reduce/);assert.match(mockCss,/prefers-reduced-motion:reduce/);
+ assert.match(css,/#stageScroll\{position:relative;isolation:isolate\}/);
  new vm.Script(script);new vm.Script(mockJs);
 });
 test("Motion covers order, step, field, tools, checks, mockup and export",()=>{
