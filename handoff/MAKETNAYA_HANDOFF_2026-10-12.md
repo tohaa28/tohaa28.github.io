@@ -3,9 +3,9 @@
 ## Точка восстановления
 - GitHub: https://github.com/tohaa28/tohaa28.github.io
 - Рабочая ветка: `gifts-layout-workbench-mockups-source`. Публикация: `main`.
-- **Последняя проверенная функциональная исходная версия**: `15d1817d6f9af42216e2671666a0b54e65497cca`.
-- Соответствующая публикация: `main` `253113aeec77edd195c7d0b2a66f7e2f0e4310b1`.
-- Workflow `38249503509`: `precheck`, `publish`, `browser_verify` — SUCCESS; **134/134 unit**.
+- **Последняя проверенная функциональная исходная версия**: `863e52aa77f4d5cdc620359d78ae028db3185ea3`.
+- Соответствующая публикация: `main` `081017eae23e9d857c14a96c84d94e69791cdf9b`.
+- Workflow `38253390600`: `precheck`, `publish`, `browser_verify` — SUCCESS; **138/138 unit**.
 - Сайт: https://tohaa28.github.io/gifts-layout-workbench-mockups/
 - Полная история: `PROJECT_HISTORY_MAKETNAYA.md`. Новые изменения: `handoff/MAKETNAYA_CHANGES_2026-10-12.md`. Машинные SHAs/статус: `handoff/MAKETNAYA_STATE_2026-10-12.json`.
 
@@ -39,7 +39,13 @@
 - Выпуск подтверждать только после `precheck`, `publish`, `browser_verify` и проверки `main`.
 
 ## Последнее изменение
-Утверждённый моушен-дизайн вместо старых раздвижных дверей: 2600 мс CSS/SVG-сцена (бренд, геометрические пластины, макет и «Макет готов»), затем реальный интерфейс. Source `15d1817d`, main `253113ae`, workflow `38249503509`: 134/134, все jobs SUCCESS. Источник анимации `tools/launcher-motion.mjs`, сборка `tools/build-launcher.mjs`, проверка `tests/launcher-motion.test.mjs`.
+Внедрена отдельная система motion-переходов между основными окнами, шагами и инструментами Макетной и Редактора мокапов (sidecar CSS/JS без изменения геометрии). Последняя проверенная функциональная версия source `863e52aa`, main `081017ea`, CI `38253390600` SUCCESS, 138/138 unit. Резервные ветки исходников и опубликованной версии созданы до обновления и остаются неизменными. Инструкция — `docs/MOTION_SYSTEM_ROLLBACK_2026-10-12.md`.
+
+## Как откатить и что защищено
+- Backup исходников: `backup/maketnaya-source-before-motion-system-2026-10-12`, `2886e79f7501d60b52cb26bf97862938e3403174`.
+- Backup опубликованного main: `backup/maketnaya-published-before-motion-system-2026-10-12`, `253113aeec77edd195c7d0b2a66f7e2f0e4310b1`.
+- Для отката создать новый source-коммит из дерева backup-ветки без force-push и дождаться полного CI/deploy. Документ `docs/MOTION_SYSTEM_ROLLBACK_2026-10-12.md`.
+- Запуск прежней стартовой заставки останется: резерв сохранён **перед внутренними переходами**, а не до неё.
 
 ## Следующий шаг
 История и новая защита клавиатурного управления сохранены. При следующем запросе сперва проверить свежую ветку. Если пользователь продолжит тесты мокапа — запросить/посмотреть повторный PNG с реальной бейсболкой; если займётся PrintCheck — использовать v25 handoff и реальные контрольные метки. Подробнее см. `PROJECT_HISTORY_MAKETNAYA.md`.
