@@ -96,9 +96,12 @@
 .gwb-order-accordion-toggle:hover,.gwb-order-accordion-toggle:focus-visible{background:#e5f1d3;border-color:#a6c66c;outline-offset:2px}
 .gwb-order-accordion-toggle .gwb-order-arrow{display:inline-block;transition:transform .36s cubic-bezier(.2,.8,.2,1)}
 .gwb-multi-order[data-gwb-expanded="true"] .gwb-order-arrow{transform:rotate(180deg)}
-.gwb-multi-order>.basket-methods{height:0;min-height:0;opacity:0;overflow:hidden;margin-top:0!important;pointer-events:none;transition:height .38s cubic-bezier(.22,.8,.22,1),opacity .25s ease}
-.gwb-multi-order[data-gwb-expanded="true"]>.basket-methods{opacity:1;pointer-events:auto}
-.gwb-multi-order[data-gwb-expanded="false"]>.basket-methods{visibility:hidden;transition:height .38s cubic-bezier(.22,.8,.22,1),opacity .25s ease,visibility 0s linear .38s}
+/* Always show the first real article; animate only the remaining articles. */
+.gwb-multi-order>.basket-methods{min-height:0;overflow:visible}
+.gwb-multi-order .gwb-order-extra{height:0;min-height:0;opacity:0;overflow:hidden;pointer-events:none;transition:height .38s cubic-bezier(.22,.8,.22,1),opacity .25s ease}
+.gwb-multi-order[data-gwb-expanded="true"] .gwb-order-extra{opacity:1;pointer-events:auto;visibility:visible}
+.gwb-multi-order[data-gwb-expanded="false"] .gwb-order-extra{visibility:hidden;transition:height .38s cubic-bezier(.22,.8,.22,1),opacity .25s ease,visibility 0s linear .38s}
+.gwb-order-extra>.basket-method:first-child{border-top:1px solid #e5ebe3}
 .gwb-multi-order>.basket-order-title{cursor:pointer}
 /* Keep the mockup marker in its own reserved gutter instead of over the quantity chip. */
 .basket-method.has-mockup-map .gwb-basket-details{padding-right:28px;box-sizing:border-box}
@@ -636,9 +639,8 @@
     row.replaceChildren(item);
   }
 
-  // The source order reader still owns the card click handler. Only the header
-  // (and the compact collapsed surface) toggles the list; an expanded item
-  // retains the original click-to-open-order behavior and article bindings.
+  // Keep the first article visible. Only the additional positions unfold.
+  // The original source card click handler still opens the order from any article.
   function prepareOrderAccordion(card,rows){
     if(rows.length<=1||card.dataset.gwbAccordion==="1")return;
     const panel=card.querySelector(":scope > .basket-methods");
@@ -647,50 +649,54 @@
     card.dataset.gwbAccordion="1";
     card.dataset.gwbExpanded="false";
     card.classList.add("gwb-multi-order");
+    const extra=element("div","gwb-order-extra");
+    extra.id="gwb-order-extra-"+String(card.getAttribute("aria-label")||"").replace(/\D/g,"");
+    for(const row of rows.slice(1))extra.append(row);
+    panel.append(extra);
     const arrow=element("span","gwb-order-arrow","⌄");
     arrow.setAttribute("aria-hidden","true");
     const toggle=element("button","gwb-order-accordion-toggle");
     toggle.type="button";
-    toggle.title="Показать позиции заказа";
-    toggle.setAttribute("aria-label","Развернуть позиции заказа");
+    toggle.title="Показать все артикулы заказа";
+    toggle.setAttribute("aria-label","Развернуть артикулы заказа");
+    toggle.setAttribute("aria-controls",extra.id);
     toggle.setAttribute("aria-expanded","false");
     toggle.append(arrow);
     card.append(toggle);
-    panel.style.height="0px";
-    panel.setAttribute("aria-hidden","true");
-    panel.inert=true;
+    extra.style.height="0px";
+    extra.setAttribute("aria-hidden","true");
+    extra.inert=true;
     const syncHeight=event=>{
-      if(event.target!==panel||event.propertyName!=="height")return;
-      if(card.dataset.gwbExpanded==="true")panel.style.height="auto";
+      if(event.target!==extra||event.propertyName!=="height")return;
+      if(card.dataset.gwbExpanded==="true")extra.style.height="auto";
     };
-    panel.addEventListener("transitionend",syncHeight);
+    extra.addEventListener("transitionend",syncHeight);
     const toggleExpanded=()=>{
       const expand=card.dataset.gwbExpanded!=="true";
-      // Explicit pixel heights permit smooth opening and closing even when
-      // product names occupy different numbers of lines.
-      const currentHeight=panel.getBoundingClientRect().height;
-      panel.style.height=currentHeight+"px";
-      void panel.offsetHeight;
+      // Measure the extra rows, not the first visible article. Explicit pixel
+      // heights prevent jumps when titles wrap onto multiple lines.
+      const currentHeight=extra.getBoundingClientRect().height;
+      extra.style.height=currentHeight+"px";
+      void extra.offsetHeight;
       card.dataset.gwbExpanded=String(expand);
       toggle.setAttribute("aria-expanded",String(expand));
-      toggle.setAttribute("aria-label",expand?"Свернуть позиции заказа":"Развернуть позиции заказа");
-      toggle.title=expand?"Свернуть позиции заказа":"Показать позиции заказа";
-      panel.inert=!expand;
-      panel.setAttribute("aria-hidden",String(!expand));
-      panel.style.height=expand?panel.scrollHeight+"px":"0px";
+      toggle.setAttribute("aria-label",expand?"Свернуть артикулы заказа":"Развернуть артикулы заказа");
+      toggle.title=expand?"Свернуть список артикулов":"Показать все артикулы заказа";
+      extra.inert=!expand;
+      extra.setAttribute("aria-hidden",String(!expand));
+      extra.style.height=expand?extra.scrollHeight+"px":"0px";
     };
-    // Capture before the original onclick attached to the parent order card.
+    // The article itself always opens the order. The title, arrow and any
+    // remaining blank card area toggle the list without navigating.
     card.addEventListener("click",event=>{
-      const insideItem=event.target?.closest?.(".basket-method");
-      if(insideItem&&card.dataset.gwbExpanded==="true")return;
+      if(event.target?.closest?.(".basket-method"))return;
       event.preventDefault();
       event.stopImmediatePropagation();
       toggleExpanded();
     },true);
     card.addEventListener("keydown",event=>{
       if(event.key!=="Enter"&&event.key!==" ")return;
-      // Handle Enter/Space only here, and cancel the native button click.
-      // Otherwise the source order-card keyboard handler can also activate.
+      // Keep the source card handler from generating a second activation.
       const fromToggle=toggle.contains(event.target);
       const collapsed=card.dataset.gwbExpanded!=="true";
       if(!fromToggle&&!collapsed)return;

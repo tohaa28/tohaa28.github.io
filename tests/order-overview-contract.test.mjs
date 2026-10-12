@@ -29,10 +29,13 @@ test('multi-item orders start collapsed, keep source card handler, and animate e
  assert.match(html,/function prepareOrderAccordion\(card,rows\)/);
  assert.match(html,/rows\.length<=1/);
  assert.match(html,/card\.dataset\.gwbExpanded="false"/);
- assert.match(html,/panel\.inert=true/);
+ assert.match(html,/for\(const row of rows\.slice\(1\)\)extra\.append\(row\)/);
+ assert.match(html,/panel\.append\(extra\)/);
+ assert.match(html,/extra\.inert=true/);
+ assert.match(html,/toggle\.setAttribute\("aria-controls",extra\.id\)/);
  assert.match(html,/stopImmediatePropagation\(\)/);
- assert.match(html,/insideItem&&card\.dataset\.gwbExpanded==="true"/);
- assert.match(html,/panel\.style\.height=expand\?panel\.scrollHeight\+"px":"0px"/);
+ assert.match(html,/if\(event\.target\?\.closest\?\.\("\.basket-method"\)\)return;/);
+ assert.match(html,/extra\.style\.height=expand\?extra\.scrollHeight\+"px":"0px"/);
  assert.match(html,/transition:height \.38s cubic-bezier/);
  assert.match(html,/aria-expanded/);
 });
