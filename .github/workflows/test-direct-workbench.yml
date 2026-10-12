@@ -537,6 +537,29 @@ jobs:
           }));
           if(compactBasketState.cards!==2||compactBasketState.rows<3||!compactBasketState.hasOrderWideHitbox||compactBasketState.orderGrid!=="grid")
             throw Error("Compact basket grouping or full-width grid regression: "+JSON.stringify(compactBasketState));
+          // CSS Grid must stretch each order to the tallest card in its own row.
+          // Cards on separate rows keep their own intrinsic heights.
+          const basketRowMetrics=()=>frame.evaluate(()=>{
+            const grid=document.querySelector("#basketOrders");
+            const cards=[...grid.querySelectorAll(":scope > .basket-order")];
+            const layout=cards.map(card=>{
+              const rect=card.getBoundingClientRect();
+              return {top:rect.top,height:rect.height};
+            });
+            const equalWithinRows=layout.every((a,i)=>layout.every((b,j)=>
+              i===j||Math.abs(a.top-b.top)>2||Math.abs(a.height-b.height)<2
+            ));
+            const counts=[...grid.querySelectorAll(".gwb-basket-count")].map(el=>{
+              const style=getComputedStyle(el);
+              return {text:el.textContent.trim(),weight:Number(style.fontWeight),size:parseFloat(style.fontSize)};
+            });
+            return {alignItems:getComputedStyle(grid).alignItems,layout,equalWithinRows,counts};
+          });
+          const initialRowMetrics=await basketRowMetrics();
+          if(initialRowMetrics.alignItems!=="stretch"||!initialRowMetrics.equalWithinRows||
+             initialRowMetrics.counts.length!==2||
+             initialRowMetrics.counts.some(x=>x.weight<700||x.size<12))
+            throw Error("Basket row heights or bold count styling regressed: "+JSON.stringify(initialRowMetrics));
           // Initially show the first of two articles; the arrow only
           // distinguishes multi-position cards and is not a button.
           const foldedOrder=frame.locator("#basketOrders .basket-order").first();
@@ -615,6 +638,9 @@ jobs:
              expandedOrder.expanded!=="true"||!expandedOrder.editorStillWaiting||
              expandedOrder.articleCount!==2)
             throw Error("Hover did not animate the other articles: "+JSON.stringify(expandedOrder));
+          const hoverRowMetrics=await basketRowMetrics();
+          if(hoverRowMetrics.alignItems!=="stretch"||!hoverRowMetrics.equalWithinRows)
+            throw Error("Expanded order must stretch all cards in its grid row: "+JSON.stringify(hoverRowMetrics));
           // Hovering the decorative arrow must not open an order.
           await foldedOrder.locator(".gwb-order-multi-indicator").hover({force:true});
           if((await frame.locator("#orderEditor").isVisible()))
@@ -629,6 +655,9 @@ jobs:
           }));
           if(closedState.extraHeight>1||closedState.firstHeight<40)
             throw Error("Mouseleave must fold only the additional articles: "+JSON.stringify(closedState));
+          const collapsedRowMetrics=await basketRowMetrics();
+          if(!collapsedRowMetrics.equalWithinRows)
+            throw Error("Collapsed basket grid row heights differ: "+JSON.stringify(collapsedRowMetrics));
           // The title click is navigation, not a second way to toggle.
           const titleClick=await frame.evaluate(()=>{
             const card=document.querySelector("#basketOrders .basket-order");

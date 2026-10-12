@@ -49,3 +49,9 @@ test('arrow is decorative and order click delegation is unchanged',()=>{
  assert.doesNotMatch(html,/card\.addEventListener\("click",event=>/);
  assert.match(html,/card\.setAttribute\("aria-expanded",String\(expand\)\)/);
 });
+
+test('cards on the same grid row stretch to the tallest order and counts are prominent',()=>{
+ assert.match(html,/\.app>main\.gwb-orders-full #basketOrders\{[^}]*align-items:stretch\}/);
+ assert.match(html,/\.app>main\.gwb-orders-full \.basket-order\{margin:0;align-self:stretch;box-sizing:border-box\}/);
+ assert.match(html,/\.gwb-basket-count\{[^}]*font:750 12\.5px\/1\.3 system-ui,sans-serif/);
+});
