@@ -33,7 +33,9 @@ export function deriveComponentVersions({editor, mockup, editorAssets, mockupAss
  return {maketnaya:'Макетная r'+mk,mockup:'Редактор мокапов r'+mo,printcheck:'PrintCheck v'+m[1]+' r'+pc,printcheckAlgorithm:id[1]};
 }
 export function stampComponentVersions(){
- const editor=read('editor.html'),mockup=read('mockup.html');
+ const flowRevision=digest([read('assets/workbench-flow.js'),read('assets/workbench-flow.css')]).slice(0,8);
+ const flowAssets=html=>html.replace(/(assets\/workbench-flow\.(?:js|css))(?:\?v=[^"]*)?(?=")/g,'$1?v='+flowRevision);
+ const editor=flowAssets(read('editor.html')),mockup=flowAssets(read('mockup.html'));
  const versions=deriveComponentVersions({
   editor,mockup,directMode:read('direct-mode.js'),
   launcherBuilder:read('tools/build-launcher.mjs')+'\n'+read('tools/launcher-motion.mjs'),
@@ -44,7 +46,7 @@ export function stampComponentVersions(){
  });
  const outputEditor=tag(tag(editor,'maketnayaVersion',versions.maketnaya),'printcheckVersion',versions.printcheck);
  const outputMockup=tag(mockup,'mockupVersion',versions.mockup);
- if(outputEditor!==editor)fs.writeFileSync(path.join(root,'editor.html'),outputEditor);
- if(outputMockup!==mockup)fs.writeFileSync(path.join(root,'mockup.html'),outputMockup);
+ if(outputEditor!==read('editor.html'))fs.writeFileSync(path.join(root,'editor.html'),outputEditor);
+ if(outputMockup!==read('mockup.html'))fs.writeFileSync(path.join(root,'mockup.html'),outputMockup);
  return versions;
 }

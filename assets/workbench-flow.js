@@ -64,7 +64,7 @@
     // Move the actual controls; do not clone or create parallel editor state.
     for (const id of ['transformControls', 'fieldsPanel', 'checksPanel']) if ($(id)) content.append($(id));
     const metadata = editor.querySelector('.metadata'); if (metadata) content.append(metadata);
-    for (const selector of ['.stage-angle', '#editorRotateLeft', '#editorRotateRight', '.stage-clip', '#editorRemoveLogo']) {
+    for (const selector of ['.stage-angle', '#editorRotateLeft', '#editorRotateRight', '.stage-clip', '#editorRemoveLogo'].reverse()) {
       const node = $('fieldLogoTools')?.querySelector(selector); if (node) content.prepend(node);
     }
     const more = document.createElement('button'); more.type = 'button'; more.id = 'flowToolMore'; more.textContent = 'Ещё инструменты';

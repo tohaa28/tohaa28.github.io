@@ -13,8 +13,8 @@ test('Flow script parses and never invokes destructive editor actions',()=>{
 test('Both direct and embedded editors receive motion assets',()=>{
   for(const file of ['editor.html','mockup.html']) {
     const html=read(file);
-    assert.equal(html.split('href="./assets/workbench-flow.css"').length,2);
-    assert.equal(html.split('src="./assets/workbench-flow.js"').length,2);
+    assert.equal((html.match(/href="\.\/assets\/workbench-flow\.css(?:\?v=[0-9a-f]{8})?"/g)||[]).length,1);
+    assert.equal((html.match(/src="\.\/assets\/workbench-flow\.js(?:\?v=[0-9a-f]{8})?"/g)||[]).length,1);
   }
   assert.match(read('tools/build-launcher.mjs'),/replaceAll\('src="\.\/assets\//);
   assert.match(read('tools/stamp-component-versions.mjs'),/workbench-flow/);
