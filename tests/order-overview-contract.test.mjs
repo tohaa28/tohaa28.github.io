@@ -55,3 +55,12 @@ test('cards on the same grid row stretch to the tallest order and counts are pro
  assert.match(html,/\.app>main\.gwb-orders-full \.basket-order\{margin:0;align-self:stretch;box-sizing:border-box\}/);
  assert.match(html,/\.gwb-basket-count\{[^}]*font:750 12\.5px\/1\.3 system-ui,sans-serif/);
 });
+
+test('step 1 article details use compact regular typography and wider value column',()=>{
+ assert.match(html,/#orderTemplateList \.article-choice\{font-size:12\.5px;line-height:1\.3;font-weight:400;padding:8px 9px\}/);
+ assert.match(html,/#orderTemplateList \.article-choice-content\{grid-template-columns:76px minmax\(0,1fr\);gap:8px\}/);
+ assert.match(html,/#orderTemplateList \.article-row\{grid-template-columns:minmax\(0,64px\) minmax\(0,1fr\);gap:2px 5px;padding:1px 0\}/);
+ assert.match(html,/#orderTemplateList \.article-row \.detail-key\{font-size:12px;line-height:1\.3;font-weight:400\}/);
+ assert.match(html,/#orderTemplateList \.article-row \.detail-value\{font-size:12\.5px;line-height:1\.3;font-weight:400/);
+ assert.match(html,/#orderTemplateList \.article-row\.place-count-audit\.bad \.detail-value\{font-weight:800\}/);
+});

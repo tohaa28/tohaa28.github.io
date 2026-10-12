@@ -868,6 +868,18 @@ jobs:
               const value = row.querySelector(".detail-value")?.textContent?.trim();
               if (key) rows[key] = value || "";
             }
+            const detailLabel=choice?.querySelector(".article-row .detail-key");
+            const detailValue=choice?.querySelector(".article-row .detail-value");
+            const detailRow=choice?.querySelector(".article-row");
+            const thumb=choice?.querySelector(".article-thumb-wrap");
+            const detailStyling={
+              labelSize:parseFloat(getComputedStyle(detailLabel).fontSize),
+              labelWeight:Number(getComputedStyle(detailLabel).fontWeight),
+              valueSize:parseFloat(getComputedStyle(detailValue).fontSize),
+              valueWeight:Number(getComputedStyle(detailValue).fontWeight),
+              thumbWidth:thumb.getBoundingClientRect().width,
+              rowColumns:getComputedStyle(detailRow).gridTemplateColumns
+            };
             const badgeContent = choice ? getComputedStyle(choice, "::after").content : "";
             return {
               choiceExists: !!choice,
@@ -881,6 +893,7 @@ jobs:
               selectedPaddingRight: choice ? parseFloat(getComputedStyle(choice).paddingRight) : 999,
               infoPaddingRight: info ? parseFloat(getComputedStyle(info).paddingRight) : 999,
               rows,
+              detailStyling,
               legacySeparateBlocks: ["selectedArticleBody","orderDetails","productCard"].some(id => !!document.getElementById(id))
             };
           });
@@ -893,6 +906,11 @@ jobs:
               articleChoiceState.infoPaddingRight > 4 ||
               articleChoiceState.badgeOverlapsQuantity ||
               articleChoiceState.legacySeparateBlocks ||
+              articleChoiceState.detailStyling.valueWeight>500 ||
+              articleChoiceState.detailStyling.labelWeight>500 ||
+              articleChoiceState.detailStyling.valueSize>13 ||
+              articleChoiceState.detailStyling.labelSize>12.5 ||
+              articleChoiceState.detailStyling.thumbWidth>80 ||
               articleChoiceState.rows["Артикул"] !== "15637" ||
               articleChoiceState.rows["Название"] !== "Брелок" ||
               articleChoiceState.rows["Тираж"] !== "10 шт." ||
