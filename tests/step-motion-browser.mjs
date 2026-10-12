@@ -47,6 +47,7 @@ export async function verifyStepMotion(frame) {
   await frame.locator('#flowNext').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '4');
   assert.equal(await frame.locator('#simpleExport').isVisible(), true);
+  assert.match(await frame.locator('#editorStep3 strong').textContent(),/Шаг 4/);
   await frame.evaluate(()=>document.querySelector('.rail').scrollTop=0);
   await capture('step-motion-export.png');
   const exportButton = await frame.locator('#simpleExport').boundingBox();
@@ -55,6 +56,7 @@ export async function verifyStepMotion(frame) {
     'The download button must fit in the settled desktop step: '+JSON.stringify({exportButton,railBox}));
   await frame.locator('#flowReviewEdit').click();
   assert.equal(await frame.locator('#orderEditor').getAttribute('data-flow-step'), '3');
+  assert.match(await frame.locator('#editorStep3 strong').textContent(),/Шаг 3/);
   assert.deepEqual(await data(), before, 'Backtracking must preserve files, dimensions, rotation, selection, zoom and native readiness');
   // Fast clicks must never leave two active steps or queued navigation.
   await frame.evaluate(() => { for(let i=0;i<20;i++){window.gwbFlow.go(2);window.gwbFlow.go(3)} });

@@ -222,6 +222,9 @@
       const fieldCaption = $('orderFieldChoiceBox')?.querySelector('.simple-label');
       setText(fieldCaption, step === 2 ? 'Выберите место нанесения' : 'Место нанесения');
       setText($('flowHeading'), labels[step - 1]); setText($('flowDescription'), descriptions[step - 1]);
+      const workspaceCaption = $('editorStep3');
+      setText(workspaceCaption?.querySelector('strong'), step === 4 ? 'Шаг 4. Просмотр готового макета' : 'Шаг 3. Добавьте логотип');
+      setText(workspaceCaption?.querySelector('span'), step === 4 ? 'Проверьте положение логотипов и результат PrintCheck перед скачиванием.' : 'Загрузите файл и разместите логотип. Для поворота потяните круглый маркер ↻ над логотипом; Shift — шаг 15°, Esc — отмена.');
       for (const button of $('flowNavigation').querySelectorAll('button')) {
         const target = Number(button.dataset.flowStep);
         button.disabled = !available(target, s) || !!s.busy;
