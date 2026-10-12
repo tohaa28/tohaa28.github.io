@@ -689,10 +689,11 @@
     },true);
     card.addEventListener("keydown",event=>{
       if(event.key!=="Enter"&&event.key!==" ")return;
-      // Native buttons already dispatch one click for Enter or Space.
-      // Intercepting keydown too would toggle the accordion twice.
-      if(toggle.contains(event.target))return;
-      if(card.dataset.gwbExpanded==="true")return;
+      // Handle Enter/Space only here, and cancel the native button click.
+      // Otherwise the source order-card keyboard handler can also activate.
+      const fromToggle=toggle.contains(event.target);
+      const collapsed=card.dataset.gwbExpanded!=="true";
+      if(!fromToggle&&!collapsed)return;
       event.preventDefault();
       event.stopImmediatePropagation();
       toggleExpanded();
