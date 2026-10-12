@@ -33,20 +33,18 @@ export function deriveComponentVersions({editor, mockup, editorAssets, mockupAss
  return {maketnaya:'Макетная r'+mk,mockup:'Редактор мокапов r'+mo,printcheck:'PrintCheck v'+m[1]+' r'+pc,printcheckAlgorithm:id[1]};
 }
 export function stampComponentVersions(){
- const flowRevision=digest([read('assets/workbench-flow.js'),read('assets/workbench-flow.css')]).slice(0,8);
- const flowAssets=html=>html.replace(/(assets\/workbench-flow\.(?:js|css))(?:\?v=[^"]*)?(?=")/g,'$1?v='+flowRevision);
- const editor=flowAssets(read('editor.html')),mockup=flowAssets(read('mockup.html'));
+ const editor=read('editor.html'),mockup=read('mockup.html');
  const versions=deriveComponentVersions({
   editor,mockup,directMode:read('direct-mode.js'),
   launcherBuilder:read('tools/build-launcher.mjs')+'\n'+read('tools/launcher-motion.mjs'),
-  editorAssets:assetContents(/^(?:index-.*|workbench-flow)\.(?:js|css)$/),
-  mockupAssets:assetContents(/^(?:mockup[-.].*|workbench-flow)\.(?:mjs|js|css)$/),
+  editorAssets:assetContents(/^index-.*\.(?:js|css)$/),
+  mockupAssets:assetContents(/^mockup[-.].*\.(?:mjs|js|css)$/),
   detailAssets:assetContents(/^(?:logo-detail-.*|logo-preflight\.mjs|logo-artwork-view\.mjs)$/),
   profiles:read('mockup-profiles.json'),saveProfile:read('save-profile.html')
  });
  const outputEditor=tag(tag(editor,'maketnayaVersion',versions.maketnaya),'printcheckVersion',versions.printcheck);
  const outputMockup=tag(mockup,'mockupVersion',versions.mockup);
- if(outputEditor!==read('editor.html'))fs.writeFileSync(path.join(root,'editor.html'),outputEditor);
- if(outputMockup!==read('mockup.html'))fs.writeFileSync(path.join(root,'mockup.html'),outputMockup);
+ if(outputEditor!==editor)fs.writeFileSync(path.join(root,'editor.html'),outputEditor);
+ if(outputMockup!==mockup)fs.writeFileSync(path.join(root,'mockup.html'),outputMockup);
  return versions;
 }

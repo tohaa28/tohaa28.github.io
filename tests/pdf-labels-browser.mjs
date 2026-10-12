@@ -495,10 +495,6 @@ export async function verifyPdfLabels(frame) {
   );
   assert.equal(await frame.locator('#fields').inputValue(),'');
   const overlayBox=await frame.locator('#overlay').boundingBox();
-  if(!(overlayBox && overlayBox.width>0 && overlayBox.height>0)) {
-    console.log('Canvas layout diagnostics:', JSON.stringify(await frame.evaluate(()=>Object.fromEntries(['.app','.app>main','.rail','.workspace','#stageScroll','#stage','#overlay','#flowSettingsDock'].map(selector=>{const node=document.querySelector(selector),box=node?.getBoundingClientRect(),style=node&&getComputedStyle(node);return [selector,{box:box&&{x:box.x,y:box.y,w:box.width,h:box.height},hidden:node?.hidden,classes:node?.className,display:style?.display,grid:style?.gridTemplateColumns,rows:style?.gridTemplateRows,height:style?.height,minHeight:style?.minHeight}]})))));
-    await frame.page().screenshot({path:'step-motion-layout-failure.png'});
-  }
   assert.ok(overlayBox && overlayBox.width>0 && overlayBox.height>0);
   // PDF point (180,180) lies inside the bbox but in the missing quadrant of L.
   await frame.locator('#overlay').click({position:{x:overlayBox.width*0.60,y:overlayBox.height*0.40}});
@@ -709,9 +705,7 @@ export async function verifyPdfLabels(frame) {
   // new color-model error before testing the unchanged PDF clipping exporter.
   await frame.waitForFunction(()=>window.gwbLogoPreflight?.some(r=>r.findings.some(f=>f.id==='rgb-color-model')));
   await frame.locator('#confirmErrors').check();
-  await frame.evaluate(()=>window.gwbFlow?.go(4));
   await frame.locator('#simpleExport').click();
-  await frame.evaluate(()=>window.gwbFlow?.go(3));
   await frame.waitForFunction(()=>{
     const link=document.getElementById('downloadResult');
     return !!link && link.hidden===false && /^blob:/.test(link.href||'');

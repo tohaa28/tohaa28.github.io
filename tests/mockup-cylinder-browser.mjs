@@ -9,7 +9,7 @@ export async function verifyMockupCylinder(browserContext){
     const relative=url.pathname.replace("/gifts-layout-workbench-mockups/","");
     if(!relative||relative.includes(".."))return route.abort();
     if(!fs.existsSync(relative))return route.abort();
-    const type=relative.endsWith(".html")?"text/html; charset=utf-8":relative.endsWith(".mjs")||relative.endsWith(".js")?"application/javascript; charset=utf-8":relative.endsWith(".json")?"application/json; charset=utf-8":relative.endsWith(".css")?"text/css; charset=utf-8":"application/octet-stream";
+    const type=relative.endsWith(".html")?"text/html; charset=utf-8":relative.endsWith(".mjs")||relative.endsWith(".js")?"application/javascript; charset=utf-8":relative.endsWith(".json")?"application/json; charset=utf-8":"application/octet-stream";
     await route.fulfill({body:fs.readFileSync(relative),contentType:type,headers:{"access-control-allow-origin":"*"}});
   });
   await page.route("https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json**",route=>route.fulfill({contentType:"application/json",body:'{"schema":"gifts-mockup-profile-registry/v1","version":1,"profiles":[],"candidates":[],"articleSources":[]}'}));

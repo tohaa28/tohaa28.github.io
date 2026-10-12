@@ -13,10 +13,7 @@ export async function verifyRotationAndColors(frame){
   return Number(await frame.locator('#editorAngle').inputValue());
  }
  await frame.locator("#confirmErrors").check();
- await frame.page().screenshot({path:'step-motion-rotation.png'});
- console.log('Rotation hit diagnostics:',JSON.stringify(await handle.evaluate(el=>{const r=el.getBoundingClientRect(),c=document.getElementById('overlay').getBoundingClientRect();return {handle:{x:r.x,y:r.y,w:r.width,h:r.height},canvas:{x:c.x,y:c.y,w:c.width,h:c.height},hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML.slice(0,240),center:{x:el.dataset.centerX,y:el.dataset.centerY},state:window.gwbFlow?.getState()}})));
  const angle=await drag(90);
- console.log('Rotation result:',JSON.stringify({start,angle,confirmation:await frame.locator('#confirmErrors').isChecked()}));
  assert.equal(await frame.locator("#confirmErrors").isChecked(),false);assert.ok(Math.abs(angle-(start+90)%360)<2,`Quarter turn: ${start} -> ${angle}`);
  assert.equal(await frame.locator('#width').inputValue(),size);
  const snapped=await drag(22,{shift:true});assert.equal(snapped%15,0);

@@ -6,11 +6,9 @@ on:
   push:
     branches:
       - gifts-layout-workbench-source
-      - gifts-layout-workbench-step-motion-preview
     paths:
       - "direct-mode.js"
       - "editor.html"
-      - "mockup-profiles.json"
       - "tools/**"
       - "assets/**"
       - "tests/**"
@@ -32,9 +30,7 @@ jobs:
       - run: node --check assets/index-BpU9kvz8.js
       - run: npm init -y
       - run: npm install playwright
-      - run: npx playwright install --with-deps chromium firefox
-      - name: Verify disclosures and window motion in Chromium and Firefox
-        run: node tests/motion-disclosure-browser-runner.mjs
+      - run: npx playwright install --with-deps chromium
       - name: Verify cylinder mockup independently
         run: node tests/mockup-cylinder-browser-runner.mjs
       - name: Launch Workbench on gifts.ru
@@ -45,9 +41,9 @@ jobs:
           const browser = await chromium.launch({headless:true});
           const browserContext = await browser.newContext();
           const page = await browserContext.newPage();
-          await browserContext.route(/^https:\/\/tohaa28\.github\.io\/gifts-layout-workbench(?:-mockups)?\//, async route => {
+          await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench/**", async route => {
             const pathname = new URL(route.request().url()).pathname;
-            const relative = pathname.replace(/^\/gifts-layout-workbench(?:-mockups)?\//, "");
+            const relative = pathname.replace("/gifts-layout-workbench/", "");
             if (!/^(assets|vendor)\//.test(relative) || relative.includes("..")) return route.abort();
             const contentType = /\.m?js$/.test(relative) ? "application/javascript" : /\.css$/.test(relative) ? "text/css" : "application/octet-stream";
             await route.fulfill({body:fs.readFileSync(relative),contentType,headers:{"access-control-allow-origin":"*"}});
@@ -874,7 +870,6 @@ jobs:
             return !!img && img.hidden === false && img.complete && img.naturalWidth > 0;
           }, null, {timeout:30000});
 
-          await frame.evaluate(() => window.gwbFlow?.go(1));
           const articleChoiceState = await frame.evaluate(() => {
             const choice = document.querySelector("#orderTemplateList .article-choice");
             const info = choice?.querySelector(".article-choice-info");
@@ -988,7 +983,6 @@ jobs:
           }
           console.log("Stage aspect ratio:", JSON.stringify({...stageAspect,stageRatioError}));
 
-          await frame.evaluate(() => window.gwbFlow?.go(2));
           const fieldOptionCount = await frame.locator("#orderFieldChoice option:not([value=''])").count();
           if (fieldOptionCount > 0) {
             await frame.selectOption("#orderFieldChoice", {index:1});
@@ -1090,7 +1084,6 @@ jobs:
           }
           console.log("Place-count mismatch control:", JSON.stringify(mismatchState));
 
-          await frame.evaluate(() => window.gwbFlow?.setSettings(true));
           const {verifyPdfLabels} = await import("./tests/pdf-labels-browser.mjs");
           await verifyPdfLabels(frame);
           const {verifyLogoPreflight} = await import("./tests/logo-preflight-browser.mjs");
@@ -1107,8 +1100,6 @@ jobs:
           await verifyVectorView(frame);
           const {verifyMockupCylinder}=await import('./tests/mockup-cylinder-browser.mjs');
           await verifyMockupCylinder(browserContext);
-          const {verifyStepMotion} = await import("./tests/step-motion-browser.mjs");
-          await verifyStepMotion(frame);
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
@@ -1138,10 +1129,3 @@ jobs:
           if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
           await browser.close();
           NODE
-      - name: Save motion-interface screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: maketnaya-step-motion-screenshots
-          path: step-motion-*.png
-          if-no-files-found: ignore
