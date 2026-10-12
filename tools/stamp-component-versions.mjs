@@ -37,7 +37,7 @@ export function stampComponentVersions(){
  const versions=deriveComponentVersions({
   editor,mockup,directMode:read('direct-mode.js'),
   launcherBuilder:read('tools/build-launcher.mjs')+'\n'+read('tools/launcher-motion.mjs'),
-  editorAssets:assetContents(/^(?:index-|workbench-motion).*\.(?:js|css)$/),
+  editorAssets:assetContents(/^index-.*\.(?:js|css)$/),
   mockupAssets:assetContents(/^mockup[-.].*\.(?:mjs|js|css)$/),
   detailAssets:assetContents(/^(?:logo-detail-.*|logo-preflight\.mjs|logo-artwork-view\.mjs)$/),
   profiles:read('mockup-profiles.json'),saveProfile:read('save-profile.html')

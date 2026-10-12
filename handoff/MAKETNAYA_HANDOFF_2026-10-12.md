@@ -3,9 +3,9 @@
 ## Точка восстановления
 - GitHub: https://github.com/tohaa28/tohaa28.github.io
 - Рабочая ветка: `gifts-layout-workbench-mockups-source`. Публикация: `main`.
-- **Последняя проверенная функциональная исходная версия**: `18a29a464e8a47a7fd6480995600a10fb6bb9e37`.
-- Соответствующая публикация: `main` `328fa9240a310c6bf29634e34dce1cf54b99c661`.
-- Workflow `38256728445`: `precheck`, `publish`, `browser_verify` — SUCCESS; **142/142 unit**.
+- **Последняя проверенная функциональная исходная версия**: `15d1817d6f9af42216e2671666a0b54e65497cca`.
+- Соответствующая публикация: `main` `253113aeec77edd195c7d0b2a66f7e2f0e4310b1`.
+- Workflow `38249503509`: `precheck`, `publish`, `browser_verify` — SUCCESS; **134/134 unit**.
 - Сайт: https://tohaa28.github.io/gifts-layout-workbench-mockups/
 - Полная история: `PROJECT_HISTORY_MAKETNAYA.md`. Новые изменения: `handoff/MAKETNAYA_CHANGES_2026-10-12.md`. Машинные SHAs/статус: `handoff/MAKETNAYA_STATE_2026-10-12.json`.
 
@@ -39,18 +39,7 @@
 - Выпуск подтверждать только после `precheck`, `publish`, `browser_verify` и проверки `main`.
 
 ## Последнее изменение
-Studio UI 2.0 — заметная перестройка интерфейсов Макетной и мокапов: навигационные вкладки, приветственный блок заказов, карточки, шкала четырёх шагов, новая левая панель и отдельная рабочая поверхность, сохранена старая логика. Source `18a29a46`, main `328fa924`, workflow `38256728445` SUCCESS: 142/142. Pages deploy `38256766407` SUCCESS. Стили/обвязка: `assets/workbench-shell.css/js`, `assets/mockup-shell.css/js`. Дополнительный rollback `docs/STUDIO_UI_REDESIGN_ROLLBACK_2026-10-12.md`.
-
-## Новый визуальный бэкап (до Studio UI 2.0)
-- Source: `backup/maketnaya-source-before-ui-redesign-2026-10-12`, SHA `f1158f35ce0d8866925bdfc40ffee357c1dc8c00`.
-- Pages main: `backup/maketnaya-published-before-ui-redesign-2026-10-12`, SHA `081017eae23e9d857c14a96c84d94e69791cdf9b`.
-- В версии до Studio UI оставались последняя стартовая анимация и старые микропереходы. Для восстановления дерева используйте `docs/STUDIO_UI_REDESIGN_ROLLBACK_2026-10-12.md`.
-
-## Как откатить и что защищено
-- Backup исходников: `backup/maketnaya-source-before-motion-system-2026-10-12`, `2886e79f7501d60b52cb26bf97862938e3403174`.
-- Backup опубликованного main: `backup/maketnaya-published-before-motion-system-2026-10-12`, `253113aeec77edd195c7d0b2a66f7e2f0e4310b1`.
-- Для отката создать новый source-коммит из дерева backup-ветки без force-push и дождаться полного CI/deploy. Документ `docs/MOTION_SYSTEM_ROLLBACK_2026-10-12.md`.
-- Запуск прежней стартовой заставки останется: резерв сохранён **перед внутренними переходами**, а не до неё.
+Утверждённый моушен-дизайн вместо старых раздвижных дверей: 2600 мс CSS/SVG-сцена (бренд, геометрические пластины, макет и «Макет готов»), затем реальный интерфейс. Source `15d1817d`, main `253113ae`, workflow `38249503509`: 134/134, все jobs SUCCESS. Источник анимации `tools/launcher-motion.mjs`, сборка `tools/build-launcher.mjs`, проверка `tests/launcher-motion.test.mjs`.
 
 ## Следующий шаг
 История и новая защита клавиатурного управления сохранены. При следующем запросе сперва проверить свежую ветку. Если пользователь продолжит тесты мокапа — запросить/посмотреть повторный PNG с реальной бейсболкой; если займётся PrintCheck — использовать v25 handoff и реальные контрольные метки. Подробнее см. `PROJECT_HISTORY_MAKETNAYA.md`.
