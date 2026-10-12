@@ -537,40 +537,45 @@ jobs:
           }));
           if(compactBasketState.cards!==2||compactBasketState.rows<3||!compactBasketState.hasOrderWideHitbox||compactBasketState.orderGrid!=="grid")
             throw Error("Compact basket grouping or full-width grid regression: "+JSON.stringify(compactBasketState));
-          // Initial overview is compact: the two-position order is folded,
-          // the single-position order is immediately selectable.
+          // Initially show the first of two articles; the arrow only
+          // distinguishes multi-position cards and is not a button.
           const foldedOrder=frame.locator("#basketOrders .basket-order").first();
           await frame.waitForFunction(()=>{
             const cards=[...document.querySelectorAll("#basketOrders .basket-order")];
-            return cards.length===2&&cards[0].dataset.gwbAccordion==="1"&&cards[0].dataset.gwbExpanded==="false";
+            return cards.length===2&&cards[0].dataset.gwbAccordion==="1"&&
+                   cards[0].dataset.gwbExpanded==="false";
           },null,{timeout:12000});
           const collapsedOrder=await frame.evaluate(()=>{
             const [multi,single]=document.querySelectorAll("#basketOrders .basket-order");
             const panel=multi.querySelector(":scope > .basket-methods");
             const first=panel.querySelector(":scope > .basket-method");
             const extra=panel.querySelector(":scope > .gwb-order-extra");
-            const button=multi.querySelector(".gwb-order-accordion-toggle");
+            const indicator=multi.querySelector(".gwb-order-multi-indicator");
             return {
               count:multi.querySelectorAll(".basket-method").length,
               firstArticle:first?.dataset.article,
               firstHeight:first?.getBoundingClientRect().height||0,
               extraHeight:extra?.getBoundingClientRect().height,
               extraInert:extra?.inert,
-              ariaControls:button?.getAttribute("aria-controls")===extra?.id,
-              expanded:button?.getAttribute("aria-expanded"),
+              ariaControls:multi.getAttribute("aria-controls")===extra?.id,
+              expanded:multi.getAttribute("aria-expanded"),
+              decorativeArrow:indicator?.tagName==="SPAN"&&
+                indicator.getAttribute("aria-hidden")==="true"&&
+                getComputedStyle(indicator).pointerEvents==="none",
+              hasInteractiveArrow:!!multi.querySelector(".gwb-order-accordion-toggle"),
               grid:getComputedStyle(document.querySelector("#basketOrders")).display,
-              singleNoToggle:!single.querySelector(".gwb-order-accordion-toggle"),
+              singleNoIndicator:!single.querySelector(".gwb-order-multi-indicator"),
               orderTitle:multi.querySelector(".basket-order-title")?.textContent?.trim(),
               rowsStillInDom:multi.querySelectorAll(".basket-method").length===2
             };
           });
           if(collapsedOrder.count!==2||collapsedOrder.firstArticle!=="15637"||
              collapsedOrder.firstHeight<40||collapsedOrder.extraHeight>1||!collapsedOrder.extraInert||
-             !collapsedOrder.ariaControls||collapsedOrder.expanded!=="false"||collapsedOrder.grid!=="grid"||
-             !collapsedOrder.singleNoToggle||collapsedOrder.orderTitle!=="Заказ №7920509"||
-             !collapsedOrder.rowsStillInDom)
-            throw Error("Multi-position card must initially show one article: "+JSON.stringify(collapsedOrder));
-          // Probe the real click delegation without opening the editor prematurely.
+             !collapsedOrder.ariaControls||collapsedOrder.expanded!=="false"||
+             !collapsedOrder.decorativeArrow||collapsedOrder.hasInteractiveArrow||
+             collapsedOrder.grid!=="grid"||!collapsedOrder.singleNoIndicator||
+             collapsedOrder.orderTitle!=="Заказ №7920509"||!collapsedOrder.rowsStillInDom)
+            throw Error("Multi-position card must show one article and a decorative arrow: "+JSON.stringify(collapsedOrder));
           const firstArticleClick=await frame.evaluate(()=>{
             const card=document.querySelector("#basketOrders .basket-order");
             const first=card.querySelector(":scope > .basket-methods > .basket-method");
@@ -581,8 +586,9 @@ jobs:
             return {clicks,expanded:card.dataset.gwbExpanded};
           });
           if(firstArticleClick.clicks!==1||firstArticleClick.expanded!=="false")
-            throw Error("Visible first article must open the order, not expand it: "+JSON.stringify(firstArticleClick));
-          await foldedOrder.locator(".basket-order-title").click();
+            throw Error("Clicking the first article must still invoke the source order handler: "+JSON.stringify(firstArticleClick));
+          // Enter the whole card, without clicking or touching the arrow.
+          await foldedOrder.hover();
           await frame.waitForFunction(()=>{
             const card=document.querySelector("#basketOrders .basket-order");
             const extra=card?.querySelector(".gwb-order-extra");
@@ -593,13 +599,12 @@ jobs:
             const multi=document.querySelector("#basketOrders .basket-order"),
                   panel=multi.querySelector(".basket-methods"),
                   first=panel.querySelector(":scope > .basket-method"),
-                  extra=panel.querySelector(":scope > .gwb-order-extra"),
-                  toggle=multi.querySelector(".gwb-order-accordion-toggle");
+                  extra=panel.querySelector(":scope > .gwb-order-extra");
             return {
               extraHeight:extra.getBoundingClientRect().height,
               firstHeight:first.getBoundingClientRect().height,
               transition:getComputedStyle(extra).transitionProperty,
-              expanded:toggle?.getAttribute("aria-expanded"),
+              expanded:multi.getAttribute("aria-expanded"),
               editorStillWaiting:document.getElementById("orderEditor")?.hidden===true,
               articleCount:multi.querySelectorAll(".basket-method").length,
               extraVisible:!extra.inert
@@ -609,8 +614,13 @@ jobs:
              !expandedOrder.transition.includes("height")||!expandedOrder.extraVisible||
              expandedOrder.expanded!=="true"||!expandedOrder.editorStillWaiting||
              expandedOrder.articleCount!==2)
-            throw Error("Additional order articles failed to unfold smoothly: "+JSON.stringify(expandedOrder));
-          await foldedOrder.locator(".basket-order-title").click();
+            throw Error("Hover did not animate the other articles: "+JSON.stringify(expandedOrder));
+          // Hovering the decorative arrow must not open an order.
+          await foldedOrder.locator(".gwb-order-multi-indicator").hover({force:true});
+          if((await frame.locator("#orderEditor").isVisible()))
+            throw Error("Decorative arrow unexpectedly opened the order editor");
+          // Moving outside the card collapses the extra positions again.
+          await frame.locator("#basketStatus").hover();
           await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="false");
           await frame.waitForTimeout(420);
           const closedState=await foldedOrder.evaluate(card=>({
@@ -618,22 +628,18 @@ jobs:
             firstHeight:card.querySelector(":scope > .basket-methods > .basket-method").getBoundingClientRect().height
           }));
           if(closedState.extraHeight>1||closedState.firstHeight<40)
-            throw Error("Collapsing must keep the first article visible: "+JSON.stringify(closedState));
-          // Reopen to keep the existing thumbnail and mockup badge regressions valid.
-          await foldedOrder.locator(".gwb-order-accordion-toggle").click();
-          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="true");
-          // Enter/Space generate native button clicks. Never toggle twice via keydown.
-          const keyboardToggle=foldedOrder.locator(".gwb-order-accordion-toggle");
-          await keyboardToggle.focus();
-          await keyboardToggle.press("Enter");
-          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="false");
-          const enterState=await keyboardToggle.getAttribute("aria-expanded");
-          if(enterState!=="false")throw Error("Accordion Enter key must close only once: "+enterState);
-          await keyboardToggle.press("Space");
-          await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="true");
-          const spaceState=await keyboardToggle.getAttribute("aria-expanded");
-          if(spaceState!=="true")throw Error("Accordion Space key must open only once: "+spaceState);
-          console.log("Compact order accordion:",JSON.stringify({collapsedOrder,expandedOrder,closedState,enterState,spaceState,firstArticleClick}));
+            throw Error("Mouseleave must fold only the additional articles: "+JSON.stringify(closedState));
+          // The title click is navigation, not a second way to toggle.
+          const titleClick=await frame.evaluate(()=>{
+            const card=document.querySelector("#basketOrders .basket-order");
+            const handler=card.onclick;let clicks=0;
+            card.onclick=()=>{clicks++};
+            try{card.querySelector(".basket-order-title").click()}finally{card.onclick=handler}
+            return {clicks,expanded:card.dataset.gwbExpanded};
+          });
+          if(titleClick.clicks!==1||titleClick.expanded!=="false")
+            throw Error("Order title must retain its original navigation: "+JSON.stringify(titleClick));
+          console.log("Hover order accordion:",JSON.stringify({collapsedOrder,expandedOrder,closedState,firstArticleClick,titleClick}));
           const firstBasketThumb=frame.locator("#basketOrders .gwb-basket-thumb").first();
           await firstBasketThumb.scrollIntoViewIfNeeded();
           try{

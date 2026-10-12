@@ -88,13 +88,12 @@
 }
 @media(max-width:440px){.gwb-basket-item{grid-template-columns:48px minmax(0,1fr);gap:7px}.gwb-basket-thumb{width:48px;height:48px}}
 
-/* Orders overview: compact multi-item cards expand only when requested. */
+/* Multi-position cards open on hover; the arrow is only a visual hint. */
 .basket-order.gwb-multi-order{min-width:0}
 .basket-order.gwb-multi-order>.basket-order-title{padding-right:105px!important;min-height:25px}
 .basket-order.gwb-multi-order>.gwb-basket-count{right:48px;top:12px}
-.gwb-order-accordion-toggle{position:absolute;z-index:3;right:8px;top:7px;display:grid;place-items:center;width:27px;height:27px;padding:0;border:1px solid #dae5d1;border-radius:5px;background:#f1f7e8;color:#567919;cursor:pointer;font:700 18px/1 system-ui,sans-serif}
-.gwb-order-accordion-toggle:hover,.gwb-order-accordion-toggle:focus-visible{background:#e5f1d3;border-color:#a6c66c;outline-offset:2px}
-.gwb-order-accordion-toggle .gwb-order-arrow{display:inline-block;transition:transform .36s cubic-bezier(.2,.8,.2,1)}
+.gwb-order-multi-indicator{position:absolute;z-index:3;right:8px;top:7px;display:grid;place-items:center;width:27px;height:27px;padding:0;border:1px solid #dae5d1;border-radius:5px;background:#f1f7e8;color:#567919;pointer-events:none;cursor:default;font:700 18px/1 system-ui,sans-serif}
+.gwb-order-multi-indicator .gwb-order-arrow{display:inline-block;transition:transform .36s cubic-bezier(.2,.8,.2,1)}
 .gwb-multi-order[data-gwb-expanded="true"] .gwb-order-arrow{transform:rotate(180deg)}
 /* Always show the first real article; animate only the remaining articles. */
 .gwb-multi-order>.basket-methods{min-height:0;overflow:visible}
@@ -639,8 +638,8 @@
     row.replaceChildren(item);
   }
 
-  // Keep the first article visible. Only the additional positions unfold.
-  // The original source card click handler still opens the order from any article.
+  // First article remains visible. Other items unfold on pointer hover
+  // (or keyboard focus); the arrow is a non-interactive visual indicator.
   function prepareOrderAccordion(card,rows){
     if(rows.length<=1||card.dataset.gwbAccordion==="1")return;
     const panel=card.querySelector(":scope > .basket-methods");
@@ -655,14 +654,13 @@
     panel.append(extra);
     const arrow=element("span","gwb-order-arrow","⌄");
     arrow.setAttribute("aria-hidden","true");
-    const toggle=element("button","gwb-order-accordion-toggle");
-    toggle.type="button";
-    toggle.title="Показать все артикулы заказа";
-    toggle.setAttribute("aria-label","Развернуть артикулы заказа");
-    toggle.setAttribute("aria-controls",extra.id);
-    toggle.setAttribute("aria-expanded","false");
-    toggle.append(arrow);
-    card.append(toggle);
+    const indicator=element("span","gwb-order-multi-indicator");
+    indicator.title="В заказе несколько артикулов — наведите для просмотра";
+    indicator.setAttribute("aria-hidden","true");
+    indicator.append(arrow);
+    card.append(indicator);
+    card.setAttribute("aria-controls",extra.id);
+    card.setAttribute("aria-expanded","false");
     extra.style.height="0px";
     extra.setAttribute("aria-hidden","true");
     extra.inert=true;
@@ -671,39 +669,27 @@
       if(card.dataset.gwbExpanded==="true")extra.style.height="auto";
     };
     extra.addEventListener("transitionend",syncHeight);
-    const toggleExpanded=()=>{
-      const expand=card.dataset.gwbExpanded!=="true";
-      // Measure the extra rows, not the first visible article. Explicit pixel
-      // heights prevent jumps when titles wrap onto multiple lines.
+    const setExpanded=expand=>{
+      if((card.dataset.gwbExpanded==="true")===expand)return;
       const currentHeight=extra.getBoundingClientRect().height;
       extra.style.height=currentHeight+"px";
       void extra.offsetHeight;
       card.dataset.gwbExpanded=String(expand);
-      toggle.setAttribute("aria-expanded",String(expand));
-      toggle.setAttribute("aria-label",expand?"Свернуть артикулы заказа":"Развернуть артикулы заказа");
-      toggle.title=expand?"Свернуть список артикулов":"Показать все артикулы заказа";
+      card.setAttribute("aria-expanded",String(expand));
       extra.inert=!expand;
       extra.setAttribute("aria-hidden",String(!expand));
       extra.style.height=expand?extra.scrollHeight+"px":"0px";
     };
-    // The article itself always opens the order. The title, arrow and any
-    // remaining blank card area toggle the list without navigating.
-    card.addEventListener("click",event=>{
-      if(event.target?.closest?.(".basket-method"))return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      toggleExpanded();
-    },true);
-    card.addEventListener("keydown",event=>{
-      if(event.key!=="Enter"&&event.key!==" ")return;
-      // Keep the source card handler from generating a second activation.
-      const fromToggle=toggle.contains(event.target);
-      const collapsed=card.dataset.gwbExpanded!=="true";
-      if(!fromToggle&&!collapsed)return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      toggleExpanded();
-    },true);
+    card.addEventListener("mouseenter",()=>setExpanded(true));
+    card.addEventListener("mouseleave",()=>setExpanded(false));
+    // Keyboard users can inspect all positions by focusing the card.
+    // Enter/Space and mouse clicks remain owned by the original order handler.
+    card.addEventListener("focusin",()=>setExpanded(true));
+    card.addEventListener("focusout",event=>{
+      if(!card.contains(event.relatedTarget))setExpanded(false);
+    });
+    // Orders may finish loading after the pointer is already over the card.
+    if(card.matches(":hover"))setExpanded(true);
   }
   async function enhanceCard(card){
     const match=String(card.getAttribute("aria-label")||"").match(/\d{5,12}/);

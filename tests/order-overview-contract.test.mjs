@@ -25,21 +25,25 @@ test('basket overview preserves the order click contracts and derives photos fro
  assert.match(html,/visibleImages\.observe\(thumb\)/);
 });
 
-test('multi-item orders start collapsed, keep source card handler, and animate expansion',()=>{
+test('multi-item orders show the first article and unfold extras on hover',()=>{
  assert.match(html,/function prepareOrderAccordion\(card,rows\)/);
  assert.match(html,/rows\.length<=1/);
  assert.match(html,/card\.dataset\.gwbExpanded="false"/);
  assert.match(html,/for\(const row of rows\.slice\(1\)\)extra\.append\(row\)/);
  assert.match(html,/panel\.append\(extra\)/);
  assert.match(html,/extra\.inert=true/);
- assert.match(html,/toggle\.setAttribute\("aria-controls",extra\.id\)/);
- assert.match(html,/stopImmediatePropagation\(\)/);
- assert.match(html,/if\(event\.target\?\.closest\?\.\("\.basket-method"\)\)return;/);
+ assert.match(html,/card\.setAttribute\("aria-controls",extra\.id\)/);
+ assert.match(html,/card\.addEventListener\("mouseenter",\(\)=>setExpanded\(true\)\)/);
+ assert.match(html,/card\.addEventListener\("mouseleave",\(\)=>setExpanded\(false\)\)/);
+ assert.match(html,/card\.addEventListener\("focusin",\(\)=>setExpanded\(true\)\)/);
+ assert.match(html,/card\.matches\(":hover"\)/);
  assert.match(html,/extra\.style\.height=expand\?extra\.scrollHeight\+"px":"0px"/);
  assert.match(html,/transition:height \.38s cubic-bezier/);
- assert.match(html,/aria-expanded/);
 });
-test('accordion prevents duplicate native button keyboard activation',()=>{
- assert.match(html,/const fromToggle=toggle\.contains\(event\.target\)/);
- assert.match(html,/if\(!fromToggle&&!collapsed\)return;\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);\s*toggleExpanded\(\);/);
+test('arrow is decorative and order click delegation is unchanged',()=>{
+ assert.match(html,/element\("span","gwb-order-multi-indicator"\)/);
+ assert.match(html,/indicator\.setAttribute\("aria-hidden","true"\)/);
+ assert.match(html,/\.gwb-order-multi-indicator\{[^}]*pointer-events:none/);
+ assert.doesNotMatch(html,/element\("button","gwb-order-accordion-toggle"\)/);
+ assert.doesNotMatch(html,/const toggleExpanded=/);
 });
