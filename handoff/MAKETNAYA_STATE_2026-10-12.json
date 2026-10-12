@@ -1,22 +1,23 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "85bab4b183db1f419512559490cb97a415d7bd0c",
+  "verified_functional_source_commit": "e10ba4447b173ea17959cb2fb25bb8335b7591d2",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "ea8c0fae627a95009e4e4e2e28f85ceb93ee5305",
-  "verified_publication_main_commit": "57d23feb558c10aa8ccec475c9b0956752b7db1f",
+  "source_tree_sha": "efa30e3fc855394b4bfea7fbb2e623b15dd7c0c8",
+  "verified_publication_main_commit": "d8cb827ed0a0ee2200c0138c70d409d268667968",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38290413508,
+    "run": 38295179096,
     "conclusion": "success",
-    "unit_tests": 134,
+    "unit_tests": 137,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success",
-    "pages_deploy_run": 38290486575,
-    "pages_deploy": "success"
+    "pages_deploy_run": 38295214985,
+    "pages_deploy": "success",
+    "prepublication_browser_run": 38294976352
   },
-  "last_feature": "Rolled back internal Motion System and Studio UI 2.0 to stable post-intro checkpoint",
+  "last_feature": "Progressive four-step interface with fine controls, interruptible motion and compact PrintCheck",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -32,7 +33,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest verified rollback 85bab4b, identical functional tree to 2886e79 stable post-intro checkpoint. Source/docs-only commits may advance branch; re-fetch before changes. Prior Studio UI and Motion releases still in Git history and backup branches.",
+  "note": "Latest published functional code e10ba444, Maketnaya r4ef7ed4f; docs-only HEAD may advance. Preserve baseline backups and historical rollback records.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -120,5 +121,28 @@
     "unit_tests": 134,
     "workflow_run": 38290413508,
     "pages_run": 38290486575
+  },
+  "motion_interface": {
+    "version": "r4ef7ed4f",
+    "steps": [
+      "article",
+      "field",
+      "artwork",
+      "download"
+    ],
+    "source_files": [
+      "assets/workbench-flow.js",
+      "assets/workbench-flow.css"
+    ],
+    "drawer": "desktop side panel; mobile in normal flow",
+    "reduced_motion": true,
+    "native_data_preserved": true,
+    "rollback_source": "8fbdbb7e59819243724c040a17bf560f7ada226a",
+    "rollback_publication": "57d23feb558c10aa8ccec475c9b0956752b7db1f",
+    "rollback_branches": [
+      "backup/maketnaya-source-before-step-motion-2026-10-12",
+      "backup/maketnaya-published-before-step-motion-2026-10-12"
+    ],
+    "handoff": "handoff/MAKETNAYA_STEP_MOTION_2026-10-12.md"
   }
 }
