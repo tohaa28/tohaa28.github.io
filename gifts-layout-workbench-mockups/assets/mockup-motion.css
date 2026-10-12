@@ -1,0 +1,11 @@
+/* Matching motion vocabulary inside the Mockup Editor. */
+html.gwb-mockup-motion-ready .sidebar>.panel{transition:box-shadow .3s ease}
+html.gwb-mockup-motion-ready .sidebar>.panel:hover{box-shadow:0 11px 28px #3b505013}
+html.gwb-mockup-motion-ready .candidateList button,html.gwb-mockup-motion-ready .candidateList [role=button]{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+html.gwb-mockup-motion-ready .candidateList button:hover,html.gwb-mockup-motion-ready .candidateList [role=button]:hover{transform:translateY(-1px)}
+html.gwb-mockup-motion-ready .canvasPanel{transition:box-shadow .28s ease,border-color .28s ease}
+html.gwb-mockup-motion-ready .canvasPanel.gwb-mockup-glow{animation:gwbMockupGlow .54s ease-out}
+html.gwb-mockup-motion-ready .mappingOperationStatus:not([hidden]){animation:gwbMockupNotice .35s cubic-bezier(.22,.8,.22,1)}
+@keyframes gwbMockupGlow{0%{box-shadow:0 0 0 0 #81b31555}55%{box-shadow:0 0 0 7px #81b31520}100%{box-shadow:0 0 0 15px #81b31500}}
+@keyframes gwbMockupNotice{from{opacity:.2;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){html.gwb-mockup-motion-ready *,html.gwb-mockup-motion-ready *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
