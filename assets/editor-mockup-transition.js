@@ -25,7 +25,7 @@
     const finishOpen=()=>{
       if(phase!=='opening')return;
       phase='revealing';scene.classList.add('gmt-reveal');shell.inert=false;
-      later(()=>{if(phase!=='revealing')return;scene.hidden=true;scene.className='';phase='open';focus(back)},reduced()?0:240);
+      later(()=>{if(phase!=='revealing')return;scene.hidden=true;scene.classList.remove('gmt-forward','gmt-reveal','gmt-waiting');phase='open';focus(back)},reduced()?0:240);
     };
     const revealWhenReady=()=>{if(phase!=='opening'||!ready)return;later(finishOpen,Math.max(0,(reduced()?0:660)-(performance.now()-started)))};
     const close=()=>{
@@ -48,7 +48,7 @@
     return {
       show(){
         if(phase!=='closed')return false;
-        clear();epoch++;phase='opening';ready=false;started=performance.now();snapshot();
+        clear();epoch++;phase='opening';ready=false;started=performance.now();scene.className='';snapshot();
         saved={root:root.style.overflow,body:document.body.style.overflow,inert:app?.inert||false};
         root.style.overflow='hidden';document.body.style.overflow='hidden';if(app)app.inert=true;
         title.textContent='Из макета — в изделие';status.textContent='Открываем редактор мокапов';

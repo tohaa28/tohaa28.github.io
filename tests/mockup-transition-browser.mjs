@@ -43,6 +43,7 @@ try{
   await page.evaluate(()=>{window.__hold=true});await open.click();
   await page.waitForFunction(()=>document.querySelector('#gwbMockupTransition').classList.contains('gmt-waiting'));
   assert.equal(await scene.isVisible(),true);
+  assert.equal(await scene.evaluate(el=>getComputedStyle(el).opacity),'1','Repeated opening is not transparent');
   assert.match(await scene.innerText(),/Подготавливаем мокап/);
   const bounds=await scene.locator('.gmt-card').first().boundingBox();
   assert.ok(bounds.width>0&&bounds.x>=0&&bounds.x+bounds.width<=viewport.width+2,'Card fits viewport');
