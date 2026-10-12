@@ -1,20 +1,20 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "9919596e562ea9675deb2f6f44aee34dd4262826",
+  "verified_functional_source_commit": "cf1626cc970e9efa44d9d314cf2d8e0b43b5a5ec",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "0a953eaa9c71b96743a692c6176898ac0349f5da",
-  "verified_publication_main_commit": "71fb3dfcc15a5efd92ba1b35351790a5ac1065c5",
+  "source_tree_sha": "6148ba5f7636498db42c7c69c3cea0489d03fe8f",
+  "verified_publication_main_commit": "cce8c01ca43ffc0ca1caafa7a07474f984b76192",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38244216693,
+    "run": 38244954569,
     "conclusion": "success",
-    "unit_tests": 129,
+    "unit_tests": 130,
     "precheck": "success",
     "publish": "success",
     "browser_verify": "success"
   },
-  "last_feature": "Multi-item orders expand on hover, collapse on mouseleave; arrow is visual-only",
+  "last_feature": "Equal-height basket cards per grid row; bold 12.5px position count",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,7 +30,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest VERIFIED functional source 9919596e; docs-only HEAD may advance. Hover-only interaction is specifically requested; on touch devices hover is not available, so future touch UX should be specified if needed.",
+  "note": "Latest verified functional source cf1626cc; published main cce8c01c. Documentation-only handoff commit advances branch HEAD, so re-fetch before changes.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -57,5 +57,14 @@
     "cause": "Legacy test clicked hidden second article without hovering",
     "fix_commit": "49bf00896e04789c09c4b349e13ee25cb3580762",
     "success_run": 38244216693
+  },
+  "basket_row_layout": {
+    "equal_height_within_row": true,
+    "layout_method": "CSS Grid align-items:stretch and item align-self:stretch",
+    "expand_on_hover_preserved": true,
+    "count_font_size_px": 12.5,
+    "count_font_weight": 750,
+    "verified_source_commit": "cf1626cc970e9efa44d9d314cf2d8e0b43b5a5ec",
+    "verified_workflow": 38244954569
   }
 }
