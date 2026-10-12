@@ -718,6 +718,13 @@ jobs:
           console.log("Basket articles grouped under one order frame:", JSON.stringify(basketGroupState));
           const fullCardClickTarget = frame.locator("#basketOrders .basket-order").first();
           const secondArticle = fullCardClickTarget.locator(".basket-method").nth(1);
+          // With hover-only expansion the second article is intentionally hidden
+          // until the pointer enters its card. Navigate only after revealing it.
+          await fullCardClickTarget.hover();
+          await frame.waitForFunction(()=>{
+            const card=document.querySelector("#basketOrders .basket-order");
+            return card?.dataset.gwbExpanded==="true"&&!card.querySelector(".gwb-order-extra")?.inert;
+          },null,{timeout:3000});
           await secondArticle.click();
           await frame.waitForFunction(()=>document.getElementById("order")?.value==="7920509");
           if ((await frame.locator("#order").inputValue()) !== "7920509") {
