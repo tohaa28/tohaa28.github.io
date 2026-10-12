@@ -1,20 +1,22 @@
 {
   "snapshot_date": "2026-10-12",
-  "verified_functional_source_commit": "863e52aa77f4d5cdc620359d78ae028db3185ea3",
+  "verified_functional_source_commit": "18a29a464e8a47a7fd6480995600a10fb6bb9e37",
   "source_branch": "gifts-layout-workbench-mockups-source",
-  "source_tree_sha": "e7efc6ad0f0b0e356a60b8b82c09b5affefb07d2",
-  "verified_publication_main_commit": "081017eae23e9d857c14a96c84d94e69791cdf9b",
+  "source_tree_sha": "a3c81f217f7acfe2cc9ff1069d8077394c63e223",
+  "verified_publication_main_commit": "328fa9240a310c6bf29634e34dce1cf54b99c661",
   "repository": "tohaa28/tohaa28.github.io",
   "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
   "workflow": {
-    "run": 38253390600,
+    "run": 38256728445,
     "conclusion": "success",
-    "unit_tests": 138,
+    "unit_tests": 142,
     "precheck": "success",
     "publish": "success",
-    "browser_verify": "success"
+    "browser_verify": "success",
+    "pages_deploy_run": 38256766407,
+    "pages_deploy": "success"
   },
-  "last_feature": "Reversible cross-window motion system for Maketnaya + Mockup Editor",
+  "last_feature": "Studio UI 2.0 spatial redesign of Maketnaya and Mockup Editor",
   "test_failure_resolved": {
     "run": 38232054983,
     "cause": "reduced-motion CSS violated the existing door animation contract",
@@ -30,7 +32,7 @@
     "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
     "customer_retest": "pending"
   },
-  "note": "Latest verified functional source 863e52aa; published main 081017ea. Two rollback branches pinned. This docs-only commit may advance source branch, re-fetch before changes.",
+  "note": "Studio UI 2.0 verified source 18a29a4 published main 328fa924. Docs-only commit may advance source head. Four rollback branches retained, two before UI redesign and two before motion system.",
   "keyboard_regression": {
     "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
     "failed_workflow": 38241596249,
@@ -140,5 +142,36 @@
     "published_backup_commit": "253113aeec77edd195c7d0b2a66f7e2f0e4310b1",
     "guide": "docs/MOTION_SYSTEM_ROLLBACK_2026-10-12.md",
     "backup_created_before_modifications": true
+  },
+  "studio_ui": {
+    "version": "2.0",
+    "files": [
+      "assets/workbench-shell.css",
+      "assets/workbench-shell.js",
+      "assets/mockup-shell.css",
+      "assets/mockup-shell.js"
+    ],
+    "areas": [
+      "brand header",
+      "three-tab navigation",
+      "order hero and product cards",
+      "four-step progress",
+      "editor rail",
+      "logo tools",
+      "canvas work surface",
+      "responsive embedded Mockup Editor"
+    ],
+    "geometry_safe": true,
+    "source_commit": "18a29a464e8a47a7fd6480995600a10fb6bb9e37",
+    "published_main": "328fa9240a310c6bf29634e34dce1cf54b99c661",
+    "workflow_run": 38256728445,
+    "small_screen_mockup_radius_px": 13
+  },
+  "studio_ui_rollback": {
+    "source_branch": "backup/maketnaya-source-before-ui-redesign-2026-10-12",
+    "source_commit": "f1158f35ce0d8866925bdfc40ffee357c1dc8c00",
+    "published_branch": "backup/maketnaya-published-before-ui-redesign-2026-10-12",
+    "published_commit": "081017eae23e9d857c14a96c84d94e69791cdf9b",
+    "guide": "docs/STUDIO_UI_REDESIGN_ROLLBACK_2026-10-12.md"
   }
 }

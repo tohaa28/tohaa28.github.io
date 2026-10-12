@@ -3,9 +3,9 @@
 ## Точка восстановления
 - GitHub: https://github.com/tohaa28/tohaa28.github.io
 - Рабочая ветка: `gifts-layout-workbench-mockups-source`. Публикация: `main`.
-- **Последняя проверенная функциональная исходная версия**: `863e52aa77f4d5cdc620359d78ae028db3185ea3`.
-- Соответствующая публикация: `main` `081017eae23e9d857c14a96c84d94e69791cdf9b`.
-- Workflow `38253390600`: `precheck`, `publish`, `browser_verify` — SUCCESS; **138/138 unit**.
+- **Последняя проверенная функциональная исходная версия**: `18a29a464e8a47a7fd6480995600a10fb6bb9e37`.
+- Соответствующая публикация: `main` `328fa9240a310c6bf29634e34dce1cf54b99c661`.
+- Workflow `38256728445`: `precheck`, `publish`, `browser_verify` — SUCCESS; **142/142 unit**.
 - Сайт: https://tohaa28.github.io/gifts-layout-workbench-mockups/
 - Полная история: `PROJECT_HISTORY_MAKETNAYA.md`. Новые изменения: `handoff/MAKETNAYA_CHANGES_2026-10-12.md`. Машинные SHAs/статус: `handoff/MAKETNAYA_STATE_2026-10-12.json`.
 
@@ -39,7 +39,12 @@
 - Выпуск подтверждать только после `precheck`, `publish`, `browser_verify` и проверки `main`.
 
 ## Последнее изменение
-Внедрена отдельная система motion-переходов между основными окнами, шагами и инструментами Макетной и Редактора мокапов (sidecar CSS/JS без изменения геометрии). Последняя проверенная функциональная версия source `863e52aa`, main `081017ea`, CI `38253390600` SUCCESS, 138/138 unit. Резервные ветки исходников и опубликованной версии созданы до обновления и остаются неизменными. Инструкция — `docs/MOTION_SYSTEM_ROLLBACK_2026-10-12.md`.
+Studio UI 2.0 — заметная перестройка интерфейсов Макетной и мокапов: навигационные вкладки, приветственный блок заказов, карточки, шкала четырёх шагов, новая левая панель и отдельная рабочая поверхность, сохранена старая логика. Source `18a29a46`, main `328fa924`, workflow `38256728445` SUCCESS: 142/142. Pages deploy `38256766407` SUCCESS. Стили/обвязка: `assets/workbench-shell.css/js`, `assets/mockup-shell.css/js`. Дополнительный rollback `docs/STUDIO_UI_REDESIGN_ROLLBACK_2026-10-12.md`.
+
+## Новый визуальный бэкап (до Studio UI 2.0)
+- Source: `backup/maketnaya-source-before-ui-redesign-2026-10-12`, SHA `f1158f35ce0d8866925bdfc40ffee357c1dc8c00`.
+- Pages main: `backup/maketnaya-published-before-ui-redesign-2026-10-12`, SHA `081017eae23e9d857c14a96c84d94e69791cdf9b`.
+- В версии до Studio UI оставались последняя стартовая анимация и старые микропереходы. Для восстановления дерева используйте `docs/STUDIO_UI_REDESIGN_ROLLBACK_2026-10-12.md`.
 
 ## Как откатить и что защищено
 - Backup исходников: `backup/maketnaya-source-before-motion-system-2026-10-12`, `2886e79f7501d60b52cb26bf97862938e3403174`.
