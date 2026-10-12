@@ -3,9 +3,9 @@
 ## Точка восстановления
 - GitHub: https://github.com/tohaa28/tohaa28.github.io
 - Рабочая ветка: `gifts-layout-workbench-mockups-source`. Публикация: `main`.
-- **Последняя проверенная функциональная исходная версия**: `bd9d1327832864b9cfa8dfb855fdf935dc4e3db6`.
-- Соответствующая публикация: `main` `98f1330f3087b768a04cbdbda3dd74d6e329083e`.
-- Workflow `38246654143`: `precheck`, `publish`, `browser_verify` — SUCCESS; **131/131 unit**.
+- **Последняя проверенная функциональная исходная версия**: `8f02f72fc8004e6d7e0059b3c5136db82afa9227`.
+- Соответствующая публикация: `main` `9309ba703d8e1ee429df1f6518c6c0feb171770e`.
+- Workflow `38247326682`: `precheck`, `publish`, `browser_verify` — SUCCESS; **132/132 unit**.
 - Сайт: https://tohaa28.github.io/gifts-layout-workbench-mockups/
 - Полная история: `PROJECT_HISTORY_MAKETNAYA.md`. Новые изменения: `handoff/MAKETNAYA_CHANGES_2026-10-12.md`. Машинные SHAs/статус: `handoff/MAKETNAYA_STATE_2026-10-12.json`.
 
@@ -33,7 +33,7 @@
 - Выпуск подтверждать только после `precheck`, `publish`, `browser_verify` и проверки `main`.
 
 ## Последнее изменение
-В шаге 1 шрифт описания и параметров артикула уменьшен до 10px (подписи и значения — font-weight 400); остальные настройки компактной сетки сохранены. Source `bd9d1327`, main `98f1330f`, workflow `38246654143`: 131/131, все jobs SUCCESS. См. историю.
+В шаге 1 убрана внутренняя зелёная рамка `#orderTemplatePicker` и её тень, внешняя зелёная рамка `.article-card` осталась. Подсветка выбранного артикула и шрифт параметров 10px сохранены. Source `8f02f72f`, main `9309ba70`, workflow `38247326682`: 132/132 тестов, все jobs SUCCESS.
 
 ## Следующий шаг
 История и новая защита клавиатурного управления сохранены. При следующем запросе сперва проверить свежую ветку. Если пользователь продолжит тесты мокапа — запросить/посмотреть повторный PNG с реальной бейсболкой; если займётся PrintCheck — использовать v25 handoff и реальные контрольные метки. Подробнее см. `PROJECT_HISTORY_MAKETNAYA.md`.
