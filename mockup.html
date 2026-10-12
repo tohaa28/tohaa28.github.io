@@ -1479,7 +1479,7 @@ async function applyHandoff(payload){
 
 let bridgedHandoff=null;
 const allowedParentOrigins=new Set(["https://gifts.ru","https://tohaa28.github.io"]);
-async function acceptBridgedHandoff(payload){bridgedHandoff=payload;try{await applyHandoff(payload);}catch(err){setStatus("Ошибка handoff: "+err.message);}}
+async function acceptBridgedHandoff(payload,transitionTicket){bridgedHandoff=payload;try{await applyHandoff(payload);}catch(err){setStatus("Ошибка handoff: "+err.message);}finally{if(parent!==window&&transitionTicket!==undefined)parent.postMessage({type:"gifts-mockup-handoff-applied",transitionTicket},"*");}}
 window.gwbApplyMockupHandoff=acceptBridgedHandoff;
 window.gwbSetMockupStatus=setStatus;
 function requestParentHandoff(){if(parent!==window)parent.postMessage({type:"gifts-mockup-handoff-request"},"*");}
@@ -1501,7 +1501,7 @@ async function autoLoadHandoff(){
   if(!loaded)setStatus("Ожидание данных Макетной");
   return loaded;
 }
-window.addEventListener("message",event=>{if(event.source!==parent||!allowedParentOrigins.has(event.origin))return;const data=event.data||{};if(data.type==="gifts-mockup-handoff"&&data.payload)acceptBridgedHandoff(data.payload);else if(data.type==="gifts-mockup-handoff-error")setStatus(data.message||"Передача из Макетной недоступна");});
+window.addEventListener("message",event=>{if(event.source!==parent||!allowedParentOrigins.has(event.origin))return;const data=event.data||{};if(data.type==="gifts-mockup-handoff"&&data.payload)acceptBridgedHandoff(data.payload,data.transitionTicket);else if(data.type==="gifts-mockup-handoff-error")setStatus(data.message||"Передача из Макетной недоступна");});
 $("readHandoff").onclick=()=>autoLoadHandoff();
 $("handoffFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await applyHandoff(JSON.parse(await f.text()));}catch(err){setStatus("Ошибка handoff: "+err.message);}};
 
@@ -1532,6 +1532,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r00000000</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r713fad6e</span>
 </body>
 </html>

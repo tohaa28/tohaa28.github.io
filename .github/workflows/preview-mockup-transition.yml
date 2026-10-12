@@ -1,0 +1,7 @@
+name: Verify Maketnaya mockup transition before publication
+on:
+  push:
+    branches: [preview/maketnaya-mockup-transition]
+jobs:
+  verify:
+    uses: ./.github/workflows/test-direct-workbench.yml

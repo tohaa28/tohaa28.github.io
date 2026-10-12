@@ -31,6 +31,8 @@ jobs:
       - run: npm init -y
       - run: npm install playwright
       - run: npx playwright install --with-deps chromium
+      - name: Verify editor transition, cancellation and mobile layout
+        run: node tests/mockup-transition-browser.mjs
       - name: Verify cylinder mockup independently
         run: node tests/mockup-cylinder-browser-runner.mjs
       - name: Launch Workbench on gifts.ru
@@ -1129,3 +1131,9 @@ jobs:
           if (errors.length) console.log("Browser diagnostics:", errors.join(" | "));
           await browser.close();
           NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mockup-transition-screenshots
+          path: test-results/mockup-transition-*.png
+          if-no-files-found: ignore
