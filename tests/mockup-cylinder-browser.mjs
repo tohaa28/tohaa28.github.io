@@ -224,6 +224,12 @@ export async function verifyMockupCylinder(browserContext){
     name:"white-background-logo.svg",mimeType:"image/svg+xml",
     buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="rgb(255,255,255)"/></svg>')
   });
+  // setInputFiles dispatches async loaders: await completion of all three new
+  // source images, not just the previous scene's already-ready state.
+  await page.waitForFunction(()=>
+    ["photo","template","artwork"].every(t=>
+      document.getElementById(t+"ProgressRow")?.dataset.state==="ready"
+    ),null,{timeout:15000});
   const seamMeasurements=await page.evaluate(async()=>{
     const mod=await import("./assets/mockup-cylinder.mjs?v=20261009-4");
     const cylinderQuad=[{x:.12,y:.13},{x:.88,y:.13},{x:.88,y:.87},{x:.12,y:.87}];
