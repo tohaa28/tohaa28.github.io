@@ -870,6 +870,15 @@ jobs:
             return !!img && img.hidden === false && img.complete && img.naturalWidth > 0;
           }, null, {timeout:30000});
 
+          const motionState=await frame.evaluate(()=>{
+            const ctrl=window.__gwbMotionController;
+            return {ready:document.documentElement.classList.contains("gwb-motion-ready"),
+              version:ctrl?.version,geometrySafe:ctrl?.changesGeometry===false,
+              hoverStyle:getComputedStyle(document.querySelector(".basket-order")).transitionProperty};
+          });
+          if(!motionState.ready||motionState.version!=="1.0"||!motionState.geometrySafe||
+             !motionState.hoverStyle.includes("box-shadow"))
+            throw Error("Maketnaya motion system is unavailable: "+JSON.stringify(motionState));
           const articleChoiceState = await frame.evaluate(() => {
             const choice = document.querySelector("#orderTemplateList .article-choice");
             const info = choice?.querySelector(".article-choice-info");
