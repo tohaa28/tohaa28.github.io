@@ -96,3 +96,6 @@ body:has(#photoCanvas) button:not(:disabled):active{transform:scale(.98)}
 
 #flowSettingsDock.flow-settings-closing{animation:flow-settings-out .18s ease-in both;pointer-events:none}
 @keyframes flow-settings-out{to{opacity:0;transform:translateX(12px)}}
+/* The read-only report must never capture dragging or rotation on the canvas.
+   The complete interactive diagnostics remain in the PrintCheck disclosures. */
+.gwb-step-interface .logo-error-overlay{pointer-events:none}
