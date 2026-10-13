@@ -881,7 +881,7 @@
     const raw=img.currentSrc||img.src||"";
     try{
       const url=new URL(raw,location.href);
-      return url.protocol==="https:"&&/(^|\\.)gifts\\.ru$/i.test(url.hostname)?url.href:"";
+      return url.protocol==="https:"&&/(^|\.)gifts\.ru$/i.test(url.hostname)?url.href:"";
     }catch{return ""}
   };
   function basketProducts(){
@@ -892,7 +892,7 @@
       const name=(row.querySelector(".gwb-basket-name")?.textContent||"").trim().slice(0,90);
       const img=row.querySelector(".gwb-basket-thumb img");
       const url=validPhoto(img);
-      if(!article||!/\\d{3,}/.test(article))continue;
+      if(!article||!/\d{3,}/.test(article))continue;
       const key=article+"|"+name;
       if(seen.has(key))continue;
       seen.add(key);
@@ -918,7 +918,7 @@
       const item=products[(rotation+i)%products.length];
       sheet.dataset.orderArt=item.article;
       sheet.title=item.name||item.article;
-      sheet.querySelector(".gwb-om-card-copy b").textContent=item.article.replace(/^Арт\\.?\\s*/i,"№ ");
+      sheet.querySelector(".gwb-om-card-copy b").textContent=item.article.replace(/^Арт\.?\s*/i,"№ ");
       const pic=sheet.querySelector(".gwb-om-card-photo img");
       if(item.url){
         if(pic.getAttribute("src")!==item.url)pic.src=item.url;
