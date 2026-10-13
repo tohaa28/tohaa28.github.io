@@ -268,9 +268,10 @@ jobs:
             const flight=scene?.querySelector(".gwb-om-flight");
             const sheets=scene?[...scene.querySelectorAll(".gwb-om-sheet")]:[];
             const selector=scene?.querySelector(".gwb-om-gender");
-            return {navHeight:nav?.getBoundingClientRect().height,navWidth:nav?.getBoundingClientRect().width,sceneWidth:scene?.getBoundingClientRect().width,sceneHeight:scene?.getBoundingClientRect().height,flightWidth:flight?.getBoundingClientRect().width,sheets:sheets.length,selectorVisible:selector?getComputedStyle(selector).display!=="none":false,hasFlightAnimation:sheets[0]?getComputedStyle(sheets[0]).animationName:"none"};
+            const laptop=scene?.querySelector(".gwb-om-workstation");
+            return {navHeight:nav?.getBoundingClientRect().height,navWidth:nav?.getBoundingClientRect().width,sceneWidth:scene?.getBoundingClientRect().width,sceneHeight:scene?.getBoundingClientRect().height,flightWidth:flight?.getBoundingClientRect().width,laptopRight:laptop?.getBoundingClientRect().right,flightLeft:flight?.getBoundingClientRect().left,sheets:sheets.length,selectorVisible:selector?getComputedStyle(selector).display!=="none":false,hasFlightAnimation:sheets[0]?getComputedStyle(sheets[0]).animationName:"none"};
           });
-          if(!(motionLayout.navWidth>0&&Math.abs(motionLayout.navHeight-50)<.5&&Math.abs(motionLayout.sceneWidth-motionLayout.navWidth)<2&&motionLayout.sceneHeight<=50&&motionLayout.sheets===3&&motionLayout.selectorVisible&&motionLayout.hasFlightAnimation==="gwbOmFly"))
+          if(!(motionLayout.navWidth>0&&Math.abs(motionLayout.navHeight-50)<.5&&Math.abs(motionLayout.sceneWidth-motionLayout.navWidth)<2&&motionLayout.sceneHeight<=50&&Math.abs(motionLayout.flightLeft-motionLayout.laptopRight)<30&&motionLayout.sheets===3&&motionLayout.selectorVisible&&motionLayout.hasFlightAnimation==="gwbOmFly"))
             throw Error("Full-width orders-flight geometry regression: "+JSON.stringify(motionLayout));
           await frame.locator("#gwbOrdersMotion [data-gwb-gender='male']").click();
           const selectedMale=await frame.locator("#gwbOrdersMotion").getAttribute("data-gender");
