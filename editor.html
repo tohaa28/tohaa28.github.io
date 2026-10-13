@@ -119,37 +119,43 @@
 .navrow:has(>.gwb-orders-motion){position:relative;padding:0;gap:0;isolation:isolate}
 .navrow>.gwb-orders-motion{position:relative;box-sizing:border-box;width:100%;max-width:none;min-width:0;height:100%;max-height:50px;flex:1 1 100%;display:block;overflow:hidden;background:linear-gradient(95deg,#f8fcf5 0%,#fff 68%,#f7faef 100%);color:#44525a;font-family:system-ui,sans-serif}
 .gwb-om-background{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(90deg,transparent 25px,#a4bb9d22 26px,transparent 27px),linear-gradient(0deg,transparent 24px,#a4bb9d1a 25px,transparent 26px);background-size:108px 50px;opacity:.5}
-.gwb-om-portrait{position:absolute;top:0;left:24px;width:82px;height:50px;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,#000 72%,transparent);mask-image:linear-gradient(90deg,#000 72%,transparent)}
+.gwb-om-portrait{position:absolute;top:0;left:24px;width:82px;height:50px;overflow:hidden;z-index:13;border:0;background:transparent;padding:0;cursor:pointer;-webkit-mask-image:linear-gradient(90deg,#000 72%,transparent);mask-image:linear-gradient(90deg,#000 72%,transparent)}
 .gwb-om-portrait img{position:absolute;inset:0;width:82px;height:50px;object-fit:cover;object-position:55% 28%;opacity:0;transition:opacity .65s ease;pointer-events:none;animation:gwbOmPortrait 18s ease-in-out infinite}
 .gwb-orders-motion[data-gender="female"] .gwb-om-female,.gwb-orders-motion[data-gender="male"] .gwb-om-male{opacity:1}
-.gwb-om-workstation{position:absolute;top:0;left:105px;width:144px;height:50px;pointer-events:none}
-.gwb-om-laptop{width:144px;height:50px;display:block;filter:drop-shadow(0 2px 2px #41565a24)}
-.gwb-om-screen-spark{position:absolute;left:86px;top:13px;width:5px;height:5px;border-radius:50%;background:#81b315;box-shadow:0 0 6px #81b31588;animation:gwbOmSpark 18s ease-in-out infinite}
+.gwb-om-workstation{position:absolute;top:0;left:105px;width:106px;height:50px;pointer-events:none}
+.gwb-om-laptop{height:50px;width:auto;aspect-ratio:106/52;display:block;filter:drop-shadow(0 2px 2px #41565a24)}
+.gwb-om-screen-spark{position:absolute;left:63px;top:13px;width:5px;height:5px;border-radius:50%;background:#81b315;box-shadow:0 0 6px #81b31588;animation:gwbOmSpark 18s ease-in-out infinite}
 .gwb-om-production{position:absolute;top:4px;left:260px;width:148px;height:40px;pointer-events:none}
 .gwb-om-phase{position:absolute;inset:0;display:flex;align-items:center;white-space:nowrap;opacity:0;color:#526f5d;font:600 11px/1.3 system-ui,sans-serif;letter-spacing:.01em;animation:gwbOmPhase 18s ease-in-out infinite}
 .gwb-om-phase-1{animation-delay:0s}.gwb-om-phase-2{animation-delay:-4.5s}.gwb-om-phase-3{animation-delay:-9s}.gwb-om-phase-4{animation-delay:-13.5s}
-.gwb-om-flight{position:absolute;top:0;left:228px;right:322px;height:50px;min-width:0;pointer-events:none}
+.gwb-om-flight{position:absolute;top:0;left:218px;right:262px;height:50px;min-width:0;pointer-events:none}
 .gwb-om-route{position:absolute;inset:2px 0 0;width:100%;height:44px;opacity:.65}
-.gwb-om-sheet{position:absolute;top:4px;left:0;width:60px;height:42px;opacity:0;filter:drop-shadow(0 1px 2px #4351592e);animation:gwbOmFly 18s cubic-bezier(.33,.12,.39,1) infinite;will-change:left,opacity,transform}
-.gwb-om-sheet svg{display:block;width:100%;height:100%}
+.gwb-om-sheet{position:absolute;top:4px;left:0;width:86px;height:42px;opacity:0;filter:drop-shadow(0 1px 2px #4351592e);animation:gwbOmFly 18s cubic-bezier(.33,.12,.39,1) infinite;will-change:left,opacity,transform}
+
+.gwb-om-card{position:relative;display:flex;align-items:center;gap:3px;box-sizing:border-box;width:86px;height:38px;padding:3px;border:1px solid #d4e2d3;border-radius:5px;background:#fff;box-shadow:0 2px 5px #43515918;overflow:hidden}
+.gwb-om-card-photo{position:relative;display:grid;place-items:center;flex:0 0 32px;width:32px;height:30px;overflow:hidden;border-radius:3px;background:#f4f7f5}
+.gwb-om-doc-icon{color:#9bb28c;font-size:17px}
+.gwb-om-card-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;display:none}
+.gwb-om-card-photo img.gwb-om-loaded{display:block}
+.gwb-om-card-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;text-align:left}
+.gwb-om-card-copy small{font:700 6px/1 system-ui,sans-serif;color:#7b9c49}
+.gwb-om-card-copy b{font:650 7px/1.15 system-ui,sans-serif;color:#435159;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gwb-om-card-check{position:absolute;right:2px;top:2px;display:grid;place-items:center;width:10px;height:10px;border-radius:50%;background:#81b315;color:#fff;font-size:8px}
+
 .gwb-om-sheet-1{animation-delay:0s;--flier-offset:0px}.gwb-om-sheet-2{animation-delay:.7s;--flier-offset:-4px}.gwb-om-sheet-3{animation-delay:1.4s;--flier-offset:4px}
-.gwb-om-success{position:absolute;right:308px;top:15px;display:flex;align-items:center;gap:4px;opacity:0;white-space:nowrap;font:600 10px system-ui,sans-serif;color:#6c9343;animation:gwbOmSuccess 18s ease-in-out infinite;pointer-events:none}
+.gwb-om-success{position:absolute;right:248px;top:15px;display:flex;align-items:center;gap:4px;opacity:0;white-space:nowrap;font:600 10px system-ui,sans-serif;color:#6c9343;animation:gwbOmSuccess 18s ease-in-out infinite;pointer-events:none}
 .gwb-om-success-icon{display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:#81b315;color:#fff;font-size:10px}
 .gwb-om-idea{position:absolute;left:268px;top:5px;width:34px;height:40px;opacity:0;transform:translateY(3px) scale(.93);animation:gwbOmIdea 18s ease-in-out infinite;pointer-events:none}
 .gwb-om-idea-icon{width:34px;height:40px}
-.gwb-om-gender{position:absolute;right:9px;top:50%;z-index:12;transform:translateY(-50%);display:flex;align-items:center;gap:2px;padding:3px;border:1px solid #dfe9d8;border-radius:18px;background:#fff;box-shadow:0 1px 5px #293d3212}
-.gwb-om-gender button{width:28px;height:25px;min-width:28px;min-height:25px;padding:0;border:0;border-radius:15px;background:transparent;color:#7c8985;font:700 12px/1 system-ui,sans-serif;cursor:pointer}
-.gwb-om-gender button[aria-pressed="true"]{background:#81b315;color:#fff}
-.gwb-om-gender button:focus-visible{outline:2px solid #435159;outline-offset:2px}
-.gwb-om-gender button:hover:not([aria-pressed="true"]){background:#f1f7e8;color:#4a651f}
-.navrow:has(>.gwb-orders-motion)>.navlinks{position:absolute;right:87px;top:50%;z-index:10;transform:translateY(-50%);display:flex;align-items:center;gap:7px;padding:4px 9px;border:1px solid #e2e9df;border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 1px 6px #44525a12}
+.gwb-om-portrait:hover{background:#d8eec22a}.gwb-om-portrait:focus-visible{outline:2px solid #81b315;outline-offset:-2px;border-radius:8px}
+.navrow:has(>.gwb-orders-motion)>.navlinks{position:absolute;right:12px;top:50%;z-index:10;transform:translateY(-50%);display:flex;align-items:center;gap:7px;padding:4px 9px;border:1px solid #e2e9df;border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 1px 6px #44525a12}
 .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:11px;line-height:17px;white-space:nowrap;color:#5c6e6c}
 @keyframes gwbOmFly{
   0%,11%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
   15%{opacity:.95}
-  37%{left:calc(100% - 60px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(3deg) scale(1)}
-  45%,49%{left:calc(100% - 60px);opacity:1;transform:translateY(0) rotate(0) scale(1)}
-  59%,100%{left:calc(100% - 60px);opacity:0;transform:translateY(-3px) scale(.9)}
+  37%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(3deg) scale(1)}
+  45%,49%{left:calc(100% - 86px);opacity:1;transform:translateY(0) rotate(0) scale(1)}
+  59%,100%{left:calc(100% - 86px);opacity:0;transform:translateY(-3px) scale(.9)}
 }
 @keyframes gwbOmPhase{0%,3%{opacity:0}5%,20%{opacity:1}24%,100%{opacity:0}}
 @keyframes gwbOmSuccess{0%,36%{opacity:0}41%,49%{opacity:1}55%,100%{opacity:0}}
@@ -157,36 +163,34 @@
 @keyframes gwbOmSpark{0%,10%,37%,100%{opacity:.1;transform:scale(.8)}17%,31%{opacity:1;transform:scale(1.4)}}
 @keyframes gwbOmPortrait{0%,21%,100%{transform:translateY(0)}28%,41%{transform:translateY(-1px)}52%,73%{transform:translateY(1px)}}
 @media(max-width:1060px){
- .gwb-om-flight{left:228px;right:256px}
+ .gwb-om-flight{left:218px;right:240px}
  .gwb-om-production{left:250px;width:65px}
  .gwb-om-phase{font-size:0}
- .navrow:has(>.gwb-orders-motion)>.navlinks{right:80px}
+ .navrow:has(>.gwb-orders-motion)>.navlinks{right:12px}
  .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:10px}
- .gwb-om-success{right:255px;font-size:0}
+ .gwb-om-success{right:218px;font-size:0}
 }
 @media(max-width:760px){
  .gwb-om-portrait{left:5px;width:70px;height:49px}
  .gwb-om-portrait img{width:70px;height:49px}
- .gwb-om-workstation{left:70px;width:116px}
- .gwb-om-laptop{width:116px;height:49px}
- .gwb-om-screen-spark{left:70px}
+ .gwb-om-workstation{left:70px;width:102px}
+ .gwb-om-laptop{height:49px;width:auto}
+ .gwb-om-screen-spark{left:61px}
  .gwb-om-production{display:none}
- .gwb-om-flight{left:181px;right:224px}
+ .gwb-om-flight{left:171px;right:190px}
  .gwb-om-success{display:none}
  .gwb-om-idea{left:190px}
- .navrow:has(>.gwb-orders-motion)>.navlinks{right:77px;gap:4px;padding:3px 6px}
+ .navrow:has(>.gwb-orders-motion)>.navlinks{right:8px;gap:4px;padding:3px 6px}
  .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:9px}
- .gwb-om-gender{right:3px}
- .gwb-om-gender button{width:23px;min-width:23px}
 }
 @media(max-width:530px){
- .navrow:has(>.gwb-orders-motion)>.navlinks{right:64px;max-width:90px;overflow:hidden}
+ .navrow:has(>.gwb-orders-motion)>.navlinks{right:5px;max-width:90px;overflow:hidden}
  .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:9px}
  .navrow:has(>.gwb-orders-motion)>.navlinks a:last-child{display:none}
- .gwb-om-flight{left:172px;right:145px}
- .gwb-om-sheet{width:45px;height:35px;top:9px}
- .gwb-om-workstation{left:61px;width:110px}
- .gwb-om-laptop{width:110px}
+ .gwb-om-flight{left:164px;right:120px}
+ .gwb-om-sheet{width:68px;height:35px;top:9px}.gwb-om-card{width:68px;height:35px}.gwb-om-card-copy{display:none}
+ .gwb-om-workstation{left:61px;width:100px}
+ .gwb-om-laptop{width:auto}
  .gwb-om-portrait{left:0;width:61px}
  .gwb-om-portrait img{width:61px}
  .gwb-om-idea{left:178px}
@@ -201,16 +205,8 @@
 
 </style><link rel="stylesheet" href="./assets/editor-mockup-transition.css?v=1"><script src="./assets/editor-mockup-transition.js?v=2"></script></head><body><div class="app"><header class="site-header"><div class="topbar"><div class="brand"><span class="mark" aria-hidden="true">М</span><span>Макетная</span><small>редактор макетов для gifts.ru</small></div><button id="mockupModeButton" type="button" title="Открыть редактор мокапов" hidden>Редактор мокапов</button><button id="accountButton" class="account-button" type="button">Войти</button><button id="modeToggle" class="mode-toggle" type="button" aria-pressed="true" hidden>Подробный режим</button></div><nav class="navrow" aria-label="Ссылки на gifts.ru"><div class="gwb-orders-motion" id="gwbOrdersMotion" data-gender="female" role="group" aria-label="Готовые макеты вылетают из ноутбука дизайнера. Выбор персонажа">
   <div class="gwb-om-background" aria-hidden="true"></div>
-  <div class="gwb-om-portrait" aria-hidden="true"><img class="gwb-om-female" src="data:image/webp;base64,UklGRmAEAABXRUJQVlA4IFQEAADwGQCdASpkAFwAPu1qrU+ppiQjKfTsqTAdiWIAzHnPSzbgPnnWb55lj5kA0L/w7+1LAvvSSA9n8WfSxxrq4oluCEBBbnjPJAzx569w0HFLFgCh02uNSOvkyGHsiFunhbd8EyFYHsbTvS8DtxHdoPzedDtb4BHXEDJ08/y1iUXEydH1wFlOiCtuCximWnHgBUcxAseG94fkJ5l5NTwQWbvinnuJiDy2Y/xkKF7Nq8HnkT5hVAWL2KV5K6LxWk9NGUsdPGjKTua5OX7XJrYuYKEuSVyQjLX7lcQA/vleTVpL4PPRU+TXVUBlMLTfnGyBsnHLHbIaxgJ9jKSft8PGtamIa8AQEc+qOWwMDk7U27/zG1wGV3CvZ311mCPe9lLjbZQegGUJnXkHFiZJjIH4s0GLQ1GB8uzGEF72XoukYaHCNb3lI/sW1+Te06WVauwp9TCcdFWcOH4JIUQcMkTZSJ8sX+0AHMuFA8mm0H9F5P6iJIJC3b6Kk5lRmw/SU2rHnbcF5mlwZH6ZwzNiH2N/JuyGl1TSM3it7lt4DJa4wz+9xCMdo2EbU1jfM647/Y5fgTKruC5hiYyMFJg7mamO7QHL/imx9fU7lXhx5n8I/oIyucp1PVgrLPLSQJHc6NwqpLXQsROOQ61j3jvEV32xpw8p1q4iPtqKUdT84I42BUJL3uCCNf9XVvfyMbp053PYj08832ae7jwj75JGln/YEAgpNRO2OrL7jexTEu0Rspri7vUtpEe5FG/Gyh8HMLzLiaFBTGub/SuLYj870iO9vpL19zK80uezlwrxyr4uFZ6m+n5348RvosmDG3hR7+OgFOC9UAGP0TCvmuBubiCTM8M3jC1r6f8EC1PAvLxCtE8RiWs5c3KeZAAfMo3aG7yXncThRGaNHrQal1j7GDl8jYzShfSX+DIEZxcOF4FzF+OUmaz+tjb7Q3oUnSGHRkYhGW7XI7MB1h1S4ifFpE4CWPdrNT/RsCV7KResvwc3wi3o4dKtN1t9yICRvKfkBV6lT/byP2XShW9yRR5Ph6pEokvJ3zRkt0KWa7St8moMVdDJqL5HoZ6DAubW52ZycWwbf4hBBZT9U7VTxlWCNK9b3POB0ckmpVZPQYJ60A/7NGrDNhqx5ADi9bn3436pkanDIufF71Bt2LIhd1iBdqrr8H6ye64jMSsX6Sn+mOvnFTIwKgNOiaD+CltbitF5bwsAqYh7hzYbob4YlGZ2fMSJeN8tz4fRZH3RQ2Lj7ooQXAy/HzimJYjguP+RKaxtjLQLq8X6X+4skSpFr6ts+5DbhI54ujSbQ84L7K7asfHWOaL3EwgH3EA0crBBvtgByMs5q6P8xo5IrPWnB0gc/wJY2mDAuKU5wHdsTUt7UE/4PQRMpL/mjvAkk6xuXWDzkWZfCv5us4YFkxiHFh7MEvYjWl0Sp4zYB7uIPlwYlraApCpWtMb0J3+wBXZL0p6vNzju/hZtgAAA" alt=""><img class="gwb-om-male" src="data:image/webp;base64,UklGRkAEAABXRUJQVlA4IDQEAABQGQCdASpkAFwAPulkqE2pJaiiLDj9iSAdCUAZtxoJxxzXgJHErU/D611MKiZEQ3tQQRb5rxp4EwVUiOoI1r3Up4TAY6YmraCdYwd+fQ9/25S5V98iDgc4xCdqJJTD9OcA0dHBt3dz7LHAAXvGYN+utYLIZeQApCrcXn5VFxbzjNQBYYTsu13qrllhAqAgMZn7xgkApe4ZxxnTAT6MGQFlehNCzb9qveVTkBzR6wKMCOkqiLjZGxEi2G6wRr6WoFD5+odzyWW4TbtHZTkWEt4kI8lAAP72CuHi7hGTS9OFEB2dJ+eNhqvR5U5faF1pp9RbhSh0ez5KY4hpcjK1jr76dTdCRLKnCbQEVhP1jb5P6FxQWBXhywtGmwZ2VDFdhzFETcu3Ye9F7YQ0JR7sjF3tZ749jTM+FVMzWs23fGas+AQ84iBhodewhprStHWo9FhrGBdriDn7FyJ47tFskOfu5AyGBcD+AhYeGJOppfu5V9/NfFySvfAmhPD2/RaQx/0dd30LZqisx79vv9HSuA2z3PmO0PHIWSO9yuNJ94RzpLimcW0PVWFygY175Gf/3ij534ybFOr/+axr0wy7k2+qHUc2aUj4kyuC4uUVkOxGoPxJiB537WyXpQRltxsErBOdMyLQ053aBfrxHtEP7k8Vyq8RomYNyJpKYi2kSH2xi/Kem9pIiNKsiilwI9jw8EWs7bKaNsoKWqYMdkyRJHCmW9F1s1nGjW2HwfrHUmRl8HLOOzAPRjSGR2LxxjtxDXdxj0slHhS0VwNqjQPYFuXKsS/1c4TTcedTOzD5VuMybUjA0LvDQfF19tdGJyPmq8F0kVwJpTbsoOjlkGG+o1XxRs/+iYMxJk2clhCVcCS/hOra3iyJ+0z77h4Ina7fP/qoLBDupdFuRyqvJeMTmXQrkwkV5yM1SIGwME0/S/dlrIj8Q3h10g7aB5GmmoOX69pa9n2uDfBM0XO5XY3YsdE8NFrGuJmGMqwKJ5ycDS42v+znDIKVtd/XYYs80I2JeXlEZXUhANWB3yiPM+UdY8A1yK2BVMQwQFhtzAWIiF9lD4rVSwRAifoLQrJ/eadGYp8VET+zis9gRy1bLo2szg+60ijAYee8CDxOqFBwMC+LB+zYOehhLNrzgdCgzAVf8QDb3gv+QW2lmv9/y5GW9gjy+NS/VRH4XYJVrjqpIu/pdIPVqSZKZ7dvuUx7bC2xKvQ2ZcJUcPYVCsw3Km79x9pA8Zzbh2JASAVKwGILZl6xTa3jxH4o5pJPO4lJiAS42iPKw32WEcg1Ugf1qJxhqP9x3bvuKTY5agoueKtCTu1bJL2ZZkgQaK7Bjf0NRFW0GQ750XL+gS25YZwadu+fqK+w7kzUzg+yllfHbsFWzz/scO9qjwo2jguMlr8XIi3iBXXHcc9H8vB0ikxWBC3e8O1JwAAAAA==" alt=""></div>
-  <div class="gwb-om-workstation" aria-hidden="true"><svg class="gwb-om-laptop" viewBox="0 0 144 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<path d="M19 3h108a4 4 0 0 1 4 4v36H15V7a4 4 0 0 1 4-4Z" fill="#52646b" stroke="#36464d"/>
-<rect x="20" y="7" width="106" height="32" rx="2" fill="#f7fbf5"/>
-<path d="M24 12h25m-25 5h17m68-5h12m-12 4h12" stroke="#d7e1dc" stroke-width="1.5" stroke-linecap="round"/>
-<rect x="53" y="12" width="48" height="23" rx="2" stroke="#8bb34c" stroke-dasharray="3 2" fill="#eff8e9"/>
-<path d="M73 30q-3-14 7-15 2 9-7 15Zm2 0q4-12 18-11-5 10-18 11Z" fill="#81b315"/>
-<path d="M5 43h134l-8 6H13l-8-6Z" fill="#9aa7a7" stroke="#566970" stroke-width=".8"/>
-<path d="M59 44h27l3 2H57Z" fill="#f7faf8"/><circle cx="73" cy="5.5" r=".85" fill="#b6c7bf"/>
-</svg><span class="gwb-om-screen-spark"></span></div>
+  <button class="gwb-om-portrait" id="gwbMotionCharacter" type="button" aria-label="Показать мужского персонажа" title="Сменить персонажа"><img class="gwb-om-female" src="data:image/webp;base64,UklGRmAEAABXRUJQVlA4IFQEAADwGQCdASpkAFwAPu1qrU+ppiQjKfTsqTAdiWIAzHnPSzbgPnnWb55lj5kA0L/w7+1LAvvSSA9n8WfSxxrq4oluCEBBbnjPJAzx569w0HFLFgCh02uNSOvkyGHsiFunhbd8EyFYHsbTvS8DtxHdoPzedDtb4BHXEDJ08/y1iUXEydH1wFlOiCtuCximWnHgBUcxAseG94fkJ5l5NTwQWbvinnuJiDy2Y/xkKF7Nq8HnkT5hVAWL2KV5K6LxWk9NGUsdPGjKTua5OX7XJrYuYKEuSVyQjLX7lcQA/vleTVpL4PPRU+TXVUBlMLTfnGyBsnHLHbIaxgJ9jKSft8PGtamIa8AQEc+qOWwMDk7U27/zG1wGV3CvZ311mCPe9lLjbZQegGUJnXkHFiZJjIH4s0GLQ1GB8uzGEF72XoukYaHCNb3lI/sW1+Te06WVauwp9TCcdFWcOH4JIUQcMkTZSJ8sX+0AHMuFA8mm0H9F5P6iJIJC3b6Kk5lRmw/SU2rHnbcF5mlwZH6ZwzNiH2N/JuyGl1TSM3it7lt4DJa4wz+9xCMdo2EbU1jfM647/Y5fgTKruC5hiYyMFJg7mamO7QHL/imx9fU7lXhx5n8I/oIyucp1PVgrLPLSQJHc6NwqpLXQsROOQ61j3jvEV32xpw8p1q4iPtqKUdT84I42BUJL3uCCNf9XVvfyMbp053PYj08832ae7jwj75JGln/YEAgpNRO2OrL7jexTEu0Rspri7vUtpEe5FG/Gyh8HMLzLiaFBTGub/SuLYj870iO9vpL19zK80uezlwrxyr4uFZ6m+n5348RvosmDG3hR7+OgFOC9UAGP0TCvmuBubiCTM8M3jC1r6f8EC1PAvLxCtE8RiWs5c3KeZAAfMo3aG7yXncThRGaNHrQal1j7GDl8jYzShfSX+DIEZxcOF4FzF+OUmaz+tjb7Q3oUnSGHRkYhGW7XI7MB1h1S4ifFpE4CWPdrNT/RsCV7KResvwc3wi3o4dKtN1t9yICRvKfkBV6lT/byP2XShW9yRR5Ph6pEokvJ3zRkt0KWa7St8moMVdDJqL5HoZ6DAubW52ZycWwbf4hBBZT9U7VTxlWCNK9b3POB0ckmpVZPQYJ60A/7NGrDNhqx5ADi9bn3436pkanDIufF71Bt2LIhd1iBdqrr8H6ye64jMSsX6Sn+mOvnFTIwKgNOiaD+CltbitF5bwsAqYh7hzYbob4YlGZ2fMSJeN8tz4fRZH3RQ2Lj7ooQXAy/HzimJYjguP+RKaxtjLQLq8X6X+4skSpFr6ts+5DbhI54ujSbQ84L7K7asfHWOaL3EwgH3EA0crBBvtgByMs5q6P8xo5IrPWnB0gc/wJY2mDAuKU5wHdsTUt7UE/4PQRMpL/mjvAkk6xuXWDzkWZfCv5us4YFkxiHFh7MEvYjWl0Sp4zYB7uIPlwYlraApCpWtMb0J3+wBXZL0p6vNzju/hZtgAAA" alt=""><img class="gwb-om-male" src="data:image/webp;base64,UklGRkAEAABXRUJQVlA4IDQEAABQGQCdASpkAFwAPulkqE2pJaiiLDj9iSAdCUAZtxoJxxzXgJHErU/D611MKiZEQ3tQQRb5rxp4EwVUiOoI1r3Up4TAY6YmraCdYwd+fQ9/25S5V98iDgc4xCdqJJTD9OcA0dHBt3dz7LHAAXvGYN+utYLIZeQApCrcXn5VFxbzjNQBYYTsu13qrllhAqAgMZn7xgkApe4ZxxnTAT6MGQFlehNCzb9qveVTkBzR6wKMCOkqiLjZGxEi2G6wRr6WoFD5+odzyWW4TbtHZTkWEt4kI8lAAP72CuHi7hGTS9OFEB2dJ+eNhqvR5U5faF1pp9RbhSh0ez5KY4hpcjK1jr76dTdCRLKnCbQEVhP1jb5P6FxQWBXhywtGmwZ2VDFdhzFETcu3Ye9F7YQ0JR7sjF3tZ749jTM+FVMzWs23fGas+AQ84iBhodewhprStHWo9FhrGBdriDn7FyJ47tFskOfu5AyGBcD+AhYeGJOppfu5V9/NfFySvfAmhPD2/RaQx/0dd30LZqisx79vv9HSuA2z3PmO0PHIWSO9yuNJ94RzpLimcW0PVWFygY175Gf/3ij534ybFOr/+axr0wy7k2+qHUc2aUj4kyuC4uUVkOxGoPxJiB537WyXpQRltxsErBOdMyLQ053aBfrxHtEP7k8Vyq8RomYNyJpKYi2kSH2xi/Kem9pIiNKsiilwI9jw8EWs7bKaNsoKWqYMdkyRJHCmW9F1s1nGjW2HwfrHUmRl8HLOOzAPRjSGR2LxxjtxDXdxj0slHhS0VwNqjQPYFuXKsS/1c4TTcedTOzD5VuMybUjA0LvDQfF19tdGJyPmq8F0kVwJpTbsoOjlkGG+o1XxRs/+iYMxJk2clhCVcCS/hOra3iyJ+0z77h4Ina7fP/qoLBDupdFuRyqvJeMTmXQrkwkV5yM1SIGwME0/S/dlrIj8Q3h10g7aB5GmmoOX69pa9n2uDfBM0XO5XY3YsdE8NFrGuJmGMqwKJ5ycDS42v+znDIKVtd/XYYs80I2JeXlEZXUhANWB3yiPM+UdY8A1yK2BVMQwQFhtzAWIiF9lD4rVSwRAifoLQrJ/eadGYp8VET+zis9gRy1bLo2szg+60ijAYee8CDxOqFBwMC+LB+zYOehhLNrzgdCgzAVf8QDb3gv+QW2lmv9/y5GW9gjy+NS/VRH4XYJVrjqpIu/pdIPVqSZKZ7dvuUx7bC2xKvQ2ZcJUcPYVCsw3Km79x9pA8Zzbh2JASAVKwGILZl6xTa3jxH4o5pJPO4lJiAS42iPKw32WEcg1Ugf1qJxhqP9x3bvuKTY5agoueKtCTu1bJL2ZZkgQaK7Bjf0NRFW0GQ750XL+gS25YZwadu+fqK+w7kzUzg+yllfHbsFWzz/scO9qjwo2jguMlr8XIi3iBXXHcc9H8vB0ikxWBC3e8O1JwAAAAA==" alt=""></button>
+  <div class="gwb-om-workstation" aria-hidden="true"><svg class="gwb-om-laptop" viewBox="0 0 106 52" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 3h73a4 4 0 0 1 4 4v34H13V7a4 4 0 0 1 4-4Z" fill="#435159" stroke="#35454c"/><rect x="17" y="7" width="73" height="30" rx="2" fill="#f5faf4"/><path d="M20 11h17m-17 4h13" stroke="#cbd8cf" stroke-width="1.2" stroke-linecap="round"/><rect x="39" y="11" width="40" height="23" rx="2" fill="#eaf6dc" stroke="#86b135" stroke-dasharray="2 2"/><path d="M53 29q-1-12 8-13 0 9-8 13Zm2 0q3-10 14-9-2 8-14 9Z" fill="#81b315"/><path d="M5 42h96l-7 6H12l-7-6Z" fill="#9da9aa" stroke="#62757b" stroke-width=".8"/><path d="M41 42h25l3 2H39Z" fill="#f1f5f4"/><circle cx="53" cy="5" r=".75" fill="#c6d1d0"/></svg><span class="gwb-om-screen-spark"></span></div>
   <div class="gwb-om-production" aria-hidden="true">
     <span class="gwb-om-phase gwb-om-phase-1">Создаём макет</span>
     <span class="gwb-om-phase gwb-om-phase-2">PDF готов</span>
@@ -219,11 +215,11 @@
   </div>
   <div class="gwb-om-flight" aria-hidden="true">
     <svg class="gwb-om-route" viewBox="0 0 1000 48" preserveAspectRatio="none"><path d="M0 25C135 4 268 43 400 24S780 4 1000 24" fill="none" stroke="#b7d68a" stroke-width="1.3" stroke-dasharray="5 7"/><path d="m987 18 13 6-13 5" fill="none" stroke="#95ba5a" stroke-width="1.5"/></svg>
-    <span class="gwb-om-sheet gwb-om-sheet-1" aria-hidden="true"><svg viewBox="0 0 64 44" aria-hidden="true"><rect x="6" y="3" width="50" height="38" rx="4" fill="#fff" stroke="#d0ddd4"/><path d="M42 3v10h14" fill="#f0f5ef" stroke="#d0ddd4"/><rect x="13" y="11" width="26" height="23" rx="2" stroke="#94ba5a" stroke-dasharray="2 2" fill="#f7fbed"/><path d="M27 29q-3-15 7-17 3 10-7 17zm2 0q3-13 16-11-4 11-16 11z" fill="#81b315"/><text x="37" y="38" font-size="7" font-weight="700" fill="#587078">PDF</text><circle cx="54" cy="33" r="8" fill="#81b315"/><path d="m50 33 3 3 5-6" stroke="#fff" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="gwb-om-sheet gwb-om-sheet-2" aria-hidden="true"><svg viewBox="0 0 64 44" aria-hidden="true"><rect x="4" y="3" width="56" height="38" rx="5" fill="#fff" stroke="#d1ddd6"/><path d="M21 13h25v22a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6Z" fill="#f6f8f6" stroke="#91a4a4"/><path d="M46 17h3a6 6 0 1 1 0 12h-3" fill="none" stroke="#91a4a4" stroke-width="2"/><path d="M30 30q-2-10 5-11 2 7-5 11zm2 0q3-9 10-8-3 7-10 8z" fill="#81b315"/><circle cx="53" cy="10" r="6" fill="#81b315"/><path d="m50 10 2 2 4-4" fill="none" stroke="#fff" stroke-width="1.5"/></svg></span><span class="gwb-om-sheet gwb-om-sheet-3" aria-hidden="true"><svg viewBox="0 0 64 44" aria-hidden="true"><rect x="4" y="3" width="56" height="38" rx="5" fill="#fff" stroke="#d1ddd6"/><path d="M17 24c2-13 24-17 35-3l4 10-8 3-3-6-24 3Z" fill="#eef1ed" stroke="#94a3a3"/><path d="M21 31q-10-2-13 6 10 2 18-6" fill="#e4ebe7" stroke="#94a3a3"/><path d="M30 28q0-9 9-10-3 10-9 10Z" fill="#81b315"/><circle cx="54" cy="10" r="6" fill="#81b315"/><path d="m51 10 2 2 4-4" fill="none" stroke="#fff" stroke-width="1.5"/></svg></span>
+    <span class="gwb-om-sheet gwb-om-sheet-1" aria-hidden="true"><span class="gwb-om-card"><span class="gwb-om-card-photo"><span class="gwb-om-doc-icon">▧</span><img alt="" loading="lazy" decoding="async"></span><span class="gwb-om-card-copy"><small>ЭСКИЗ</small><b>Товар заказа</b></span><span class="gwb-om-card-check">✓</span></span></span><span class="gwb-om-sheet gwb-om-sheet-2" aria-hidden="true"><span class="gwb-om-card"><span class="gwb-om-card-photo"><span class="gwb-om-doc-icon">▧</span><img alt="" loading="lazy" decoding="async"></span><span class="gwb-om-card-copy"><small>ЭСКИЗ</small><b>Товар заказа</b></span><span class="gwb-om-card-check">✓</span></span></span><span class="gwb-om-sheet gwb-om-sheet-3" aria-hidden="true"><span class="gwb-om-card"><span class="gwb-om-card-photo"><span class="gwb-om-doc-icon">▧</span><img alt="" loading="lazy" decoding="async"></span><span class="gwb-om-card-copy"><small>ЭСКИЗ</small><b>Товар заказа</b></span><span class="gwb-om-card-check">✓</span></span></span>
   </div>
   <div class="gwb-om-success" aria-hidden="true"><span class="gwb-om-success-icon">✓</span><span>Готовые макеты</span></div>
   <div class="gwb-om-idea" aria-hidden="true"><svg class="gwb-om-idea-icon" viewBox="0 0 34 40" aria-hidden="true"><path d="M17 5a11 11 0 0 0-7 19c2 1.8 3 4 3 6h8c0-2 1-4.2 3-6a11 11 0 0 0-7-19Z" fill="#f9f5e4" stroke="#a5b957" stroke-width="1.8"/><path d="M13 33h8m-7 4h6" stroke="#769930" stroke-width="2" stroke-linecap="round"/><path d="m13 20 4 3 4-4" fill="none" stroke="#81b315" stroke-width="2" stroke-linecap="round"/></svg></div>
-  <div class="gwb-om-gender" role="group" aria-label="Выбрать персонажа"><button type="button" data-gwb-gender="male" aria-pressed="false" title="Мужской персонаж">М</button><button type="button" data-gwb-gender="female" aria-pressed="true" title="Женский персонаж">Ж</button></div>
+  
 </div><div class="navlinks"><a href="https://gifts.ru/catalog/" target="_blank" rel="noopener noreferrer">Каталог gifts.ru ↗</a><a href="https://gifts.ru/nanesenie-logotipa/specifications" target="_blank" rel="noopener noreferrer">Технические требования ↗</a></div></nav></header><div id="directGithubNotice" hidden style="margin:0;padding:10px 16px;background:#fff4d8;border-bottom:1px solid #e4c56a;color:#4c4635;font:13px/1.45 system-ui"><strong>Режим без доступа к заказам.</strong> Эта страница открыта напрямую с GitHub Pages. Редактор мокапов и ручная загрузка файлов доступны, но для чтения корзины и заказов gifts.ru откройте <a href="https://gifts.ru/" target="_blank" rel="noopener">gifts.ru</a> и запустите независимую «Макетную + мокапы» через launcher.</div><main class="gwb-orders-full"><aside class="rail"><section class="panel" id="orderPanel"><div id="orderBrowser"><h1>Заказы и шаблоны</h1><label class="file">Открыть сохранённый проект <input id="project" type="file" accept=".zip,application/zip"></label><p id="orderIntro" class="help">Войдите в свой аккаунт gifts.ru, затем введите номер существующего заказа. Шаблоны выбранных нанесений загрузятся сразу в редактор.</p><details id="giftsLogin" class="connection"><summary>Вход в gifts.ru</summary><form id="loginForm"><label>Логин <input id="giftsUser" name="login" autocomplete="username" required></label><label>Пароль <input id="giftsPassword" name="password" type="password" autocomplete="current-password" required></label><label>Код компании <input id="giftsCode" name="code" type="text" maxlength="8" value="s1" autocomplete="off"></label><p class="help">Если вы не дилер, оставьте код пустым. Пароль не сохраняется приложением.</p><button id="loginButton" type="submit">Войти в gifts.ru</button></form><button id="logoutButton" type="button" class="ghost" hidden>Завершить сеанс</button><p id="loginStatus" class="help" role="status"></p></details><div id="basketBox" class="basket-list" hidden><div class="basket-head"><strong>Корзины и выбранные нанесения</strong><button id="refreshBasket" class="ghost icon-button" type="button" aria-label="Обновить корзины" title="Обновить корзины">↻</button></div><p id="basketStatus" class="help" role="status"></p><div id="basketOrders"></div></div><label id="manualOrderLabel">Номер заказа <input id="order" type="text" inputmode="numeric" autocomplete="off" placeholder="Например, 7976119"></label><button id="loadOrder" class="primary" type="button">Получить шаблоны заказа</button><div id="orderLoading" class="order-loading" role="status" aria-live="polite" hidden><span class="loading-title">Загрузка шаблонов gifts.ru</span><progress id="orderProgress" max="100"></progress><span id="orderProgressText">Подключаюсь к заказу…</span></div><p id="orderStep" class="help" hidden>Не удалось получить шаблоны.</p><details id="staticTransfer" class="connection" open><summary>Передать заказ из gifts.ru</summary><p class="help">Можно открыть PDF заказа вручную. Передача через закладку также доступна для браузеров с панелью закладок.</p><a id="transferBookmark" class="bookmark" href="#">Передать шаблоны</a><p class="help">Если закладки недоступны, скачайте PDF заказа на gifts.ru и откройте его здесь. Передача не оформляет и не запускает заказ.</p><label class="file">Открыть шаблон PDF или SVG вручную <input id="manualTemplate" type="file" accept=".pdf,.svg,application/pdf,image/svg+xml"></label></details><button id="resumeEditor" class="ghost" type="button" hidden>Вернуться к открытому макету</button></div><div id="orderEditor" hidden><div id="assetReadiness" class="asset-readiness" role="status" aria-live="polite"><div id="templateReadinessRow" class="asset-readiness-row" data-state="waiting"><strong>Шаблон</strong><progress id="templateLoadProgress" max="100" value="0"></progress><span id="templateLoadText">Ожидание шаблона</span></div><div id="logoReadinessRow" class="asset-readiness-row" data-state="waiting"><strong>Логотип</strong><progress id="logoLoadProgress" max="100" value="0"></progress><span id="logoLoadText">Ожидание логотипа</span></div></div><button id="backToOrders" class="back-link" type="button">← Назад к списку заказов</button><h1 id="editorTitle">Редактирование макета</h1><div class="article-card"><div class="article-picker"><div id="orderTemplatesBox" hidden><span class="full-label">Нанесения из заказа</span><span class="simple-label">Шаг 1. Выберите артикул</span><details id="orderTemplatePicker" class="template-picker"><summary id="orderTemplateSummary"><span id="orderTemplateSummaryText">Выберите артикул</span></summary><div id="orderTemplateList" class="template-options" role="group" aria-label="Артикулы заказа"></div></details><select id="orderTemplates" hidden aria-hidden="true" tabindex="-1"></select></div></div></div><div id="orderFieldChoiceBox" class="field-choice step-card step2-card" hidden><label for="orderFieldChoice"><span class="full-label">В какое поле добавить логотип</span><span class="simple-label">Шаг 2. Выберите место для логотипа</span><select id="orderFieldChoice"><option value="">Выберите поле</option></select></label><p id="fieldChoiceHint" class="help" role="status"></p></div><label class="file"><span class="full-label">Логотип для выбранного поля: PDF, AI, SVG, PNG или JPG</span><span class="simple-label">Шаг 3. Добавьте логотип</span><input id="artwork" type="file" accept=".pdf,.ai,.cdr,.eps,.svg,.png,.jpg,.jpeg,application/pdf,image/svg+xml,image/png,image/jpeg"><span id="artworkName">Выбрать файл</span></label><div id="transformControls" class="transform-controls"><div class="row"><button id="rotateLeft" type="button" disabled>↶ Повернуть</button><button id="rotateRight" type="button" disabled>Повернуть ↷</button></div><label>Угол, ° <input id="rotation" type="number" min="-360" max="360" step="1" value="0" disabled></label><label class="check"><input id="clipToField" type="checkbox" disabled> Обрезать по границе поля</label><p class="help">Часть логотипа за границей поля будет удалена из PDF. Проверьте результат перед скачиванием.</p></div><div id="simpleControls" class="simple-controls"><button id="simpleDraw" class="ghost" type="button">Обвести поле на шаблоне</button><button id="simpleFit" class="ghost" type="button" disabled>Подогнать под поле</button><button id="simpleCenter" class="ghost" type="button" disabled>По центру</button><button id="simpleFill" class="ghost" type="button" disabled>Добавить логотип в остальные поля</button><div id="step4Box" class="step-card step4-card" hidden><label class="check" hidden style="display:none"><input id="preflightMarkers" type="checkbox" checked> Показать возможные проблемные участки</label><p id="simpleChecks" class="help" role="status"></p><div id="confirmErrorsBox" class="error-confirm" hidden><label class="check"><input id="confirmErrors" type="checkbox"> Подтверждаю скачивание макета с ошибками для последующей отправки</label><p class="help">Макет может не соответствовать требованиям выбранного нанесения.</p></div><button id="simpleExport" class="primary" type="button" disabled>Шаг 4. Скачать готовый макет</button><button id="downloadLayoutMockup" class="primary" type="button" hidden disabled>Скачать макет и мокап</button><p class="help">Для другого логотипа выберите другое поле и загрузите файл ещё раз.</p></div></div><details class="metadata"><summary>Данные нанесения и замена шаблона</summary><label>Артикул <input id="article" type="text" placeholder="Например, 15255"></label><label>Вид нанесения <input id="method" type="text" placeholder="Код или название с сайта"></label><label class="file">Шаблон PDF или SVG <input id="template" type="file" accept=".pdf,.svg,application/pdf,image/svg+xml"><span id="templateName">Выбрать файл</span></label></details><p class="help">Для PDF и AI с PDF-совместимым содержимым используется первая страница. CDR и EPS пока требуют экспорта в PDF в исходной программе. В разных полях можно разместить разные файлы.</p><div class="row"><button id="prevPage" class="ghost" title="Предыдущая страница">←</button><span id="pageNumber">Страница —</span><button id="nextPage" class="ghost" title="Следующая страница">→</button></div></div></section><section class="panel" id="fieldsPanel" hidden><h2>Поле нанесения</h2><p class="help">Если полей несколько, выберите нужное в списке выше или коснитесь его рамки на шаблоне. Также можно выделить поле вручную. Перемещайте нанесение внутри поля; круг в углу меняет размер.</p><div class="row"><button id="drawField">Выделить поле</button><button id="clearField" class="ghost">Сбросить</button></div><label>Поля из шаблона<select id="fields"><option value="">Загрузите шаблон</option></select></label><div id="fieldSize" class="stat">Поле не выбрано</div><h2>Нанесение</h2><div class="row"><button id="fit" class="ghost">Вписать в поле</button><button id="center" class="ghost">Центрировать</button></div><div class="row"><label class="mini">Ширина, мм<input id="width" type="number" min="0.01" step="0.1"></label><label class="mini">Высота, мм<input id="height" type="number" min="0.01" step="0.1"></label></div><label class="check"><input type="checkbox" id="lockRatio" checked> Сохранять пропорции</label><div id="position" class="stat">Загрузите нанесение</div><h2>Логотипы в макете</h2><div id="placementCount" class="stat">Добавлено логотипов: 0</div><div id="placementsList" class="placements-list"></div><button id="fillEmpty" class="ghost" type="button" disabled>Добавить текущее лого во все пустые поля</button><button id="removePlacement" class="ghost" type="button" disabled>Удалить логотип из выбранного поля</button></section><section class="panel" id="checksPanel" hidden><h2>Проверка</h2><label class="mini">Охранное поле, мм <input id="guard" type="number" min="0" step="0.1" placeholder="Из требования сайта"></label><label class="mini">Мин. разрешение, ppi <input id="minDpi" type="number" min="1" step="1" placeholder="Из требования сайта"></label><details><summary>Требования из шаблона</summary><p id="requirementsText" class="help">Загрузите PDF выбранного нанесения.</p><a href="https://gifts.ru/nanesenie-logotipa/specifications" target="_blank" rel="noopener">Требования gifts.ru ↗</a></details><div id="checks" aria-live="polite" class="checks"><p>Загрузите шаблон и нанесение.</p></div><button id="export" class="primary" disabled>Скачать единый PDF-макет</button><button id="saveProject" class="ghost" type="button" disabled>Сохранить проект и исходники</button><div id="orderAttachment" class="order-attachment" hidden><h2>Прикрепить макет к заказу</h2><button id="prepareOrderPdf" class="ghost" type="button" disabled>Скачать PDF для заказа</button><a id="openGiftOrder" class="bookmark" target="_blank" rel="noopener noreferrer">Открыть заказ на gifts.ru ↗</a><p class="help">После скачивания прикрепите PDF в разделе «Макеты для заказа» на gifts.ru. Отправка заказа в работу здесь не выполняется.</p></div><a id="downloadResult" class="bookmark" hidden>Скачать архив</a><p id="exportHint" class="help">Один PDF со всеми выбранными полями. Отдельно можно сохранить редактируемый проект и исходники. PDF-вектор сохраняется; SVG преобразуется в векторный PDF. Растр не уменьшается. Цветопрофили и сложные эффекты требуют отдельной проверки.</p></section></aside><section class="workspace order-waiting" aria-label="Рабочее поле"><div id="orderWaitingWorkspace" class="order-waiting-screen" role="status" aria-live="polite"><div class="order-waiting-card"><div class="order-waiting-icon" aria-hidden="true">▧</div><strong>Ожидание выбора заказа</strong><span>Выберите заказ в списке слева. После открытия заказа здесь появится шаблон и рабочее поле.</span></div></div><div class="toolbar"><div><strong id="status">Ожидание шаблона</strong><span id="dimensions"></span><span id="selectedFieldSize" class="selected-field-size" hidden></span></div><div class="row template-nav"><span id="templatePickHint" class="template-pick-hint">Выберите нужное место нанесения прямо на шаблоне</span><button id="zoomPage" class="ghost" hidden>Шаблон целиком</button></div></div><div id="editorStep3" class="workspace-step workspace-step3" hidden><strong>Шаг 3. Добавьте логотип</strong><span>Загрузите файл и разместите логотип. Для поворота потяните круглый маркер ↻ над логотипом; Shift — шаг 15°, Esc — отмена.</span></div><div id="fieldLogoTools" class="stage-logo-tools" hidden aria-label="Инструменты логотипа"><button id="editorAddLogo" class="ghost primary-tool" type="button">Добавить логотип</button><button id="editorFit" class="ghost" type="button" disabled>Подогнать</button><button id="editorCenter" class="ghost" type="button" disabled>Центровать</button><label class="stage-angle">Угол <input id="editorAngle" type="number" min="-360" max="360" step="1" value="0" disabled><span>°</span></label><button id="editorRotateLeft" class="ghost" type="button" title="Повернуть логотип на 90° влево" disabled>↶ 90°</button><button id="editorRotateRight" class="ghost" type="button" title="Повернуть логотип на 90° вправо" disabled>↷ 90°</button><label class="stage-clip"><input id="editorClip" type="checkbox" disabled> Обрезать по полю</label><button id="editorRemoveLogo" class="ghost danger-tool" type="button" title="Удалить логотип из выбранного места нанесения" disabled>Удалить лого</button></div><div id="stageScroll"><div id="stage"><canvas id="templateCanvas"></canvas><canvas id="overlay"></canvas><div id="empty"><div class="emptyIcon">▧</div><strong>Шаблон появится здесь</strong><span>PDF или SVG, созданный на gifts.ru</span></div></div></div></section></main></div><div class="gwb-build-versions" aria-label="Версии Макетной и PrintCheck"><span id="maketnayaVersion">Макетная rc201d047</span><span id="printcheckVersion">PrintCheck v25 r359a7111</span></div><div id="mockupShell" hidden aria-label="Редактор мокапов"><div id="mockupShellBar"><div class="mockup-shell-topbar"><div class="mockup-shell-brand"><span class="mockup-shell-mark" aria-hidden="true">М</span><span>Макетная</span><small>редактор мокапов для gifts.ru</small></div></div><div class="mockup-shell-navrow"><div class="mockup-shell-nav-left"><button id="mockupBackButton" type="button">← Макетная</button><strong>РЕДАКТОР МОКАПОВ</strong></div><span>сопоставление фотографий, полей конструктора и нанесения</span></div></div><iframe id="mockupFrame" title="Редактор мокапов" src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"></iframe></div><script>
 (()=>{
   const open=document.getElementById("mockupModeButton"),combo=document.getElementById("downloadLayoutMockup"),shell=document.getElementById("mockupShell"),back=document.getElementById("mockupBackButton"),frame=document.getElementById("mockupFrame"),simpleExport=document.getElementById("simpleExport"),status=document.getElementById("status");
@@ -858,22 +854,105 @@
 })();
 </script>
 <script>
-/* Orders-motion persona choice is strictly local UI preference; no order data changed. */
+/* Compact orders motion: character click, read-only copies of already-rendered basket data. */
 (function(){
   const root=document.getElementById("gwbOrdersMotion");
+  const orders=document.getElementById("basketOrders");
   if(!root)return;
   const storageKey="gwb.ordersMotion.gender.v1";
-  const buttons=Array.from(root.querySelectorAll("[data-gwb-gender]"));
+  const persona=root.querySelector("#gwbMotionCharacter");
+  const sheets=[...root.querySelectorAll(".gwb-om-sheet")];
+  const flight=root.querySelector(".gwb-om-flight");
+  const stage=root.querySelector(".gwb-om-production");
+  let products=[],signature="",rotation=0,queued=false;
   function setGender(value,save){
     const gender=value==="male"?"male":"female";
     root.dataset.gender=gender;
-    for(const button of buttons)button.setAttribute("aria-pressed",String(button.dataset.gwbGender===gender));
+    persona?.setAttribute("aria-label",gender==="male"?"Показать женского персонажа":"Показать мужского персонажа");
     if(save){try{localStorage.setItem(storageKey,gender)}catch(_){}}
   }
   let selected="female";
   try{selected=localStorage.getItem(storageKey)==="male"?"male":"female"}catch(_){}
   setGender(selected,false);
-  for(const button of buttons)button.addEventListener("click",()=>setGender(button.dataset.gwbGender,true));
-})();
-</script>
+  persona?.addEventListener("click",()=>setGender(root.dataset.gender==="male"?"female":"male",true));
+  // Use only existing baskets: the animation never fetches an order, a constructor, or an image.
+  const validPhoto=img=>{
+    if(!img||!img.complete||!img.naturalWidth)return "";
+    const raw=img.currentSrc||img.src||"";
+    try{
+      const url=new URL(raw,location.href);
+      return url.protocol==="https:"&&/(^|\\.)gifts\\.ru$/i.test(url.hostname)?url.href:"";
+    }catch{return ""}
+  };
+  function basketProducts(){
+    if(!orders)return [];
+    const items=[],seen=new Set();
+    for(const row of orders.querySelectorAll(".basket-order .gwb-basket-item")){
+      const article=(row.querySelector(".gwb-basket-art")?.textContent||"").trim().slice(0,40);
+      const name=(row.querySelector(".gwb-basket-name")?.textContent||"").trim().slice(0,90);
+      const img=row.querySelector(".gwb-basket-thumb img");
+      const url=validPhoto(img);
+      if(!article||!/\\d{3,}/.test(article))continue;
+      const key=article+"|"+name;
+      if(seen.has(key))continue;
+      seen.add(key);
+      items.push({key,article,name,url});
+      if(items.length===36)break;
+    }
+    return items;
+  }
+  function paint(){
+    if(!products.length){
+      for(const sheet of sheets){
+        sheet.dataset.orderArt="";
+        sheet.querySelector(".gwb-om-card-copy b").textContent="Ожидание корзины";
+        const pic=sheet.querySelector(".gwb-om-card-photo img");
+        pic.classList.remove("gwb-om-loaded");
+        pic.removeAttribute("src");
+      }
+      root.dataset.productSource="placeholder";
+      return;
+    }
+    root.dataset.productSource="basket";
+    sheets.forEach((sheet,i)=>{
+      const item=products[(rotation+i)%products.length];
+      sheet.dataset.orderArt=item.article;
+      sheet.title=item.name||item.article;
+      sheet.querySelector(".gwb-om-card-copy b").textContent=item.article.replace(/^Арт\\.?\\s*/i,"№ ");
+      const pic=sheet.querySelector(".gwb-om-card-photo img");
+      if(item.url){
+        if(pic.getAttribute("src")!==item.url)pic.src=item.url;
+        pic.classList.add("gwb-om-loaded");
+      }else{
+        pic.classList.remove("gwb-om-loaded");
+        pic.removeAttribute("src");
+      }
+    });
+  }
+  function refresh(){
+    queued=false;
+    const next=basketProducts();
+    const nextSignature=next.map(item=>item.key+"|"+item.url).join(";");
+    if(nextSignature===signature)return;
+    signature=nextSignature;
+    products=next;
+    rotation=0;
+    paint();
+  }
+  function queueRefresh(){
+    if(queued)return;
+    queued=true;
+    requestAnimationFrame(refresh);
+  }
+  if(orders){
+    const observer=new MutationObserver(queueRefresh);
+    observer.observe(orders,{childList:true,subtree:true,characterData:true});
+    orders.addEventListener("load",queueRefresh,true);
+    orders.addEventListener("error",queueRefresh,true);
+  }
+  sheets[0]?.addEventListener("animationiteration",()=>{
+    if(products.length>3){rotation=(rotation+3)%products.length;paint();}
+  });
+  queueRefresh();
+})();</script>
 </body></html>
