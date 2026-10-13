@@ -839,3 +839,42 @@ Regression:
 - Правило отката: сохранять актуальный mockup-profiles.json при откате интерфейса. Сначала получить свежий HEAD, создать backup, вернуть выбранное UI-дерево с текущим blob профилей, создать новый commit и обновить ref с expected_sha. Без force-push и без очистки локальных изменений.
 - В тестовой ветке был исправлен неполный перенос workflow; восстановленный blob сверён с локальным файлом, объединённая версия прошла все проверки.
 - История новой работы: `handoff/MAKETNAYA_MOTION_POLISH_2026-10-12.md`. Документационные commits могут продвинуть HEAD без изменения опубликованного интерфейса.
+
+
+# 13 октября 2026 · Полная фиксация контекста, история main-only UI и защита от потери данных
+
+Создан COMPLETE HANDOFF после сверки доступного контекста прошлых чатов, handoff 2026-10-05, handoff 2026-10-12, настоящей GitHub-истории, текущих веток и свежего `mockup-profiles.json`.
+
+Критически важное обнаружение: утром 13 октября серия интерфейсных правок была сделана по публикационной линии main. После сохранения новой mockup-привязки `16535.66 · сторона а · 16535.66-2` source commit `f72c6997fd47737872660e30927dec491aa768cb` штатный publish workflow `38389923244` пересобрал main в `8582716c4cd94c3dd839e0092edd95838017f6c1`; Pages `38389967445` success. Таким образом, main-only UI-правки перестали быть текущим опубликованным кодом, хотя commits и rollback точки остались в Git.
+
+Полная UI-точка с датой заказа сохранена отдельно:
+`backup-ui-after-order-date-spacing-20261013` → `c830cd9149d49119f78f887c1ead2bbf58b0dbd2`.
+
+Точная точка скрытия заголовка:
+`backup-exact-0f37-hide-orders-heading-20261013` → `0f37a1f82f291447dc9e1ea22080d21778c23e39`.
+
+Контракт даты заказа установлен по реальному HTML gifts.ru:
+`li.cart-header-date` / `.dd` / `.mm` / `.yy`, номер — `.cart-header-number`.
+Желаемый вид: `Заказ №8006776 · 05 окт 2026`; дата normal weight и сразу после номера, справа отдельная зона для количества позиций/стрелки.
+
+Архивная последовательность main-only UI:
+- `b5a81657551afa0ad986bfbf0d407102d63a7387` — скрыть page nav у single-page template;
+- `ae0cd50db277fff344cc3eb88e9953e7da50d219` — перенести «Добавить логотип в остальные поля» к инструментам;
+- `3a466de9ecb7684e183dc8de33b01b1da06f864f` — article → «Шаблон целиком»;
+- `b9497b99907d04d6be5f3119a333f91e46a55b10` — hide resume editor;
+- `4a2a00a32b2d79764751eeeab857949a7e2d8cc9` — «Создать макет для заказа»;
+- `d494a293fd1144ce5cff44ac4556aa6fc4332747` — новая подсказка order card;
+- `1f10d82558498548e4207b2c50336ab2a1f43cf8` — counts в heading;
+- `ceb5cc26725b041400695db1a848696587dc3ca8` — 12px/400;
+- `0f37a1f82f291447dc9e1ea22080d21778c23e39` — hide «МАКЕТЫ ЗАКАЗОВ»;
+- `41dbd916d31aa5f23a5b332f56f2e20814e6af7a` — order date DOM;
+- `d54e526bfed5ecfaaa87b92c14d09690b34c3a8f` — inline date;
+- `c830cd9149d49119f78f887c1ead2bbf58b0dbd2` — protected right count zone.
+
+Новые файлы восстановления:
+- `handoff/MAKETNAYA_HANDOFF_2026-10-13_COMPLETE.md`;
+- `handoff/MAKETNAYA_CHANGELOG_2026-10-13_COMPLETE.md`;
+- `handoff/MAKETNAYA_PRINCIPLES_2026-10-13.md`;
+- `handoff/MAKETNAYA_STATE_2026-10-13_COMPLETE.json`.
+
+Перед продолжением нового чата обязательно читать эти файлы и заново получать свежий source HEAD + profile blob. Утренние main-only изменения нельзя снова делать только в main: если они нужны пользователю, их следует перенести в каноническую source-ветку и провести стандартный publish pipeline.

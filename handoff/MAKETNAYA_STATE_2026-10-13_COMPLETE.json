@@ -1,0 +1,107 @@
+{
+  "snapshot_date": "2026-10-13",
+  "snapshot_kind": "complete-context-preservation",
+  "repository": "tohaa28/tohaa28.github.io",
+  "canonical_source_branch": "gifts-layout-workbench-mockups-source",
+  "source_head_before_docs": "f72c6997fd47737872660e30927dec491aa768cb",
+  "current_published_main_at_snapshot": "8582716c4cd94c3dd839e0092edd95838017f6c1",
+  "current_publish_workflow": {
+    "run": 38389923244,
+    "conclusion": "success",
+    "source_head": "f72c6997fd47737872660e30927dec491aa768cb"
+  },
+  "current_pages": {
+    "run": 38389967445,
+    "conclusion": "success",
+    "main_head": "8582716c4cd94c3dd839e0092edd95838017f6c1"
+  },
+  "mockup_profiles": {
+    "path": "mockup-profiles.json",
+    "sha": "f4ca8f993b31ecd8a91f394eb60ce385e12dee50",
+    "count": 22,
+    "updatedAt": "2026-10-13T11:23:46.570Z",
+    "rule": "never rollback current profiles with UI"
+  },
+  "current_source_facts": {
+    "transition_title": "Визуализируй это",
+    "transition_title_commit": "ab9916291380ee8a2f6b78d09790fc427fed79de",
+    "project_history_sha": "c25b8a84342db7486a15c4a6a52dc48777560def",
+    "printcheck": "PrintCheck-coverage-swt-v25-multisegment-ink"
+  },
+  "archived_main_only_ui_line": {
+    "note": "Preserved in commits/branches but overwritten in current main by later canonical source publish.",
+    "baseline_hide_orders_heading": "0f37a1f82f291447dc9e1ea22080d21778c23e39",
+    "order_date_dom": "41dbd916d31aa5f23a5b332f56f2e20814e6af7a",
+    "order_date_inline": "d54e526bfed5ecfaaa87b92c14d09690b34c3a8f",
+    "order_date_spacing": "c830cd9149d49119f78f887c1ead2bbf58b0dbd2",
+    "preserved_branch": "backup-ui-after-order-date-spacing-20261013"
+  },
+  "order_date_dom_contract": {
+    "selector": ".cart-header-date",
+    "day": ".dd",
+    "month": ".mm",
+    "year": ".yy",
+    "number": ".cart-header-number",
+    "example": "Заказ №8006776 · 05 окт 2026",
+    "date_weight": 400,
+    "placement": "immediately after order number",
+    "count_zone": "right side must remain reserved for position count and multi-order indicator"
+  },
+  "october13_main_only_sequence": [
+    [
+      "b5a81657551afa0ad986bfbf0d407102d63a7387",
+      "hide single-page navigation"
+    ],
+    [
+      "ae0cd50db277fff344cc3eb88e9953e7da50d219",
+      "move add-logo-to-other-fields to tools"
+    ],
+    [
+      "3a466de9ecb7684e183dc8de33b01b1da06f864f",
+      "open whole template first"
+    ],
+    [
+      "b9497b99907d04d6be5f3119a333f91e46a55b10",
+      "hide resume editor"
+    ],
+    [
+      "4a2a00a32b2d79764751eeeab857949a7e2d8cc9",
+      "rename create layout for order"
+    ],
+    [
+      "d494a293fd1144ce5cff44ac4556aa6fc4332747",
+      "change order card hint"
+    ],
+    [
+      "1f10d82558498548e4207b2c50336ab2a1f43cf8",
+      "move basket counts into heading parentheses"
+    ],
+    [
+      "ceb5cc26725b041400695db1a848696587dc3ca8",
+      "basket counts 12px/400"
+    ],
+    [
+      "0f37a1f82f291447dc9e1ea22080d21778c23e39",
+      "hide MАКЕТЫ ЗАКАЗОВ"
+    ]
+  ],
+  "backup_branches_created_for_complete_snapshot": [
+    "backup-ui-after-order-date-spacing-20261013",
+    "backup-exact-0f37-hide-orders-heading-20261013",
+    "backup-source-before-complete-history-20261013",
+    "backup-published-before-complete-history-20261013"
+  ],
+  "required_reads_next_chat": [
+    "handoff/MAKETNAYA_HANDOFF_2026-10-13_COMPLETE.md",
+    "handoff/MAKETNAYA_PRINCIPLES_2026-10-13.md",
+    "handoff/MAKETNAYA_CHANGELOG_2026-10-13_COMPLETE.md",
+    "handoff/MAKETNAYA_STATE_2026-10-13_COMPLETE.json",
+    "PROJECT_HISTORY_MAKETNAYA.md",
+    "PRINTCHECK_HANDOFF_2026-10-08-v25.md"
+  ],
+  "unresolved_or_reverify": [
+    "Auto-select current application method/settings when opening settings: requested but no independently confirmed source commit in available history.",
+    "Real LM1 customer logo retest for PrintCheck v25.",
+    "If order-date UI is still desired, port archived main-only implementation into canonical source before publishing."
+  ]
+}
