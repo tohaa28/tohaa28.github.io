@@ -261,26 +261,27 @@ jobs:
           });
           if(!initialOrderLayout.expanded||initialOrderLayout.railWidth<initialOrderLayout.mainWidth*.96||initialOrderLayout.workspaceVisibility!=="hidden"||initialOrderLayout.workspacePointerEvents!=="none")
             throw Error("Initial order-list full width regression: "+JSON.stringify(initialOrderLayout));
-          // Full-width character scene: geometry, outbound sheets and switch must work
-          // in the real embedded Workbench, without changing the 50px header row.
+          // Check production animation geometry, exact laptop aspect and accessible portrait switch.
           const motionLayout=await frame.evaluate(()=>{
             const nav=document.querySelector(".navrow"),scene=document.getElementById("gwbOrdersMotion");
             const flight=scene?.querySelector(".gwb-om-flight");
             const sheets=scene?[...scene.querySelectorAll(".gwb-om-sheet")]:[];
-            const selector=scene?.querySelector(".gwb-om-gender");
-            const laptop=scene?.querySelector(".gwb-om-workstation");
-            return {navHeight:nav?.getBoundingClientRect().height,navWidth:nav?.getBoundingClientRect().width,sceneWidth:scene?.getBoundingClientRect().width,sceneHeight:scene?.getBoundingClientRect().height,flightWidth:flight?.getBoundingClientRect().width,laptopRight:laptop?.getBoundingClientRect().right,flightLeft:flight?.getBoundingClientRect().left,sheets:sheets.length,selectorVisible:selector?getComputedStyle(selector).display!=="none":false,hasFlightAnimation:sheets[0]?getComputedStyle(sheets[0]).animationName:"none"};
+            const portrait=scene?.querySelector("#gwbMotionCharacter");
+            const laptop=scene?.querySelector(".gwb-om-laptop");
+            const workstation=scene?.querySelector(".gwb-om-workstation");
+            return {navHeight:nav?.getBoundingClientRect().height,navWidth:nav?.getBoundingClientRect().width,sceneWidth:scene?.getBoundingClientRect().width,sceneHeight:scene?.getBoundingClientRect().height,flightLeft:flight?.getBoundingClientRect().left,laptopRight:workstation?.getBoundingClientRect().right,portraitIsButton:portrait?.tagName==="BUTTON",laptopRatio:laptop?laptop.getBoundingClientRect().width/laptop.getBoundingClientRect().height:0,sheets:sheets.length,hasFlightAnimation:sheets[0]?getComputedStyle(sheets[0]).animationName:"none"};
           });
-          if(!(motionLayout.navWidth>0&&Math.abs(motionLayout.navHeight-50)<.5&&Math.abs(motionLayout.sceneWidth-motionLayout.navWidth)<2&&motionLayout.sceneHeight<=50&&Math.abs(motionLayout.flightLeft-motionLayout.laptopRight)<30&&motionLayout.sheets===3&&motionLayout.selectorVisible&&motionLayout.hasFlightAnimation==="gwbOmFly"))
-            throw Error("Full-width orders-flight geometry regression: "+JSON.stringify(motionLayout));
-          await frame.locator("#gwbOrdersMotion [data-gwb-gender='male']").click();
-          const selectedMale=await frame.locator("#gwbOrdersMotion").getAttribute("data-gender");
-          if(selectedMale!=="male")throw Error("Orders character switch did not select male");
-          await frame.locator("#gwbOrdersMotion [data-gwb-gender='female']").click();
-          if(await frame.locator("#gwbOrdersMotion").getAttribute("data-gender")!=="female")throw Error("Orders character switch did not restore female");
-          const genderSaved=await frame.evaluate(()=>localStorage.getItem("gwb.ordersMotion.gender.v1"));
-          if(genderSaved!=="female")throw Error("Orders character switch not persisted");
-          console.log("Verified full-width flying layouts and character switch",motionLayout);
+          if(!(motionLayout.navWidth>0&&Math.abs(motionLayout.navHeight-50)<.5&&Math.abs(motionLayout.sceneWidth-motionLayout.navWidth)<2&&motionLayout.sceneHeight<=50&&Math.abs(motionLayout.flightLeft-motionLayout.laptopRight)<30&&motionLayout.sheets===3&&motionLayout.portraitIsButton&&Math.abs(motionLayout.laptopRatio-106/52)<.08&&motionLayout.hasFlightAnimation==="gwbOmFly"))
+            throw Error("Orders motion aspect/geometry regression: "+JSON.stringify(motionLayout));
+          await frame.locator("#gwbMotionCharacter").click();
+          if(await frame.locator("#gwbOrdersMotion").getAttribute("data-gender")!=="male")
+            throw Error("Portrait click did not select male");
+          await frame.locator("#gwbMotionCharacter").click();
+          if(await frame.locator("#gwbOrdersMotion").getAttribute("data-gender")!=="female")
+            throw Error("Portrait click did not restore female");
+          const savedGender=await frame.evaluate(()=>localStorage.getItem("gwb.ordersMotion.gender.v1"));
+          if(savedGender!=="female")throw Error("Portrait selection not persisted");
+          console.log("Verified proportional laptop and subtle character switch",motionLayout);
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];
@@ -561,6 +562,19 @@ jobs:
           console.log("Fresh private basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
 
           await frame.waitForSelector("#basketOrders .basket-order", {state:"attached", timeout:30000});
+          await frame.waitForFunction(()=>{
+            const scene=document.querySelector("#gwbOrdersMotion");
+            return scene?.dataset.productSource==="basket" && [...scene.querySelectorAll(".gwb-om-sheet")]
+              .every(sheet=>/\\d{3,}/.test(sheet.dataset.orderArt||""));
+          },null,{timeout:20000});
+          const animationArticles=await frame.evaluate(()=>({
+            flyers:[...document.querySelectorAll("#gwbOrdersMotion .gwb-om-sheet")].map(x=>x.dataset.orderArt),
+            actual:[...document.querySelectorAll("#basketOrders .gwb-basket-art")].map(x=>x.textContent?.trim())
+          }));
+          if(!animationArticles.flyers.every(x=>animationArticles.actual.includes(x)))
+            throw Error("Flying layout not sourced from current basket: "+JSON.stringify(animationArticles));
+          console.log("Verified dynamic flyer articles",animationArticles);
+
           await frame.waitForFunction(() => {
             const rows=[...document.querySelectorAll("#basketOrders .basket-method")].map(x=>x.textContent||"");
             return rows.some(x => /13317\.00/.test(x)) && rows.some(x => /99999/.test(x));
