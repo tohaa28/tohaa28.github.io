@@ -5,7 +5,7 @@
     const scene=document.createElement('section');
     scene.id='gwbMockupTransition';scene.hidden=true;
     scene.setAttribute('aria-label','Переход между редакторами');
-    scene.innerHTML=`<div class="gmt-grid"></div><div class="gmt-glass gmt-glass-a"></div><div class="gmt-glass gmt-glass-b"></div><div class="gmt-heading"><span class="gmt-mark">М</span><div><small>МАКЕТНАЯ · РАБОЧЕЕ ПРОСТРАНСТВО</small><strong>Из макета — в изделие</strong><p role="status" aria-live="polite">Открываем редактор мокапов</p></div></div><div class="gmt-cards"><div class="gmt-card gmt-layout"><div class="gmt-card-bar"><i></i><span>ПОЛЕ НАНЕСЕНИЯ</span></div><div class="gmt-paper"><canvas></canvas><span class="gmt-empty">М</span></div></div><div class="gmt-card gmt-product"><div class="gmt-card-bar"><i></i><span>ФОТО ИЗДЕЛИЯ</span></div><div class="gmt-photo"><img alt="Фото выбранного изделия"></div></div><div class="gmt-sweep"></div></div><div class="gmt-footer"><span>МАКЕТ <i></i> МОКАП</span><div class="gmt-line"><b></b></div><button type="button">← Вернуться в Макетную</button></div>`;
+    scene.innerHTML=`<div class="gmt-grid"></div><div class="gmt-glass gmt-glass-a"></div><div class="gmt-glass gmt-glass-b"></div><div class="gmt-heading"><span class="gmt-mark">М</span><div><small>МАКЕТНАЯ · РАБОЧЕЕ ПРОСТРАНСТВО</small><strong>Визуализируй это</strong><p role="status" aria-live="polite">Открываем редактор мокапов</p></div></div><div class="gmt-cards"><div class="gmt-card gmt-layout"><div class="gmt-card-bar"><i></i><span>ПОЛЕ НАНЕСЕНИЯ</span></div><div class="gmt-paper"><canvas></canvas><span class="gmt-empty">М</span></div></div><div class="gmt-card gmt-product"><div class="gmt-card-bar"><i></i><span>ФОТО ИЗДЕЛИЯ</span></div><div class="gmt-photo"><img alt="Фото выбранного изделия"></div></div><div class="gmt-sweep"></div></div><div class="gmt-footer"><span>МАКЕТ <i></i> МОКАП</span><div class="gmt-line"><b></b></div><button type="button">← Вернуться в Макетную</button></div>`;
     document.body.append(scene);
     const title=scene.querySelector('strong'),status=scene.querySelector('[role=status]'),photo=scene.querySelector('img'),canvas=scene.querySelector('canvas'),cancel=scene.querySelector('button');
     let phase='closed',epoch=0,timers=[],started=0,ready=false,saved=null;
@@ -51,7 +51,7 @@
         clear();epoch++;phase='opening';ready=false;started=performance.now();scene.className='';snapshot();
         saved={root:root.style.overflow,body:document.body.style.overflow,inert:app?.inert||false};
         root.style.overflow='hidden';document.body.style.overflow='hidden';if(app)app.inert=true;
-        title.textContent='Из макета — в изделие';status.textContent='Открываем редактор мокапов';
+        title.textContent='Визуализируй это';status.textContent='Открываем редактор мокапов';
         scene.querySelector('.gmt-footer>span').textContent='МАКЕТ → МОКАП';
         cancel.hidden=false;scene.hidden=false;scene.classList.add('gmt-forward');shell.hidden=false;shell.inert=true;
         focus(cancel);
