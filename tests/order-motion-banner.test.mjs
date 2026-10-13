@@ -7,7 +7,7 @@ test('animated orders character replaces heading in same 50 px navigation row',(
  assert.match(html,/<nav class="navrow"[^>]*><div class="gwb-orders-motion"/);
  assert.match(html,/\.navrow>\.gwb-orders-motion\{height:100%;max-height:50px;/);
  assert.match(html,/\.navrow/);
- assert.match(html,/\.navlinks/);
+ assert.match(html,/class="navlinks"/);
 });
 test('loop has four design beats, real matching artwork and accessible gender switch',()=>{
  for(const word of ['Создаём макет','Макет готов','Новая идея','И снова макет'])assert.ok(html.includes(word),word);
