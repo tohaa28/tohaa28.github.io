@@ -2,37 +2,40 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const html=readFileSync(new URL('../editor.html',import.meta.url),'utf8');
-test('full navigation-row motion replaces orders heading without extra row or fixed-width limit',()=>{
+test('full width orders motion does not add height or replace navigation',()=>{
  assert.doesNotMatch(html,/<strong>МАКЕТЫ ЗАКАЗОВ<\/strong>/);
  assert.match(html,/<nav class="navrow"[^>]*><div class="gwb-orders-motion"/);
  assert.match(html,/\.navrow>\.gwb-orders-motion\{position:relative;box-sizing:border-box;width:100%;max-width:none;/);
  assert.match(html,/height:100%;max-height:50px;/);
- assert.match(html,/\.navrow:has\(>\.gwb-orders-motion\)>\.navlinks\{position:absolute;/);
  assert.match(html,/class="navlinks"/);
 });
-test('visible workbench screen launches three different completed layouts down a real full-width route',()=>{
- assert.match(html,/class="gwb-om-laptop"/);
- assert.match(html,/class="gwb-om-flight"/);
- assert.match(html,/class="gwb-om-route"/);
- for(const kind of ['sheet-1','sheet-2','sheet-3'])assert.match(html,new RegExp('class="gwb-om-sheet gwb-om-'+kind+'"'));
- for(const word of ['Создаём макет','PDF готов','Новая идея','Новый макет','Готовые макеты'])assert.ok(html.includes(word),word);
- assert.match(html,/@keyframes gwbOmFly/);
- assert.match(html,/left:calc\(100% - 60px\)/);
- assert.match(html,/animation:gwbOmFly 18s/);
-});
-test('approved gender portraits and persisted chooser are unchanged',()=>{
+test('clicking the portrait changes gender with accessible keyboard button, no visible gender switch',()=>{
+ assert.match(html,/<button class="gwb-om-portrait" id="gwbMotionCharacter" type="button"/);
  assert.match(html,/class="gwb-om-female" src="data:image\/webp;base64,UklGR/);
  assert.match(html,/class="gwb-om-male" src="data:image\/webp;base64,UklGR/);
- assert.match(html,/data-gwb-gender="male" aria-pressed="false"/);
- assert.match(html,/data-gwb-gender="female" aria-pressed="true"/);
+ assert.doesNotMatch(html,/gwb-om-gender|data-gwb-gender/);
+ assert.match(html,/persona\?\.addEventListener\("click",\(\)=>setGender/);
  assert.match(html,/localStorage\.setItem\(storageKey,gender\)/);
- assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
- assert.match(html,/\.gwb-om-sheet-1\{left:5%\}/);
+ assert.match(html,/gwb-om-portrait:focus-visible/);
 });
-test('printcheck, orders and mockup UI still exist',()=>{
+test('laptop has correct aspect ratio, flight cards use real basket data when available',()=>{
+ assert.match(html,/viewBox="0 0 106 52" preserveAspectRatio="xMidYMid meet"/);
+ assert.match(html,/\.gwb-om-laptop\{height:50px;width:auto;aspect-ratio:106\/52;/);
+ assert.match(html,/class="gwb-om-flight"/);
+ for(const kind of ['sheet-1','sheet-2','sheet-3'])assert.match(html,new RegExp('class="gwb-om-sheet gwb-om-'+kind+'"'));
+ assert.match(html,/\.basket-order \.gwb-basket-item/);
+ assert.match(html,/\.gwb-basket-art/);
+ assert.match(html,/\.gwb-basket-thumb img/);
+ assert.match(html,/new MutationObserver\(queueRefresh\)/);
+ assert.match(html,/addEventListener\("animationiteration"/);
+ assert.match(html,/dataSource="basket"|dataset\.productSource="basket"/);
+ assert.match(html,/url\.protocol==="https:"/);
+ assert.match(html,/\(\^\|\\\.\)gifts\\\.ru\$\/i/);
+ assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.doesNotMatch(html,/fetch\("/api/orders/"\+order,[\s\S]*?\/\* Compact orders motion/);
+});
+test('printcheck and mockups keep their preexisting controls',()=>{
  assert.match(html,/id="basketOrders"/);
  assert.match(html,/function prepareOrderAccordion\(card,rows\)/);
  assert.match(html,/id="mockupModeButton"/);
- assert.match(html,/class="navlinks"/);
- assert.doesNotMatch(html,/gwb-orders-motion[^\n]*<script src=/);
 });
