@@ -1,0 +1,206 @@
+{
+  "snapshot_date": "2026-10-13",
+  "verified_functional_source_commit": "06b807dcff962742eee4a009e97ef2d1e2ccb4ae",
+  "source_branch": "gifts-layout-workbench-mockups-source",
+  "source_tree_sha": "7d9562dfb605a450c1c36f46f2cfb7ca2d999b13",
+  "verified_publication_main_commit": "d4103a75f6d412006df15bc29cfb2637a79f0656",
+  "repository": "tohaa28/tohaa28.github.io",
+  "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
+  "workflow": {
+    "run": 38358871843,
+    "conclusion": "success",
+    "unit_tests": 134,
+    "prepublication_browser_run": 38303480915,
+    "pages_deploy_run": 38358908137,
+    "pages_deploy": "success",
+    "precheck": "success",
+    "publish": "success",
+    "browser_verify": "success"
+  },
+  "last_feature": "Startup-style transition between Maketnaya and Mockup Editor",
+  "test_failure_resolved": {
+    "run": 38232054983,
+    "cause": "reduced-motion CSS violated the existing door animation contract",
+    "fix_commit": "702136d52ebf4334f4abaf983653ecca058cdde8"
+  },
+  "mockup": {
+    "cylinder_aspect_lock": true,
+    "mesh_seam_artifact_fix": true,
+    "user_real_photo_retest": "pending"
+  },
+  "printcheck": {
+    "latest_algorithm": "PrintCheck-coverage-swt-v25-multisegment-ink",
+    "handoff": "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
+    "customer_retest": "pending"
+  },
+  "note": "Current UI rc201d047; historical step-motion redesign remains rolled back. Keep current profiles on all UI rollback operations.",
+  "keyboard_regression": {
+    "failed_source_commit": "6e2e22aa9e753f98e6c5cbf7746f0a0e78d2df59",
+    "failed_workflow": 38241596249,
+    "restored_source_commit": "d18d63ffd363edc13aacc8bbdc921d5fb8877736",
+    "verified_workflow": 38241952910,
+    "notes": "Parent basket order has its own keyboard handler; preventDefault and stopImmediatePropagation are required."
+  },
+  "order_accordion": {
+    "initial_visible_articles": 1,
+    "expanded_by": "mouseenter",
+    "collapsed_by": "mouseleave",
+    "keyboard_accessibility": "focusin/focusout",
+    "decorative_marker": ".gwb-order-multi-indicator",
+    "marker_clickable": false,
+    "animation_ms": 380,
+    "single_article_no_arrow": true,
+    "article_click_opens_order": true,
+    "source_commit": "9919596e562ea9675deb2f6f44aee34dd4262826",
+    "workflow_run": 38244216693
+  },
+  "broken_test_resolved": {
+    "failed_commit": "1dd948d26bc7e1549ffeee2a21a0ad3c138545f1",
+    "failed_run": 38243932606,
+    "cause": "Legacy test clicked hidden second article without hovering",
+    "fix_commit": "49bf00896e04789c09c4b349e13ee25cb3580762",
+    "success_run": 38244216693
+  },
+  "basket_row_layout": {
+    "equal_height_within_row": true,
+    "layout_method": "CSS Grid align-items:stretch and item align-self:stretch",
+    "expand_on_hover_preserved": true,
+    "count_font_size_px": 12.5,
+    "count_font_weight": 750,
+    "verified_source_commit": "cf1626cc970e9efa44d9d314cf2d8e0b43b5a5ec",
+    "verified_workflow": 38244954569
+  },
+  "article_card_typography": {
+    "scope": "#orderTemplateList",
+    "detail_font_size_px": 10,
+    "detail_weight": 400,
+    "label_font_size_px": 10,
+    "label_weight": 400,
+    "thumbnail_width_px": 76,
+    "columns_label_width_px": 64,
+    "error_marker_weight": 800,
+    "verified_source_commit": "bd9d1327832864b9cfa8dfb855fdf935dc4e3db6",
+    "verified_workflow": 38246654143
+  },
+  "step1_border": {
+    "external_frame": ".article-card",
+    "external_kept": true,
+    "internal_frame": "#orderEditor .article-card #orderTemplatePicker",
+    "internal_border_px": 0,
+    "internal_shadow": "none",
+    "selected_article_highlight_preserved": true,
+    "verified_source_commit": "8f02f72fc8004e6d7e0059b3c5136db82afa9227",
+    "verified_workflow": 38247326682
+  },
+  "startup_animation": {
+    "kind": "HTML CSS SVG motion design",
+    "duration_ms": 2600,
+    "source": "tools/launcher-motion.mjs",
+    "builder": "tools/build-launcher.mjs",
+    "stage": ".gwb-motion-stage",
+    "old_door_stage_removed": true,
+    "generated_launcher": "launcher.js",
+    "browser_test": "test-direct-workbench.yml",
+    "unit_test": "tests/launcher-motion.test.mjs",
+    "four_beats": [
+      "abstract panels",
+      "brand logo",
+      "vector layout and finished art",
+      "live workbench reveal"
+    ],
+    "verified_source_commit": "15d1817d6f9af42216e2671666a0b54e65497cca",
+    "verified_workflow": 38249503509
+  },
+  "rollback_completed": {
+    "requested": "откати последние изменения",
+    "checkpoint_commit": "2886e79f7501d60b52cb26bf97862938e3403174",
+    "rollback_source_commit": "85bab4b183db1f419512559490cb97a415d7bd0c",
+    "published_main_commit": "57d23feb558c10aa8ccec475c9b0956752b7db1f",
+    "visual_design": "pre Motion System / pre Studio UI 2.0",
+    "launch_intro_preserved": true,
+    "unit_tests": 134,
+    "workflow_run": 38290413508,
+    "pages_run": 38290486575
+  },
+  "archived_motion_release": {
+    "verified_functional_source_commit": "49e603833af0d2ac4239260acaa0309cefe92c16",
+    "verified_publication_main_commit": "636831de75e9760b2ba6a95fac8e685a99860644",
+    "workflow": {
+      "run": 38299919634,
+      "conclusion": "success",
+      "unit_tests": 137,
+      "precheck": "success",
+      "publish": "success",
+      "browser_verify": "success",
+      "pages_deploy_run": 38299959931,
+      "pages_deploy": "success",
+      "prepublication_browser_run": 38299623038
+    },
+    "motion_interface": {
+      "version": "r49d1b0a5",
+      "steps": [
+        "article",
+        "field",
+        "artwork",
+        "download"
+      ],
+      "source_files": [
+        "assets/workbench-flow.js",
+        "assets/workbench-flow.css"
+      ],
+      "drawer": "desktop side panel; mobile in normal flow",
+      "reduced_motion": true,
+      "native_data_preserved": true,
+      "rollback_source": "8fbdbb7e59819243724c040a17bf560f7ada226a",
+      "rollback_publication": "57d23feb558c10aa8ccec475c9b0956752b7db1f",
+      "rollback_branches": [
+        "backup/maketnaya-source-before-step-motion-2026-10-12",
+        "backup/maketnaya-published-before-step-motion-2026-10-12"
+      ],
+      "handoff": "handoff/MAKETNAYA_STEP_MOTION_2026-10-12.md"
+    },
+    "motion_polish": {
+      "handoff": "handoff/MAKETNAYA_MOTION_POLISH_2026-10-12.md",
+      "component_browser_engines": [
+        "Chromium",
+        "Firefox"
+      ],
+      "complete_browser_suite": "Chromium",
+      "mobile_navigation": "outside scrolling workspace",
+      "mobile_min_tested_width_px": 320,
+      "disclosures": "interruptible measured-height WAAPI",
+      "windows": "single native completion and cancellable close",
+      "preserved_profile_commit": "91569795fb3d433919f20802d1c253ebfad8b781",
+      "preserved_profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
+      "preserved_mapping": "77700.60 · Стандартное · 77700.60-1",
+      "backup_with_profiles": [
+        "backup/maketnaya-source-before-motion-polish-with-profiles-2026-10-12",
+        "backup/maketnaya-published-before-motion-polish-with-profiles-2026-10-12"
+      ],
+      "rollback_rule": "Keep current mockup-profiles.json when reverting UI"
+    }
+  },
+  "requested_rollback": {
+    "checkpoint": "8fbdbb7e59819243724c040a17bf560f7ada226a",
+    "source": "a3be5615d4adfbc067162f080502de1bceb2bef1",
+    "published_main": "c57afa4553bba5f8fe67b064d85c078a443af847",
+    "profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
+    "startup_preserved": true,
+    "backup_branches": [
+      "backup/maketnaya-source-before-requested-rollback-2026-10-12",
+      "backup/maketnaya-published-before-requested-rollback-2026-10-12"
+    ],
+    "handoff": "handoff/MAKETNAYA_REQUESTED_ROLLBACK_2026-10-12.md"
+  },
+  "mockup_transition": {
+    "handoff": "handoff/MAKETNAYA_MOCKUP_TRANSITION_2026-10-13.md",
+    "open_ms": 900,
+    "close_ms": 500,
+    "max_wait_ms": 8000,
+    "reduced_motion": true,
+    "preview_workflow": 38303480915,
+    "profile_blob": "182919eade8864371691f18a137a7d7db45e0a60",
+    "source_backup": "backup/maketnaya-before-mockup-transition-2026-10-12",
+    "published_backup": "backup/maketnaya-published-before-mockup-transition-2026-10-13"
+  }
+}
