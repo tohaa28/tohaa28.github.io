@@ -1,6 +1,6 @@
 import {installArtworkView} from "./logo-artwork-view.mjs?v=20261001-1";
 let gwbArtworkView;
-import {installMethodAdmin} from "./method-admin.mjs?v=20260930-1";
+import {installMethodAdmin} from "./method-admin.mjs?v=20261013-current-method-1";
 import {installFieldZoom} from "./field-zoom.mjs?v=20260930-2";
 let gwbFieldZoom;
 import {installDetailCheck} from "./logo-detail-check.mjs?v=20261001-3";
