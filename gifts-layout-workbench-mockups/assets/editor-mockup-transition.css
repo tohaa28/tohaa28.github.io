@@ -1,0 +1,45 @@
+#gwbMockupTransition[hidden]{display:none!important}
+#gwbMockupTransition{position:fixed;inset:0;z-index:2147483100;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 65% 35%,#edf8d9 0,transparent 46%),radial-gradient(ellipse at 12% 9%,#e7f1e5 0,transparent 36%),#f8faf7;color:#36474c;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;opacity:1;transition:opacity .24s ease,transform .24s ease}
+#gwbMockupTransition .gmt-grid{position:absolute;inset:0;background-image:linear-gradient(#81b31512 1px,transparent 1px),linear-gradient(90deg,#81b31512 1px,transparent 1px);background-size:76px 76px;mask-image:radial-gradient(ellipse,#000,transparent 78%)}
+#gwbMockupTransition .gmt-glass{position:absolute;border-radius:32px;border:1px solid #ffffffaf;box-shadow:0 28px 100px #3c564123,inset 1px 1px 2px #ffffffd6;pointer-events:none}
+#gwbMockupTransition .gmt-glass-a{width:44vw;height:61vh;left:-18vw;top:-20vh;background:linear-gradient(145deg,#fff9,#f3f9e5cb 50%,#a9d27091);transform:rotate(-28deg)}
+#gwbMockupTransition .gmt-glass-b{width:38vw;height:53vh;right:-13vw;bottom:-27vh;background:linear-gradient(145deg,#405059ed,#536a5ee3 62%,#a6c878bd);transform:rotate(23deg)}
+#gwbMockupTransition .gmt-heading{position:absolute;left:9%;top:24%;display:flex;gap:18px;align-items:center;width:38%;z-index:3}
+#gwbMockupTransition .gmt-mark{display:grid;place-items:center;flex-shrink:0;width:72px;height:72px;border-radius:19px;color:white;background:linear-gradient(145deg,#a9dc42,#81b315 57%,#518607);font-size:44px;font-weight:850;box-shadow:0 24px 62px #648a3040}
+#gwbMockupTransition .gmt-heading small{display:block;font-size:9px;letter-spacing:.17em;color:#72867b;font-weight:700;margin-bottom:12px}
+#gwbMockupTransition .gmt-heading strong{display:block;font-size:clamp(24px,3.3vw,52px);font-weight:760;line-height:1.08;letter-spacing:-.045em}
+#gwbMockupTransition .gmt-heading p{font-size:13px;line-height:1.5;color:#71847b;margin:16px 0 0}
+#gwbMockupTransition .gmt-cards{position:absolute;left:53%;top:13%;width:34%;height:65%;perspective:1200px}
+#gwbMockupTransition .gmt-card{position:absolute;inset:0;border:1px solid #e3eade;border-radius:23px;background:#fff;box-shadow:0 35px 95px #213c3830;overflow:hidden;transform:rotate(5deg)}
+#gwbMockupTransition .gmt-card-bar{height:45px;display:flex;align-items:center;gap:9px;padding:0 18px;border-bottom:1px solid #e3ebe1;color:#81908a;font-size:9px;letter-spacing:.13em;font-weight:700}
+#gwbMockupTransition .gmt-card-bar i{width:6px;height:6px;background:#81b315;border-radius:50%}
+#gwbMockupTransition .gmt-paper,#gwbMockupTransition .gmt-photo{height:calc(100% - 45px);display:grid;place-items:center;padding:20px;box-sizing:border-box;background:linear-gradient(#fcfefb,#eff5ed)}
+#gwbMockupTransition canvas,#gwbMockupTransition img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+#gwbMockupTransition canvas{display:none}
+#gwbMockupTransition.has-layout canvas{display:block}
+#gwbMockupTransition .gmt-empty{font-size:110px;color:#81b315}
+#gwbMockupTransition.has-layout .gmt-empty{display:none}
+#gwbMockupTransition .gmt-product{opacity:0;transform:translateX(32px) rotate(0deg) scale(.97);transition:opacity .28s ease,transform .4s cubic-bezier(.2,.8,.2,1)}
+#gwbMockupTransition.has-photo .gmt-product{opacity:1;transform:none}
+#gwbMockupTransition.has-photo .gmt-layout{transform:translate(-31%,18%) rotate(-8deg) scale(.62);transition:transform .45s cubic-bezier(.2,.8,.2,1);z-index:2}
+#gwbMockupTransition .gmt-sweep{position:absolute;inset:-25% -12%;z-index:3;background:linear-gradient(110deg,transparent 35%,#ffffffb3 46%,#cce3afad 52%,transparent 64%);pointer-events:none;transform:translateX(-120%) rotate(-10deg)}
+#gwbMockupTransition .gmt-footer{position:absolute;bottom:7%;left:9%;right:9%;display:flex;align-items:center;gap:24px;z-index:4;font-size:10px;color:#71847b;letter-spacing:.1em}
+#gwbMockupTransition .gmt-line{height:2px;background:#d7e5d4;flex:1;overflow:hidden}
+#gwbMockupTransition .gmt-line b{display:block;width:100%;height:100%;background:#81b315;transform-origin:left;animation:gmt-progress .9s ease both}
+#gwbMockupTransition button{background:#ffffffba;border:1px solid #d5e0cd;border-radius:8px;padding:10px 14px;color:#44525a;font:600 12px system-ui;cursor:pointer;min-height:40px}
+#gwbMockupTransition button:focus-visible{outline:2px solid #648f06;outline-offset:4px}
+#gwbMockupTransition.gmt-forward .gmt-cards{animation:gmt-card-in .65s cubic-bezier(.2,.8,.2,1) both}
+#gwbMockupTransition.gmt-forward .gmt-heading{animation:gmt-heading-in .4s cubic-bezier(.2,.8,.2,1) both}
+#gwbMockupTransition.gmt-forward .gmt-sweep{animation:gmt-sweep .75s .12s cubic-bezier(.2,.8,.2,1) both}
+#gwbMockupTransition.gmt-reveal{opacity:0;transform:scale(1.025);pointer-events:none}
+#gwbMockupTransition.gmt-return{animation:gmt-heading-in .22s ease both}
+#gwbMockupTransition.gmt-return .gmt-product{display:none}
+#gwbMockupTransition.gmt-return .gmt-cards{animation:gmt-card-back .5s cubic-bezier(.2,.8,.2,1) both}
+#gwbMockupTransition.gmt-return-reveal{opacity:0;transform:scale(1.025);pointer-events:none}
+@keyframes gmt-card-in{from{opacity:0;transform:translate(45px,35px) scale(.82)}to{opacity:1;transform:none}}
+@keyframes gmt-heading-in{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
+@keyframes gmt-card-back{from{transform:translateX(20px) scale(.95)}to{transform:translateX(-30px) scale(1.02)}}
+@keyframes gmt-sweep{to{transform:translateX(120%) rotate(-10deg)}}
+@keyframes gmt-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(max-width:760px){#gwbMockupTransition .gmt-heading{left:7%;top:9%;width:86%;gap:12px}#gwbMockupTransition .gmt-mark{width:52px;height:52px;font-size:32px;border-radius:14px}#gwbMockupTransition .gmt-heading strong{font-size:28px}#gwbMockupTransition .gmt-heading small{font-size:7px;letter-spacing:.08em}#gwbMockupTransition .gmt-heading p{font-size:11px;margin-top:8px}#gwbMockupTransition .gmt-cards{left:24%;top:32%;width:63%;height:45%}#gwbMockupTransition .gmt-footer{left:7%;right:7%;bottom:5%;gap:12px;flex-wrap:wrap}#gwbMockupTransition .gmt-footer>span{font-size:8px}#gwbMockupTransition button{font-size:11px}#gwbMockupTransition .gmt-paper,#gwbMockupTransition .gmt-photo{padding:12px}}
+@media(prefers-reduced-motion:reduce){#gwbMockupTransition,#gwbMockupTransition *{animation:none!important;transition:none!important}#gwbMockupTransition .gmt-sweep{display:none}}
