@@ -32,6 +32,7 @@ test('laptop has correct aspect ratio, flight cards use real basket data when av
  assert.match(html,/url\.protocol==="https:"/);
  assert.ok(html.includes('gifts\\.ru$/i.test(url.hostname)'),"Only approved gifts.ru images");
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(html,/if\(!article\|\|!\/\\d\{3,\}\/\.test\(article\)\)/);
 });
 test('printcheck and mockups keep their preexisting controls',()=>{
  assert.match(html,/id="basketOrders"/);
