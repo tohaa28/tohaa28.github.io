@@ -261,6 +261,25 @@ jobs:
           });
           if(!initialOrderLayout.expanded||initialOrderLayout.railWidth<initialOrderLayout.mainWidth*.96||initialOrderLayout.workspaceVisibility!=="hidden"||initialOrderLayout.workspacePointerEvents!=="none")
             throw Error("Initial order-list full width regression: "+JSON.stringify(initialOrderLayout));
+          // Full-width character scene: geometry, outbound sheets and switch must work
+          // in the real embedded Workbench, without changing the 50px header row.
+          const motionLayout=await frame.evaluate(()=>{
+            const nav=document.querySelector(".navrow"),scene=document.getElementById("gwbOrdersMotion");
+            const flight=scene?.querySelector(".gwb-om-flight");
+            const sheets=scene?[...scene.querySelectorAll(".gwb-om-sheet")]:[];
+            const selector=scene?.querySelector(".gwb-om-gender");
+            return {navHeight:nav?.getBoundingClientRect().height,navWidth:nav?.getBoundingClientRect().width,sceneWidth:scene?.getBoundingClientRect().width,sceneHeight:scene?.getBoundingClientRect().height,flightWidth:flight?.getBoundingClientRect().width,sheets:sheets.length,selectorVisible:selector?getComputedStyle(selector).display!=="none":false,hasFlightAnimation:sheets[0]?getComputedStyle(sheets[0]).animationName:"none"};
+          });
+          if(!(motionLayout.navWidth>0&&Math.abs(motionLayout.navHeight-50)<.5&&Math.abs(motionLayout.sceneWidth-motionLayout.navWidth)<2&&motionLayout.sceneHeight<=50&&motionLayout.sheets===3&&motionLayout.selectorVisible&&motionLayout.hasFlightAnimation==="gwbOmFly"))
+            throw Error("Full-width orders-flight geometry regression: "+JSON.stringify(motionLayout));
+          await frame.locator("#gwbOrdersMotion [data-gwb-gender='male']").click();
+          const selectedMale=await frame.locator("#gwbOrdersMotion").getAttribute("data-gender");
+          if(selectedMale!=="male")throw Error("Orders character switch did not select male");
+          await frame.locator("#gwbOrdersMotion [data-gwb-gender='female']").click();
+          if(await frame.locator("#gwbOrdersMotion").getAttribute("data-gender")!=="female")throw Error("Orders character switch did not restore female");
+          const genderSaved=await frame.evaluate(()=>localStorage.getItem("gwb.ordersMotion.gender.v1"));
+          if(genderSaved!=="female")throw Error("Orders character switch not persisted");
+          console.log("Verified full-width flying layouts and character switch",motionLayout);
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];
