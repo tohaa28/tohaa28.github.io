@@ -562,10 +562,15 @@ jobs:
           console.log("Fresh private basket:", JSON.stringify({source:basket.source,scanned:basket.scanned,basketFetchesBefore,basketFetchesAfter,legacyCartFetchesBefore,legacyCartFetchesAfter}));
 
           await frame.waitForSelector("#basketOrders .basket-order", {state:"attached", timeout:30000});
+          // Wait for the existing basket UI to finish its compact-card enrichment.
+          await frame.waitForFunction(()=>{
+            const rows=[...document.querySelectorAll("#basketOrders .basket-method")];
+            return rows.length>=3&&rows.every(x=>x.dataset.gwbCompact==="1"&&x.querySelector(".gwb-basket-art"));
+          },null,{timeout:12000});
           await frame.waitForFunction(()=>{
             const scene=document.querySelector("#gwbOrdersMotion");
             return scene?.dataset.productSource==="basket" && [...scene.querySelectorAll(".gwb-om-sheet")]
-              .every(sheet=>/\\d{3,}/.test(sheet.dataset.orderArt||""));
+              .every(sheet=>/\d{3,}/.test(sheet.dataset.orderArt||""));
           },null,{timeout:20000});
           const animationArticles=await frame.evaluate(()=>({
             flyers:[...document.querySelectorAll("#gwbOrdersMotion .gwb-om-sheet")].map(x=>x.dataset.orderArt),
