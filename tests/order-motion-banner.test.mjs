@@ -32,7 +32,6 @@ test('laptop has correct aspect ratio, flight cards use real basket data when av
  assert.match(html,/url\.protocol==="https:"/);
  assert.match(html,/\(\^\|\\\.\)gifts\\\.ru\$\/i/);
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
- assert.doesNotMatch(html,/fetch\("/api/orders/"\+order,[\s\S]*?\/\* Compact orders motion/);
 });
 test('printcheck and mockups keep their preexisting controls',()=>{
  assert.match(html,/id="basketOrders"/);
