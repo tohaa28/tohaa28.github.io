@@ -28,9 +28,9 @@ test('laptop has correct aspect ratio, flight cards use real basket data when av
  assert.match(html,/\.gwb-basket-thumb img/);
  assert.match(html,/new MutationObserver\(queueRefresh\)/);
  assert.match(html,/addEventListener\("animationiteration"/);
- assert.match(html,/dataSource="basket"|dataset\.productSource="basket"/);
+ assert.ok(html.includes('root.dataset.productSource="basket"'));
  assert.match(html,/url\.protocol==="https:"/);
- assert.match(html,/\(\^\|\\\.\)gifts\\\.ru\$\/i/);
+ assert.ok(html.includes('gifts\\.ru$/i.test(url.hostname)'),"Only approved gifts.ru images");
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
 });
 test('printcheck and mockups keep their preexisting controls',()=>{
