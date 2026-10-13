@@ -895,3 +895,18 @@ Regression:
 - Backup published main: `backup/main-before-orders-character-motion-2026-10-13` → `285a583a73ccb48511657ce4fcc9eb1020d6fa68`.
 
 При необходимости отката возвращать UI из backup, сохраняя САМУЮ СВЕЖУЮ версию `mockup-profiles.json`. Не делать слепой `git reset --hard` на старую публикацию с клиентскими профилями.
+
+
+## 13.10.2026 — Полноширинная анимация макетов, вылетающих из ноутбука
+
+## Проверенная публикация — полноширинный полёт готовых макетов
+- Функциональный source commit: `cbdbf1f895d04d403b2bda0f348125c42b0645ff`.
+- Опубликованный main: `caf6847085cd3d651eab45d1a21846837062b134`.
+- GitHub Actions `38404188301`: **precheck SUCCESS, publish SUCCESS, browser_verify/browser-test SUCCESS**.
+- GitHub Pages `38404311827`: **build SUCCESS, deploy SUCCESS**.
+- HTML `editor.html` подтверждён в опубликованной директории `gifts-layout-workbench-mockups/`: `width:100%;max-width:none`, три независимых `.gwb-om-sheet`, ноутбук и начало пути непосредственно у его экрана, переключатель пола, ссылки на gifts.ru.
+- В реальном browser-test проверяются ширина сцены относительно всей navrow, неизменная высота **50 px**, начало полёта рядом с ноутбуком, наличие трёх листов, CSS-анимация, переключение пола и сохранение выбора.
+- Длительность нового цикла **18 секунд**; отдельная строка не добавлена, плавное движение с паузами, отключение через `prefers-reduced-motion`.
+- `mockup-profiles.json` не изменён: **22 профиля**, SHA `f4ca8f993b31ecd8a91f394eb60ce385e12dee50` одинаков в source и published main.
+- До изменения сохранены `backup/source-before-orders-fullwidth-flight-2026-10-13` → `072e3b07976e5128e86f486971d3b8580371830f` и `backup/main-before-orders-fullwidth-flight-2026-10-13` → `af374ffc19415b75de7eff3b526f1ce8c980a476`. При откате всегда сохранять последний `mockup-profiles.json`.
+
