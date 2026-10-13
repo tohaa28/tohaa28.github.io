@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="b998f2eea9db87da364a288a71bd2701978142bdf6e3e7d2802574b934f432b3";
-const expected="f74a165471c9a4c90d0cd8ebbefd285fa6a522acbced35747c3ad2613faee32b";
+const expected="bbde7d7019f3a184d069a615601eebe1a6dbd301643a5a0b53ec7b133d8548d0";
 const edits=[
   [
     "",
@@ -403,6 +403,14 @@ const edits=[
   [
     'Q("Артикул выбран автоматически. Выберите место нанесения.")',
     'Q("Выберите место нанесения.")'
+  ]
+  ,[
+    'installMethodAdmin({redraw:X});',
+    'installMethodAdmin({redraw:X,getState:()=>y,getFieldMeta:oo});'
+  ],
+  [
+    './method-admin.mjs?v=20260930-1',
+    './method-admin.mjs?v=20261013-1'
   ]
 ];
 export function applyLogoPreflight(){
