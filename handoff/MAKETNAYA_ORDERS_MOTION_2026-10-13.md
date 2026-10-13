@@ -46,3 +46,20 @@
 - `mockup-profiles.json` не изменён: **22 профиля**, SHA `f4ca8f993b31ecd8a91f394eb60ce385e12dee50` одинаков в source и published main.
 - До изменения сохранены `backup/source-before-orders-fullwidth-flight-2026-10-13` → `072e3b07976e5128e86f486971d3b8580371830f` и `backup/main-before-orders-fullwidth-flight-2026-10-13` → `af374ffc19415b75de7eff3b526f1ce8c980a476`. При откате всегда сохранять последний `mockup-profiles.json`.
 
+
+
+## Публикация — скрытое переключение по портрету, реальная корзина, правильная геометрия ноутбука (13.10.2026)
+
+- Новый функциональный source commit: `00ee28b4d4c54a94de20631c0480b1ee56c444ba`.
+- Опубликованный main: `c8730a810d39768da81bed7cd6da83e2744ed19f`.
+- Публикационный workflow: `38407153330` — **precheck success**, **publish success**, **browser_verify success**.
+- GitHub Pages: `38407209437` — **completed / success**.
+- Старая группа `М / Ж` удалена. Сам портрет стал кнопкой `#gwbMotionCharacter`: клик/Enter/Space переключает пол, aria-label отражает следующий вариант, выбор сохраняется в прежнем localStorage ключе.
+- Ноутбук имеет обновлённый SVG с `viewBox="0 0 106 52"` и сохраняет соотношение 106:52 при любом размере экрана; исходная строка остаётся **50 px**.
+- Три вылетающие карточки не выдают вымышленные макеты за реальные. Анимация читает уже отрендеренные `.gwb-basket-item`: текущий артикул, название и реальную фотографию товаров (только проверенные URL gifts.ru); без новых запросов и без скачивания PDF.
+- При обновлении корзины `MutationObserver` обновляет набор. Через `animationiteration` ротация идёт по следующим трём товарным позициям, чтобы сцена выглядела по-разному. При отсутствии данных — нейтральный placeholder.
+- Эти карточки — стилизованные *эскизы по товарам*; реальные исходные PDF-шаблоны не выдаются за загруженные, потому что корзинная миниатюра товара не эквивалентна constructor PDF.
+- Unit и browser tests проверяют портрет-кнопку, keyboard-accessibility, 50px, новый aspect ratio и то, что артикулы летящих карточек действительно присутствуют в корзине.
+- `mockup-profiles.json` не изменялся: **22 профиля**, blob SHA `f4ca8f993b31ecd8a91f394eb60ce385e12dee50` в source и публикации одинаков.
+- Точки отката: `backup/source-before-orders-motion-cart-20261013` → `3acfd0556b6eda413fe1b1567c1fc0d13d4bd3f2`, `backup/main-before-orders-motion-cart-20261013` → `caf6847085cd3d651eab45d1a21846837062b134`. При любом rollback переносить актуальную версию `mockup-profiles.json`.
+
