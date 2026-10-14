@@ -345,6 +345,31 @@ jobs:
             screenCheck.ok==="gwbOmOkPop"&&screenCheck.send==="gwbOmSendArrow"))
             throw Error("Screen and captions out of sync: "+JSON.stringify(screenCheck));
           console.log("Verified four screen symbols, labels, and persona synchronization",screenCheck.names);
+          const captionLayout=await frame.evaluate(()=>{
+            const scene=document.querySelector("#gwbOrdersMotion");
+            const laptop=scene?.querySelector(".gwb-om-workstation");
+            const caption=scene?.querySelector(".gwb-om-production");
+            const bulb=scene?.querySelector(".gwb-om-screen-icon-1");
+            const iconContainer=scene?.querySelector(".gwb-om-screen-sequence");
+            const laptopBounds=laptop?.getBoundingClientRect();
+            const captionBounds=caption?.getBoundingClientRect();
+            const screenBounds=iconContainer?.getBoundingClientRect();
+            return {
+              extraFloatingBulbs:scene?.querySelectorAll(".gwb-om-idea").length,
+              laptopBulbInside:!!(bulb&&laptop?.contains(bulb)),
+              screenInsideLaptop:!!(screenBounds&&laptopBounds&&screenBounds.left>laptopBounds.left&&screenBounds.right<laptopBounds.right),
+              captionGap:captionBounds?.left-laptopBounds?.right,
+              captionWidth:captionBounds?.width,
+              captionZ:getComputedStyle(caption).zIndex,
+              display:getComputedStyle(caption).display
+            };
+          });
+          if(!(captionLayout.extraFloatingBulbs===0&&captionLayout.laptopBulbInside&&
+            captionLayout.screenInsideLaptop&&captionLayout.captionGap>=0&&captionLayout.captionGap<=12&&
+            captionLayout.captionWidth>=160&&captionLayout.captionZ==="3"&&captionLayout.display!=="none"))
+            throw Error("Orders caption / floating lightbulb regression: "+JSON.stringify(captionLayout));
+          console.log("Verified idea light stays on laptop and captions are adjacent",captionLayout);
+
 
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {

@@ -72,6 +72,17 @@ test('four spoken story stages and small SVG motions are synchronized with portr
  assert.match(html,/\.gwb-om-screen-icon-1\{opacity:1\}/);
  assert.doesNotMatch(html,/gwbOmSpark|gwb-om-screen-spark/);
 });
+test('idea lamp exists only on laptop display and labels start immediately after laptop',()=>{
+ assert.doesNotMatch(html,/gwb-om-idea(?:-icon)?|gwbOmIdea/);
+ assert.match(html,/class="gwb-om-screen-icon gwb-om-screen-icon-1" data-screen-stage="idea"/);
+ assert.match(html,/class="gwb-om-bulb-glow"/);
+ assert.match(html,/\.gwb-om-workstation\{position:absolute;top:0;left:105px;width:106px;height:50px;/);
+ assert.match(html,/\.gwb-om-production\{position:absolute;top:4px;left:216px;width:185px;height:40px;z-index:3;/);
+ assert.match(html,/\.gwb-om-production\{left:216px;width:170px\}/);
+ assert.doesNotMatch(html,/\.gwb-om-phase\{font-size:0\}/);
+ assert.match(html,/\.gwb-om-production\{display:none\}/);
+ assert.match(html,/height:100%;max-height:50px/);
+});
 test('printcheck and mockups keep their preexisting controls',()=>{
  assert.match(html,/id="basketOrders"/);
  assert.match(html,/function prepareOrderAccordion\(card,rows\)/);
