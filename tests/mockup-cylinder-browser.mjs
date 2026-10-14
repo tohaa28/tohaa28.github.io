@@ -271,6 +271,21 @@ export async function verifyMockupCylinder(browserContext){
     assert.ok(stats.max-stats.min<=15,
       surface+" mockup creates a visible hatch across a solid source: "+JSON.stringify(stats));
   }
+  // End-to-end: a full template development must not be fitted as a loose logo.
+  const developmentCheck=await page.evaluate(async()=>{
+    const data=svg=>"data:image/svg+xml;base64,"+btoa(svg);
+    const photo=data('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="black"/></svg>');
+    const composite=data('<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="400"><rect width="1000" height="400" fill="white"/><rect x="280" width="40" height="400" fill="red"/></svg>');
+    await window.gwbApplyMockupHandoff({article:"DEVELOPMENT-TEST",place:"front",photoDataUrl:photo,constructorPreviewDataUrl:photo,fieldCompositeDataUrl:composite,fieldRect:{x:0,y:0,w:1,h:1}});
+    await window.gwbApplyMockupProfile({schema:"gifts-mockup-profile/v1",article:"DEVELOPMENT-TEST",place:"front",photo:{id:"handoff-data"},field:{id:"1",printId:"print1",place:"front"},fieldRect:{x:0,y:0,w:1,h:1},surface:"cylinder",targetQuad:[{x:-.5,y:.2},{x:1.5,y:.2},{x:1.5,y:.8},{x:-.5,y:.8}],cylinder:{geometry:"3d",axis:"vertical",curvature:.72,topArc:0,bottomArc:0,targetQuad:[{x:.2,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:.2,y:.9}]},render:{opacity:1,blend:"source-over"}});
+    const out=await window.gwbCreateMockupPng(),img=await createImageBitmap(out.blob),canvas=document.createElement("canvas");
+    canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0);
+    // u=.3 is 240 pixels left of axis; radius=180 => theta=-4/3.
+    const x=Math.round((.5+.3*Math.sin(-4/3))*img.width);
+    const pixel=Array.from(ctx.getImageData(x,Math.round(img.height*.5),1,1).data);
+    img.close();return {pixel,x,width:canvas.width};
+  });
+  assert.ok(developmentCheck.pixel[0]>240&&developmentCheck.pixel[1]<20&&developmentCheck.pixel[2]<20,"Template stripe lost its arc-length placement in PNG: "+JSON.stringify(developmentCheck));
   await page.close();
   console.log("Mockup cylinder: small-photo filtering, mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence, back-face clipping, white-background seam-free perspective and cylinder exports passed");
 }
