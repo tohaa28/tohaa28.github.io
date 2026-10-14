@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
 
 test("cylinder guide keeps field attached while cylinder moves",()=>{
   const from=[{x:.2,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:.2,y:.9}];
@@ -77,7 +77,7 @@ test("cylinder artwork fit preserves intrinsic aspect ratio inside the field",()
   const surface=[{x:.08,y:.12},{x:.92,y:.14},{x:.94,y:.88},{x:.06,y:.86}];
   const opts={axis:"vertical",curvature:.72,topArc:.09,bottomArc:.055};
   const localField=[{x:.32,y:.28},{x:.48,y:.28},{x:.48,y:.72},{x:.32,y:.72}];
-  const field=localField.map(p=>cylinder3DSurfacePoint(surface,p.x,p.y,opts));
+  const field=localField.map(p=>cylinder3DDevelopmentPoint(surface,p,opts));
   const fitted=cylinder3DArtworkQuad(surface,field,2.0,opts);
   const du=fitted.bounds.u1-fitted.bounds.u0,dv=fitted.bounds.v1-fitted.bounds.v0;
   assert.ok(fitted.fieldAspect<2.0,"wide artwork should be fitted vertically inside a taller field");
@@ -89,13 +89,45 @@ test("cylinder field aspect lock keeps its ratio while a corner is resized",()=>
   const surface=[{x:.08,y:.12},{x:.92,y:.14},{x:.94,y:.88},{x:.06,y:.86}];
   const opts={axis:"vertical",curvature:.72,topArc:.09,bottomArc:.055};
   const localField=[{x:.28,y:.3},{x:.52,y:.3},{x:.52,y:.5},{x:.28,y:.5}];
-  const field=localField.map(p=>cylinder3DSurfacePoint(surface,p.x,p.y,opts));
-  const dragged=cylinder3DSurfacePoint(surface,.78,.78,opts);
+  const field=localField.map(p=>cylinder3DDevelopmentPoint(surface,p,opts));
+  const dragged=cylinder3DDevelopmentPoint(surface,{x:.78,y:.78},opts);
   const resized=cylinder3DResizeFieldPreservingAspect(surface,field,2,dragged,opts);
-  const recovered=resized.map(p=>cylinder3DInverseSurfacePoint(surface,p,opts));
+  const recovered=resized.map(p=>cylinder3DUnwrappedPoint(surface,p,opts));
   const width=(Math.hypot(recovered[1].x-recovered[0].x,recovered[1].y-recovered[0].y)+Math.hypot(recovered[2].x-recovered[3].x,recovered[2].y-recovered[3].y))/2;
   const height=(Math.hypot(recovered[3].x-recovered[0].x,recovered[3].y-recovered[0].y)+Math.hypot(recovered[2].x-recovered[1].x,recovered[2].y-recovered[1].y))/2;
   assert.ok(Math.abs(width/height-1.2)<1e-5,"locked field ratio must remain 1.2: "+width/height);
-  const anchor=cylinder3DInverseSurfacePoint(surface,field[0],opts);
+  const anchor=cylinder3DUnwrappedPoint(surface,field[0],opts);
   assert.ok(Math.abs(recovered[0].x-anchor.x)<1e-6&&Math.abs(recovered[0].y-anchor.y)<1e-6,"opposite corner stays anchored");
+});
+
+// Physical reference: radius 100 px, a 50 px displacement along the sheet is 0.5 rad.
+test("flat development uses arc length once and never repeats the rear artwork",()=>{
+  const q=[{x:0,y:0},{x:200,y:0},{x:200,y:300},{x:0,y:300}];
+  for(const curvature of [.4,.72,1]){
+    const opts={curvature,topArc:0,bottomArc:0};
+    const local=cylinder3DUnwrappedPoint(q,{x:150,y:150},opts);
+    const projected=cylinder3DSurfacePoint(q,local.x,local.y,opts);
+    assert.ok(Math.abs(projected.x-(100+100*Math.sin(.5)))<1e-8);
+    for(const x of [-500,800]){
+      const p=cylinder3DUnwrappedPoint(q,{x,y:150},opts);
+      assert.equal(cylinder3DSurfacePoint(q,p.x,p.y,opts).visible,false);
+      const back=cylinder3DDevelopmentPoint(q,p,opts);
+      assert.ok(Math.abs(back.x-x)<1e-8);
+    }
+  }
+});
+
+test("77700.60 saved development keeps every composite coordinate without refitting",async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const registry=JSON.parse(await readFile(new URL('../mockup-profiles.json',import.meta.url)));
+  for(const profile of registry.profiles.filter(p=>p.article==='77700.60')){
+    const opts={...profile.cylinder,fitArtwork:false};
+    const surface=profile.cylinder.targetQuad,field=profile.targetQuad;
+    const fit=cylinder3DArtworkQuad(surface,field,23/9.5,opts);
+    assert.deepEqual(fit.bounds,{u0:0,u1:1,v0:0,v1:1});
+    for(let i=0;i<4;i++){
+      const back=cylinder3DDevelopmentPoint(surface,fit.localArtworkQuad[i],opts);
+      assert.ok(Math.hypot(back.x-field[i].x,back.y-field[i].y)<1e-8);
+    }
+  }
 });

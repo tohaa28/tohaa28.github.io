@@ -357,7 +357,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261009-4";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-1";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -365,6 +365,7 @@ const state = {
   template: null,
   templateSource: { name: "", url: "" },
   artwork: null,
+  artworkIsFieldComposite: false,
   artworkSource: { name: "", url: "" },
   loading: { photo: false, template: false, artwork: false },
   fieldRect: { x: .3, y: .3, w: .4, h: .4 },
@@ -420,7 +421,7 @@ function ensureCylinderGuide(force=false){
 }
 function fieldBoundToCylinder(fromQuad,toQuad,fieldQuad){
   const opts=cylinder3DOptions();
-  try{return fieldQuad.map(p=>{const local=cylinder3DInverseSurfacePoint(fromQuad,p,opts);return photoPoint(cylinder3DSurfacePoint(toQuad,local.x,local.y,opts),true);});}
+  try{return fieldQuad.map(p=>{const local=cylinder3DUnwrappedPoint(fromQuad,p,opts);return photoPoint(cylinder3DDevelopmentPoint(toQuad,local,opts),true);});}
   catch{try{return fieldQuad.map(p=>photoPoint(mapPointBetweenQuads(p,fromQuad,toQuad),true));}catch{return fieldQuad.map(p=>photoPoint(p,true));}}
 }
 function setPhotoEditTarget(target){
@@ -950,7 +951,7 @@ const UNIT_QUAD=[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];
 function drawWarpedCylinder3D(ctx,img,q,cylinder={}){
   if(!Array.isArray(cylinder.surfaceQuad)||cylinder.surfaceQuad.length!==4)return false;
   const iw=img.naturalWidth,ih=img.naturalHeight,along=96,across=36;
-  const opts={axis:cylinder.axis==="horizontal"?"horizontal":"vertical",curvature:Number(cylinder.curvature??.72),topArc:Number(cylinder.topArc??.075),bottomArc:Number(cylinder.bottomArc??.045)};
+  const opts={axis:cylinder.axis==="horizontal"?"horizontal":"vertical",curvature:Number(cylinder.curvature??.72),topArc:Number(cylinder.topArc??.075),bottomArc:Number(cylinder.bottomArc??.045),fitArtwork:!state.artworkIsFieldComposite};
   let fitted;
   try{fitted=cylinder3DArtworkQuad(cylinder.surfaceQuad,q,iw/Math.max(1,ih),opts);}
   catch{fitted={localArtworkQuad:q.map(p=>mapPointBetweenQuads(p,cylinder.surfaceQuad,UNIT_QUAD))};}
@@ -1131,8 +1132,8 @@ function applyEditedPhotoQuad(next){
 $("photoCanvas").addEventListener("pointerdown",e=>{
   if(!state.photo)return;const c=e.currentTarget,cylinderMode=$("surface").value==="cylinder",p=normalizedPoint(c,e,cylinderMode),r=c.getBoundingClientRect(),target=cylinderMode&&state.photoEditTarget==="cylinder"?"cylinder":"field",quad=editablePhotoQuad();
   state.photoDragTarget=target;state.quadSnapshot=quad.map(q=>({...q}));state.fieldSnapshot=state.quad.map(q=>({...q}));
-  state.localQuadSnapshot=cylinderMode&&target==="field"&&state.preserveFieldAspect?state.quad.map(q=>cylinder3DInverseSurfacePoint(state.cylinderQuad,q,cylinder3DOptions())):null;
-  state.quadDragStartLocal=cylinderMode&&target==="field"&&state.preserveFieldAspect?cylinder3DInverseSurfacePoint(state.cylinderQuad,p,cylinder3DOptions()):null;
+  state.localQuadSnapshot=cylinderMode&&target==="field"&&state.preserveFieldAspect?state.quad.map(q=>cylinder3DUnwrappedPoint(state.cylinderQuad,q,cylinder3DOptions())):null;
+  state.quadDragStartLocal=cylinderMode&&target==="field"&&state.preserveFieldAspect?cylinder3DUnwrappedPoint(state.cylinderQuad,p,cylinder3DOptions()):null;
   const hit=canvasPointerPixel(c,e);
   if(cylinderMode&&target==="cylinder"){
     const cq=state.cylinderQuad.map(q=>photoToCanvasPoint(q,state.photoView)),opts=cylinder3DOptions();
@@ -1164,8 +1165,8 @@ $("photoCanvas").addEventListener("pointermove",e=>{
   if(state.draggingQuad&&state.quadSnapshot){
     const dx=p.x-state.quadDragStart.x,dy=p.y-state.quadDragStart.y;
     if(cylinderMode&&state.photoDragTarget==="field"&&state.preserveFieldAspect&&state.localQuadSnapshot&&state.quadDragStartLocal){
-      const currentLocal=cylinder3DInverseSurfacePoint(state.cylinderQuad,p,cylinder3DOptions()),localDx=currentLocal.x-state.quadDragStartLocal.x,localDy=currentLocal.y-state.quadDragStartLocal.y;
-      state.quad=state.localQuadSnapshot.map(q=>photoPoint(cylinder3DSurfacePoint(state.cylinderQuad,q.x+localDx,q.y+localDy,cylinder3DOptions()),true));
+      const currentLocal=cylinder3DUnwrappedPoint(state.cylinderQuad,p,cylinder3DOptions()),localDx=currentLocal.x-state.quadDragStartLocal.x,localDy=currentLocal.y-state.quadDragStartLocal.y;
+      state.quad=state.localQuadSnapshot.map(q=>photoPoint(cylinder3DDevelopmentPoint(state.cylinderQuad,{x:q.x+localDx,y:q.y+localDy},cylinder3DOptions()),true));
     }else if(cylinderMode){
       applyEditedPhotoQuad(state.quadSnapshot.map(q=>({x:q.x+dx,y:q.y+dy})));
     }else{
@@ -1203,7 +1204,7 @@ $("resetCylinder").onclick=resetCylinderAroundField;
 ["article","place","method","variant"].forEach(id=>$(id).addEventListener("input",updateSummary));
 $("photoFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await imageFromFile(f,"photo");const c={id:`local:${f.name}:${f.size}`,name:f.name,url:"",dataUrl:await fileToDataUrl(f),kind:"manual"};state.photoCandidates.push(c);state.activePhotoCandidate=state.photoCandidates.length-1;state.photoSource={id:c.id,name:c.name,url:""};renderPhotoCandidates();renderAll();}catch{setStatus("Не удалось открыть фотографию");}};
 $("templateFile").onchange=e=>imageFromFile(e.target.files[0],"template").catch(()=>setStatus("Не удалось открыть конструктор"));
-$("artworkFile").onchange=e=>imageFromFile(e.target.files[0],"artwork").catch(()=>setStatus("Не удалось открыть макет"));
+$("artworkFile").onchange=e=>{state.artworkIsFieldComposite=false;imageFromFile(e.target.files[0],"artwork").catch(()=>setStatus("Не удалось открыть макет"));};
 
 function buildProfile(){
   const fc=state.fieldCandidates[state.activeFieldCandidate]||null;
@@ -1466,6 +1467,7 @@ async function applyHandoff(payload){
 
   const template=payload.constructorPreviewDataUrl||payload.templatePreviewDataUrl||item.constructorPreviewDataUrl||item.templatePreviewDataUrl||"";
   const artwork=payload.fieldCompositeDataUrl||payload.artworkDataUrl||item.fieldCompositeDataUrl||item.artworkDataUrl||"";
+  state.artworkIsFieldComposite=!!artwork&&(artwork===payload.fieldCompositeDataUrl||artwork===item.fieldCompositeDataUrl);
   if(state.fieldCandidates.length){const wanted=$("place").value.trim().toLocaleLowerCase("ru-RU");let fi=state.fieldCandidates.findIndex(f=>f.place.trim().toLocaleLowerCase("ru-RU")===wanted);if(fi<0)fi=0;state.activeFieldCandidate=fi;const fc=state.fieldCandidates[fi];if(fc.bounds)state.fieldRect={...fc.bounds};if(fc.place)$("place").value=fc.place;if(fc.method)$("method").value=fc.method;} else state.activeFieldCandidate=-1;
   state.activePhotoCandidate=-1;
   renderFieldCandidates(); renderPhotoCandidates();
@@ -1532,6 +1534,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r713fad6e</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов re098274e</span>
 </body>
 </html>

@@ -265,6 +265,11 @@ jobs:
             echo "save-profile.html must not store active token only in sessionStorage" >&2
             exit 1
           fi
+      - name: Verify cylindrical mockups in Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          node tests/mockup-cylinder-browser-runner.mjs
 
   publish:
     needs: precheck

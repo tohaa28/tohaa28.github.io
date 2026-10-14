@@ -975,3 +975,12 @@ Regression:
 - Изменения только `editor.html`, motion unit/browser tests и специализированный handoff. PrintCheck, мокапы, шаблоны и обработка заказа не менялись.
 - `mockup-profiles.json` остался прежним: 22 профиля, SHA `f4ca8f993b31ecd8a91f394eb60ce385e12dee50` одинаков в source и published main.
 - Rollback: `backup/source-before-orders-screen-story-20261014` → `9715d73e00ddfa87a611992355344ad7c4fe870b`, `backup/main-before-orders-screen-story-20261014` → `f67ff24920d46c28862d6a3c7fca092880d28480`. Никогда не откатывать вместе с UI актуальные пользовательские профили.
+
+## 2026-10-14 — Cylinder development coordinates
+- Baseline source 506cc9e81561af90264e674b2a1040b28c564e2f; rollback branch backup-cylinder-development-20261014.
+- Fixed blue flat development handles being interpreted with nonlinear inverse projection. The flat sheet now maps through arc length s=R*theta, including out-of-photo coordinates.
+- Field drag, aspect-locked resize and attachment to cylinder use reversible development coordinates.
+- Complete fieldCompositeDataUrl preserves placement and margins; only standalone logos use aspect-fit.
+- Rear artwork is restricted to the front angular interval, preventing repeated wraps.
+- Preview/export use the same renderer. Registry blob d182817f6673a55eb602b75b70e4a1446738adf0 preserved.
+- Local 143 unit tests pass, generated launcher syntax passes. Chromium browser regression added to publish precheck because browser download is unavailable in local runtime.
