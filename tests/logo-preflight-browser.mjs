@@ -22,6 +22,31 @@ export async function verifyLogoPreflight(frame) {
     const transformed={...art,svg:{root:scaled}};transformed.preflight=await inspectArtwork(transformed);
     return {stroke:art.preflight.strokes[0]?.width,small:run('DTF1'),pad:run('A1'),large:run('DTF1',40),pdf:pdfResult,pdfColors:pdfArt.preflight.originalColorModels,transformed:transformed.preflight.strokes[0]?.width,unknown:resolveMethod('UV-DTF10')};
   });
+
+  // The original source format matters; PDF/SVG previews are rasterized only
+  // for display and must not be mistaken for raster originals.
+  const artworkEvidence=await frame.evaluate(async()=>{
+    const {inspectArtwork}=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261014-artwork-1');
+    const svg=markup=>({ext:'svg',w:20,h:20,svg:{root:new DOMParser().parseFromString(markup,'image/svg+xml').documentElement}});
+    const pure=await inspectArtwork(svg('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="20mm"><path d="M1 1H18V18Z" fill="black"/></svg>'));
+    const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+    const mixed=await inspectArtwork(svg('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="20mm"><image x="1" y="1" width="10" height="10" href="data:image/png;base64,'+png+'"/></svg>'));
+    const raster=await inspectArtwork({ext:'png',w:20,h:20,pixelW:200,pixelH:200});
+    const lib=globalThis.PDFLib;
+    const toPdf=async(withImage)=>{
+      const doc=await lib.PDFDocument.create();
+      const page=doc.addPage([144,144]);
+      page.drawRectangle({x:20,y:20,width:60,height:60,color:lib.rgb(0,0,0)});
+      if(withImage)page.drawImage(await doc.embedPng(Uint8Array.from(atob(png),c=>c.charCodeAt(0))),{x:85,y:85,width:25,height:25});
+      const bytes=await doc.save();const pdf=await pdfjsLib.getDocument({data:bytes.slice(),isEvalSupported:false,useSystemFonts:false}).promise;
+      const art={ext:'pdf',w:50.8,h:50.8,pdfPage:await pdf.getPage(1),bytes,pages:1};
+      const result=await inspectArtwork(art,pdfjsLib.OPS);await pdf.destroy();return result;
+    };
+    const vectorPdf=await toPdf(false),imagePdf=await toPdf(true);
+    return {pure:pure.artworkType,mixed:mixed.artworkType,raster:raster.artworkType,vectorPdf:vectorPdf.artworkType,imagePdf:imagePdf.artworkType,rasters:imagePdf.rasters.length};
+  });
+  assert.deepEqual([artworkEvidence.pure,artworkEvidence.mixed,artworkEvidence.raster,artworkEvidence.vectorPdf,artworkEvidence.imagePdf],
+    ['vector','mixed','raster','vector','mixed'],'Raster embedded in SVG or PDF must never pass a vector-only requirement');
   assert.ok(Math.abs(result.stroke-.2)<.01);
   assert.ok(result.small.findings.some(f=>f.id==='positive'&&f.status==='bad'));
   assert.ok(!result.pad.findings.some(f=>f.id==='positive'&&f.status==='bad'));
