@@ -111,7 +111,8 @@ export async function verifyMockupCylinder(browserContext){
     for(let i=0;i<data.length;i+=4)if(data[i]>150&&data[i+1]<100&&data[i+2]<100&&data[i+3]>80)red++;
     return {red,w,h};
   });
-  assert.ok(rendered3D.red>1000,"3D cylinder mesh must render the artwork onto the photo: "+JSON.stringify(rendered3D));
+  // Measure coverage relative to the rendered photo, which scales with the viewport.
+  assert.ok(rendered3D.red/(rendered3D.w*rendered3D.h)>.005,"3D cylinder mesh must render the artwork onto the photo: "+JSON.stringify(rendered3D));
   const workspace=await page.evaluate(()=>{
     const canvas=document.getElementById("photoCanvas"),wrap=canvas.parentElement,view=window.gwbGetMockupPhotoView();
     const px=x=>view.photoX+x*view.photoW;
