@@ -82,4 +82,6 @@ test('Mockup Editor navigation is compact, visually secondary and shown only ins
   assert.match(html,/watch\(orderEditorPane,\{attributes:true,attributeFilter:\["hidden"\]\}\)/);
   assert.match(html,/watch\(editorWorkspace,\{attributes:true,attributeFilter:\["class","data-order-state"\]\}\)/);
   assert.match(html,/const mockupEligible=editorEligible&&Number\(state.logoCount\)>0/);
+  assert.match(html,/if\(!openEligible&&!shell.hidden\)hide\(\)/);
+  assert.match(html,/window.addEventListener\("gwb-editor-readiness-changed",refresh\)/);
 });
