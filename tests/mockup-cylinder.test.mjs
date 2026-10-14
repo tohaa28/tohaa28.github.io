@@ -131,3 +131,21 @@ test("77700.60 saved development keeps every composite coordinate without refitt
     }
   }
 });
+
+test("cylinder rim arcs do not shift the field below its user-marked height",()=>{
+  const surface=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}];
+  for(const axis of ["vertical","horizontal"]){
+    for(const [topArc,bottomArc] of [[.095,.137],[.07,.045],[-.1,.2],[0,0]]){
+      const opts={axis,curvature:.76,topArc,bottomArc};
+      for(const axial of [.2,.5,.8]){
+        const p=axis==="vertical"?{x:200,y:600*axial}:{x:400*axial,y:300};
+        const local=cylinder3DUnwrappedPoint(surface,p,opts);
+        const projected=cylinder3DSurfacePoint(surface,local.x,local.y,opts);
+        assert.ok(Math.hypot(projected.x-p.x,projected.y-p.y)<1e-7,
+          "front meridian moved from marked field: "+JSON.stringify({axis,topArc,bottomArc,p,projected}));
+        const restored=cylinder3DDevelopmentPoint(surface,local,opts);
+        assert.ok(Math.hypot(restored.x-p.x,restored.y-p.y)<1e-7);
+      }
+    }
+  }
+});
