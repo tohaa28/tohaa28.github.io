@@ -795,6 +795,12 @@ jobs:
           await foldedOrder.locator(".gwb-order-multi-indicator").hover({force:true});
           if((await frame.locator("#orderEditor").isVisible()))
             throw Error("Decorative arrow unexpectedly opened the order editor");
+          const mockupInOrderList=await frame.evaluate(()=>{
+            const button=document.getElementById("mockupModeButton");
+            return {hidden:button?.hidden,rendered:button?getComputedStyle(button).display:"missing"};
+          });
+          if(mockupInOrderList.hidden!==true||mockupInOrderList.rendered!=="none")
+            throw Error("Mockup Editor button must be hidden throughout order-list mode: "+JSON.stringify(mockupInOrderList));
           // Moving outside the card collapses the extra positions again.
           await frame.locator("#basketStatus").hover();
           await frame.waitForFunction(()=>document.querySelector("#basketOrders .basket-order")?.dataset.gwbExpanded==="false");
@@ -951,6 +957,7 @@ jobs:
           });
           await frame.locator("#backToOrders").click();
           await frame.waitForFunction(() => document.getElementById("orderWaitingWorkspace")?.hidden === false && document.getElementById("orderEditor")?.hidden === true, null, {timeout:10000});
+          await frame.waitForFunction(() => document.getElementById("mockupModeButton")?.hidden===true, null, {timeout:10000});
           const waitingWorkspaceState = await frame.evaluate(() => {
             const workspace=document.querySelector(".workspace"),waiting=document.getElementById("orderWaitingWorkspace"),stage=document.getElementById("stageScroll"),resume=document.getElementById("resumeEditor");
             const alphaSum=id=>{
@@ -987,6 +994,18 @@ jobs:
           }
           await frame.locator("#resumeEditor").click();
           await frame.waitForFunction(() => document.getElementById("orderWaitingWorkspace")?.hidden === true && document.getElementById("orderEditor")?.hidden === false, null, {timeout:10000});
+          await frame.waitForFunction(()=>{
+            const button=document.getElementById("mockupModeButton");
+            return !button?.hidden && window.gwbGetEditorReadiness?.().templateReady===true;
+          },null,{timeout:15000});
+          const mockupNavAppearance=await frame.evaluate(()=>{
+            const button=document.getElementById("mockupModeButton");
+            const style=getComputedStyle(button),rect=button.getBoundingClientRect();
+            return {height:rect.height,background:style.backgroundColor,fontSize:style.fontSize,visible:style.display!=="none"};
+          });
+          if(!mockupNavAppearance.visible||mockupNavAppearance.height>32||mockupNavAppearance.height<27||
+             mockupNavAppearance.fontSize!=="12px")
+            throw Error("Mockup Editor button should be a compact secondary action in template view: "+JSON.stringify(mockupNavAppearance));
           const resumedArtworkLayerState=await frame.evaluate(()=>({
             artworkVisualState:document.querySelector(".workspace")?.dataset.artworkVisualState||"",
             overlayVisibility:getComputedStyle(document.getElementById("overlay")).visibility
