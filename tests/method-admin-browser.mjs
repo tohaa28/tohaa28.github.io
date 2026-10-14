@@ -8,7 +8,20 @@ export async function verifyMethodAdmin(frame){
  const open=async()=>{await frame.locator('#overlay').focus();await frame.page().keyboard.press('Alt+KeyN');await dialog.waitFor({state:'visible'});};
  const login=async()=>{await frame.locator('#adminUser').fill('admin');await frame.locator('#adminPassword').fill('admin');await frame.locator('#adminLogin button').click();await frame.locator('#adminSettings').waitFor({state:'visible'});};
  const select=code=>frame.locator('#adminMethod').selectOption(code),save=()=>frame.locator('#adminEdit button[type=submit]').click();
- await verifyErrorOverlay(frame);await open();await frame.locator('#adminUser').fill('admin');await frame.locator('#adminPassword').fill('wrong');await frame.locator('#adminLogin button').click();await frame.waitForFunction(()=>document.getElementById('adminLoginError').textContent.includes('Неверный'));assert.equal(await frame.locator('#adminSettings').isVisible(),false);await login();
+ await verifyErrorOverlay(frame);
+ // A multi-place order contains D1 and F1. The selected print field, not
+ // the overall article's first method, determines the initial settings view.
+ await frame.locator('#orderFieldChoice').selectOption('0');
+ await frame.waitForFunction(()=>document.getElementById('orderFieldChoice')?.value==='0');
+ await open();await login();
+ assert.equal(await frame.locator('#adminMethod').inputValue(),'D1','Opening field 1 must highlight its D1 technique');
+ assert.match(await frame.locator('#adminMethodName').textContent(),/^D1 · /);
+ await frame.locator('#adminCancel').click();
+ await frame.locator('#orderFieldChoice').selectOption('1');
+ await frame.waitForFunction(()=>document.getElementById('orderFieldChoice')?.value==='1');
+ await open();await frame.locator('#adminUser').fill('admin');await frame.locator('#adminPassword').fill('wrong');await frame.locator('#adminLogin button').click();await frame.waitForFunction(()=>document.getElementById('adminLoginError').textContent.includes('Неверный'));assert.equal(await frame.locator('#adminSettings').isVisible(),false);await login();
+ assert.equal(await frame.locator('#adminMethod').inputValue(),'F1','Opening field 2 must highlight its F1 technique');
+ assert.match(await frame.locator('#adminMethodName').textContent(),/^F1 · /);
  assert.equal(await frame.locator('#adminMethod option').count(),92);await select('F1');assert.equal(await frame.locator('#adminParam-guard').getAttribute('placeholder'),'0');
  await frame.locator('#adminCheck-colors').uncheck();assert.ok((await report()).findings.some(f=>f.id==='colors'),'Draft must not change live checks');await frame.locator('#adminCancel').click();await open();await login();await select('F1');assert.equal(await frame.locator('#adminCheck-colors').isChecked(),true);
  await frame.locator('#adminCheck-colors').uncheck();await frame.locator('#adminCheck-details').uncheck();await save();assert.equal((await report()).findings.some(f=>f.id==='colors'),false);assert.equal(await frame.locator('#simpleExport').isDisabled(),false);assert.equal(await frame.evaluate(()=>window.gwbDetailCheck.entries.some(e=>e.key===window.gwbDetailCheck.selectedKey)),false);
