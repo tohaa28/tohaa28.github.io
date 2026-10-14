@@ -1,4 +1,4 @@
-import {PRINT_REQUIREMENTS,CHECKS,PARAMETERS,getSettings,saveSettings,validateSettings,configureRule,settingsProblem} from './method-settings.mjs?v=20260930-1';
+import {PRINT_REQUIREMENTS,CHECKS,PARAMETERS,getSettings,saveSettings,validateSettings,configureRule,settingsProblem} from './method-settings.mjs?v=20261014-artwork-1';
 export function installMethodAdmin({redraw}){
  for(const id of ['guard','minDpi']){const el=document.getElementById(id);el.value=id==='guard'?'0':'';el.closest('label').hidden=true;}
  const dialog=document.createElement('dialog');dialog.id='methodAdmin';dialog.setAttribute('aria-labelledby','methodAdminTitle');
