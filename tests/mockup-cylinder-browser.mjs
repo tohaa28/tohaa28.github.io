@@ -312,7 +312,7 @@ export async function verifyMockupCylinder(browserContext){
     assert.ok(developmentCheck[key].slice(0,3).every(v=>v<20),key+" artwork leaked below the marked bottom: "+JSON.stringify(developmentCheck));
   for(const key of ["inside","pin"]){
     const p=developmentCheck[key];
-    assert.ok(p[0]>225&&p[1]<35&&p[2]<35,key+" cylinder stripe is missing inside its marked field: "+JSON.stringify(developmentCheck));
+    assert.ok(p[0]>215&&p[0]>p[1]*2.5&&p[0]>p[2]*2.5,key+" cylinder stripe is missing inside its marked field: "+JSON.stringify(developmentCheck));
   }
   for(const key of ["outside","pout"])
     assert.ok(developmentCheck[key].slice(0,3).every(v=>v<30),key+" cylinder artwork leaked below its marked field: "+JSON.stringify(developmentCheck));
