@@ -357,7 +357,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArtworkSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-3";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArtworkSurfacePoint,cylinder3DProjectLocalQuadPoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-4";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -445,7 +445,7 @@ function updateCylinderControls(){
   if(aspectLabel)aspectLabel.hidden=!isCylinder||state.photoEditTarget!=="field";
   if(aspectInput)aspectInput.checked=!!state.preserveFieldAspect;
   if($("photoCanvasHint"))$("photoCanvasHint").textContent=isCylinder
-    ?(state.photoEditTarget==="cylinder"?"совместите зелёный 3D-каркас с корпусом, верхом и дном":"растяните синюю развёртку поля; невидимая часть сама уйдёт за цилиндр")
+    ?(state.photoEditTarget==="cylinder"?"совместите зелёный 3D-каркас с корпусом, верхом и дном":"пунктир — плоская развёртка; сплошной синий контур — её реальная проекция на цилиндре")
     :"перетаскивайте 4 маркера области нанесения";
 }
 function resetCylinderAroundField(){
@@ -956,8 +956,8 @@ function drawWarpedCylinder3D(ctx,img,q,cylinder={}){
   let fitted;
   try{fitted=cylinder3DArtworkQuad(cylinder.surfaceQuad,q,iw/Math.max(1,ih),opts);}
   catch{fitted={localArtworkQuad:q.map(p=>mapPointBetweenQuads(p,cylinder.surfaceQuad,UNIT_QUAD))};}
-  const localMap=homographyForQuad(fitted.localArtworkQuad);
-  const pointAt=(u,v)=>{const local=localMap(u,v);return cylinder3DArtworkSurfacePoint(cylinder.surfaceQuad,local.x,local.y,opts);};
+  // Use exactly the same surface transform as the blue projected boundary.
+  const pointAt=(u,v)=>cylinder3DProjectLocalQuadPoint(cylinder.surfaceQuad,fitted.localArtworkQuad,u,v,opts);
   const src=(u,v)=>({x:u*iw,y:v*ih});
   for(let y=0;y<across;y++)for(let x=0;x<along;x++){
     const u0=x/along,u1=(x+1)/along,v0=y/across,v1=(y+1)/across;
@@ -1036,6 +1036,37 @@ function drawPhotoGuide(ctx,points,{color,fill,label,handles=true,dashed=false})
   ctx.restore();
 }
 
+/** Draw the *projected* outline of the editable flat development.
+ * The dashed quadrilateral with handles remains in the flat coordinate frame.
+ * Both projected outline and artwork mesh use cylinder3DProjectLocalQuadPoint.
+ */
+function drawCylinder3DProjectedField(ctx,surfaceQuad,developmentQuad){
+  const opts={...cylinder3DOptions(),fitArtwork:false};
+  let field;
+  try{field=cylinder3DArtworkQuad(surfaceQuad,developmentQuad,1,opts);}
+  catch{return;}
+  const steps=96;
+  ctx.save();
+  ctx.strokeStyle="#1677ff";ctx.lineWidth=2.25;ctx.setLineDash([]);
+  ctx.beginPath();
+  let drew=false;
+  const at=(u,v)=>cylinder3DProjectLocalQuadPoint(surfaceQuad,field.localFieldQuad,u,v,opts);
+  for(const edge of [0,1,2,3]){
+    let tracing=false;
+    for(let k=0;k<=steps;k++){
+      const t=k/steps, uv=edge===0?[t,0]:edge===1?[1,t]:edge===2?[1-t,1]:[0,1-t];
+      const p=at(...uv);
+      // The hidden backside of the development must never be connected across
+      // the visible face, which would draw a false chord through the logo.
+      if(!p.visible){tracing=false;continue;}
+      if(!tracing){ctx.moveTo(p.x,p.y);tracing=true;}
+      else ctx.lineTo(p.x,p.y);
+      drew=true;
+    }
+  }
+  if(drew)ctx.stroke();
+  ctx.restore();
+}
 function cylinder3DOptions(){
   return {axis:state.cylinderAxis,curvature:state.cylinderCurvature,topArc:state.cylinderTopArc,bottomArc:state.cylinderBottomArc};
 }
@@ -1098,10 +1129,16 @@ function renderPhoto(){
     ctx.restore();
   }
   if(surface==="cylinder"){
-    ensureCylinderGuide();const cq=state.cylinderQuad.map(p=>photoToCanvasPoint(p,view));
+    ensureCylinderGuide();
+    const cq=state.cylinderQuad.map(p=>photoToCanvasPoint(p,view));
     drawCylinder3DGuide(ctx,cq,{handles:state.photoEditTarget==="cylinder"});
+    // Solid blue: actual distorted print boundary on the cylinder.
+    drawCylinder3DProjectedField(ctx,cq,qp);
+    // Dashed blue + draggable handles: original *flat* development.
+    drawPhotoGuide(ctx,qp,{color:"#1677ff",label:"Развёртка",handles:state.photoEditTarget==="field",dashed:true});
+  }else{
+    drawPhotoGuide(ctx,qp,{color:"#1677ff",fill:"rgba(22,119,255,.06)",label:"Поле",handles:true});
   }
-  drawPhotoGuide(ctx,qp,{color:"#1677ff",fill:"rgba(22,119,255,.06)",label:"Поле",handles:surface!=="cylinder"||state.photoEditTarget==="field"});
 }
 
 function renderAll(){ renderTemplate(); renderPhoto(); updateSummary(); updateAssetReadiness(); }
@@ -1199,7 +1236,7 @@ $("cylinderCurvature").oninput=()=>{state.cylinderCurvature=clamp(Number($("cyli
 $("cylinderTopArc").oninput=()=>{state.cylinderTopArc=clamp(Number($("cylinderTopArc").value)/100,-.15,.25);updateCylinderControls();renderPhoto();updateSummary();};
 $("cylinderBottomArc").oninput=()=>{state.cylinderBottomArc=clamp(Number($("cylinderBottomArc").value)/100,-.15,.25);updateCylinderControls();renderPhoto();updateSummary();};
 $("editCylinder").onclick=()=>{ensureCylinderGuide();setPhotoEditTarget("cylinder");setStatus("Совместите 4 зелёные точки с боковыми касательными корпуса, а оранжевые «Верх» и «Дно» — с кривизной кружки.");};
-$("editField").onclick=()=>{setPhotoEditTarget("field");setStatus("Разместите синюю рамку по реальному полю нанесения на цилиндре.");};
+$("editField").onclick=()=>{setPhotoEditTarget("field");setStatus("Разместите синюю пунктирную развёртку; сплошная синяя линия показывает изогнутое поле нанесения на цилиндре.");};
 $("preserveFieldAspect").onchange=()=>{state.preserveFieldAspect=$("preserveFieldAspect").checked;updateCylinderControls();renderPhoto();updateSummary();};
 $("resetCylinder").onclick=resetCylinderAroundField;
 ["article","place","method","variant"].forEach(id=>$(id).addEventListener("input",updateSummary));
@@ -1535,6 +1572,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r20261014-3</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r20261014-4</span>
 </body>
 </html>
