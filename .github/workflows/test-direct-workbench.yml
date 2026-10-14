@@ -1249,6 +1249,46 @@ jobs:
           await verifyVectorView(frame);
           const {verifyMockupCylinder}=await import('./tests/mockup-cylinder-browser.mjs');
           await verifyMockupCylinder(browserContext);
+          // A one-article order auto-selects its product, but MUST show the
+          // whole constructor before the operator explicitly chooses a field.
+          await frame.click("#backToOrders");
+          await frame.waitForFunction(()=>document.getElementById("orderEditor")?.hidden===true);
+          await frame.evaluate(()=>{
+            window.__gwbTemplateOverride=null;window.__gwbTemplateOverrides={};
+            document.getElementById("order").value="7920515";
+            document.getElementById("loadOrder").click();
+          });
+          await frame.waitForFunction(()=>{
+            const state=window.gwbGetEditorReadiness?.();
+            return document.getElementById("orderEditor")?.hidden===false &&
+              document.getElementById("orderTemplates")?.value==="0" &&
+              state?.templateReady===true &&
+              document.getElementById("orderLoading")?.hidden===true &&
+              document.getElementById("dimensions")?.textContent.startsWith("Размер шаблона:");
+          },null,{timeout:30000});
+          const singleArticleInitial=await frame.evaluate(()=>({
+            article:document.getElementById("article")?.value,
+            selectedArticle:document.getElementById("orderTemplates")?.value,
+            selectedField:document.getElementById("orderFieldChoice")?.value,
+            detectedFields:[...document.getElementById("orderFieldChoice").options].filter(o=>o.value!=="").length,
+            wholeTemplate:document.getElementById("dimensions")?.textContent,
+            fieldZoomButtonHidden:document.getElementById("zoomPage")?.hidden,
+            fieldSizeHidden:document.getElementById("selectedFieldSize")?.hidden,
+            step3Hidden:document.getElementById("editorStep3")?.hidden
+          }));
+          if(singleArticleInitial.selectedArticle!=="0"||singleArticleInitial.selectedField!=="" ||
+             singleArticleInitial.detectedFields<1||!singleArticleInitial.fieldZoomButtonHidden||
+             !singleArticleInitial.fieldSizeHidden||!singleArticleInitial.step3Hidden)
+            throw Error("Single-article order must open whole template with no auto-selected field: "+JSON.stringify(singleArticleInitial));
+          await frame.locator("#orderFieldChoice").selectOption("0");
+          await frame.waitForFunction(()=>!document.getElementById("zoomPage")?.hidden &&
+            !document.getElementById("selectedFieldSize")?.hidden,null,{timeout:10000});
+          await frame.locator("#zoomPage").click();
+          await frame.waitForFunction(()=>document.getElementById("zoomPage")?.hidden===true &&
+            document.getElementById("dimensions")?.textContent.startsWith("Размер шаблона:"),
+            null,{timeout:10000});
+          console.log("Single-article whole-template first, explicit field zoom, return to entire constructor:",JSON.stringify(singleArticleInitial));
+
           const pdfWorkerTest = await frame.evaluate(async () => {
             if (!globalThis.PDFLib?.PDFDocument) throw new Error("PDFLib is unavailable");
             if (!globalThis.pdfjsLib?.getDocument) throw new Error("pdfjsLib is unavailable");
