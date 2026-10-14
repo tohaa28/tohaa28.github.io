@@ -37,3 +37,38 @@ test('incomplete vector and mixed raster evidence never certify separations',()=
  assert.equal(colorFindings(rules.LM1,{vectorColors})[0].status,'manual');
  assert.equal(colorFindings(rules.LM1,{vectorColors:vectorColorEvidence([],{complete:false}),pixelColors})[0].status,'bad');
 });
+
+test('per-method two- and three-spot limits use real vector paints, including white',()=>{
+ const vector=vectorColorEvidence(['rgb(255, 0, 0)','rgb(0, 0, 255)','rgb(255, 255, 255)']);
+ const limit2={...rules.D1,maxColors:2,colorPolicy:'single-color'};
+ const limit3={...rules.D1,maxColors:3,colorPolicy:'single-color'};
+ assert.deepEqual([vector.count,vector.complete],[3,true]);
+ assert.deepEqual(colorFindings(limit2,{vectorColors:vector}).map(f=>f.status),['bad']);
+ assert.deepEqual(colorFindings(limit3,{vectorColors:vector}).map(f=>f.status),['ok']);
+ assert.equal(colorFindings({...rules.D1,maxColors:1},{vectorColors:vector})[0].required,1);
+ assert.deepEqual(colorFindings({...rules.LM1,maxColors:2},{vectorColors:vector}).map(f=>f.id),['monochrome','colors']);
+ assert.equal(colorFindings({...rules.D1,maxColors:2,colorPolicy:'black-gray'},{vectorColors:vector}).find(f=>f.id==='colors').status,'bad');
+});
+test('raster antialiasing and same-hue shading cannot create false extra spot inks',()=>{
+ const width=90,height=24,colors=[[255,0,0],[0,255,0],[0,0,255]];
+ const data=new Uint8ClampedArray(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++)data.set([...colors[Math.floor(x/30)],255],(y*width+x)*4);
+ const raster=pixelColorEvidence(data,width,height);
+ assert.ok(raster.provenInkCount>=3,JSON.stringify(raster));
+ assert.equal(colorFindings({...rules.D1,maxColors:2},{pixelColors:raster,artworkType:'raster'})[0].status,'bad');
+ assert.equal(colorFindings({...rules.D1,maxColors:3},{pixelColors:raster,artworkType:'raster'})[0].status,'manual',
+   'Pixel classification is a lower bound, never a certified 3-ink separation');
+ const monochromeData=new Uint8ClampedArray(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+   const shade=x<30?[150,0,0]:x<60?[200,0,0]:[255,0,0];
+   monochromeData.set([...shade,255],(y*width+x)*4);
+ }
+ const monochrome=pixelColorEvidence(monochromeData,width,height);
+ assert.ok(monochrome.provenInkCount<=1,JSON.stringify(monochrome));
+ assert.notEqual(colorFindings({...rules.D1,maxColors:1},{pixelColors:monochrome,artworkType:'raster'})[0].status,'bad');
+});
+test('PDF preview never certifies number of spot separations',()=>{
+ const rgb=vectorColorEvidence(['rgb(30, 40, 50)','rgb(90, 100, 110)']);
+ const pdf={vectorColors:{...rgb,separationsComplete:false},artworkType:'vector'};
+ assert.equal(colorFindings({...rules.D1,maxColors:2},pdf)[0].status,'manual');
+});
