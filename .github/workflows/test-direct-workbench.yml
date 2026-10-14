@@ -282,6 +282,31 @@ jobs:
           const savedGender=await frame.evaluate(()=>localStorage.getItem("gwb.ordersMotion.gender.v1"));
           if(savedGender!=="female")throw Error("Portrait selection not persisted");
           console.log("Verified proportional laptop and subtle character switch",motionLayout);
+          // The 18s loop uses four distinct storyboard poses per character.
+          const poseCheck=await frame.evaluate(()=>{
+            const scene=document.getElementById("gwbOrdersMotion");
+            const sprite=scene?.querySelector(".gwb-om-persona-sprite");
+            const anim=sprite?.getAnimations().find(x=>x.animationName==="gwbOmPersonaFrames");
+            const positions=[];
+            if(!sprite||!anim)return {sprite:!!sprite,anim:!!anim,positions};
+            for(const t of [500,4200,10600,15200]){
+              anim.currentTime=t;
+              positions.push(getComputedStyle(sprite).backgroundPositionX);
+            }
+            const femaleY=getComputedStyle(sprite).backgroundPositionY;
+            scene.dataset.gender="male";
+            const maleY=getComputedStyle(sprite).backgroundPositionY;
+            scene.dataset.gender="female";
+            anim.currentTime=0;
+            return {sprite:true,anim:true,positions,femaleY,maleY,duration:anim.effect.getTiming().duration,background:getComputedStyle(sprite).backgroundImage};
+          });
+          if(!(poseCheck.sprite&&poseCheck.anim&&poseCheck.duration===18000&&
+               JSON.stringify(poseCheck.positions)===JSON.stringify(["0px","-82px","-164px","-246px"])&&
+               poseCheck.femaleY==="0px"&&poseCheck.maleY==="-50px"&&
+               poseCheck.background.includes("orders-persona-poses.webp")))
+            throw Error("Four-pose storyboard animation regression: "+JSON.stringify(poseCheck));
+          console.log("Verified storyboard poses",poseCheck.positions);
+
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];

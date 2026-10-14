@@ -120,8 +120,15 @@
 .navrow>.gwb-orders-motion{position:relative;box-sizing:border-box;width:100%;max-width:none;min-width:0;height:100%;max-height:50px;flex:1 1 100%;display:block;overflow:hidden;background:linear-gradient(95deg,#f8fcf5 0%,#fff 68%,#f7faef 100%);color:#44525a;font-family:system-ui,sans-serif}
 .gwb-om-background{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(90deg,transparent 25px,#a4bb9d22 26px,transparent 27px),linear-gradient(0deg,transparent 24px,#a4bb9d1a 25px,transparent 26px);background-size:108px 50px;opacity:.5}
 .gwb-om-portrait{position:absolute;top:0;left:24px;width:82px;height:50px;overflow:hidden;z-index:13;border:0;background:transparent;padding:0;cursor:pointer;-webkit-mask-image:linear-gradient(90deg,#000 72%,transparent);mask-image:linear-gradient(90deg,#000 72%,transparent)}
-.gwb-om-portrait img{position:absolute;inset:0;width:82px;height:50px;object-fit:cover;object-position:55% 28%;opacity:0;transition:opacity .65s ease;pointer-events:none;animation:gwbOmPortrait 18s ease-in-out infinite}
-.gwb-orders-motion[data-gender="female"] .gwb-om-female,.gwb-orders-motion[data-gender="male"] .gwb-om-male{opacity:1}
+/* 8 authentic approved poses: four 82×50 frames per gender in a 328×100 WebP sheet. */
+.gwb-om-persona-sprite{position:absolute;inset:0;display:block;width:82px;height:50px;pointer-events:none;background-image:url("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/orders-persona-poses.webp?v=20261014-1");background-repeat:no-repeat;background-size:328px 100px;background-position-x:0;background-position-y:0;animation:gwbOmPersonaFrames 18s steps(1,end) infinite}
+.gwb-orders-motion[data-gender="male"] .gwb-om-persona-sprite{background-position-y:-50px}
+@keyframes gwbOmPersonaFrames{
+  0%,14.99%{background-position-x:0}
+  15%,49.99%{background-position-x:-82px}
+  50%,74.99%{background-position-x:-164px}
+  75%,100%{background-position-x:-246px}
+}
 .gwb-om-workstation{position:absolute;top:0;left:105px;width:106px;height:50px;pointer-events:none}
 .gwb-om-laptop{height:50px;width:auto;aspect-ratio:106/52;display:block;filter:drop-shadow(0 2px 2px #41565a24)}
 .gwb-om-screen-spark{position:absolute;left:63px;top:13px;width:5px;height:5px;border-radius:50%;background:#81b315;box-shadow:0 0 6px #81b31588;animation:gwbOmSpark 18s ease-in-out infinite}
@@ -161,7 +168,7 @@
 @keyframes gwbOmSuccess{0%,36%{opacity:0}41%,49%{opacity:1}55%,100%{opacity:0}}
 @keyframes gwbOmIdea{0%,51%{opacity:0;transform:translateY(3px) scale(.93)}57%,68%{opacity:1;transform:translateY(0) scale(1)}73%,100%{opacity:0}}
 @keyframes gwbOmSpark{0%,10%,37%,100%{opacity:.1;transform:scale(.8)}17%,31%{opacity:1;transform:scale(1.4)}}
-@keyframes gwbOmPortrait{0%,21%,100%{transform:translateY(0)}28%,41%{transform:translateY(-1px)}52%,73%{transform:translateY(1px)}}
+
 @media(max-width:1060px){
  .gwb-om-flight{left:218px;right:240px}
  .gwb-om-production{left:250px;width:65px}
@@ -196,7 +203,8 @@
  .gwb-om-idea{left:178px}
 }
 @media(prefers-reduced-motion:reduce){
- .gwb-om-portrait img,.gwb-om-sheet,.gwb-om-phase,.gwb-om-success,.gwb-om-idea,.gwb-om-screen-spark{animation:none!important;transition:none!important}
+ .gwb-om-persona-sprite,.gwb-om-sheet,.gwb-om-phase,.gwb-om-success,.gwb-om-idea,.gwb-om-screen-spark{animation:none!important;transition:none!important}
+ .gwb-om-persona-sprite{background-position-x:0}
  .gwb-om-sheet{opacity:1;transform:none;top:7px;left:0}
  .gwb-om-sheet-1{left:5%}.gwb-om-sheet-2{left:39%}.gwb-om-sheet-3{left:75%}
  .gwb-om-success{opacity:1}
@@ -205,7 +213,7 @@
 
 </style><link rel="stylesheet" href="./assets/editor-mockup-transition.css?v=1"><script src="./assets/editor-mockup-transition.js?v=2"></script></head><body><div class="app"><header class="site-header"><div class="topbar"><div class="brand"><span class="mark" aria-hidden="true">М</span><span>Макетная</span><small>редактор макетов для gifts.ru</small></div><button id="mockupModeButton" type="button" title="Открыть редактор мокапов" hidden>Редактор мокапов</button><button id="accountButton" class="account-button" type="button">Войти</button><button id="modeToggle" class="mode-toggle" type="button" aria-pressed="true" hidden>Подробный режим</button></div><nav class="navrow" aria-label="Ссылки на gifts.ru"><div class="gwb-orders-motion" id="gwbOrdersMotion" data-gender="female" role="group" aria-label="Готовые макеты вылетают из ноутбука дизайнера. Выбор персонажа">
   <div class="gwb-om-background" aria-hidden="true"></div>
-  <button class="gwb-om-portrait" id="gwbMotionCharacter" type="button" aria-label="Показать мужского персонажа" title="Сменить персонажа"><img class="gwb-om-female" src="data:image/webp;base64,UklGRmAEAABXRUJQVlA4IFQEAADwGQCdASpkAFwAPu1qrU+ppiQjKfTsqTAdiWIAzHnPSzbgPnnWb55lj5kA0L/w7+1LAvvSSA9n8WfSxxrq4oluCEBBbnjPJAzx569w0HFLFgCh02uNSOvkyGHsiFunhbd8EyFYHsbTvS8DtxHdoPzedDtb4BHXEDJ08/y1iUXEydH1wFlOiCtuCximWnHgBUcxAseG94fkJ5l5NTwQWbvinnuJiDy2Y/xkKF7Nq8HnkT5hVAWL2KV5K6LxWk9NGUsdPGjKTua5OX7XJrYuYKEuSVyQjLX7lcQA/vleTVpL4PPRU+TXVUBlMLTfnGyBsnHLHbIaxgJ9jKSft8PGtamIa8AQEc+qOWwMDk7U27/zG1wGV3CvZ311mCPe9lLjbZQegGUJnXkHFiZJjIH4s0GLQ1GB8uzGEF72XoukYaHCNb3lI/sW1+Te06WVauwp9TCcdFWcOH4JIUQcMkTZSJ8sX+0AHMuFA8mm0H9F5P6iJIJC3b6Kk5lRmw/SU2rHnbcF5mlwZH6ZwzNiH2N/JuyGl1TSM3it7lt4DJa4wz+9xCMdo2EbU1jfM647/Y5fgTKruC5hiYyMFJg7mamO7QHL/imx9fU7lXhx5n8I/oIyucp1PVgrLPLSQJHc6NwqpLXQsROOQ61j3jvEV32xpw8p1q4iPtqKUdT84I42BUJL3uCCNf9XVvfyMbp053PYj08832ae7jwj75JGln/YEAgpNRO2OrL7jexTEu0Rspri7vUtpEe5FG/Gyh8HMLzLiaFBTGub/SuLYj870iO9vpL19zK80uezlwrxyr4uFZ6m+n5348RvosmDG3hR7+OgFOC9UAGP0TCvmuBubiCTM8M3jC1r6f8EC1PAvLxCtE8RiWs5c3KeZAAfMo3aG7yXncThRGaNHrQal1j7GDl8jYzShfSX+DIEZxcOF4FzF+OUmaz+tjb7Q3oUnSGHRkYhGW7XI7MB1h1S4ifFpE4CWPdrNT/RsCV7KResvwc3wi3o4dKtN1t9yICRvKfkBV6lT/byP2XShW9yRR5Ph6pEokvJ3zRkt0KWa7St8moMVdDJqL5HoZ6DAubW52ZycWwbf4hBBZT9U7VTxlWCNK9b3POB0ckmpVZPQYJ60A/7NGrDNhqx5ADi9bn3436pkanDIufF71Bt2LIhd1iBdqrr8H6ye64jMSsX6Sn+mOvnFTIwKgNOiaD+CltbitF5bwsAqYh7hzYbob4YlGZ2fMSJeN8tz4fRZH3RQ2Lj7ooQXAy/HzimJYjguP+RKaxtjLQLq8X6X+4skSpFr6ts+5DbhI54ujSbQ84L7K7asfHWOaL3EwgH3EA0crBBvtgByMs5q6P8xo5IrPWnB0gc/wJY2mDAuKU5wHdsTUt7UE/4PQRMpL/mjvAkk6xuXWDzkWZfCv5us4YFkxiHFh7MEvYjWl0Sp4zYB7uIPlwYlraApCpWtMb0J3+wBXZL0p6vNzju/hZtgAAA" alt=""><img class="gwb-om-male" src="data:image/webp;base64,UklGRkAEAABXRUJQVlA4IDQEAABQGQCdASpkAFwAPulkqE2pJaiiLDj9iSAdCUAZtxoJxxzXgJHErU/D611MKiZEQ3tQQRb5rxp4EwVUiOoI1r3Up4TAY6YmraCdYwd+fQ9/25S5V98iDgc4xCdqJJTD9OcA0dHBt3dz7LHAAXvGYN+utYLIZeQApCrcXn5VFxbzjNQBYYTsu13qrllhAqAgMZn7xgkApe4ZxxnTAT6MGQFlehNCzb9qveVTkBzR6wKMCOkqiLjZGxEi2G6wRr6WoFD5+odzyWW4TbtHZTkWEt4kI8lAAP72CuHi7hGTS9OFEB2dJ+eNhqvR5U5faF1pp9RbhSh0ez5KY4hpcjK1jr76dTdCRLKnCbQEVhP1jb5P6FxQWBXhywtGmwZ2VDFdhzFETcu3Ye9F7YQ0JR7sjF3tZ749jTM+FVMzWs23fGas+AQ84iBhodewhprStHWo9FhrGBdriDn7FyJ47tFskOfu5AyGBcD+AhYeGJOppfu5V9/NfFySvfAmhPD2/RaQx/0dd30LZqisx79vv9HSuA2z3PmO0PHIWSO9yuNJ94RzpLimcW0PVWFygY175Gf/3ij534ybFOr/+axr0wy7k2+qHUc2aUj4kyuC4uUVkOxGoPxJiB537WyXpQRltxsErBOdMyLQ053aBfrxHtEP7k8Vyq8RomYNyJpKYi2kSH2xi/Kem9pIiNKsiilwI9jw8EWs7bKaNsoKWqYMdkyRJHCmW9F1s1nGjW2HwfrHUmRl8HLOOzAPRjSGR2LxxjtxDXdxj0slHhS0VwNqjQPYFuXKsS/1c4TTcedTOzD5VuMybUjA0LvDQfF19tdGJyPmq8F0kVwJpTbsoOjlkGG+o1XxRs/+iYMxJk2clhCVcCS/hOra3iyJ+0z77h4Ina7fP/qoLBDupdFuRyqvJeMTmXQrkwkV5yM1SIGwME0/S/dlrIj8Q3h10g7aB5GmmoOX69pa9n2uDfBM0XO5XY3YsdE8NFrGuJmGMqwKJ5ycDS42v+znDIKVtd/XYYs80I2JeXlEZXUhANWB3yiPM+UdY8A1yK2BVMQwQFhtzAWIiF9lD4rVSwRAifoLQrJ/eadGYp8VET+zis9gRy1bLo2szg+60ijAYee8CDxOqFBwMC+LB+zYOehhLNrzgdCgzAVf8QDb3gv+QW2lmv9/y5GW9gjy+NS/VRH4XYJVrjqpIu/pdIPVqSZKZ7dvuUx7bC2xKvQ2ZcJUcPYVCsw3Km79x9pA8Zzbh2JASAVKwGILZl6xTa3jxH4o5pJPO4lJiAS42iPKw32WEcg1Ugf1qJxhqP9x3bvuKTY5agoueKtCTu1bJL2ZZkgQaK7Bjf0NRFW0GQ750XL+gS25YZwadu+fqK+w7kzUzg+yllfHbsFWzz/scO9qjwo2jguMlr8XIi3iBXXHcc9H8vB0ikxWBC3e8O1JwAAAAA==" alt=""></button>
+  <button class="gwb-om-portrait" id="gwbMotionCharacter" type="button" aria-label="Показать мужского персонажа" title="Сменить персонажа"><span class="gwb-om-persona-sprite" aria-hidden="true"></span></button>
   <div class="gwb-om-workstation" aria-hidden="true"><svg class="gwb-om-laptop" viewBox="0 0 106 52" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 3h73a4 4 0 0 1 4 4v34H13V7a4 4 0 0 1 4-4Z" fill="#435159" stroke="#35454c"/><rect x="17" y="7" width="73" height="30" rx="2" fill="#f5faf4"/><path d="M20 11h17m-17 4h13" stroke="#cbd8cf" stroke-width="1.2" stroke-linecap="round"/><rect x="39" y="11" width="40" height="23" rx="2" fill="#eaf6dc" stroke="#86b135" stroke-dasharray="2 2"/><path d="M53 29q-1-12 8-13 0 9-8 13Zm2 0q3-10 14-9-2 8-14 9Z" fill="#81b315"/><path d="M5 42h96l-7 6H12l-7-6Z" fill="#9da9aa" stroke="#62757b" stroke-width=".8"/><path d="M41 42h25l3 2H39Z" fill="#f1f5f4"/><circle cx="53" cy="5" r=".75" fill="#c6d1d0"/></svg><span class="gwb-om-screen-spark"></span></div>
   <div class="gwb-om-production" aria-hidden="true">
     <span class="gwb-om-phase gwb-om-phase-1">Создаём макет</span>
