@@ -403,6 +403,14 @@ const edits=[
   [
     'Q("Артикул выбран автоматически. Выберите место нанесения.")',
     'Q("Выберите место нанесения.")'
+  ],
+  [
+    './method-admin.mjs?v=20260930-1',
+    './method-admin.mjs?v=20261014-artwork-1'
+  ],
+  [
+    './logo-preflight.mjs?v=20261008-3',
+    './logo-preflight.mjs?v=20261014-artwork-1'
   ]
 ];
 export function applyLogoPreflight(){
