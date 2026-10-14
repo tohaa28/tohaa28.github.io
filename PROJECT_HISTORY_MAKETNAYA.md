@@ -927,3 +927,22 @@ Regression:
 - `mockup-profiles.json` не изменялся: **22 профиля**, blob SHA `f4ca8f993b31ecd8a91f394eb60ce385e12dee50` в source и публикации одинаков.
 - Точки отката: `backup/source-before-orders-motion-cart-20261013` → `3acfd0556b6eda413fe1b1567c1fc0d13d4bd3f2`, `backup/main-before-orders-motion-cart-20261013` → `caf6847085cd3d651eab45d1a21846837062b134`. При любом rollback переносить актуальную версию `mockup-profiles.json`.
 
+
+
+
+## 14.10.2026 — Реальные четыре позы персонажа: production VERIFIED
+
+- Утверждённые сцены для ОБОИХ полов: создание макета → выпуск/радость от готового макета → новая идея → новая работа.
+- Кадры взяты из утверждённых пользователем эскизов: женский «макетная_светловолосая_героиня_и_заказы», мужской «русский_цикл_создания_макетов»; 4 разные позы для каждого персонажа, не CSS-смещения одной картинки.
+- Production sprite `assets/orders-persona-poses.webp`: 328×100 px, восемь кадров по 82×50 px, 5 180 байт, blob SHA `57e75341f32fa633a54504a1f5c935b98fc39f44`.
+- `gwbOmPersonaFrames`: 18 секунд, фазы 0–15%, 15–50%, 50–75%, 75–100%. Для мужчины используется второй ряд спрайта; переключение пола кликом/клавиатурой по прежней кнопке портрета, выбор хранится локально.
+- При reduced-motion — первый кадр выбранного пола без движения.
+- Ограничение высоты прежнее: `navrow` 50 px, и сам спрайт 82×50 px, вне строки ничего не добавлено. Макеты в полёте по-прежнему берут артикулы и фото из текущей корзины.
+- Sprite URL абсолютный HTTPS GitHub Pages, корректный как для прямого сайта, так и для srcdoc-лаунчера на gifts.ru.
+- Функциональный source commit `e3ec2ea0c2d17b88b17decb9284f0265cb6cc449`.
+- Published main `27525343346715bdc8b2ed2b110f10b323532705`.
+- Actions run `38532743403` — **precheck SUCCESS, publish SUCCESS, browser_verify SUCCESS**. Браузерный тест покадрово проверяет значения background-position-x, оба ряда, 18-секундную синхронизацию, кнопку смены персонажа и существующие элементы.
+- GitHub Pages run `38532791642` — **SUCCESS**.
+- Mockup profiles строго сохранены: 22 профиля, blob `f4ca8f993b31ecd8a91f394eb60ce385e12dee50` в source и main идентичен.
+- Безопасный rollback: `backup/source-before-persona-four-frames-20261014` → `4f2e5bba4f3e920c5205612b37a12eff803507b6`, `backup/main-before-persona-four-frames-20261014` → `c8730a810d39768da81bed7cd6da83e2744ed19f`.
+- При откате не восстанавливать старый `mockup-profiles.json` из UI rollback; всегда использовать самый свежий профильный blob.
