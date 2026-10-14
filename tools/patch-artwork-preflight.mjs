@@ -411,6 +411,14 @@ const edits=[
   [
     './logo-preflight.mjs?v=20261008-3',
     './logo-preflight.mjs?v=20261014-artwork-1'
+  ],
+  [
+    "installMethodAdmin({redraw:X});",
+    "installMethodAdmin({redraw:X,getCurrentMethod:()=>{\n  // Use the active field's actual print technology, not the article's first method.\n  // When no field is selected, the article method is accepted only if unique.\n  if(v(\"orderEditor\")?.hidden)return \"\";\n  const selected=v(\"orderFieldChoice\")?.value;\n  let index=selected!==\"\"?Number(selected):-1;\n  if(!Number.isInteger(index)||index<0){\n    const placement=y.placements?.[y.active];\n    index=y.field&&Number.isInteger(placement?.fieldIndex)?placement.fieldIndex:-1;\n  }\n  const field=index>=0?y.template?.fieldOptions?.[index]:null;\n  const binding=index>=0?oo(index):null;\n  return field?.orderMethod||binding?.method||y.selectedEntry?.method||v(\"method\")?.value||\"\";\n}});"
+  ],
+  [
+    "./method-admin.mjs?v=20261014-artwork-1",
+    "./method-admin.mjs?v=20261014-current-1"
   ]
 ];
 export function applyLogoPreflight(){
