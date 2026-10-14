@@ -418,7 +418,7 @@ const edits=[
   ],
   [
     "./method-admin.mjs?v=20261014-artwork-1",
-    "./method-admin.mjs?v=20261014-current-1"
+    "./method-admin.mjs?v=20261014-current-2"
   ]
 ];
 export function applyLogoPreflight(){
