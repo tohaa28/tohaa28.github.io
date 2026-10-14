@@ -85,3 +85,16 @@ test('Mockup Editor navigation is compact, visually secondary and shown only ins
   assert.match(html,/if\(!openEligible&&!shell.hidden\)hide\(\)/);
   assert.match(html,/window.addEventListener\("gwb-editor-readiness-changed",refresh\)/);
 });
+
+test('single-article orders open the entire PDF first, never automatically zoom the detected print field',()=>{
+  const compiled=readFileSync(new URL('../assets/index-BpU9kvz8.js',import.meta.url),'utf8');
+  const openArticle=compiled.slice(compiled.indexOf('async function vi('),compiled.indexOf('v("orderTemplates").onchange'));
+  assert.ok(openArticle.startsWith('async function vi('));
+  assert.match(openArticle,/Object\.assign\(y,\{template:e,page:0,field:null,view:null,placement:null\}\)/);
+  assert.match(openArticle,/wi\(t\),await Fe\(!1\),v\("orderTemplates"\)\.value=String\(c\)/);
+  assert.doesNotMatch(openArticle,/await Fe\(\)/,'Orders must not auto-select a field, even with a single detected field');
+  assert.match(compiled,/if\(e\.length===1\)\{if\(!await vi\(0\)\)/,'The only article must still be automatically selected');
+  const populateFields=compiled.slice(compiled.indexOf('async function Fe('),compiled.indexOf('function gs('));
+  assert.match(populateFields,/y\.field=null,y\.view=null,c&&n&&e\.length===1/,'Explicit field zoom must remain opt-in');
+  assert.match(compiled,/v\("orderFieldChoice"\)\.onchange/,'Manual field selection remains supported');
+});
