@@ -12,6 +12,27 @@ export async function verifyMethodAdmin(frame){
  assert.equal(await frame.locator('#adminMethod option').count(),92);await select('F1');assert.equal(await frame.locator('#adminParam-guard').getAttribute('placeholder'),'0');
  await frame.locator('#adminCheck-colors').uncheck();assert.ok((await report()).findings.some(f=>f.id==='colors'),'Draft must not change live checks');await frame.locator('#adminCancel').click();await open();await login();await select('F1');assert.equal(await frame.locator('#adminCheck-colors').isChecked(),true);
  await frame.locator('#adminCheck-colors').uncheck();await frame.locator('#adminCheck-details').uncheck();await save();assert.equal((await report()).findings.some(f=>f.id==='colors'),false);assert.equal(await frame.locator('#simpleExport').isDisabled(),false);assert.equal(await frame.evaluate(()=>window.gwbDetailCheck.entries.some(e=>e.key===window.gwbDetailCheck.selectedKey)),false);
+ // Preserve the editor's live vector/raster findings and block export when
+ // the chosen print technique requires an entirely vector source.
+ assert.equal(await frame.locator('#adminArtworkPolicy').inputValue(),'source');
+ await frame.locator('#adminArtworkPolicy').selectOption('vector-only');
+ assert.equal((await report()).rule.artworkPolicy,'any','Unsaved draft must not affect the editor');
+ await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.artworkPolicy==='vector-only');
+ assert.equal((await report()).findings.find(f=>f.id==='artwork-type').status,'ok');
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+ const mixedSvg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="red"/><image x="2" y="2" width="3" height="3" href="data:image/png;base64,'+png+'"/></svg>');
+ await frame.locator('#artwork').setInputFiles({name:'raster-inside-vector.svg',mimeType:'image/svg+xml',buffer:mixedSvg});
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='artwork-type'&&f.status==='bad'));
+ assert.equal((await report()).findings.find(f=>f.id==='artwork-type').artworkType,'mixed');
+ assert.equal(await frame.locator('#simpleExport').isDisabled(),true);
+ await frame.locator('#adminArtworkPolicy').selectOption('source');
+ await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.artworkPolicy==='any');
+ assert.equal((await report()).findings.find(f=>f.id==='artwork-type').status,'ok');
+ await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='artwork-type'&&f.artworkType==='vector'));
+
  await frame.locator('#adminParam-guard').fill('1000');await save();assert.equal((await report()).findings.find(f=>f.id==='guard').status,'bad');assert.equal(await frame.locator('#simpleExport').isDisabled(),true);assert.equal(await frame.evaluate(()=>window.gwbLogoPreflight.find(r=>r.fieldIndex===0).rule.guard),0);
  await frame.locator('#adminEnabled').uncheck();await save();assert.ok((await report()).findings.some(f=>f.id==='settings-disabled'));assert.equal((await report()).findings.some(f=>f.status==='bad'),false);
  await verifyErrorOverlay(frame);const stored=await frame.evaluate(()=>JSON.parse(localStorage.getItem('gwb-method-settings-v1')));assert.equal(stored.methods.F1.enabled,false);assert.equal(stored.methods.F1.values.guard,1000);
