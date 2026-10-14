@@ -21,11 +21,12 @@ const issue=(id,status,text,extra={})=>({id,status,text,source:SOURCES.specifica
 
 // Read once at upload. This never inspects or modifies the product template.
 export async function inspectArtwork(art, OPS) {
-  const facts={version:REQUIREMENTS_VERSION,format:art.ext,text:false,gradients:false,transparency:false,effects:false,hidden:false,strokes:[],rasters:[],colors:[],geometryComplete:false,limitations:[]};
+  const facts={version:REQUIREMENTS_VERSION,format:art.ext,text:false,gradients:false,transparency:false,effects:false,hidden:false,strokes:[],rasters:[],colors:[],geometryComplete:false,hasRaster:false,rasterUncertain:false,limitations:[]};
   try {
     if(art.svg) await inspectSvg(art,facts);
     else if(art.pdfPage) {await inspectPdf(art,facts,OPS);await inspectPdfColors(art,facts);}
     else if(art.pixelW) {
+      facts.hasRaster=true;
       facts.rasters.push({pixelW:art.pixelW,pixelH:art.pixelH,w:art.w,h:art.h});
       facts.colorModel=rasterColorModel(art.bytes,art.ext);
       facts.limitations.push('Растр: шрифты и векторные эффекты уже сведены; исходные объекты недоступны.');
@@ -39,7 +40,8 @@ export async function inspectArtwork(art, OPS) {
       facts.pixelColors=pixelColorEvidence(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height,{complete:scale===1&&!art.pdf&&!art.svg});
       if(facts.vectorColors&&!facts.vectorColors.complete){facts.vectorColors.colored ||=facts.pixelColors.colored;facts.vectorColors.gray ||=facts.pixelColors.gray;}
     }
-  } catch(error) {facts.limitations.push('Неполный анализ: '+String(error?.message||error));}
+  } catch(error) {facts.rasterUncertain=true;facts.limitations.push('Неполный анализ: '+String(error?.message||error));}
+  facts.artworkType=facts.hasRaster?(art.svg||art.pdfPage?'mixed':'raster'):facts.rasterUncertain?'unknown':(art.svg||art.pdfPage)?'vector':'unknown';
   return facts;
 }
 
@@ -73,6 +75,9 @@ async function inspectSvg(art,facts) {
     facts.hasClips=!!root.querySelector('clipPath');
     facts.hasOpenPaths=false;
     facts.elements=[];
+    // Actual embedded images count even if decoding their dimensions fails.
+    facts.hasRaster=!!root.querySelector('image,feImage');
+    if(root.querySelector('foreignObject'))facts.rasterUncertain=true;
     const colors=new Set();
     for(const element of [root,...root.querySelectorAll('*')]) {
       const style=getComputedStyle(element);
@@ -113,7 +118,8 @@ async function inspectSvg(art,facts) {
       if(element.localName==='image') {
         facts.geometryComplete=false;
         const href=element.getAttribute('href')||element.getAttribute('xlink:href');
-        if(href?.startsWith('data:image/')) {
+        if(href?.startsWith('data:image/svg+xml'))facts.rasterUncertain=true;
+        if(href?.startsWith('data:image/')&&!href.startsWith('data:image/svg+xml')) {
           try {const img=new Image();img.src=href;await img.decode();facts.rasters.push({pixelW:img.naturalWidth,pixelH:img.naturalHeight,w:box.w,h:box.h,box});}
           catch {facts.limitations.push('Не удалось измерить встроенное изображение SVG.');}
         }
@@ -134,6 +140,8 @@ async function inspectPdf(art,facts,OPS) {
   let state={matrix:[1,0,0,1,0,0],lineWidth:1,fill:'#000000',stroke:'#000000'},stack=[];const painted=new Set();let colorIncomplete=false;
   for(let i=0;i<list.fnArray.length;i++) {
     const name=names[list.fnArray[i]],args=list.argsArray[i]||[];
+    if(/paint.*Image|paintJpeg/i.test(name||''))facts.hasRaster=true;
+    if(/shadingFill|setFillColorN|setStrokeColorN/.test(name||''))facts.rasterUncertain=true;
     if(name==='save')stack.push({...state,matrix:[...state.matrix]});
     if(name==='restore')state=stack.pop()||state;
     if(name==='transform')state.matrix=multiply(state.matrix,args);
@@ -268,6 +276,13 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
   if(facts.gradients||facts.transparency||facts.effects)findings.push(issue('effects','bad','Есть несведённые градиенты, прозрачность или эффекты: подготовьте их по требованиям нанесения.'));
   if(facts.hidden)findings.push(issue('hidden-content','manual','Проверьте скрытые объекты и слои исходного файла.'));
   if(facts.visual?.semiTransparent&&art.pixelW)findings.push(issue('raster-alpha','manual','Растр содержит полупрозрачные пиксели: проверьте края и эффект прозрачности.'));
+  if(rule){
+    const type=facts.artworkType||'unknown',onlyVector=rule.artworkPolicy==='vector-only';
+    const label={vector:'Векторный макет: встроенный растр не обнаружен.',mixed:'Макет содержит встроенный растр.',raster:'Макет растровый.',unknown:'Не удалось достоверно определить наличие растра в исходном макете.'}[type]||'Тип макета не определён.';
+    const status=type==='unknown'?'manual':onlyVector&&type!=='vector'?'bad':'ok';
+    const note=onlyVector?type==='vector'?' Требование «только вектор» выполнено.':type==='unknown'?' Для этого нанесения разрешён только вектор: проверьте оригинал.':' Для этого нанесения допускается только векторный макет.':' Для этого нанесения вектор и растр допускаются.';
+    findings.push(issue('artwork-type',status,label+note,{artworkType:type,artworkPolicy:rule.artworkPolicy}));
+  }
   if(!rule)detailFindings({art,placement,field,rule:null});
   if(rule) {
     for(const raster of facts.rasters||[]) {
