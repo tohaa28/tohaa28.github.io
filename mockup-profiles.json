@@ -1,9 +1,100 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-14T09:05:39.295Z",
+  "updatedAt": "2026-10-14T09:06:46.367Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "77700.60",
+      "variant": "",
+      "place": "Стандартное",
+      "method": "SB1: Сублимация/посуда,1",
+      "photo": {
+        "id": "77700.60-3",
+        "name": "Фото 3 · арт. 77700.60",
+        "url": "https://files.gifts.ru/reviewer/webp/11/77700.60_18_500.webp?v=2",
+        "width": 750,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "Стандартное",
+        "sizeCm": [
+          22.9997,
+          9.4999
+        ]
+      },
+      "constructor": {
+        "name": "8006776_77700.60_49428451.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1388
+      },
+      "fieldRect": {
+        "x": 0.15226932604396873,
+        "y": 0.19348179245644465,
+        "w": 0.6951135044051561,
+        "h": 0.37239733433358907
+      },
+      "targetQuad": [
+        {
+          "x": 0.3266136201991465,
+          "y": 0.2942430703624733
+        },
+        {
+          "x": 0.37213282361308675,
+          "y": 0.2857142857142857
+        },
+        {
+          "x": 0.3707103485064011,
+          "y": 0.40085287846481876
+        },
+        {
+          "x": 0.3251911450924609,
+          "y": 0.42430703624733473
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.76,
+        "topArc": -0.15,
+        "bottomArc": -0.03333333333333327,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.3266136201991465,
+            "y": 0.2835820895522388
+          },
+          {
+            "x": 0.4076947012802276,
+            "y": 0.2921108742004264
+          },
+          {
+            "x": 0.4034272759601707,
+            "y": 0.4115138592750533
+          },
+          {
+            "x": 0.3308810455192034,
+            "y": 0.4200426439232409
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T09:06:46.367Z",
+      "confirmedAt": "2026-10-14T09:06:46.367Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "7224.14",
