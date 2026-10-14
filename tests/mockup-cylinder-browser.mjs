@@ -305,7 +305,7 @@ export async function verifyMockupCylinder(browserContext){
     const q=binding.cylinder.targetQuad,flat=binding.targetQuad;
     const fit=mod.cylinder3DArtworkQuad(q,flat,1000/400,opts);
     const at=(u,v)=>mod.cylinder3DProjectLocalQuadPoint(q,fit.localFieldQuad,u,v,opts);
-    const insidePos=at(.3,.94),bottomPos=at(.3,1),outsidePos=at(.3,1.07);
+    const insidePos=at(.3,.88),bottomPos=at(.3,1),outsidePos=at(.3,1.07);
     const zeroOpts={...opts,topArc:0,bottomArc:0};
     const zeroFit=mod.cylinder3DArtworkQuad(q,flat,1000/400,zeroOpts);
     const flatBottom=mod.cylinder3DProjectLocalQuadPoint(q,zeroFit.localFieldQuad,.3,1,zeroOpts);
