@@ -131,12 +131,18 @@ function quadEdgeMetrics(q){
   };
 }
 
+function cylinderAxialFrame(opts={}){
+  const start=Number(opts.topArc??.07),end=Number(opts.bottomArc??.045);
+  return {start,span:Math.max(EPS,1+end-start)};
+}
+
 function cylinder3DSurfaceMetricScales(surfaceQuad,opts={}){
   const q=normalizedQuad(surfaceQuad),{width,height}=quadEdgeMetrics(q);
   const arcFactor=Math.PI/2*cylinder3DWrapScale(opts.curvature??.72);
+  const {span}=cylinderAxialFrame(opts);
   return opts.axis==="horizontal"
-    ?{x:width,y:height*arcFactor}
-    :{x:width*arcFactor,y:height};
+    ?{x:width*span,y:height*arcFactor}
+    :{x:width*arcFactor,y:height*span};
 }
 
 /** Invert the curved cylinder projection rather than approximating it with a planar homography. */
@@ -180,14 +186,18 @@ export function cylinder3DInverseSurfacePoint(surfaceQuad,target,{axis="vertical
 export function cylinder3DUnwrappedPoint(surfaceQuad,p,opts={}){
   const local=mapPointBetweenQuads(p,surfaceQuad,UNIT_QUAD);
   const factor=Math.PI/2*cylinder3DWrapScale(opts.curvature??.72);
-  if(opts.axis==="horizontal")local.y=.5+(local.y-.5)/factor;
-  else local.x=.5+(local.x-.5)/factor;
+  const {start,span}=cylinderAxialFrame(opts);
+  // The flat field is anchored to the visible front meridian, not the
+  // tangent rim frame. Otherwise the rim arcs displace all artwork downward.
+  if(opts.axis==="horizontal"){local.y=.5+(local.y-.5)/factor;local.x=(local.x-start)/span;}
+  else{local.x=.5+(local.x-.5)/factor;local.y=(local.y-start)/span;}
   return local;
 }
 export function cylinder3DDevelopmentPoint(surfaceQuad,p,opts={}){
   const local={...p},factor=Math.PI/2*cylinder3DWrapScale(opts.curvature??.72);
-  if(opts.axis==="horizontal")local.y=.5+(local.y-.5)*factor;
-  else local.x=.5+(local.x-.5)*factor;
+  const {start,span}=cylinderAxialFrame(opts);
+  if(opts.axis==="horizontal"){local.y=.5+(local.y-.5)*factor;local.x=start+local.x*span;}
+  else{local.x=.5+(local.x-.5)*factor;local.y=start+local.y*span;}
   return mapPointBetweenQuads(local,UNIT_QUAD,surfaceQuad);
 }
 

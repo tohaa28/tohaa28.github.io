@@ -357,7 +357,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-1";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-2";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -939,7 +939,8 @@ function drawTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
   const m=affineFromTriangles(s0,s1,s2,d0,d1,d2); if(!m) return;
   const [a,b,c]=expandedTriangleClip(d0,d1,d2);
   ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.closePath();ctx.clip();
-  ctx.setTransform(...m);ctx.drawImage(img,0,0);ctx.restore();
+  // Keep the photo viewport translation on the intermediate artwork layer.
+  ctx.transform(...m);ctx.drawImage(img,0,0);ctx.restore();
 }
 
 function clipToQuad(ctx,q){
@@ -1534,6 +1535,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r3f2cb7a3</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r509aa2df</span>
 </body>
 </html>
