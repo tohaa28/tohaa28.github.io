@@ -165,7 +165,7 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editCylinder").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/зелёный 3D-каркас/);
   await page.locator("#editField").click();
-  assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю развёртку/);
+  assert.match(await page.locator("#photoCanvasHint").textContent(),/плоская развёртка.*реальная проекция/);
   await page.evaluate(async()=>{
     const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-4");
     const surface=[{x:.08,y:.12},{x:.92,y:.14},{x:.94,y:.88},{x:.06,y:.86}];
