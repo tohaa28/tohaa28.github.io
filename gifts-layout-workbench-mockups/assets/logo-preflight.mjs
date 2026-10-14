@@ -1,4 +1,4 @@
-import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20260930-1';
+import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20261014-artwork-1';
 import {detailFindings} from './logo-detail-check.mjs?v=20261008-3';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20260929-2';
@@ -76,7 +76,10 @@ async function inspectSvg(art,facts) {
     facts.hasOpenPaths=false;
     facts.elements=[];
     // Actual embedded images count even if decoding their dimensions fails.
-    facts.hasRaster=!!root.querySelector('image,feImage');
+    const imageNodes=[...root.querySelectorAll('image,feImage')];
+    const nestedVector=element=>/^data:image\/svg\+xml/i.test(element.getAttribute('href')||element.getAttribute('xlink:href')||'');
+    facts.hasRaster=imageNodes.some(element=>!nestedVector(element));
+    if(imageNodes.some(nestedVector))facts.rasterUncertain=true;
     if(root.querySelector('foreignObject'))facts.rasterUncertain=true;
     const colors=new Set();
     for(const element of [root,...root.querySelectorAll('*')]) {
@@ -141,7 +144,7 @@ async function inspectPdf(art,facts,OPS) {
   for(let i=0;i<list.fnArray.length;i++) {
     const name=names[list.fnArray[i]],args=list.argsArray[i]||[];
     if(/paint.*Image|paintJpeg/i.test(name||''))facts.hasRaster=true;
-    if(/shadingFill|setFillColorN|setStrokeColorN/.test(name||''))facts.rasterUncertain=true;
+    if(/setFillColorN|setStrokeColorN/.test(name||''))facts.rasterUncertain=true;
     if(name==='save')stack.push({...state,matrix:[...state.matrix]});
     if(name==='restore')state=stack.pop()||state;
     if(name==='transform')state.matrix=multiply(state.matrix,args);
