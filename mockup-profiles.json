@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-14T10:59:00.516Z",
+  "updatedAt": "2026-10-14T13:24:26.538Z",
   "source": "git",
   "profiles": [
     {
@@ -379,20 +379,20 @@
       },
       "targetQuad": [
         {
-          "x": 0.48321875,
-          "y": 0.384
+          "x": 0.4831302638013738,
+          "y": 0.38485481443543135
         },
         {
-          "x": 0.71121875,
-          "y": 0.368
+          "x": 0.71721875,
+          "y": 0.386
         },
         {
-          "x": 0.72321875,
-          "y": 0.714
+          "x": 0.72121875,
+          "y": 0.74
         },
         {
-          "x": 0.47921874999999997,
-          "y": 0.746
+          "x": 0.4771081195891222,
+          "y": 0.7447442824143078
         }
       ],
       "surface": "cylinder",
@@ -400,8 +400,8 @@
         "geometry": "3d",
         "axis": "vertical",
         "curvature": 0.72,
-        "topArc": 0.14509221221921167,
-        "bottomArc": 0.22432736751723675,
+        "topArc": 0.17377059204190504,
+        "bottomArc": 0.23821820529373788,
         "preserveFieldAspect": false,
         "targetQuad": [
           {
@@ -413,8 +413,8 @@
             "y": 0.278
           },
           {
-            "x": 0.76521875,
-            "y": 0.718
+            "x": 0.75921875,
+            "y": 0.716
           },
           {
             "x": 0.28321875,
@@ -428,8 +428,8 @@
         "mesh": 32
       },
       "status": "confirmed-manual",
-      "updatedAt": "2026-10-09T11:58:19.791Z",
-      "confirmedAt": "2026-10-09T11:58:19.791Z",
+      "updatedAt": "2026-10-14T13:24:26.538Z",
+      "confirmedAt": "2026-10-14T13:24:26.538Z",
       "confirmedBy": "mockup-editor-manual",
       "generatedBy": "mockup-editor-manual"
     },
