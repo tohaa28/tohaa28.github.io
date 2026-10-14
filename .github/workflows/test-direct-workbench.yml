@@ -315,6 +315,37 @@ jobs:
                near(poseCheck.reset,[1,0,0,0])&&poseCheck.genderTransition==="0.38s"))
             throw Error("Smooth persona crossfade regression: "+JSON.stringify(poseCheck));
           console.log("Verified seamless 4-pose crossfades",poseCheck);
+          const screenCheck=await frame.evaluate(()=>{
+            const scene=document.getElementById("gwbOrdersMotion");
+            const icons=[...scene.querySelectorAll(".gwb-om-screen-icon")];
+            const labels=[...scene.querySelectorAll(".gwb-om-phase")];
+            const personas=[...scene.querySelectorAll(".gwb-om-persona-female .gwb-om-frame")];
+            const iconAnim=icons.map(el=>el.getAnimations().find(a=>/^gwbOmFrame[1-4]$/.test(a.animationName)));
+            const labelAnim=labels.map(el=>el.getAnimations().find(a=>/^gwbOmFrame[1-4]$/.test(a.animationName)));
+            const poses=personas.map(el=>el.getAnimations().find(a=>/^gwbOmFrame[1-4]$/.test(a.animationName)));
+            if(icons.length!==4||labels.length!==4||[...iconAnim,...labelAnim,...poses].some(a=>!a))
+              return {error:"Missing screen, labels or synchronized 18s animations",icons:icons.length,labels:labels.length};
+            const sample=t=>{
+              [...iconAnim,...labelAnim,...poses].forEach(a=>{a.currentTime=t;});
+              return [icons,labels,personas].map(nodes=>nodes.map(el=>Number(getComputedStyle(el).opacity)));
+            };
+            const at=[500,2700,9000,13500,17640].map(sample);
+            [...iconAnim,...labelAnim,...poses].forEach(a=>{a.currentTime=0;});
+            return {names:icons.map(x=>x.dataset.screenStage),labels:labels.map(x=>x.textContent.trim()),
+              phases:at,bulb:!!scene.querySelector(".gwb-om-bulb-glow"),
+              brush:getComputedStyle(scene.querySelector(".gwb-om-brush-trace")).animationName,
+              ok:getComputedStyle(scene.querySelector(".gwb-om-ok-pop")).animationName,
+              send:getComputedStyle(scene.querySelector(".gwb-om-send-arrow")).animationName};
+          });
+          const targetPhases=[[1,0,0,0],[.5,.5,0,0],[0,.5,.5,0],[0,0,.5,.5],[.5,0,0,.5]];
+          if(!(JSON.stringify(screenCheck.names)===JSON.stringify(["idea","draw","ready","send"])&&
+            JSON.stringify(screenCheck.labels)===JSON.stringify(["У меня идея!","Делаю макет!","Макет готов!","Отправляю в печать!"])&&
+            screenCheck.phases?.every((sample,i)=>sample.every(group=>near(group,targetPhases[i])))&&
+            screenCheck.bulb&&screenCheck.brush==="gwbOmBrushWrite"&&
+            screenCheck.ok==="gwbOmOkPop"&&screenCheck.send==="gwbOmSendArrow"))
+            throw Error("Screen and captions out of sync: "+JSON.stringify(screenCheck));
+          console.log("Verified four screen symbols, labels, and persona synchronization",screenCheck.names);
+
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];

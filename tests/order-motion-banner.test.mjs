@@ -53,6 +53,25 @@ test('approved WebP poses crossfade smoothly without changing sprite or 18s loop
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(html,/\.gwb-om-frame-1\{opacity:1\}/);
 });
+test('four spoken story stages and small SVG motions are synchronized with portrait frames',()=>{
+ const labels=['У меня идея!','Делаю макет!','Макет готов!','Отправляю в печать!'];
+ const stages=['idea','draw','ready','send'];
+ labels.forEach((label,i)=>assert.ok(html.includes('class="gwb-om-phase gwb-om-phase-'+(i+1)+'">'+label+'</span>')));
+ stages.forEach((stage,i)=>assert.ok(html.includes('data-screen-stage="'+stage+'"')));
+ assert.equal((html.match(/class="gwb-om-screen-icon gwb-om-screen-icon-[1-4]"/g)||[]).length,4);
+ assert.match(html,/gwb-om-phase-1\{animation-name:gwbOmFrame1\}/);
+ assert.match(html,/gwb-om-screen-icon-4\{animation-name:gwbOmFrame4\}/);
+ assert.match(html,/\.gwb-om-frame-1\{background-position-x:-164px;animation-name:gwbOmFrame1\}/);
+ assert.match(html,/\.gwb-om-frame-2\{background-position-x:0;animation-name:gwbOmFrame2\}/);
+ assert.match(html,/\.gwb-om-frame-3\{background-position-x:-82px;animation-name:gwbOmFrame3\}/);
+ assert.match(html,/@keyframes gwbOmBulbLight/);
+ assert.match(html,/@keyframes gwbOmBrushWrite/);
+ assert.match(html,/@keyframes gwbOmOkPop/);
+ assert.match(html,/@keyframes gwbOmSendArrow/);
+ assert.match(html,/@keyframes gwbOmFly\{\s*0%,69%/);
+ assert.match(html,/\.gwb-om-screen-icon-1\{opacity:1\}/);
+ assert.doesNotMatch(html,/gwbOmSpark|gwb-om-screen-spark/);
+});
 test('printcheck and mockups keep their preexisting controls',()=>{
  assert.match(html,/id="basketOrders"/);
  assert.match(html,/function prepareOrderAccordion\(card,rows\)/);
