@@ -357,7 +357,7 @@ html.embedded .workspaceGrid{height:calc(100vh - 68px)}
     </main>
   </div>
   <script type="module">
-import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-2";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArtworkSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "./assets/mockup-cylinder.mjs?v=20261014-3";
 const $ = id => document.getElementById(id);
 const state = {
   photo: null,
@@ -957,7 +957,7 @@ function drawWarpedCylinder3D(ctx,img,q,cylinder={}){
   try{fitted=cylinder3DArtworkQuad(cylinder.surfaceQuad,q,iw/Math.max(1,ih),opts);}
   catch{fitted={localArtworkQuad:q.map(p=>mapPointBetweenQuads(p,cylinder.surfaceQuad,UNIT_QUAD))};}
   const localMap=homographyForQuad(fitted.localArtworkQuad);
-  const pointAt=(u,v)=>{const local=localMap(u,v);return cylinder3DSurfacePoint(cylinder.surfaceQuad,local.x,local.y,opts);};
+  const pointAt=(u,v)=>{const local=localMap(u,v);return cylinder3DArtworkSurfacePoint(cylinder.surfaceQuad,local.x,local.y,opts);};
   const src=(u,v)=>({x:u*iw,y:v*ih});
   for(let y=0;y<across;y++)for(let x=0;x<along;x++){
     const u0=x/along,u1=(x+1)/along,v0=y/across,v1=(y+1)/across;
@@ -1535,6 +1535,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r57727021</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r20261014-3</span>
 </body>
 </html>
