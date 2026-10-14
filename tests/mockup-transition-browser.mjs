@@ -27,6 +27,18 @@ try{
   await page.addScriptTag({content:fs.readFileSync('assets/editor-mockup-transition.js','utf8')});
   await page.addScriptTag({content:bridge});
   const open=page.locator('#mockupModeButton'),scene=page.locator('#gwbMockupTransition'),shell=page.locator('#mockupShell');
+  // This test deliberately starts on the list of orders with a cached ready
+  // template. Only entering the real template workspace may reveal the button.
+  await page.waitForFunction(()=>document.querySelector('#mockupModeButton')?.hidden===true);
+  await page.evaluate(()=>{
+    document.querySelector('#orderEditor').hidden=false;
+    document.querySelector('#orderWaitingWorkspace').hidden=true;
+    const workspace=document.querySelector('.workspace');
+    workspace.classList.remove('order-waiting');workspace.dataset.orderState='open';
+  });
+  await page.waitForFunction(()=>document.querySelector('#mockupModeButton')?.hidden===false);
+  const navHeight=await open.evaluate(el=>el.getBoundingClientRect().height);
+  assert.ok(navHeight>=27&&navHeight<=32,'Mockup navigation height must stay compact: '+navHeight);
   await open.click();
   await page.waitForFunction(()=>document.querySelector('#mockupShell').hidden===false&&document.querySelector('#gwbMockupTransition').hidden);
   assert.equal(await page.evaluate(()=>document.querySelector('.app').inert),true);
@@ -58,8 +70,16 @@ try{
   await page.waitForFunction(()=>!document.querySelector('#mockupShell').hidden&&document.querySelector('#gwbMockupTransition').hidden);
   assert.equal(await page.evaluate(()=>window.__calls),before+1);
   await page.locator('#mockupBackButton').click();await page.waitForFunction(()=>!document.querySelector('.app').inert);
+  // Return to the list while keeping a cached ready template; the entry must hide.
+  await page.evaluate(()=>{
+    document.querySelector('#orderEditor').hidden=true;
+    document.querySelector('#orderWaitingWorkspace').hidden=false;
+    const workspace=document.querySelector('.workspace');
+    workspace.classList.add('order-waiting');workspace.dataset.orderState='waiting';
+  });
+  await page.waitForFunction(()=>document.querySelector('#mockupModeButton')?.hidden===true);
   assert.deepEqual(errors,[]);
-  console.log(`Mockup transition ${name}: handoff, loading, cancel, repeat, focus and scroll passed`);
+  console.log(`Mockup transition ${name}: template-only visibility, handoff, loading, cancel, repeat, focus and scroll passed`);
   await context.close();
  }
 }finally{await browser.close()}
