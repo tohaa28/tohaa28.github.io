@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="12b73cfab8589e119f8a7a0f9262a1b21825a9aa454be96e6b74c8e9ff32d26e";
-const expected="5af58f63ffd9c07d3765ec686161d03bb290bafb7b785633107a7ff4984d0e04";
+const expected="4cdbec024988c2f582057a81c3e0710312fa0cd3407163d64c56b586fe1b1590";
 const edits=[
   [
     "",
