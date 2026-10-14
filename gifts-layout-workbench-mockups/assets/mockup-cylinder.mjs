@@ -96,7 +96,7 @@ export function cylinder3DTheta(localWrapped,curvature=.72){
 }
 
 export function cylinder3DVisible(localWrapped,curvature=.72){
-  return Math.cos(cylinder3DTheta(localWrapped,curvature))>=-EPS;
+  return Math.abs(cylinder3DTheta(localWrapped,curvature))<=Math.PI/2+EPS;
 }
 
 export function cylinder3DSurfacePoint(surfaceQuad,localX,localY,{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
@@ -118,7 +118,7 @@ export function cylinder3DSurfacePoint(surfaceQuad,localX,localY,{axis="vertical
   const startCurve=add(add(startMid,mul(startHalf,sn)),mul(axisVec,Number(topArc||0)*height*cs));
   const endCurve=add(add(endMid,mul(endHalf,sn)),mul(axisVec,Number(bottomArc||0)*height*cs));
   const p=mixPoint(startCurve,endCurve,axial);
-  return {x:p.x,y:p.y,visible:cs>=-EPS,depth:cs,theta,wrapped,axial};
+  return {x:p.x,y:p.y,visible:Math.abs(theta)<=Math.PI/2+EPS,depth:cs,theta,wrapped,axial};
 }
 
 
@@ -174,14 +174,31 @@ export function cylinder3DInverseSurfacePoint(surfaceQuad,target,{axis="vertical
   return {x,y};
 }
 
+/** Blue handles live on the flat development, including points outside the photo.
+ * Convert physical distance to arc length once; never inverse-project these handles.
+ */
+export function cylinder3DUnwrappedPoint(surfaceQuad,p,opts={}){
+  const local=mapPointBetweenQuads(p,surfaceQuad,UNIT_QUAD);
+  const factor=Math.PI/2*cylinder3DWrapScale(opts.curvature??.72);
+  if(opts.axis==="horizontal")local.y=.5+(local.y-.5)/factor;
+  else local.x=.5+(local.x-.5)/factor;
+  return local;
+}
+export function cylinder3DDevelopmentPoint(surfaceQuad,p,opts={}){
+  const local={...p},factor=Math.PI/2*cylinder3DWrapScale(opts.curvature??.72);
+  if(opts.axis==="horizontal")local.y=.5+(local.y-.5)*factor;
+  else local.x=.5+(local.x-.5)*factor;
+  return mapPointBetweenQuads(local,UNIT_QUAD,surfaceQuad);
+}
+
 /** Fit artwork inside a cylindrical field without changing its intrinsic aspect ratio. */
-export function cylinder3DArtworkQuad(surfaceQuad,fieldQuad,artworkAspect,{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
+export function cylinder3DArtworkQuad(surfaceQuad,fieldQuad,artworkAspect,{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045,fitArtwork=true}={}){
   const opts={axis,curvature,topArc,bottomArc};
-  const localFieldQuad=normalizedQuad(fieldQuad).map(p=>cylinder3DInverseSurfacePoint(surfaceQuad,p,opts));
+  const localFieldQuad=normalizedQuad(fieldQuad).map(p=>cylinder3DUnwrappedPoint(surfaceQuad,p,opts));
   const {width,height}=quadEdgeMetrics(localFieldQuad),metrics=cylinder3DSurfaceMetricScales(surfaceQuad,opts);
   const fieldAspect=(width*metrics.x)/(Math.max(EPS,height)*Math.max(EPS,metrics.y));
   const aspect=Number(artworkAspect);
-  if(!Number.isFinite(aspect)||aspect<=EPS||!Number.isFinite(fieldAspect)||fieldAspect<=EPS){
+  if(!fitArtwork||!Number.isFinite(aspect)||aspect<=EPS||!Number.isFinite(fieldAspect)||fieldAspect<=EPS){
     return {localFieldQuad,localArtworkQuad:localFieldQuad,fieldAspect,artworkAspect:aspect,bounds:{u0:0,u1:1,v0:0,v1:1}};
   }
   let u0=0,u1=1,v0=0,v1=1;
@@ -204,9 +221,9 @@ export function cylinder3DArtworkQuad(surfaceQuad,fieldQuad,artworkAspect,{axis=
 
 /** Resize one field corner while keeping its unwrapped surface width/height ratio. */
 export function cylinder3DResizeFieldPreservingAspect(surfaceQuad,fieldQuad,activeIndex,draggedPoint,opts={}){
-  const local=normalizedQuad(fieldQuad).map(p=>cylinder3DInverseSurfacePoint(surfaceQuad,p,opts));
+  const local=normalizedQuad(fieldQuad).map(p=>cylinder3DUnwrappedPoint(surfaceQuad,p,opts));
   const i=Math.max(0,Math.min(3,Math.trunc(Number(activeIndex)||0)));
-  const target=cylinder3DInverseSurfacePoint(surfaceQuad,draggedPoint,opts);
+  const target=cylinder3DUnwrappedPoint(surfaceQuad,draggedPoint,opts);
   const {width,height}=quadEdgeMetrics(local),ratio=Math.max(.0001,width/Math.max(EPS,height));
   const anchor=local[(i+2)%4],dx=Math.abs(target.x-anchor.x),dy=Math.abs(target.y-anchor.y);
   const h=Math.max(.002,(ratio*dx+dy)/(ratio*ratio+1)),w=Math.max(.002,ratio*h);
@@ -220,7 +237,7 @@ export function cylinder3DResizeFieldPreservingAspect(surfaceQuad,fieldQuad,acti
   }else{
     next[1]=anchor;next[0]={x:anchor.x-w,y:anchor.y};next[2]={x:anchor.x,y:anchor.y+h};next[3]={x:anchor.x-w,y:anchor.y+h};
   }
-  return next.map(p=>cylinder3DSurfacePoint(surfaceQuad,p.x,p.y,opts)).map(p=>({x:p.x,y:p.y}));
+  return next.map(p=>cylinder3DDevelopmentPoint(surfaceQuad,p,opts));
 }
 
 export function cylinder3DArcHandle(surfaceQuad,which="top",{axis="vertical",curvature=.72,topArc=.07,bottomArc=.045}={}){
