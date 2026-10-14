@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArtworkSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArtworkSurfacePoint,cylinder3DProjectLocalQuadPoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
 
 test("cylinder guide keeps field attached while cylinder moves",()=>{
   const from=[{x:.2,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:.2,y:.9}];
@@ -150,30 +150,59 @@ test("cylinder rim arcs do not shift the field below its user-marked height",()=
   }
 });
 
-test("cylindrical artwork has no depth-dependent axial drift from user-marked development",()=>{
-  const q=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}];
+
+test("imprint and visible field boundary use identical curved cylinder geometry",()=>{
+  const surface=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}];
   for(const axis of ["vertical","horizontal"]){
-    for(const [topArc,bottomArc] of [[.12,.08],[-.10,-.05],[.095,.137],[0,0]]){
-      const opts={axis,curvature:.76,topArc,bottomArc};
-      for(const wrapped of [.15,.3,.5,.7,.85]){
-        for(const axial of [.2,.5,.8]){
-          const marked=axis==="vertical"?{x:400*wrapped,y:600*axial}:{x:400*axial,y:600*wrapped};
-          const unwrapped=cylinder3DUnwrappedPoint(q,marked,opts);
-          const art=cylinder3DArtworkSurfacePoint(q,unwrapped.x,unwrapped.y,opts);
-          const axisError=axis==="vertical"?Math.abs(art.y-marked.y):Math.abs(art.x-marked.x);
-          assert.ok(axisError<1e-7,JSON.stringify({axis,topArc,bottomArc,wrapped,axial,art,marked}));
-          assert.equal(art.visible,cylinder3DSurfacePoint(q,unwrapped.x,unwrapped.y,opts).visible);
-        }
+    for(const [topArc,bottomArc] of [[.12,.08],[-.1,-.05],[.095,.137],[0,0]]){
+      const opts={axis,curvature:.76,topArc,bottomArc,fitArtwork:false};
+      const development=axis==="vertical"
+        ?[{x:80,y:120},{x:320,y:120},{x:320,y:480},{x:80,y:480}]
+        :[{x:80,y:120},{x:320,y:120},{x:320,y:480},{x:80,y:480}];
+      const fit=cylinder3DArtworkQuad(surface,development,2,opts);
+      assert.deepEqual(fit.localArtworkQuad,fit.localFieldQuad);
+      for(const u of [0,.2,.5,.8,1])for(const v of [0,.35,.7,1]){
+        const projected=cylinder3DProjectLocalQuadPoint(surface,fit.localArtworkQuad,u,v,opts);
+        const guide=cylinder3DProjectLocalQuadPoint(surface,fit.localFieldQuad,u,v,opts);
+        assert.ok(Math.hypot(projected.x-guide.x,projected.y-guide.y)<1e-8,
+          "rendered artwork and field contour disagree: "+JSON.stringify({axis,topArc,bottomArc,u,v,projected,guide}));
       }
     }
   }
 });
 
-test("cylindrical artwork keeps curved guide rims while decoupling the axial print baseline",()=>{
-  const q=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}],opts={axis:"vertical",curvature:.76,topArc:-.10,bottomArc:-.05};
-  const x=.24,y=.8,guide=cylinder3DSurfacePoint(q,x,y,opts),art=cylinder3DArtworkSurfacePoint(q,x,y,opts);
-  assert.ok(guide.y>art.y+4,"negative rim curve used to push the artwork below its development: "+JSON.stringify({guide,art}));
-  assert.ok(Math.abs(guide.x-art.x)<1e-9,"surface wrap and perspective must be unchanged");
-  const midGuide=cylinder3DSurfacePoint(q,.5,y,opts),midArt=cylinder3DArtworkSurfacePoint(q,.5,y,opts);
-  assert.ok(Math.hypot(midGuide.x-midArt.x,midGuide.y-midArt.y)<1e-9,"front meridian is unchanged");
+test("cylindrical imprint physically bends with the rims, including side meridians",()=>{
+  const q=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}];
+  for(const axis of ["vertical","horizontal"]){
+    for(const [topArc,bottomArc] of [[.12,.08],[-.1,-.05]]){
+      const opts={axis,curvature:.76,topArc,bottomArc};
+      const wrappedPoint=axis==="vertical"?{x:125,y:240}:{x:160,y:187.5};
+      const local=cylinder3DUnwrappedPoint(q,wrappedPoint,opts);
+      const geometry=cylinder3DSurfacePoint(q,local.x,local.y,opts);
+      const artwork=cylinder3DArtworkSurfacePoint(q,local.x,local.y,opts);
+      assert.ok(Math.hypot(geometry.x-artwork.x,geometry.y-artwork.y)<1e-9,
+        "artwork must follow the same surface as the cylinder: "+JSON.stringify({axis,topArc,bottomArc}));
+      const optsFlat={...opts,topArc:0,bottomArc:0};
+      const localFlat=cylinder3DUnwrappedPoint(q,wrappedPoint,optsFlat);
+      const flat=cylinder3DSurfacePoint(q,localFlat.x,localFlat.y,optsFlat);
+      const axialDist=axis==="vertical"?Math.abs(artwork.y-flat.y):Math.abs(artwork.x-flat.x);
+      assert.ok(axialDist>.1,"surface-specific rim bow was flattened: "+JSON.stringify({axis,topArc,bottomArc,axialDist}));
+    }
+  }
+});
+
+test("original developed layout corners and off-axis stripes are projected, never refitted",()=>{
+  const surface=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}];
+  const opts={axis:"vertical",curvature:.76,topArc:-.10,bottomArc:-.05,fitArtwork:false};
+  const flat=[{x:-230,y:150},{x:650,y:150},{x:650,y:485},{x:-230,y:485}];
+  const fitted=cylinder3DArtworkQuad(surface,flat,5.7,opts);
+  assert.deepEqual(fitted.bounds,{u0:0,u1:1,v0:0,v1:1});
+  for(let i=0;i<4;i++){
+    const back=cylinder3DDevelopmentPoint(surface,fitted.localArtworkQuad[i],opts);
+    assert.ok(Math.hypot(back.x-flat[i].x,back.y-flat[i].y)<1e-7);
+  }
+  const sideTop=cylinder3DProjectLocalQuadPoint(surface,fitted.localArtworkQuad,.4,0,opts);
+  const sideBottom=cylinder3DProjectLocalQuadPoint(surface,fitted.localArtworkQuad,.4,1,opts);
+  assert.ok(sideBottom.y>sideTop.y);
+  assert.ok(!Number.isNaN(sideTop.x)&&!Number.isNaN(sideBottom.y));
 });
