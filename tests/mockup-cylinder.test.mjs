@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
+import {cylinder3DUnwrappedPoint,cylinder3DDevelopmentPoint,mapPointBetweenQuads,mapQuadBetweenQuads,cylinderWarpCoordinate,cylinderProjection,cylinderVisibleRange,cylinder3DSurfacePoint,cylinder3DArtworkSurfacePoint,cylinder3DInverseSurfacePoint,cylinder3DArtworkQuad,cylinder3DResizeFieldPreservingAspect,cylinder3DArcHandle,cylinder3DArcRatioFromPoint} from "../assets/mockup-cylinder.mjs";
 
 test("cylinder guide keeps field attached while cylinder moves",()=>{
   const from=[{x:.2,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:.2,y:.9}];
@@ -148,4 +148,32 @@ test("cylinder rim arcs do not shift the field below its user-marked height",()=
       }
     }
   }
+});
+
+test("cylindrical artwork has no depth-dependent axial drift from user-marked development",()=>{
+  const q=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}];
+  for(const axis of ["vertical","horizontal"]){
+    for(const [topArc,bottomArc] of [[.12,.08],[-.10,-.05],[.095,.137],[0,0]]){
+      const opts={axis,curvature:.76,topArc,bottomArc};
+      for(const wrapped of [.15,.3,.5,.7,.85]){
+        for(const axial of [.2,.5,.8]){
+          const marked=axis==="vertical"?{x:400*wrapped,y:600*axial}:{x:400*axial,y:600*wrapped};
+          const unwrapped=cylinder3DUnwrappedPoint(q,marked,opts);
+          const art=cylinder3DArtworkSurfacePoint(q,unwrapped.x,unwrapped.y,opts);
+          const axisError=axis==="vertical"?Math.abs(art.y-marked.y):Math.abs(art.x-marked.x);
+          assert.ok(axisError<1e-7,JSON.stringify({axis,topArc,bottomArc,wrapped,axial,art,marked}));
+          assert.equal(art.visible,cylinder3DSurfacePoint(q,unwrapped.x,unwrapped.y,opts).visible);
+        }
+      }
+    }
+  }
+});
+
+test("cylindrical artwork keeps curved guide rims while decoupling the axial print baseline",()=>{
+  const q=[{x:0,y:0},{x:400,y:0},{x:400,y:600},{x:0,y:600}],opts={axis:"vertical",curvature:.76,topArc:-.10,bottomArc:-.05};
+  const x=.24,y=.8,guide=cylinder3DSurfacePoint(q,x,y,opts),art=cylinder3DArtworkSurfacePoint(q,x,y,opts);
+  assert.ok(guide.y>art.y+4,"negative rim curve used to push the artwork below its development: "+JSON.stringify({guide,art}));
+  assert.ok(Math.abs(guide.x-art.x)<1e-9,"surface wrap and perspective must be unchanged");
+  const midGuide=cylinder3DSurfacePoint(q,.5,y,opts),midArt=cylinder3DArtworkSurfacePoint(q,.5,y,opts);
+  assert.ok(Math.hypot(midGuide.x-midArt.x,midGuide.y-midArt.y)<1e-9,"front meridian is unchanged");
 });
