@@ -1,9 +1,74 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-14T09:33:44.307Z",
+  "updatedAt": "2026-10-14T09:37:47.086Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "21327.30",
+      "variant": "",
+      "place": "крепление, сторона b [белый(White)]",
+      "method": "D2: Шелкография с трансфером,1",
+      "photo": {
+        "id": "21327.30-8",
+        "name": "Фото 8 · арт. 21327.30",
+        "url": "https://files.gifts.ru/reviewer/webp/70/21327.30_6_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "крепление, сторона b [белый(White)]",
+        "sizeCm": [
+          4.9999,
+          1.8
+        ]
+      },
+      "constructor": {
+        "name": "8030778_21327.30_49579268.pdf",
+        "url": "",
+        "width": 1038,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.5547824504140395,
+        "y": 0.6218411658217111,
+        "w": 0.2581041216757312,
+        "h": 0.053536944699893875
+      },
+      "targetQuad": [
+        {
+          "x": 0.531625,
+          "y": 0.693
+        },
+        {
+          "x": 0.821625,
+          "y": 0.557
+        },
+        {
+          "x": 0.913625,
+          "y": 0.633
+        },
+        {
+          "x": 0.613625,
+          "y": 0.771
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T09:37:47.086Z",
+      "confirmedAt": "2026-10-14T09:37:47.086Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "77700.60",
