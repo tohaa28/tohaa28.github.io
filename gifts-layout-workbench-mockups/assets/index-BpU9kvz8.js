@@ -1,6 +1,6 @@
 import {installArtworkView} from "./logo-artwork-view.mjs?v=20261001-1";
 let gwbArtworkView;
-import {installMethodAdmin} from "./method-admin.mjs?v=20261014-artwork-1";
+import {installMethodAdmin} from "./method-admin.mjs?v=20261014-current-1";
 import {installFieldZoom} from "./field-zoom.mjs?v=20260930-2";
 let gwbFieldZoom;
 import {installDetailCheck} from "./logo-detail-check.mjs?v=20261008-3";
@@ -72,7 +72,20 @@ fn fs_main(in : VertexOutput) -> @location(0) vec4<f32> {
 gwbRotationTool=installLogoRotation({canvas:pt,getState:()=>y,redraw:X,toPoint:Wn});
 gwbDetailTool=installDetailCheck({canvas:pt,getState:()=>y,redraw:X});
 gwbFieldZoom=installFieldZoom({canvas:pt,getState:()=>y,render:zt});
-installMethodAdmin({redraw:X});
+installMethodAdmin({redraw:X,getCurrentMethod:()=>{
+  // Use the active field's actual print technology, not the article's first method.
+  // When no field is selected, the article method is accepted only if unique.
+  if(v("orderEditor")?.hidden)return "";
+  const selected=v("orderFieldChoice")?.value;
+  let index=selected!==""?Number(selected):-1;
+  if(!Number.isInteger(index)||index<0){
+    const placement=y.placements?.[y.active];
+    index=y.field&&Number.isInteger(placement?.fieldIndex)?placement.fieldIndex:-1;
+  }
+  const field=index>=0?y.template?.fieldOptions?.[index]:null;
+  const binding=index>=0?oo(index):null;
+  return field?.orderMethod||binding?.method||y.selectedEntry?.method||v("method")?.value||"";
+}});
 gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});
 ;window.gwbBuildMockupHandoff=async function(){
   const entry=y.selectedEntry||null, template=y.template||null;
