@@ -17,6 +17,6 @@ test('Original-format requirement is configurable per method without changing ot
  assert.equal(disabled.artworkPolicy,'vector-only');
  assert.equal(checkEnabled(disabled,'artwork-type'),false);
  const serialized=JSON.stringify(x);
- assert.equal(cfg(JSON.parse(serialized)).methods.F1.artworkPolicy,'vector-only');
+ assert.equal(validateSettings(JSON.parse(serialized)).methods.F1.artworkPolicy,'vector-only');
  for(const invalid of ['raster-only','vector','',true,0,null])assert.throws(()=>cfg({F1:{artworkPolicy:invalid}}));
 });
