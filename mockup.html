@@ -939,7 +939,8 @@ function drawTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
   const m=affineFromTriangles(s0,s1,s2,d0,d1,d2); if(!m) return;
   const [a,b,c]=expandedTriangleClip(d0,d1,d2);
   ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.closePath();ctx.clip();
-  ctx.setTransform(...m);ctx.drawImage(img,0,0);ctx.restore();
+  // Keep the photo viewport translation on the intermediate artwork layer.
+  ctx.transform(...m);ctx.drawImage(img,0,0);ctx.restore();
 }
 
 function clipToQuad(ctx,q){
@@ -1534,6 +1535,6 @@ void autoLoadHandoff();
 updateCylinderControls();renderPhotoCandidates(); renderFieldCandidates(); renderProfileLibrary(); renderAll(); loadServerProfileRegistry();
 
 </script>
-<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r4bb3a2e1</span>
+<span id="mockupVersion" class="mockup-build-version">Редактор мокапов r57727021</span>
 </body>
 </html>
