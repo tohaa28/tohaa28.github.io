@@ -1,7 +1,7 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-14T09:06:46.367Z",
+  "updatedAt": "2026-10-14T09:07:48.222Z",
   "source": "git",
   "profiles": [
     {
@@ -365,97 +365,6 @@
       "status": "confirmed-manual",
       "updatedAt": "2026-10-14T09:05:39.295Z",
       "confirmedAt": "2026-10-14T09:05:39.295Z",
-      "confirmedBy": "mockup-editor-manual",
-      "generatedBy": "mockup-editor-manual"
-    },
-    {
-      "schema": "gifts-mockup-profile/v1",
-      "article": "77700.60",
-      "variant": "",
-      "place": "Стандартное",
-      "method": "SB1: Сублимация/посуда,1",
-      "photo": {
-        "id": "77700.60-1",
-        "name": "Фото 1 · арт. 77700.60",
-        "url": "https://files.gifts.ru/reviewer/webp/67/77700.60_16_500.webp?v=2",
-        "width": 500,
-        "height": 500
-      },
-      "field": {
-        "id": "1",
-        "printId": "print1",
-        "applicationId": "1",
-        "place": "Стандартное",
-        "sizeCm": [
-          22.9997,
-          9.4999
-        ]
-      },
-      "constructor": {
-        "name": "8006776_77700.60_49428451.pdf",
-        "url": "",
-        "width": 1800,
-        "height": 1388
-      },
-      "fieldRect": {
-        "x": 0.15226932604396873,
-        "y": 0.19348179245644465,
-        "w": 0.6951135044051561,
-        "h": 0.37239733433358907
-      },
-      "targetQuad": [
-        {
-          "x": -0.95478125,
-          "y": 0.154
-        },
-        {
-          "x": 0.65121875,
-          "y": 0.148
-        },
-        {
-          "x": 0.64921875,
-          "y": 0.892
-        },
-        {
-          "x": -0.94678125,
-          "y": 0.906
-        }
-      ],
-      "surface": "cylinder",
-      "cylinder": {
-        "geometry": "3d",
-        "axis": "vertical",
-        "curvature": 0.76,
-        "topArc": 0.09479574591463451,
-        "bottomArc": 0.136685680037784,
-        "preserveFieldAspect": false,
-        "targetQuad": [
-          {
-            "x": 0.005625,
-            "y": 0.101
-          },
-          {
-            "x": 0.67521875,
-            "y": 0.088
-          },
-          {
-            "x": 0.66921875,
-            "y": 0.874
-          },
-          {
-            "x": 0.00921875,
-            "y": 0.866
-          }
-        ]
-      },
-      "render": {
-        "opacity": 0.9,
-        "blend": "source-over",
-        "mesh": 32
-      },
-      "status": "confirmed-manual",
-      "updatedAt": "2026-10-14T09:05:17.842Z",
-      "confirmedAt": "2026-10-14T09:05:17.842Z",
       "confirmedBy": "mockup-editor-manual",
       "generatedBy": "mockup-editor-manual"
     },
