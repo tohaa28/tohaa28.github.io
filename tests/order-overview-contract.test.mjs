@@ -70,3 +70,16 @@ test('step 1 has only outer green frame and no duplicate list outline',()=>{
  assert.match(html,/<div class="article-card"><div class="article-picker">/);
  assert.match(html,/<details id="orderTemplatePicker" class="template-picker">/);
 });
+
+test('Mockup Editor navigation is compact, visually secondary and shown only inside open template workspace',()=>{
+  assert.match(html,/#mockupModeButton\{[^}]*height:30px;min-height:30px;max-height:30px;/);
+  assert.match(html,/#mockupModeButton\{[^}]*background:transparent;color:#dce4e7;/);
+  assert.match(html,/#mockupModeButton\[hidden\]\{display:none!important\}/);
+  assert.match(html,/const isTemplateOrFieldOpen=\(\)=>!!orderEditorPane&&!orderEditorPane.hidden&&/);
+  assert.match(html,/editorWorkspace\?\.dataset.orderState!=="waiting"/);
+  assert.match(html,/const openEligible=editorEligible&&isTemplateOrFieldOpen\(\)/);
+  assert.match(html,/const hideOpen=!openEligible;if\(open.hidden!==hideOpen\)open.hidden=hideOpen/);
+  assert.match(html,/watch\(orderEditorPane,\{attributes:true,attributeFilter:\["hidden"\]\}\)/);
+  assert.match(html,/watch\(editorWorkspace,\{attributes:true,attributeFilter:\["class","data-order-state"\]\}\)/);
+  assert.match(html,/const mockupEligible=editorEligible&&Number\(state.logoCount\)>0/);
+});
