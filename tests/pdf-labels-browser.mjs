@@ -900,6 +900,8 @@ export async function verifyPdfLabels(frame) {
     full:[...document.querySelectorAll('#fields option')].map(o=>o.textContent||''),
     fieldSize:document.getElementById('fieldSize')?.textContent||'',
     selected:document.getElementById('orderFieldChoice')?.value||'',
+    wholeTemplate:document.getElementById('dimensions')?.textContent||'',
+    zoomHidden:document.getElementById('zoomPage')?.hidden===true,
     hint:document.getElementById('fieldChoiceHint')?.textContent||'',
     unmatched:document.getElementById('fieldChoiceHint')?.classList.contains('unmatched')===true
   }));
@@ -909,9 +911,21 @@ export async function verifyPdfLabels(frame) {
   assert.equal(rotatedState7987235.unmatched,false);
   assert.match(rotatedState7987235.full[1],/200\.00 × 100\.00 мм/);
   assert.doesNotMatch(rotatedState7987235.full[1],/212(?:[.,]\d+)? × 212/);
-  assert.match(rotatedState7987235.fieldSize,/200\.00 × 100\.00 мм/);
-  assert.match(rotatedState7987235.fieldSize,/по прозрачной заливке/);
-  console.log('Exact 7987235 rotated fallback beats opaque decoy:',JSON.stringify(rotatedState7987235));
+  // Opening any article, including a sole matching field, starts at the
+  // entire template. Field measurements appear only after explicit selection.
+  assert.equal(rotatedState7987235.selected,'');
+  assert.equal(rotatedState7987235.fieldSize,'Поле не выбрано');
+  assert.match(rotatedState7987235.wholeTemplate,/^Размер шаблона:/);
+  assert.equal(rotatedState7987235.zoomHidden,true);
+  await frame.locator('#orderFieldChoice').selectOption('0');
+  await frame.waitForFunction(()=>/200\.00 × 100\.00 мм/.test(
+    document.getElementById('fieldSize')?.textContent||''
+  )&&!document.getElementById('zoomPage')?.hidden,null,{timeout:10000});
+  const manuallySelectedRotated=await frame.locator('#fieldSize').textContent();
+  assert.match(manuallySelectedRotated,/200\.00 × 100\.00 мм/);
+  assert.match(manuallySelectedRotated,/по прозрачной заливке/);
+  console.log('Exact 7987235 rotated fallback beats opaque decoy after manual selection:',
+    JSON.stringify({initial:rotatedState7987235,selected:manuallySelectedRotated}));
 
 
 
