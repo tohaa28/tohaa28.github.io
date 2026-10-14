@@ -96,5 +96,5 @@ test('single-article orders open the entire PDF first, never automatically zoom 
   assert.match(compiled,/if\(e\.length===1\)\{if\(!await vi\(0\)\)/,'The only article must still be automatically selected');
   const populateFields=compiled.slice(compiled.indexOf('async function Fe('),compiled.indexOf('function gs('));
   assert.match(populateFields,/y\.field=null,y\.view=null,c&&n&&e\.length===1/,'Explicit field zoom must remain opt-in');
-  assert.match(compiled,/v\("orderFieldChoice"\)\.onchange/,'Manual field selection remains supported');
+  assert.match(compiled,/for\(const c of\["fields","orderFieldChoice"\]\)v\(c\)\.onchange/,'Manual field selection remains supported');
 });
