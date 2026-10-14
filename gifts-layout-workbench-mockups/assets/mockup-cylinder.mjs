@@ -123,23 +123,22 @@ export function cylinder3DSurfacePoint(surfaceQuad,localX,localY,{axis="vertical
 
 
 /**
- * Artwork is positioned on the user's blue flat development. The cylinder rim
- * guides may bow in perspective, but that bow must not be applied a second time
- * to the axial position of printed artwork (especially at the side meridians).
- * Keep the horizontal sine/arc-length wrap and the back-face visibility mask.
+ * Both the imprint and its projected field contour belong to the SAME curved
+ * cylinder surface. The development is mapped to arc length beforehand.
+ * Do not cancel the depth-dependent rim bow in the artwork renderer: doing so
+ * makes the printed image appear detached from the actual cylinder.
  */
 export function cylinder3DArtworkSurfacePoint(surfaceQuad,localX,localY,opts={}){
-  const q=normalizedQuad(surfaceQuad);
-  const projected=cylinder3DSurfacePoint(q,localX,localY,opts);
-  const horizontal=opts.axis==="horizontal";
-  const startMid=mid(point(q[0]),point(horizontal?q[3]:q[1]));
-  const endMid=mid(point(horizontal?q[1]:q[3]),point(q[2]));
-  const axisVector=sub(endMid,startMid);
-  const height=Math.max(EPS,len(axisVector)),axisUnit=unit(axisVector);
-  const axial=horizontal?Number(localX):Number(localY);
-  const rim=(Number(opts.topArc??.07)*(1-axial)+Number(opts.bottomArc??.045)*axial)*height;
-  const correction=rim*(1-projected.depth);
-  return {...projected,x:projected.x+axisUnit.x*correction,y:projected.y+axisUnit.y*correction};
+  return cylinder3DSurfacePoint(surfaceQuad,localX,localY,opts);
+}
+
+/** Map a point of the flat development's local quadrilateral onto the cylinder.
+ * This is shared by the actual artwork mesh and the visible curved field guide.
+ * No fit, recentering or per-artwork axial correction is done here.
+ */
+export function cylinder3DProjectLocalQuadPoint(surfaceQuad,localQuad,u,v,opts={}){
+  const local=applyMatrix(homographyMatrix(normalizedQuad(localQuad)),{x:Number(u),y:Number(v)});
+  return cylinder3DArtworkSurfacePoint(surfaceQuad,local.x,local.y,opts);
 }
 
 
