@@ -24,6 +24,34 @@ export async function verifyMethodAdmin(frame){
  assert.match(await frame.locator('#adminMethodName').textContent(),/^F1 · /);
  assert.equal(await frame.locator('#adminMethod option').count(),92);await select('F1');assert.equal(await frame.locator('#adminParam-guard').getAttribute('placeholder'),'0');
  await frame.locator('#adminCheck-colors').uncheck();assert.ok((await report()).findings.some(f=>f.id==='colors'),'Draft must not change live checks');await frame.locator('#adminCancel').click();await open();await login();await select('F1');assert.equal(await frame.locator('#adminCheck-colors').isChecked(),true);
+ // The separate "Maximum colors" selector edits only this printing method.
+ assert.equal(await frame.locator('#adminColorLimit').inputValue(),'source');
+ assert.match(await frame.locator('#adminColorLimit option').first().textContent(),/до 1/);
+ assert.equal(await frame.locator('#adminColorLimit option').count(),33);
+ await frame.locator('#adminColorLimit').selectOption('2');
+ assert.equal((await report()).findings.find(f=>f.id==='colors').status,'bad',
+   'Unsaved changes must not alter the existing one-color rule');
+ await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.maxColors===2);
+ assert.equal((await report()).findings.find(f=>f.id==='colors').status,'ok');
+ assert.equal((await report()).findings.find(f=>f.id==='colors').actual,2);
+ const threeColors=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="2" height="8" fill="red"/><rect x="4" y="1" width="2" height="8" fill="blue"/><rect x="7" y="1" width="2" height="8" fill="green"/></svg>');
+ await frame.locator('#artwork').setInputFiles({name:'three-print-colors.svg',mimeType:'image/svg+xml',buffer:threeColors});
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='colors'&&f.actual===3&&f.status==='bad'),null,{timeout:20000});
+ assert.equal(await frame.locator('#simpleExport').isDisabled(),true);
+ await frame.locator('#adminColorLimit').selectOption('3');await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.maxColors===3);
+ assert.equal((await report()).findings.find(f=>f.id==='colors').status,'ok');
+ await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='colors'&&f.actual===2));
+ await frame.locator('#adminColorLimit').selectOption('source');await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.maxColors===1);
+ assert.equal((await report()).findings.find(f=>f.id==='colors').status,'bad');
+ await select('D1');
+ assert.equal(await frame.locator('#adminColorLimit').inputValue(),'source');
+ await select('F1');
+ assert.equal(await frame.locator('#adminColorLimit').inputValue(),'source');
+
  await frame.locator('#adminCheck-colors').uncheck();await frame.locator('#adminCheck-details').uncheck();await save();assert.equal((await report()).findings.some(f=>f.id==='colors'),false);assert.equal(await frame.locator('#simpleExport').isDisabled(),false);assert.equal(await frame.evaluate(()=>window.gwbDetailCheck.entries.some(e=>e.key===window.gwbDetailCheck.selectedKey)),false);
  // Preserve the editor's live vector/raster findings and block export when
  // the chosen print technique requires an entirely vector source.
