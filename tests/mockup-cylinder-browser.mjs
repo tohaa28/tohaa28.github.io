@@ -148,7 +148,7 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(await page.locator("#cylinderBottomArc").inputValue(),"6");
   assert.match(summary,/задняя сторона скрывается/);
   const projection=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-2");
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-3");
     const range=mod.cylinderVisibleRange(.84);
     return {range,left:mod.cylinderProjection(0,.84),center:mod.cylinderProjection(.5,.84),right:mod.cylinderProjection(1,.84)};
   });
@@ -167,7 +167,7 @@ export async function verifyMockupCylinder(browserContext){
   await page.locator("#editField").click();
   assert.match(await page.locator("#photoCanvasHint").textContent(),/синюю развёртку/);
   await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-2");
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-3");
     const surface=[{x:.08,y:.12},{x:.92,y:.14},{x:.94,y:.88},{x:.06,y:.86}];
     const opts={axis:"vertical",curvature:.72,topArc:.12,bottomArc:.07};
     const fieldLocal=[{x:.28,y:.3},{x:.52,y:.3},{x:.52,y:.5},{x:.28,y:.5}];
@@ -184,7 +184,7 @@ export async function verifyMockupCylinder(browserContext){
   assert.equal(await aspectLabel.isVisible(),true,"aspect-lock option must be visible in cylinder field-placement mode");
   assert.equal(await page.locator("#preserveFieldAspect").isChecked(),false);
   const beforeAspect=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-2"),b=window.gwbGetMockupBinding(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-3"),b=window.gwbGetMockupBinding(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
     const q=b.targetQuad.map(p=>mod.cylinder3DUnwrappedPoint(b.cylinder.targetQuad,p,opts));
     const width=(Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y)+Math.hypot(q[2].x-q[3].x,q[2].y-q[3].y))/2;
     const height=(Math.hypot(q[3].x-q[0].x,q[3].y-q[0].y)+Math.hypot(q[2].x-q[1].x,q[2].y-q[1].y))/2;
@@ -192,7 +192,7 @@ export async function verifyMockupCylinder(browserContext){
   });
   await page.locator("#preserveFieldAspect").check();
   const dragPoints=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-2"),b=window.gwbGetMockupBinding(),view=window.gwbGetMockupPhotoView(),canvas=document.getElementById("photoCanvas"),r=canvas.getBoundingClientRect(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-3"),b=window.gwbGetMockupBinding(),view=window.gwbGetMockupPhotoView(),canvas=document.getElementById("photoCanvas"),r=canvas.getBoundingClientRect(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
     const client=p=>({x:r.left+(view.photoX+p.x*view.photoW)*(r.width/canvas.width),y:r.top+(view.photoY+p.y*view.photoH)*(r.height/canvas.height)});
     return {start:client(b.targetQuad[2]),end:client(mod.cylinder3DDevelopmentPoint(b.cylinder.targetQuad,{x:.78,y:.78},opts))};
   });
@@ -201,7 +201,7 @@ export async function verifyMockupCylinder(browserContext){
   await page.mouse.move(dragPoints.end.x,dragPoints.end.y,{steps:8});
   await page.mouse.up();
   const afterAspect=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-2"),b=window.gwbGetMockupBinding(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-3"),b=window.gwbGetMockupBinding(),opts={axis:b.cylinder.axis,curvature:b.cylinder.curvature,topArc:b.cylinder.topArc,bottomArc:b.cylinder.bottomArc};
     const q=b.targetQuad.map(p=>mod.cylinder3DUnwrappedPoint(b.cylinder.targetQuad,p,opts));
     const width=(Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y)+Math.hypot(q[2].x-q[3].x,q[2].y-q[3].y))/2;
     const height=(Math.hypot(q[3].x-q[0].x,q[3].y-q[0].y)+Math.hypot(q[2].x-q[1].x,q[2].y-q[1].y))/2;
@@ -232,7 +232,7 @@ export async function verifyMockupCylinder(browserContext){
       document.getElementById(t+"ProgressRow")?.dataset.state==="ready"
     ),null,{timeout:15000});
   const seamMeasurements=await page.evaluate(async()=>{
-    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-2");
+    const mod=await import("./assets/mockup-cylinder.mjs?v=20261014-3");
     const cylinderQuad=[{x:.12,y:.13},{x:.88,y:.13},{x:.88,y:.87},{x:.12,y:.87}];
     const opts={axis:"vertical",curvature:.72,topArc:.06,bottomArc:.04};
     const localField=[{x:.24,y:.2},{x:.76,y:.2},{x:.76,y:.8},{x:.24,y:.8}];
@@ -294,13 +294,28 @@ export async function verifyMockupCylinder(browserContext){
     const view=window.gwbGetMockupPhotoView(),preview=document.getElementById("photoCanvas").getContext("2d");
     const previewTop=sample(preview,view.photoX+view.photoW*.53,view.photoY+view.photoH*.21);
     const previewBelow=sample(preview,view.photoX+view.photoW*.53,view.photoY+view.photoH*.82);
-    return {pixel,x,width:canvas.width,exportTop,exportBelow,previewTop,previewBelow};
+    // Red stripe spans an off-axis meridian; negative rim bow previously
+    // pushed its bottom outside the user's flat-development frame.
+    await window.gwbApplyMockupProfile({...binding,cylinder:{...binding.cylinder,topArc:-.10,bottomArc:-.05}});
+    const checked=await window.gwbCreateMockupPng(),checkedImg=await createImageBitmap(checked.blob);
+    ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(checkedImg,0,0);checkedImg.close();
+    const sampleX=canvas.width*(.5+.3*Math.sin(-4/3)),pview=window.gwbGetMockupPhotoView(),pc=document.getElementById("photoCanvas").getContext("2d");
+    const inside=sample(ctx,sampleX,canvas.height*.78),outside=sample(ctx,sampleX,canvas.height*.82);
+    const pin=sample(pc,pview.photoX+pview.photoW*sampleX/canvas.width,pview.photoY+pview.photoH*.78);
+    const pout=sample(pc,pview.photoX+pview.photoW*sampleX/canvas.width,pview.photoY+pview.photoH*.82);
+    return {pixel,x,width:canvas.width,exportTop,exportBelow,previewTop,previewBelow,inside,outside,pin,pout};
   });
   assert.ok(developmentCheck.pixel[0]>240&&developmentCheck.pixel[1]<20&&developmentCheck.pixel[2]<20,"Template stripe lost its arc-length placement in PNG: "+JSON.stringify(developmentCheck));
   for(const key of ["exportTop","previewTop"])
     assert.ok(developmentCheck[key].slice(0,3).every(v=>v>(key==="previewTop"?225:240)),key+" artwork was shifted below the marked top: "+JSON.stringify(developmentCheck));
   for(const key of ["exportBelow","previewBelow"])
     assert.ok(developmentCheck[key].slice(0,3).every(v=>v<20),key+" artwork leaked below the marked bottom: "+JSON.stringify(developmentCheck));
+  for(const key of ["inside","pin"]){
+    const p=developmentCheck[key];
+    assert.ok(p[0]>225&&p[1]<35&&p[2]<35,key+" cylinder stripe is missing inside its marked field: "+JSON.stringify(developmentCheck));
+  }
+  for(const key of ["outside","pout"])
+    assert.ok(developmentCheck[key].slice(0,3).every(v=>v<30),key+" cylinder artwork leaked below its marked field: "+JSON.stringify(developmentCheck));
   await page.close();
   console.log("Mockup cylinder: small-photo filtering, mapping status UI, 3D rims, expanded workspace, out-of-frame geometry, profile persistence, back-face clipping, white-background seam-free perspective and cylinder exports passed");
 }
