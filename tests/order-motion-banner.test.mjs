@@ -11,7 +11,9 @@ test('full width orders motion does not add height or replace navigation',()=>{
 });
 test('clicking the portrait changes gender with accessible keyboard button, no visible gender switch',()=>{
  assert.match(html,/<button class="gwb-om-portrait" id="gwbMotionCharacter" type="button"/);
- assert.match(html,/class="gwb-om-persona-sprite" aria-hidden="true"/);
+ assert.match(html,/class="gwb-om-persona gwb-om-persona-female" aria-hidden="true"/);
+ assert.match(html,/class="gwb-om-persona gwb-om-persona-male" aria-hidden="true"/);
+ assert.equal((html.match(/class="gwb-om-frame gwb-om-frame-[1-4]"/g)||[]).length,8);
  assert.doesNotMatch(html,/class="gwb-om-(?:female|male)" src="data:image\/webp/);
  assert.doesNotMatch(html,/gwb-om-gender|data-gwb-gender/);
  assert.match(html,/persona\?\.addEventListener\("click",\(\)=>setGender/);
@@ -34,18 +36,22 @@ test('laptop has correct aspect ratio, flight cards use real basket data when av
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(html,/if\(!article\|\|!\/\\d\{3,\}\/\.test\(article\)\)/);
 });
-test('approved four-pose storyboard is synchronized with the 18s design cycle',()=>{
+test('approved WebP poses crossfade smoothly without changing sprite or 18s loop',()=>{
  const sprite=readFileSync(new URL('../assets/orders-persona-poses.webp',import.meta.url));
  assert.ok(sprite.length>4000 && sprite.length<24000);
  assert.equal(sprite.toString('ascii',0,4),'RIFF');
  assert.equal(sprite.toString('ascii',8,12),'WEBP');
- assert.match(html,/\.gwb-om-persona-sprite\{[^}]*background-size:328px 100px;/);
- assert.match(html,/\.gwb-orders-motion\[data-gender="male"\] \.gwb-om-persona-sprite\{background-position-y:-50px\}/);
- assert.match(html,/@keyframes gwbOmPersonaFrames/);
- for(const pos of ['0','-82px','-164px','-246px'])assert.ok(html.includes('background-position-x:'+pos));
- assert.match(html,/animation:gwbOmPersonaFrames 18s steps\(1,end\) infinite/);
+ assert.match(html,/\.gwb-om-frame\{[^}]*background-size:328px 100px;/);
+ assert.match(html,/\.gwb-om-persona-male \.gwb-om-frame\{background-position-y:-50px\}/);
+ for(const value of ['0','-82px','-164px','-246px'])assert.ok(html.includes('background-position-x:'+value));
+ for(const name of ['gwbOmFrame1','gwbOmFrame2','gwbOmFrame3','gwbOmFrame4'])assert.ok(html.includes('@keyframes '+name));
+ assert.match(html,/animation-duration:18s;animation-timing-function:linear;animation-iteration-count:infinite/);
+ assert.match(html,/@keyframes gwbOmFrame1\{0%,13%\{opacity:1\}17%,96%\{opacity:0\}100%\{opacity:1\}\}/);
+ assert.match(html,/@keyframes gwbOmFrame4\{0%,73%\{opacity:0\}77%,96%\{opacity:1\}100%\{opacity:0\}\}/);
+ assert.doesNotMatch(html,/gwbOmPersonaFrames|steps\(1,end\)/);
+ assert.match(html,/\.gwb-om-persona\{[^}]*transition:opacity \.38s ease-in-out/);
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
- assert.match(html,/\.gwb-om-persona-sprite\{background-position-x:0\}/);
+ assert.match(html,/\.gwb-om-frame-1\{opacity:1\}/);
 });
 test('printcheck and mockups keep their preexisting controls',()=>{
  assert.match(html,/id="basketOrders"/);

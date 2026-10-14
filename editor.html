@@ -120,15 +120,21 @@
 .navrow>.gwb-orders-motion{position:relative;box-sizing:border-box;width:100%;max-width:none;min-width:0;height:100%;max-height:50px;flex:1 1 100%;display:block;overflow:hidden;background:linear-gradient(95deg,#f8fcf5 0%,#fff 68%,#f7faef 100%);color:#44525a;font-family:system-ui,sans-serif}
 .gwb-om-background{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(90deg,transparent 25px,#a4bb9d22 26px,transparent 27px),linear-gradient(0deg,transparent 24px,#a4bb9d1a 25px,transparent 26px);background-size:108px 50px;opacity:.5}
 .gwb-om-portrait{position:absolute;top:0;left:24px;width:82px;height:50px;overflow:hidden;z-index:13;border:0;background:transparent;padding:0;cursor:pointer;-webkit-mask-image:linear-gradient(90deg,#000 72%,transparent);mask-image:linear-gradient(90deg,#000 72%,transparent)}
-/* 8 authentic approved poses: four 82×50 frames per gender in a 328×100 WebP sheet. */
-.gwb-om-persona-sprite{position:absolute;inset:0;display:block;width:82px;height:50px;pointer-events:none;background-image:url("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/orders-persona-poses.webp?v=20261014-1");background-repeat:no-repeat;background-size:328px 100px;background-position-x:0;background-position-y:0;animation:gwbOmPersonaFrames 18s steps(1,end) infinite}
-.gwb-orders-motion[data-gender="male"] .gwb-om-persona-sprite{background-position-y:-50px}
-@keyframes gwbOmPersonaFrames{
-  0%,14.99%{background-position-x:0}
-  15%,49.99%{background-position-x:-82px}
-  50%,74.99%{background-position-x:-164px}
-  75%,100%{background-position-x:-246px}
-}
+/* Approved 8-frame WebP sprite, rendered as four independent opacity layers per gender. */
+.gwb-om-persona{position:absolute;inset:0;display:block;pointer-events:none;opacity:0;transition:opacity .38s ease-in-out}
+.gwb-orders-motion[data-gender="female"] .gwb-om-persona-female,
+.gwb-orders-motion[data-gender="male"] .gwb-om-persona-male{opacity:1}
+.gwb-om-frame{position:absolute;inset:0;display:block;width:82px;height:50px;pointer-events:none;background-image:url("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/orders-persona-poses.webp?v=20261014-1");background-repeat:no-repeat;background-size:328px 100px;background-position-y:0;opacity:0;animation-duration:18s;animation-timing-function:linear;animation-iteration-count:infinite}
+.gwb-om-persona-male .gwb-om-frame{background-position-y:-50px}
+.gwb-om-frame-1{background-position-x:0;animation-name:gwbOmFrame1}
+.gwb-om-frame-2{background-position-x:-82px;animation-name:gwbOmFrame2}
+.gwb-om-frame-3{background-position-x:-164px;animation-name:gwbOmFrame3}
+.gwb-om-frame-4{background-position-x:-246px;animation-name:gwbOmFrame4}
+/* 0.72s crossfades, including a seamless frame 4 -> frame 1 transition at loop wrap. */
+@keyframes gwbOmFrame1{0%,13%{opacity:1}17%,96%{opacity:0}100%{opacity:1}}
+@keyframes gwbOmFrame2{0%,13%{opacity:0}17%,48%{opacity:1}52%,100%{opacity:0}}
+@keyframes gwbOmFrame3{0%,48%{opacity:0}52%,73%{opacity:1}77%,100%{opacity:0}}
+@keyframes gwbOmFrame4{0%,73%{opacity:0}77%,96%{opacity:1}100%{opacity:0}}
 .gwb-om-workstation{position:absolute;top:0;left:105px;width:106px;height:50px;pointer-events:none}
 .gwb-om-laptop{height:50px;width:auto;aspect-ratio:106/52;display:block;filter:drop-shadow(0 2px 2px #41565a24)}
 .gwb-om-screen-spark{position:absolute;left:63px;top:13px;width:5px;height:5px;border-radius:50%;background:#81b315;box-shadow:0 0 6px #81b31588;animation:gwbOmSpark 18s ease-in-out infinite}
@@ -203,8 +209,10 @@
  .gwb-om-idea{left:178px}
 }
 @media(prefers-reduced-motion:reduce){
- .gwb-om-persona-sprite,.gwb-om-sheet,.gwb-om-phase,.gwb-om-success,.gwb-om-idea,.gwb-om-screen-spark{animation:none!important;transition:none!important}
- .gwb-om-persona-sprite{background-position-x:0}
+ .gwb-om-frame,.gwb-om-sheet,.gwb-om-phase,.gwb-om-success,.gwb-om-idea,.gwb-om-screen-spark{animation:none!important;transition:none!important}
+ .gwb-om-persona{transition:none!important}
+ .gwb-om-frame{opacity:0}
+ .gwb-om-frame-1{opacity:1}
  .gwb-om-sheet{opacity:1;transform:none;top:7px;left:0}
  .gwb-om-sheet-1{left:5%}.gwb-om-sheet-2{left:39%}.gwb-om-sheet-3{left:75%}
  .gwb-om-success{opacity:1}
@@ -213,7 +221,14 @@
 
 </style><link rel="stylesheet" href="./assets/editor-mockup-transition.css?v=1"><script src="./assets/editor-mockup-transition.js?v=2"></script></head><body><div class="app"><header class="site-header"><div class="topbar"><div class="brand"><span class="mark" aria-hidden="true">М</span><span>Макетная</span><small>редактор макетов для gifts.ru</small></div><button id="mockupModeButton" type="button" title="Открыть редактор мокапов" hidden>Редактор мокапов</button><button id="accountButton" class="account-button" type="button">Войти</button><button id="modeToggle" class="mode-toggle" type="button" aria-pressed="true" hidden>Подробный режим</button></div><nav class="navrow" aria-label="Ссылки на gifts.ru"><div class="gwb-orders-motion" id="gwbOrdersMotion" data-gender="female" role="group" aria-label="Готовые макеты вылетают из ноутбука дизайнера. Выбор персонажа">
   <div class="gwb-om-background" aria-hidden="true"></div>
-  <button class="gwb-om-portrait" id="gwbMotionCharacter" type="button" aria-label="Показать мужского персонажа" title="Сменить персонажа"><span class="gwb-om-persona-sprite" aria-hidden="true"></span></button>
+  <button class="gwb-om-portrait" id="gwbMotionCharacter" type="button" aria-label="Показать мужского персонажа" title="Сменить персонажа">
+    <span class="gwb-om-persona gwb-om-persona-female" aria-hidden="true">
+      <span class="gwb-om-frame gwb-om-frame-1"></span><span class="gwb-om-frame gwb-om-frame-2"></span><span class="gwb-om-frame gwb-om-frame-3"></span><span class="gwb-om-frame gwb-om-frame-4"></span>
+    </span>
+    <span class="gwb-om-persona gwb-om-persona-male" aria-hidden="true">
+      <span class="gwb-om-frame gwb-om-frame-1"></span><span class="gwb-om-frame gwb-om-frame-2"></span><span class="gwb-om-frame gwb-om-frame-3"></span><span class="gwb-om-frame gwb-om-frame-4"></span>
+    </span>
+  </button>
   <div class="gwb-om-workstation" aria-hidden="true"><svg class="gwb-om-laptop" viewBox="0 0 106 52" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 3h73a4 4 0 0 1 4 4v34H13V7a4 4 0 0 1 4-4Z" fill="#435159" stroke="#35454c"/><rect x="17" y="7" width="73" height="30" rx="2" fill="#f5faf4"/><path d="M20 11h17m-17 4h13" stroke="#cbd8cf" stroke-width="1.2" stroke-linecap="round"/><rect x="39" y="11" width="40" height="23" rx="2" fill="#eaf6dc" stroke="#86b135" stroke-dasharray="2 2"/><path d="M53 29q-1-12 8-13 0 9-8 13Zm2 0q3-10 14-9-2 8-14 9Z" fill="#81b315"/><path d="M5 42h96l-7 6H12l-7-6Z" fill="#9da9aa" stroke="#62757b" stroke-width=".8"/><path d="M41 42h25l3 2H39Z" fill="#f1f5f4"/><circle cx="53" cy="5" r=".75" fill="#c6d1d0"/></svg><span class="gwb-om-screen-spark"></span></div>
   <div class="gwb-om-production" aria-hidden="true">
     <span class="gwb-om-phase gwb-om-phase-1">Создаём макет</span>

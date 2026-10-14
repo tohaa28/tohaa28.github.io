@@ -282,31 +282,39 @@ jobs:
           const savedGender=await frame.evaluate(()=>localStorage.getItem("gwb.ordersMotion.gender.v1"));
           if(savedGender!=="female")throw Error("Portrait selection not persisted");
           console.log("Verified proportional laptop and subtle character switch",motionLayout);
-          // The 18s loop uses four distinct storyboard poses per character.
+          // Verify actual interpolated CSS opacity, not just animation names.
           const poseCheck=await frame.evaluate(()=>{
             const scene=document.getElementById("gwbOrdersMotion");
-            const sprite=scene?.querySelector(".gwb-om-persona-sprite");
-            const anim=sprite?.getAnimations().find(x=>x.animationName==="gwbOmPersonaFrames");
-            const positions=[];
-            if(!sprite||!anim)return {sprite:!!sprite,anim:!!anim,positions};
-            for(const t of [500,4200,10600,15200]){
-              anim.currentTime=t;
-              positions.push(getComputedStyle(sprite).backgroundPositionX);
-            }
-            const femaleY=getComputedStyle(sprite).backgroundPositionY;
-            scene.dataset.gender="male";
-            const maleY=getComputedStyle(sprite).backgroundPositionY;
-            scene.dataset.gender="female";
-            anim.currentTime=0;
-            return {sprite:true,anim:true,positions,femaleY,maleY,duration:anim.effect.getTiming().duration,background:getComputedStyle(sprite).backgroundImage};
+            const female=[...scene.querySelectorAll(".gwb-om-persona-female .gwb-om-frame")];
+            const male=[...scene.querySelectorAll(".gwb-om-persona-male .gwb-om-frame")];
+            const animations=[...female,...male].map(el=>el.getAnimations().find(a=>/^gwbOmFrame[1-4]$/.test(a.animationName)));
+            if(female.length!==4||male.length!==4||animations.some(a=>!a))
+              return {error:"Missing crossfade layers or animations",female:female.length,male:male.length};
+            const sample=t=>{
+              animations.forEach(a=>{a.currentTime=t;});
+              return female.map(el=>Number(getComputedStyle(el).opacity));
+            };
+            const stable=sample(500),first=sample(2700),second=sample(9000),
+                  third=sample(13500),wrap=sample(17640),reset=sample(0);
+            const fY=getComputedStyle(female[0]).backgroundPositionY;
+            const mY=getComputedStyle(male[0]).backgroundPositionY;
+            const image=getComputedStyle(female[0]).backgroundImage;
+            const duration=animations[0].effect.getTiming().duration;
+            animations.forEach(a=>{a.currentTime=0;});
+            return {stable,first,second,third,wrap,reset,fY,mY,image,duration,
+              genderTransition:getComputedStyle(scene.querySelector(".gwb-om-persona")).transitionDuration};
           });
-          if(!(poseCheck.sprite&&poseCheck.anim&&poseCheck.duration===18000&&
-               JSON.stringify(poseCheck.positions)===JSON.stringify(["0px","-82px","-164px","-246px"])&&
-               poseCheck.femaleY==="0px"&&poseCheck.maleY==="-50px"&&
-               poseCheck.background.includes("orders-persona-poses.webp")))
-            throw Error("Four-pose storyboard animation regression: "+JSON.stringify(poseCheck));
-          console.log("Verified storyboard poses",poseCheck.positions);
-
+          const near=(arr,target)=>arr?.length===target.length&&arr.every((v,i)=>Math.abs(v-target[i])<.065);
+          if(!(poseCheck.duration===18000&&poseCheck.fY==="0px"&&poseCheck.mY==="-50px"&&
+               poseCheck.image.includes("orders-persona-poses.webp")&&
+               near(poseCheck.stable,[1,0,0,0])&&
+               near(poseCheck.first,[.5,.5,0,0])&&
+               near(poseCheck.second,[0,.5,.5,0])&&
+               near(poseCheck.third,[0,0,.5,.5])&&
+               near(poseCheck.wrap,[.5,0,0,.5])&&
+               near(poseCheck.reset,[1,0,0,0])&&poseCheck.genderTransition==="0.38s"))
+            throw Error("Smooth persona crossfade regression: "+JSON.stringify(poseCheck));
+          console.log("Verified seamless 4-pose crossfades",poseCheck);
           const title = await frame.locator(".brand").innerText();
           const toolState = await frame.evaluate(() => {
             const ids = ["fieldLogoTools","editorAddLogo","editorFit","editorCenter","editorAngle","editorRotateLeft","editorRotateRight","editorClip","editorRemoveLogo"];
