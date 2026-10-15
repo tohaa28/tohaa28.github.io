@@ -51,7 +51,12 @@ test('auto vector requirement depends only on enumerated inks, not just a number
   ['черная футболка','any'],
   ['сторона а','any'],
   ['сторона а [CMYK]','unknown'],
-  ['сторона а [подложка; черный]','unknown'],
+  ['сторона а [подложка; черный]','vector-only'],
+  ['напротив от ручки [подложка; пантон(H32446/8435C)]','vector-only'],
+  ['напротив от ручки [подложка; пантон(Н32446/8435С)]','vector-only'],
+  ['сторона а [подложка; Pantone 287 C]','vector-only'],
+  ['сторона а [подложка]','unknown'],
+  ['сторона а [подложка; фон изделия]','unknown'],
   ['','any']
  ];
  for(const [place,expected]of cases)
@@ -59,4 +64,16 @@ test('auto vector requirement depends only on enumerated inks, not just a number
  assert.equal(orderArtworkRequirement('сторона b [черный; белый]',{bindingReliable:false}).policy,'unknown',
    'Unmatched field must never inherit a neighbor\'s printing inks');
  assert.equal(orderArtworkRequirement('без цветов печати').policy,'any');
+});
+
+test('mixed ink+underbase exposes named ink but leaves unknown TOTAL ink count for separate order-color comparison',()=>{
+ const label='напротив от ручки [подложка; пантон(Н32446/8435С)]';
+ const count=orderInkCountFromPlace(label);
+ assert.equal(count.count,null,'Underbase must not be silently counted as, or excluded from, a physical separation');
+ assert.equal(count.source,'ambiguous-order-colors');
+ const required=orderArtworkRequirement(label);
+ assert.equal(required.policy,'vector-only');
+ assert.equal(required.reason,'order-inks-listed');
+ assert.deepEqual(required.inks.colors,['пантон(Н32446/8435С)']);
+ assert.equal(orderArtworkRequirement(label,{bindingReliable:false}).policy,'unknown');
 });
