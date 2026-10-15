@@ -451,6 +451,14 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261015-auto-artwork-1",
     "./logo-preflight.mjs?v=20261015-underbase-1"
+  ],
+  [
+    "./method-admin.mjs?v=20261015-auto-artwork-1",
+    "./method-admin.mjs?v=20261015-server-1"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261015-underbase-1",
+    "./logo-preflight.mjs?v=20261015-server-1"
   ]
 ];
 export function applyLogoPreflight(){
