@@ -16,7 +16,7 @@ export function validateSettings(value){
   for(const [k,n]of Object.entries(v.values||{})){const p=Object.hasOwn(PARAMETERS,k)?PARAMETERS[k]:null;if(!p||typeof n!=='number'||!Number.isFinite(n)||n<p[1]||n>p[2]||k==='maxColors'&&!Number.isInteger(n))throw Error('Недопустимое значение '+code+'.'+k);m.values[k]=n;}
   if(v.palette!==undefined){if(typeof v.palette!=='string'||v.palette.length>200)throw Error('Неверная палитра');m.palette=v.palette;}
   if(v.colorPolicy!==undefined){if(!['','black-white','single-color','black-gray'].includes(v.colorPolicy))throw Error('Неверный режим цветности');m.colorPolicy=v.colorPolicy;}
-  if(v.artworkPolicy!==undefined){if(!['any','vector-only'].includes(v.artworkPolicy))throw Error('Неверное требование к формату макета');m.artworkPolicy=v.artworkPolicy;}
+  if(v.artworkPolicy!==undefined){if(!['any','vector-only','auto-order-colors'].includes(v.artworkPolicy))throw Error('Неверное требование к формату макета');m.artworkPolicy=v.artworkPolicy;}
   if(v.orderColorPolicy!==undefined){if(!['off','match'].includes(v.orderColorPolicy))throw Error('Неверный режим сравнения красок с заказом');m.orderColorPolicy=v.orderColorPolicy;}
   out.methods[code]=m;
  }return out;
@@ -31,7 +31,7 @@ export function configureRule(rule,settings=configuration){
  const out={...rule,guard:0,guardLong:0,guardShort:0,...override.values,settings:{enabled:override.enabled!==false,checks,custom:!!settings.methods[rule.code]}};
  if(override.palette!==undefined)out.palette=override.palette;
  if(override.colorPolicy!==undefined)out.colorPolicy=override.colorPolicy||undefined;
- out.artworkPolicy=override.artworkPolicy||rule.artworkPolicy||'any';
+ out.artworkPolicy=override.artworkPolicy||rule.artworkPolicy||'auto-order-colors';
  out.orderColorPolicy=override.orderColorPolicy||rule.orderColorPolicy||'off';
  if(Object.hasOwn(override.values||{},'negative'))delete out.negativeRange;
  if(out.unresolvedConditions)out.unresolvedConditions=out.unresolvedConditions.map(c=>Object.fromEntries(Object.entries(c).filter(([k])=>k==='when'||!Object.hasOwn(override.values||{},k)))).filter(c=>Object.keys(c).length>1);
