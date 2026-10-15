@@ -7,7 +7,7 @@ export const METHOD_SETTINGS_API='https://api.github.com/repos/tohaa28/tohaa28.g
 export const METHOD_SETTINGS_BRANCH='gifts-layout-workbench-mockups-source';
 const stamp=()=>'?_='+Date.now();
 const bytesToBase64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);};
-const base64ToText=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\\s+/g,'')),c=>c.charCodeAt(0)));
+const base64ToText=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s+/g,'')),c=>c.charCodeAt(0)));
 const signature=value=>JSON.stringify(value);
 export async function fetchMethodSettings({fetcher=globalThis.fetch}={}){
  let lastError;
@@ -39,7 +39,7 @@ export async function commitMethodSettings(value,{token,previous,validate,fetche
    body:JSON.stringify({
      message:'Update shared print-method requirements',
      branch:METHOD_SETTINGS_BRANCH,sha:meta.sha,
-     content:bytesToBase64(new TextEncoder().encode(JSON.stringify(next,null,2)+'\\n'))
+     content:bytesToBase64(new TextEncoder().encode(JSON.stringify(next,null,2)+'\n'))
    })
  });
  if(!response.ok){
