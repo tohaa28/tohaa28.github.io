@@ -72,8 +72,10 @@ export async function verifyMethodAdmin(frame){
  // Preserve the editor's live vector/raster findings and block export when
  // the chosen print technique requires an entirely vector source.
  assert.equal(await frame.locator('#adminArtworkPolicy').inputValue(),'source');
+ assert.match(await frame.locator('#adminArtworkPolicy option').first().textContent(),/Автоматически по цветам заказа/i);
+ assert.equal((await report()).findings.find(f=>f.id==='artwork-type').effectiveArtworkPolicy,'vector-only');
  await frame.locator('#adminArtworkPolicy').selectOption('vector-only');
- assert.equal((await report()).rule.artworkPolicy,'any','Unsaved draft must not affect the editor');
+ assert.equal((await report()).rule.artworkPolicy,'auto-order-colors','Unsaved draft must not affect the editor');
  await save();
  await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.artworkPolicy==='vector-only');
  assert.equal((await report()).findings.find(f=>f.id==='artwork-type').status,'ok');
@@ -83,10 +85,19 @@ export async function verifyMethodAdmin(frame){
  await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='artwork-type'&&f.status==='bad'));
  assert.equal((await report()).findings.find(f=>f.id==='artwork-type').artworkType,'mixed');
  assert.equal(await frame.locator('#simpleExport').isDisabled(),true);
+ // Returning to automatic mode does NOT whitelist mixed artwork: the order
+ // explicitly lists one printing ink for the currently selected F1 field.
  await frame.locator('#adminArtworkPolicy').selectOption('source');
  await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.artworkPolicy==='auto-order-colors');
+ assert.equal((await report()).findings.find(f=>f.id==='artwork-type').status,'bad');
+ assert.equal((await report()).findings.find(f=>f.id==='artwork-type').effectiveArtworkPolicy,'vector-only');
+ // The operator can still explicitly allow raster as a saved method override.
+ await frame.locator('#adminArtworkPolicy').selectOption('any');await save();
  await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.artworkPolicy==='any');
  assert.equal((await report()).findings.find(f=>f.id==='artwork-type').status,'ok');
+ await frame.locator('#adminArtworkPolicy').selectOption('source');await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.rule.artworkPolicy==='auto-order-colors');
  await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});
  await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='artwork-type'&&f.artworkType==='vector'));
 
