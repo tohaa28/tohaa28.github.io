@@ -11,7 +11,7 @@ test('Original-format requirement is configurable per method without changing ot
  const x=cfg({F1:{artworkPolicy:'vector-only'},UV1:{artworkPolicy:'any'}});
  assert.equal(configureRule(PRINT_REQUIREMENTS.F1,x).artworkPolicy,'vector-only');
  assert.equal(configureRule(PRINT_REQUIREMENTS.UV1,x).artworkPolicy,'any');
- assert.equal(configureRule(PRINT_REQUIREMENTS.F2,x).artworkPolicy,'any');
+ assert.equal(configureRule(PRINT_REQUIREMENTS.F2,x).artworkPolicy,'auto-order-colors');
  assert.equal(checkEnabled(configureRule(PRINT_REQUIREMENTS.F1,x),'artwork-type'),true);
  const disabled=configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{artworkPolicy:'vector-only',checks:{artwork:false}}}));
  assert.equal(disabled.artworkPolicy,'vector-only');
@@ -31,4 +31,14 @@ test('Order color count comparison is opt-in and isolated per print method',()=>
  assert.equal(checkEnabled(configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{orderColorPolicy:'match',enabled:false}})),'order-colors'),false);
  assert.equal(validateSettings(JSON.parse(JSON.stringify(settings))).methods.F1.orderColorPolicy,'match');
  for(const policy of ['auto','max',true,null,2])assert.throws(()=>cfg({F1:{orderColorPolicy:policy}}));
+});
+
+test('automatic logo-format policy follows listed inks unless manually overridden',()=>{
+ const base=configureRule(PRINT_REQUIREMENTS.F1,cfg({}));
+ assert.equal(base.artworkPolicy,'auto-order-colors');
+ assert.equal(configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{artworkPolicy:'auto-order-colors'}})).artworkPolicy,'auto-order-colors');
+ assert.equal(configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{artworkPolicy:'any'}})).artworkPolicy,'any');
+ assert.equal(configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{artworkPolicy:'vector-only'}})).artworkPolicy,'vector-only');
+ assert.equal(checkEnabled(base,'artwork-type'),true);
+ assert.throws(()=>cfg({F1:{artworkPolicy:'invented'}}));
 });
