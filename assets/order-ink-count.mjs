@@ -12,7 +12,7 @@ const validInk=part=>{
 export function orderInkCountFromPlace(place){
  const text=clean(place);
  const explicit=text.match(/(?:количество\s*(?:цветов|красок)|(?:цветов|красок)\s*в\s*нанесении)\s*[:=–-]\s*(\d{1,2})\b/i);
- const digits=text.match(/\b(\d{1,2})\s*(?:цвет(?:а|ов)?|краск(?:а|и|ок))\b/i);
+ const digits=text.match(/(?:^|[^\d])(\d{1,2})\s*(?:цвет(?:а|ов)?|краск(?:а|и|ок))(?=$|[^\p{L}])/iu);
  const number=explicit||digits;
  if(number&&Number(number[1])>=1&&Number(number[1])<=32)
    return {count:Number(number[1]),source:'order-explicit-count',raw:number[0],colors:[]};
