@@ -83,7 +83,12 @@ test('automatic artwork requirement rejects raster ONLY when print colors are en
  const uncertain=at('сторона b [черный(Black); белый(White)]',false);
  assert.equal(uncertain.status,'manual');
  assert.equal(uncertain.effectiveArtworkPolicy,'unknown');
- assert.equal(at('сторона b [подложка; черный]').status,'manual');
+ assert.equal(at('сторона b [подложка; черный]').status,'bad');
+ assert.equal(at('напротив от ручки [подложка; пантон(Н32446/8435С)]').status,'bad');
+ assert.equal(at('напротив от ручки [подложка; пантон(H32446/8435C)]').orderInkDetection,'order-inks-listed');
+ assert.equal(at('напротив от ручки [подложка; пантон(H32446/8435C)]').effectiveArtworkPolicy,'vector-only');
+ assert.equal(at('напротив от ручки [подложка; пантон(H32446/8435C)]',false).status,'manual');
+ assert.equal(at('напротив от ручки [подложка]').status,'manual');
  const svg={ext:'svg',w:10,h:10,preflight:{artworkType:'vector',hasRaster:false,rasters:[],limitations:[]}};
  const checkSvg=run('D1',{art:svg,placement:{w:10,h:10},orderPlace:'сторона a [черный(Black)]',orderBindingReliable:true});
  assert.equal(checkSvg.findings.find(f=>f.id==='artwork-type').status,'ok');
