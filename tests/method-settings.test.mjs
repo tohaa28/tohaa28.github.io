@@ -20,3 +20,15 @@ test('Original-format requirement is configurable per method without changing ot
  assert.equal(validateSettings(JSON.parse(serialized)).methods.F1.artworkPolicy,'vector-only');
  for(const invalid of ['raster-only','vector','',true,0,null])assert.throws(()=>cfg({F1:{artworkPolicy:invalid}}));
 });
+
+test('Order color count comparison is opt-in and isolated per print method',()=>{
+ const settings=cfg({F1:{orderColorPolicy:'match'},D1:{orderColorPolicy:'off'}});
+ assert.equal(configureRule(PRINT_REQUIREMENTS.F1,settings).orderColorPolicy,'match');
+ assert.equal(configureRule(PRINT_REQUIREMENTS.D1,settings).orderColorPolicy,'off');
+ assert.equal(configureRule(PRINT_REQUIREMENTS.F2,settings).orderColorPolicy,'off');
+ assert.equal(checkEnabled(configureRule(PRINT_REQUIREMENTS.F1,settings),'order-colors'),true);
+ assert.equal(checkEnabled(configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{orderColorPolicy:'match',checks:{orderColors:false}}})),'order-colors'),false);
+ assert.equal(checkEnabled(configureRule(PRINT_REQUIREMENTS.F1,cfg({F1:{orderColorPolicy:'match',enabled:false}})),'order-colors'),false);
+ assert.equal(validateSettings(JSON.parse(JSON.stringify(settings))).methods.F1.orderColorPolicy,'match');
+ for(const policy of ['auto','max',true,null,2])assert.throws(()=>cfg({F1:{orderColorPolicy:policy}}));
+});
