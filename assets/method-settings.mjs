@@ -1,7 +1,7 @@
 import {PRINT_REQUIREMENTS} from './print-requirements.mjs?v=20260929-2';
 export {PRINT_REQUIREMENTS};
 export const SETTINGS_KEY='gwb-method-settings-v1';
-export const CHECKS={artwork:'Вектор / встроенный растр',text:'Шрифты в кривых',effects:'Прозрачность и эффекты',hidden:'Скрытые объекты',resolution:'Разрешение растра',colors:'Цветность и цветовая модель',positive:'Тонкие печатные элементы',negative:'Пробелы и выворотки',isolated:'Отдельные мелкие объекты',details:'Фоновый поиск PrintCheck',boundary:'Выход за поле',guard:'Охранное поле',bleed:'Вылеты',contours:'Обводки и замкнутость контуров',advisory:'Дополнительные требования и условия'};
+export const CHECKS={artwork:'Вектор / встроенный растр',orderColors:'Соответствие цветов заказу',text:'Шрифты в кривых',effects:'Прозрачность и эффекты',hidden:'Скрытые объекты',resolution:'Разрешение растра',colors:'Цветность и цветовая модель',positive:'Тонкие печатные элементы',negative:'Пробелы и выворотки',isolated:'Отдельные мелкие объекты',details:'Фоновый поиск PrintCheck',boundary:'Выход за поле',guard:'Охранное поле',bleed:'Вылеты',contours:'Обводки и замкнутость контуров',advisory:'Дополнительные требования и условия'};
 export const PARAMETERS={guard:['Охранное поле, мм',0,1000],positive:['Минимальная линия, мм',0,100],negative:['Минимальный пробел, мм',0,100],isolated:['Отдельный объект, мм',0,100],minDpi:['Разрешение, dpi',1,9600],maxColors:['Максимум цветов',1,32],bleed:['Вылет, мм',0,100],letter:['Высота букв, мм',0,100],inkMax:['Сумма CMYK, %',0,400],tintMin:['Минимальная плотность, %',0,100],tintMax:['Максимальная плотность, %',0,100]};
 export function validateSettings(value){
  if(!value||value.version!==1||!value.methods||typeof value.methods!=='object'||Array.isArray(value.methods))throw Error('Неверный формат настроек.');
@@ -17,6 +17,7 @@ export function validateSettings(value){
   if(v.palette!==undefined){if(typeof v.palette!=='string'||v.palette.length>200)throw Error('Неверная палитра');m.palette=v.palette;}
   if(v.colorPolicy!==undefined){if(!['','black-white','single-color','black-gray'].includes(v.colorPolicy))throw Error('Неверный режим цветности');m.colorPolicy=v.colorPolicy;}
   if(v.artworkPolicy!==undefined){if(!['any','vector-only'].includes(v.artworkPolicy))throw Error('Неверное требование к формату макета');m.artworkPolicy=v.artworkPolicy;}
+  if(v.orderColorPolicy!==undefined){if(!['off','match'].includes(v.orderColorPolicy))throw Error('Неверный режим сравнения красок с заказом');m.orderColorPolicy=v.orderColorPolicy;}
   out.methods[code]=m;
  }return out;
 }
@@ -31,11 +32,12 @@ export function configureRule(rule,settings=configuration){
  if(override.palette!==undefined)out.palette=override.palette;
  if(override.colorPolicy!==undefined)out.colorPolicy=override.colorPolicy||undefined;
  out.artworkPolicy=override.artworkPolicy||rule.artworkPolicy||'any';
+ out.orderColorPolicy=override.orderColorPolicy||rule.orderColorPolicy||'off';
  if(Object.hasOwn(override.values||{},'negative'))delete out.negativeRange;
  if(out.unresolvedConditions)out.unresolvedConditions=out.unresolvedConditions.map(c=>Object.fromEntries(Object.entries(c).filter(([k])=>k==='when'||!Object.hasOwn(override.values||{},k)))).filter(c=>Object.keys(c).length>1);
  // Explicit overrides take precedence over conditional source thresholds.
  return out;
 }
 export function checkEnabled(rule,id){if(!rule?.settings)return true;const {enabled,checks}=rule.settings;if(!enabled)return id==='method';
- const group=id.startsWith('condition-')?'advisory':({ 'artwork-type':'artwork','outlined-text':'text',effects:'effects','raster-alpha':'effects','hidden-content':'hidden','raster-dpi':'resolution',palette:'colors','rgb-color-model':'colors','ink-limit':'colors',monochrome:'colors','engraving-cmyk':'colors',colors:'colors','metalsticker-colors':'colors',ink:'colors',positive:'positive','positive-coverage':'positive',negative:'negative','detail-scan':'details','detail-coverage':'details','field-boundary':'boundary',guard:'guard',bleed:'bleed',strokes:'contours','closed-contours':'contours',intersections:'contours',letter:'advisory','method-note':'advisory','article-specific':'advisory'})[id];return !group||checks[group];}
+ const group=id.startsWith('condition-')?'advisory':({ 'artwork-type':'artwork','order-colors':'orderColors','outlined-text':'text',effects:'effects','raster-alpha':'effects','hidden-content':'hidden','raster-dpi':'resolution',palette:'colors','rgb-color-model':'colors','ink-limit':'colors',monochrome:'colors','engraving-cmyk':'colors',colors:'colors','metalsticker-colors':'colors',ink:'colors',positive:'positive','positive-coverage':'positive',negative:'negative','detail-scan':'details','detail-coverage':'details','field-boundary':'boundary',guard:'guard',bleed:'bleed',strokes:'contours','closed-contours':'contours',intersections:'contours',letter:'advisory','method-note':'advisory','article-specific':'advisory'})[id];return !group||checks[group];}
 export function detailRule(rule){if(!rule)return null;return {...rule,positive:checkEnabled(rule,'positive')?rule.positive:0,negative:checkEnabled(rule,'negative')?rule.negative:0,isolated:rule.settings?.enabled!==false&&rule.settings?.checks.isolated!==false?rule.isolated:0};}
