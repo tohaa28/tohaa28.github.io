@@ -22,7 +22,7 @@ export async function verifyMethodAdmin(frame){
  await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('admin-colors.svg'));const scale=(await report()).templateScale;await frame.locator('#width').evaluate((el,v)=>{el.value=String(v);el.dispatchEvent(new Event('input',{bubbles:true}));},10/scale);await frame.locator('#editorCenter').click();assert.equal((await report()).findings.find(f=>f.id==='colors').status,'bad');
  const open=async()=>{await frame.locator('#overlay').focus();await frame.page().keyboard.press('Alt+KeyN');await dialog.waitFor({state:'visible'});};
  const login=async()=>{await frame.locator('#adminUser').fill('admin');await frame.locator('#adminPassword').fill('admin');await frame.locator('#adminLogin button').click();await frame.locator('#adminSettings').waitFor({state:'visible'});};
- const select=code=>frame.locator('#adminMethod').selectOption(code),save=()=>frame.locator('#adminEdit button[type=submit]').click();
+ const select=code=>frame.locator('#adminMethod').selectOption(code),save=async()=>{await frame.locator('#adminEdit button[type=submit]').click();await frame.waitForFunction(()=>document.querySelector('#adminMessage')?.textContent?.includes('Настройки сохранены на сервере'),null,{timeout:15000});};
  await verifyErrorOverlay(frame);
  // A multi-place order contains D1 and F1. The selected print field, not
  // the overall article's first method, determines the initial settings view.
