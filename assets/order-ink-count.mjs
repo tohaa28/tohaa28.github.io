@@ -60,8 +60,8 @@ export function orderArtworkRequirement(place,{bindingReliable=true}={}){
  // does not need to assign an exact number to that underbase.
  // Example from a real order: "[подложка; пантон(H32446/8435C)]".
  const explicitInks=[];
- for(const match of String(place||'').matchAll(/\\[([^\\[\\]]+)\\]/g)){
-   const parts=match[1].split(/\\s*[;,]\\s*/).filter(Boolean);
+ for(const match of String(place||'').matchAll(/\[([^\[\]]+)\]/g)){
+   const parts=match[1].split(/\s*[;,]\s*/).filter(Boolean);
    if(parts.length>0){
      const named=parts.filter(validInk);
      if(named.length>0)explicitInks.push(...named);
