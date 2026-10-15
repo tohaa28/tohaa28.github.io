@@ -2,7 +2,7 @@ import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-se
 import {detailFindings} from './logo-detail-check.mjs?v=20261008-3';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20261014-colors-1';
-import {compareOrderInkCount,orderArtworkRequirement} from './order-ink-count.mjs?v=20261015-auto-artwork-1';
+import {compareOrderInkCount,orderArtworkRequirement} from './order-ink-count.mjs?v=20261015-underbase-1';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
 export function contextFromOrder(text='') {
   const s=String(text).toLowerCase();
