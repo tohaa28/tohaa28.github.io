@@ -46,3 +46,20 @@ export function compareOrderInkCount(rule,facts,place,{bindingReliable=true}={})
  return finding('manual',`В заказе указано ${order.count} ${order.count===1?'краска':order.count<5?'краски':'красок'}, но точное количество исходных печатных цветов ${facts?.artworkType==='raster'||facts?.hasRaster?'растрового':'PDF/смешанного'} макета автоматически не подтверждено. Сверьте цветоделения.`,
    {actual:actual||pixel?.count||null,certainty:'unverified'});
 }
+
+/**
+ * Order-driven artwork rule. Only an actual, enumerated list of printing inks
+ * (such as "[черный(Black); белый(White)]") triggers the vector-only gate.
+ * A count like "2 цвета" does not enumerate inks. Neither an item's product
+ * color nor another field's order note is suitable evidence.
+ */
+export function orderArtworkRequirement(place,{bindingReliable=true}={}){
+ const ink=orderInkCountFromPlace(place);
+ if(ink.source==='order-place-inks'&&ink.count>0){
+   if(!bindingReliable)return {policy:'unknown',reason:'binding-unverified',inks:ink};
+   return {policy:'vector-only',reason:'order-inks-listed',inks:ink};
+ }
+ if(ink.source==='ambiguous-order-colors')
+   return {policy:'unknown',reason:'order-inks-ambiguous',inks:ink};
+ return {policy:'any',reason:ink.source==='order-explicit-count'?'count-without-ink-list':'no-ink-list',inks:ink};
+}
