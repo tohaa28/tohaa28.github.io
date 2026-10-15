@@ -427,6 +427,18 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261014-artwork-1",
     "./logo-preflight.mjs?v=20261014-colors-1"
+  ],
+  [
+    "minDpi:v(\"minDpi\").value,margin:Math.min(...co(e.placement,e.field))",
+    "minDpi:v(\"minDpi\").value,orderPlace:mapped?.name||e.field.orderPlace||\"\",orderBindingReliable:!!mapped?.name&&y.selectedEntry?.fieldLabelAudit?.ok!==false&&y.selectedEntry?.placeCountReliable!==false,margin:Math.min(...co(e.placement,e.field))"
+  ],
+  [
+    "./method-admin.mjs?v=20261014-colors-1",
+    "./method-admin.mjs?v=20261015-order-ink-1"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261014-colors-1",
+    "./logo-preflight.mjs?v=20261015-order-ink-1"
   ]
 ];
 export function applyLogoPreflight(){
