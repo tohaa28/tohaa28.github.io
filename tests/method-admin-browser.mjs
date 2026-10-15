@@ -23,6 +23,22 @@ export async function verifyMethodAdmin(frame){
  assert.equal(await frame.locator('#adminMethod').inputValue(),'F1','Opening field 2 must highlight its F1 technique');
  assert.match(await frame.locator('#adminMethodName').textContent(),/^F1 · /);
  assert.equal(await frame.locator('#adminMethod option').count(),92);await select('F1');assert.equal(await frame.locator('#adminParam-guard').getAttribute('placeholder'),'0');
+ assert.equal(await frame.locator('#adminOrderColorPolicy').inputValue(),'off');
+ // The real selected order place is "сторона а [черный(403/Black)]": 1 ink.
+ // Current artwork has two distinct source SVG paints.
+ await frame.locator('#adminOrderColorPolicy').selectOption('match');
+ assert.equal((await report()).findings.some(f=>f.id==='order-colors'),false,'Unsaved order-color draft cannot affect live reports');
+ await save();
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='order-colors'&&f.required===1&&f.actual===2&&f.status==='bad'),null,{timeout:12000});
+ assert.equal(await frame.locator('#simpleExport').isDisabled(),true,'Order count mismatch blocks export');
+ const oneColorLogo=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm"><rect x="1" y="1" width="8" height="8" fill="red"/></svg>');
+ await frame.locator('#artwork').setInputFiles({name:'order-one-color.svg',mimeType:'image/svg+xml',buffer:oneColorLogo});
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='order-colors'&&f.status==='ok'&&f.actual===1));
+ await frame.locator('#adminOrderColorPolicy').selectOption('off');await save();
+ await frame.waitForFunction(()=>!window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='order-colors'));
+ await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});
+ await frame.waitForFunction(()=>window.gwbLogoPreflight?.find(r=>r.fieldIndex===1)?.findings?.some(f=>f.id==='colors'&&f.status==='bad'));
+
  await frame.locator('#adminCheck-colors').uncheck();assert.ok((await report()).findings.some(f=>f.id==='colors'),'Draft must not change live checks');await frame.locator('#adminCancel').click();await open();await login();await select('F1');assert.equal(await frame.locator('#adminCheck-colors').isChecked(),true);
  // The separate "Maximum colors" selector edits only this printing method.
  assert.equal(await frame.locator('#adminColorLimit').inputValue(),'source');
