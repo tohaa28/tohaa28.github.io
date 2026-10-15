@@ -70,3 +70,21 @@ test('exact contour crossing sentinel is an error, including clipped placement',
  for(const clipToField of [false,true])assert.equal(run('LM1',{margin:-.001,field:{pathPoints:[[0,0],[10,0],[10,10]]},placement:{w:10,h:10,clipToField}}).findings.find(f=>f.id==='field-boundary').status,'bad');
  assert.equal(run('LM1',{margin:0}).findings.find(f=>f.id==='field-boundary').status,'ok');
 });
+
+test('automatic artwork requirement rejects raster ONLY when print colors are enumerated for the active order place',()=>{
+ const art={ext:'png',w:10,h:10,preflight:{artworkType:'raster',hasRaster:true,rasters:[],limitations:[]}};
+ const at=(orderPlace,orderBindingReliable=true)=>run('D1',{art,placement:{w:10,h:10},orderPlace,orderBindingReliable}).findings.find(f=>f.id==='artwork-type');
+ const listed=at('сторона b [черный(Black); белый(White)]');
+ assert.equal(listed.status,'bad');
+ assert.equal(listed.effectiveArtworkPolicy,'vector-only');
+ assert.equal(listed.orderInkDetection,'order-inks-listed');
+ for(const orderPlace of ['сторона b','сторона b, 2 цвета','черная футболка'])
+  {const r=at(orderPlace);assert.equal(r.status,'ok',orderPlace);assert.equal(r.effectiveArtworkPolicy,'any',orderPlace);}
+ const uncertain=at('сторона b [черный(Black); белый(White)]',false);
+ assert.equal(uncertain.status,'manual');
+ assert.equal(uncertain.effectiveArtworkPolicy,'unknown');
+ assert.equal(at('сторона b [подложка; черный]').status,'manual');
+ const svg={ext:'svg',w:10,h:10,preflight:{artworkType:'vector',hasRaster:false,rasters:[],limitations:[]}};
+ const checkSvg=run('D1',{art:svg,placement:{w:10,h:10},orderPlace:'сторона a [черный(Black)]',orderBindingReliable:true});
+ assert.equal(checkSvg.findings.find(f=>f.id==='artwork-type').status,'ok');
+});
