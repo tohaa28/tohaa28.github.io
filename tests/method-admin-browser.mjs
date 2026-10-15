@@ -121,8 +121,20 @@ export async function verifyMethodAdmin(frame){
 
  await frame.locator('#adminParam-guard').fill('1000');await save();assert.equal((await report()).findings.find(f=>f.id==='guard').status,'bad');assert.equal(await frame.locator('#simpleExport').isDisabled(),true);assert.equal(await frame.evaluate(()=>window.gwbLogoPreflight.find(r=>r.fieldIndex===0).rule.guard),0);
  await frame.locator('#adminEnabled').uncheck();await save();assert.ok((await report()).findings.some(f=>f.id==='settings-disabled'));assert.equal((await report()).findings.some(f=>f.status==='bad'),false);
- await verifyErrorOverlay(frame);const stored=await frame.evaluate(()=>JSON.parse(localStorage.getItem('gwb-method-settings-v1')));assert.equal(stored.methods.F1.enabled,false);assert.equal(stored.methods.F1.values.guard,1000);
- const fresh=await frame.page().context().newPage();await fresh.route('https://gifts.ru/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body>Settings persistence</body></html>'}));await fresh.goto('https://gifts.ru/');const loaded=await fresh.evaluate(async()=>{const m=await import('https://tohaa28.github.io/gifts-layout-workbench/assets/method-settings.mjs?v=20260930-1');return m.configureRule(m.PRINT_REQUIREMENTS.F1);});assert.equal(loaded.guard,1000);assert.equal(loaded.settings.enabled,false);await fresh.close();
+ await verifyErrorOverlay(frame);assert.equal(await frame.evaluate(()=>localStorage.getItem('gwb-method-settings-v1')),null,
+ 'No browser-local settings are created by a server write');
+ const fresh=await frame.page().context().newPage();
+ await fresh.route('https://gifts.ru/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body>Shared print requirements</body></html>'}));
+ await fresh.goto('https://gifts.ru/');
+ const loaded=await fresh.evaluate(async()=>{
+   const m=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/method-settings.mjs?v=20261015-global-1');
+   await m.loadServerSettings();
+   return {status:m.getSettingsStatus(),rule:m.configureRule(m.PRINT_REQUIREMENTS.F1)};
+ });
+ assert.equal(loaded.status.ready,true);
+ assert.equal(loaded.rule.guard,1000);
+ assert.equal(loaded.rule.settings.enabled,false);
+ await fresh.close();
  if(process.env.ADMIN_SCREENSHOT){await dialog.evaluate(el=>el.scrollTop=0);await frame.page().screenshot({path:process.env.ADMIN_SCREENSHOT});}
  const downloadPromise=frame.page().waitForEvent('download');await frame.locator('#adminExport').click();assert.equal((await downloadPromise).suggestedFilename(),'maketnaya-method-settings.json');
  await frame.locator('#adminImport').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"version":1,"methods":{"F1":{"values":{"guard":-1}}}}')});await frame.waitForFunction(()=>document.getElementById('adminMessage').textContent.includes('Не удалось импортировать'));assert.equal((await report()).rule.guard,1000);
