@@ -10,6 +10,7 @@ on:
       - "mockup.html"
       - "save-profile.html"
       - "mockup-profiles.json"
+      - "method-settings.json"
       - "direct-mode.js"
       - "tools/**"
       - "assets/**"
@@ -47,6 +48,8 @@ jobs:
           test -f mockup.html
           test -f save-profile.html
           test -f mockup-profiles.json
+          test -f method-settings.json
+          node -e 'const x=require("./method-settings.json");if(x.version!==1||!x.methods||typeof x.methods!=="object")process.exit(1)'
           node -e 'const x=require("./mockup-profiles.json"); if(x.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(x.profiles)) process.exit(1)'
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
@@ -297,6 +300,7 @@ jobs:
           cp source/mockup.html site/gifts-layout-workbench-mockups/mockup.html
           cp source/save-profile.html site/gifts-layout-workbench-mockups/save-profile.html
           cp source/mockup-profiles.json site/gifts-layout-workbench-mockups/mockup-profiles.json
+          cp source/method-settings.json site/gifts-layout-workbench-mockups/method-settings.json
           cp source/direct-mode.js site/gifts-layout-workbench-mockups/direct-mode.js
           cp source/launcher.js site/gifts-layout-workbench-mockups/launcher.js
           # Keep the historic bookmark URL working: old bookmarks load the current launcher too.
