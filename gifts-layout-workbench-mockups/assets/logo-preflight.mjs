@@ -1,7 +1,8 @@
-import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20261014-artwork-1';
+import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20261015-order-ink-1';
 import {detailFindings} from './logo-detail-check.mjs?v=20261008-3';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20261014-colors-1';
+import {compareOrderInkCount} from './order-ink-count.mjs?v=20261015-order-ink-1';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
 export function contextFromOrder(text='') {
   const s=String(text).toLowerCase();
@@ -269,7 +270,7 @@ export function sampleArtwork(image) {
   return {w,h,alphaBackground,semiTransparent:semi>mask.length*.01,features,narrow};
 }
 
-export function checkLogo({art,placement,field,method,context={},margin,minDpi}) {
+export function checkLogo({art,placement,field,method,context={},margin,minDpi,orderPlace='',orderBindingReliable=false}) {
   const match=resolveMethod(method),rule=configureRule(effectiveRule(match.rule,context)),facts=art.preflight||{};
   let findings=[];const scale=Number(field?.templateScale)||1,w=placement.w*scale,h=placement.h*scale;
   const sx=w/art.w,sy=h/art.h,sizeScale=Math.min(sx,sy);
@@ -297,6 +298,7 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi})
     if(/^CMYK/.test(rule.palette||'')&&(facts.colorModel==='RGB'||facts.originalColorModels?.includes('RGB')))findings.push(issue('rgb-color-model','bad','В исходнике обнаружен RGB, а выбранное нанесение требует CMYK. Подготовьте CMYK-файл в векторном редакторе.'));
     if(rule.inkMax){const sums=(facts.originalColors||[]).filter(c=>c.model==='CMYK').map(c=>c.values.reduce((a,b)=>a+b,0)*100);const maximum=Math.max(0,...sums);if(maximum>rule.inkMax+.01)findings.push(issue('ink-limit','bad',`Сумма CMYK в заливке ${num(maximum)}%; предел ${rule.inkMax}%.`,{actual:num(maximum),required:rule.inkMax}));}
     findings.push(...colorFindings(rule,facts));
+    findings.push(...compareOrderInkCount(rule,facts,orderPlace,{bindingReliable:orderBindingReliable}));
     const thin=[...(facts.strokes||[]),...(facts.elements||[])].filter(item=>item.width*sizeScale+1e-7<rule.positive);
     for(const item of thin.slice(0,12)) {const uncertain=item.uncertain||Math.abs(sx-sy)>1e-6;findings.push(issue('positive',uncertain?'manual':'bad',`${uncertain?'Возможна малая толщина; оценка':'Толщина элемента'} ${num(item.width*sizeScale)} мм; минимум ${rule.positive} мм.`,{actual:num(item.width*sizeScale),required:rule.positive,unit:'mm',box:item.box?{x:item.box.x/art.w,y:item.box.y/art.h,w:item.box.w/art.w,h:item.box.h/art.h}:null}));}
     // Even measured SVG primitives may overlap or be clipped. Full shape compliance is
