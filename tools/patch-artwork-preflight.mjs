@@ -447,6 +447,10 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261015-order-ink-1",
     "./logo-preflight.mjs?v=20261015-auto-artwork-1"
+  ],
+  [
+    "./logo-preflight.mjs?v=20261015-auto-artwork-1",
+    "./logo-preflight.mjs?v=20261015-underbase-1"
   ]
 ];
 export function applyLogoPreflight(){
