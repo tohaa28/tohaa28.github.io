@@ -43,6 +43,17 @@ jobs:
           const browser = await chromium.launch({headless:true});
           const browserContext = await browser.newContext();
           const page = await browserContext.newPage();
+          // Page CDN may cache old JS for several minutes after publication.
+          // Serve the EXACT JS/CSS under test from this checkout, including the
+          // iframe's /gifts-layout-workbench-mockups/assets/ imports.
+          await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/**", async route => {
+            const pathname=new URL(route.request().url()).pathname;
+            const relative=pathname.replace("/gifts-layout-workbench-mockups/","");
+            if (!/^assets\/[a-zA-Z0-9._/-]+$/.test(relative)||relative.includes(".."))return route.abort();
+            if (!/\.(?:m?js|css)$/.test(relative))return route.continue();
+            const contentType=/\.css$/.test(relative)?"text/css":"application/javascript";
+            await route.fulfill({body:fs.readFileSync(relative),contentType,headers:{"access-control-allow-origin":"*"}});
+          });
           await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench/**", async route => {
             const pathname = new URL(route.request().url()).pathname;
             const relative = pathname.replace("/gifts-layout-workbench/", "");
