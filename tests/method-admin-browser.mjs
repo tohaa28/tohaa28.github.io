@@ -21,7 +21,7 @@ export async function verifyMethodAdmin(frame){
  const logo=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="3" height="8" fill="red"/><rect x="6" y="1" width="3" height="8" fill="blue"/></svg>');
  await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('admin-colors.svg'));const scale=(await report()).templateScale;await frame.locator('#width').evaluate((el,v)=>{el.value=String(v);el.dispatchEvent(new Event('input',{bubbles:true}));},10/scale);await frame.locator('#editorCenter').click();assert.equal((await report()).findings.find(f=>f.id==='colors').status,'bad');
  const open=async()=>{await frame.locator('#overlay').focus();await frame.page().keyboard.press('Alt+KeyN');await dialog.waitFor({state:'visible'});};
- const login=async()=>{await frame.locator('#adminUser').fill('admin');await frame.locator('#adminPassword').fill('admin');await frame.locator('#adminLogin button').click();await frame.locator('#adminSettings').waitFor({state:'visible'});await frame.locator('#adminGithubToken').fill('sample');};
+ const login=async()=>{await frame.locator('#adminUser').fill('admin');await frame.locator('#adminPassword').fill('admin');await frame.locator('#adminLogin button').click();await frame.locator('#adminSettings').waitFor({state:'visible'});await frame.waitForFunction(()=>document.querySelector('#adminServerStatus')?.textContent?.includes('Общие настройки загружены'),null,{timeout:15000});await frame.locator('#adminGithubToken').fill('sample');};
  const select=code=>frame.locator('#adminMethod').selectOption(code),save=async()=>{await frame.locator('#adminEdit button[type=submit]').click();await frame.waitForFunction(()=>document.querySelector('#adminMessage')?.textContent?.includes('Настройки сохранены на сервере'),null,{timeout:15000});};
  await verifyErrorOverlay(frame);
  // A multi-place order contains D1 and F1. The selected print field, not
@@ -89,7 +89,7 @@ export async function verifyMethodAdmin(frame){
  assert.equal(await frame.locator('#adminArtworkPolicy').inputValue(),'source');
  assert.match(await frame.locator('#adminArtworkPolicy option').first().textContent(),/Автоматически по цветам заказа/i);
  const moduleUrls=await frame.evaluate(()=>performance.getEntriesByType('resource').map(x=>x.name).filter(x=>x.includes('method-admin.mjs')));
- assert.ok(moduleUrls.some(url=>url.includes('v=20261015-auto-artwork-1')),'New print settings module must load in the test browser: '+JSON.stringify(moduleUrls));
+ assert.ok(moduleUrls.some(url=>url.includes('v=20261015-server-1')),'New print settings module must load in the test browser: '+JSON.stringify(moduleUrls));
 
  assert.equal((await report()).findings.find(f=>f.id==='artwork-type').effectiveArtworkPolicy,'vector-only');
  await frame.locator('#adminArtworkPolicy').selectOption('vector-only');
