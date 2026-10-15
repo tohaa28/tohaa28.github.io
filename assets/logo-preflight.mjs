@@ -1,8 +1,8 @@
-import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20261015-order-ink-1';
+import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20261015-auto-artwork-1';
 import {detailFindings} from './logo-detail-check.mjs?v=20261008-3';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20261014-colors-1';
-import {compareOrderInkCount} from './order-ink-count.mjs?v=20261015-order-ink-1';
+import {compareOrderInkCount,orderArtworkRequirement} from './order-ink-count.mjs?v=20261015-auto-artwork-1';
 export {REQUIREMENTS_VERSION,SOURCES,resolveMethod};
 export function contextFromOrder(text='') {
   const s=String(text).toLowerCase();
@@ -281,11 +281,22 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi,o
   if(facts.hidden)findings.push(issue('hidden-content','manual','Проверьте скрытые объекты и слои исходного файла.'));
   if(facts.visual?.semiTransparent&&art.pixelW)findings.push(issue('raster-alpha','manual','Растр содержит полупрозрачные пиксели: проверьте края и эффект прозрачности.'));
   if(rule){
-    const type=facts.artworkType||'unknown',onlyVector=rule.artworkPolicy==='vector-only';
+    const type=facts.artworkType||'unknown';
+    const automatic=rule.artworkPolicy==='auto-order-colors';
+    const derived=automatic?orderArtworkRequirement(orderPlace,{bindingReliable:orderBindingReliable}):null;
+    const effectivePolicy=automatic?derived.policy:rule.artworkPolicy;
+    const onlyVector=effectivePolicy==='vector-only';
     const label={vector:'Векторный макет: встроенный растр не обнаружен.',mixed:'Макет содержит встроенный растр.',raster:'Макет растровый.',unknown:'Не удалось достоверно определить наличие растра в исходном макете.'}[type]||'Тип макета не определён.';
-    const status=type==='unknown'?'manual':onlyVector&&type!=='vector'?'bad':'ok';
-    const note=onlyVector?type==='vector'?' Требование «только вектор» выполнено.':type==='unknown'?' Для этого нанесения разрешён только вектор: проверьте оригинал.':' Для этого нанесения допускается только векторный макет.':' Для этого нанесения вектор и растр допускаются.';
-    findings.push(issue('artwork-type',status,label+note,{artworkType:type,artworkPolicy:rule.artworkPolicy}));
+    const status=effectivePolicy==='unknown'||type==='unknown'?'manual':onlyVector&&type!=='vector'?'bad':'ok';
+    let note;
+    if(automatic&&derived.reason==='order-inks-listed')
+      note=onlyVector&&type==='vector'?' В заказе перечислены печатные цвета: требование «только вектор» выполнено.':' В заказе перечислены печатные цвета: разрешён только чистый вектор, без встроенного растра.';
+    else if(automatic&&effectivePolicy==='unknown')
+      note=' Не удалось однозначно проверить перечень цветов выбранного места нанесения: требуется проверка заказа и привязки поля.';
+    else if(automatic)
+      note=' Для выбранного места в заказе нет перечня печатных цветов: растровый логотип допускается по этому критерию.';
+    else note=onlyVector?type==='vector'?' Требование «только вектор» выполнено.':type==='unknown'?' Для этого нанесения разрешён только вектор: проверьте оригинал.':' Для этого нанесения допускается только векторный макет.':' Для этого нанесения вектор и растр допускаются.';
+    findings.push(issue('artwork-type',status,label+note,{artworkType:type,artworkPolicy:rule.artworkPolicy,effectiveArtworkPolicy:effectivePolicy,orderInkDetection:derived?.reason||null,orderListedColors:derived?.inks?.colors||[]}));
   }
   if(!rule)detailFindings({art,placement,field,rule:null});
   if(rule) {
