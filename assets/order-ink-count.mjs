@@ -55,9 +55,23 @@ export function compareOrderInkCount(rule,facts,place,{bindingReliable=true}={})
  */
 export function orderArtworkRequirement(place,{bindingReliable=true}={}){
  const ink=orderInkCountFromPlace(place);
- if(ink.source==='order-place-inks'&&ink.count>0){
-   if(!bindingReliable)return {policy:'unknown',reason:'binding-unverified',inks:ink};
-   return {policy:'vector-only',reason:'order-inks-listed',inks:ink};
+ // The presence of a named printing ink is conclusive format evidence even if
+ // the same list ALSO mentions an underbase. Unlike ink COUNT, the vector rule
+ // does not need to assign an exact number to that underbase.
+ // Example from a real order: "[подложка; пантон(H32446/8435C)]".
+ const explicitInks=[];
+ for(const match of String(place||'').matchAll(/\\[([^\\[\\]]+)\\]/g)){
+   const parts=match[1].split(/\\s*[;,]\\s*/).filter(Boolean);
+   if(parts.length>0){
+     const named=parts.filter(validInk);
+     if(named.length>0)explicitInks.push(...named);
+   }
+ }
+ if(explicitInks.length>0){
+   const evidence={...ink,colors:[...new Set(explicitInks)],
+     source:ink.source==='order-place-inks'?ink.source:'order-inks-with-underbase'};
+   if(!bindingReliable)return {policy:'unknown',reason:'binding-unverified',inks:evidence};
+   return {policy:'vector-only',reason:'order-inks-listed',inks:evidence};
  }
  if(ink.source==='ambiguous-order-colors')
    return {policy:'unknown',reason:'order-inks-ambiguous',inks:ink};
