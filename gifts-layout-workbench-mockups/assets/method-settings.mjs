@@ -1,4 +1,5 @@
 import {PRINT_REQUIREMENTS} from './print-requirements.mjs?v=20260929-2';
+import {fetchMethodSettings,commitMethodSettings} from './method-settings-server.mjs?v=20261015-global-1';
 export {PRINT_REQUIREMENTS};
 export const SETTINGS_KEY='gwb-method-settings-v1';
 export const CHECKS={artwork:'Вектор / встроенный растр',orderColors:'Соответствие цветов заказу',text:'Шрифты в кривых',effects:'Прозрачность и эффекты',hidden:'Скрытые объекты',resolution:'Разрешение растра',colors:'Цветность и цветовая модель',positive:'Тонкие печатные элементы',negative:'Пробелы и выворотки',isolated:'Отдельные мелкие объекты',details:'Фоновый поиск PrintCheck',boundary:'Выход за поле',guard:'Охранное поле',bleed:'Вылеты',contours:'Обводки и замкнутость контуров',advisory:'Дополнительные требования и условия'};
@@ -21,11 +22,42 @@ export function validateSettings(value){
   out.methods[code]=m;
  }return out;
 }
-let configuration={version:1,methods:{}},storageError='';
-try{const raw=globalThis.localStorage?.getItem(SETTINGS_KEY);if(raw)configuration=validateSettings(JSON.parse(raw));}catch{storageError='Сохранённые настройки недоступны или повреждены. Применены исходные параметры с охранным полем 0 мм.';}
-export const settingsProblem=()=>storageError;
+// Only the GitHub server file affects print validation. Existing localStorage
+// entries remain available exclusively for explicit administrator migration.
+let configuration={version:1,methods:{}},serverReady=false,serverError='Загрузка общих настроек нанесений…',refreshing=null;
+const notify=()=>globalThis.dispatchEvent?.(new Event('gwb-method-settings-change'));
 export const getSettings=()=>JSON.parse(JSON.stringify(configuration));
-export function saveSettings(value){const next=validateSettings(value);globalThis.localStorage.setItem(SETTINGS_KEY,JSON.stringify(next));configuration=next;storageError='';globalThis.dispatchEvent?.(new Event('gwb-method-settings-change'));}
+export const getSettingsStatus=()=>({ready:serverReady,error:serverError,source:'GitHub: method-settings.json'});
+export const settingsProblem=()=>serverReady?'':serverError;
+export function readLegacyLocalSettings(){
+ const raw=globalThis.localStorage?.getItem(SETTINGS_KEY);
+ return raw?validateSettings(JSON.parse(raw)):null;
+}
+export function loadServerSettings(){
+ if(refreshing)return refreshing;
+ refreshing=(async()=>{
+   try{
+     const loaded=validateSettings(await fetchMethodSettings());
+     configuration=loaded;serverReady=true;serverError='';notify();
+     return getSettings();
+   }catch(e){
+     serverReady=false;serverError=String(e?.message||e);notify();throw e;
+   }finally{refreshing=null;}
+ })();
+ return refreshing;
+}
+export async function saveSettings(value,{token,previous}={}){
+ if(!serverReady)throw Error('Общие настройки ещё не получены с сервера. Обновите их перед сохранением.');
+ const next=validateSettings(value),base=previous||getSettings();
+ const saved=await commitMethodSettings(next,{token,previous:base,validate:validateSettings});
+ configuration=saved.settings;serverReady=true;serverError='';notify();
+ return saved;
+}
+if(typeof window!=='undefined'&&typeof fetch==='function'){
+ loadServerSettings().catch(()=>{});
+ window.setInterval(()=>{loadServerSettings().catch(()=>{});},120000);
+ window.addEventListener('focus',()=>{loadServerSettings().catch(()=>{});});
+}
 export function configureRule(rule,settings=configuration){
  if(!rule)return null;const override=settings.methods[rule.code]||{},checks=Object.fromEntries(Object.keys(CHECKS).map(k=>[k,override.checks?.[k]!==false]));
  const out={...rule,guard:0,guardLong:0,guardShort:0,...override.values,settings:{enabled:override.enabled!==false,checks,custom:!!settings.methods[rule.code]}};
