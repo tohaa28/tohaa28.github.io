@@ -1,4 +1,4 @@
-import {configureRule,checkEnabled,detailRule,settingsProblem} from './method-settings.mjs?v=20261015-auto-artwork-1';
+import {configureRule,checkEnabled,detailRule,settingsProblem,getSettingsStatus} from './method-settings.mjs?v=20261015-global-1';
 import {detailFindings} from './logo-detail-check.mjs?v=20261008-3';
 import {REQUIREMENTS_VERSION,SOURCES,resolveMethod,effectiveRule,CONDITION_LABELS} from './print-requirements.mjs?v=20260929-2';
 import {cssColor,vectorColorEvidence,pixelColorEvidence,colorFindings} from './logo-color.mjs?v=20261014-colors-1';
@@ -333,7 +333,10 @@ export function checkLogo({art,placement,field,method,context={},margin,minDpi,o
   findings=findings.filter(f=>checkEnabled(rule,f.id));
   if(rule?.settings.enabled===false)findings.push(issue("settings-disabled","manual","Проверки этого нанесения отключены администратором."));
   else if(rule?.settings.custom)findings.push(issue("settings-custom","manual","Применены пользовательские настройки нанесения."));
-  if(settingsProblem())findings.push(issue("settings-storage","manual",settingsProblem()));
+  // Shared print requirements are mandatory for export. Local defaults never
+  // silently take over when the server is unavailable.
+  if(typeof window!=='undefined'&&!getSettingsStatus().ready)
+    findings.push(issue('settings-server','bad','Общие настройки нанесений не загружены с сервера. '+settingsProblem()+' Выгрузка заблокирована до восстановления связи.'));
   return {version:REQUIREMENTS_VERSION,method:match.code,methodInput:method||'',rule,dimensionsMm:{w:num(w),h:num(h)},templateScale:scale,format:art.ext,findings,status:findings.some(f=>f.status==='bad')?'bad':findings.some(f=>f.status==='manual')?'manual':'ok',productionApproved:false};
 }
 
