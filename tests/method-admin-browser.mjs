@@ -73,6 +73,9 @@ export async function verifyMethodAdmin(frame){
  // the chosen print technique requires an entirely vector source.
  assert.equal(await frame.locator('#adminArtworkPolicy').inputValue(),'source');
  assert.match(await frame.locator('#adminArtworkPolicy option').first().textContent(),/Автоматически по цветам заказа/i);
+ const moduleUrls=await frame.evaluate(()=>performance.getEntriesByType('resource').map(x=>x.name).filter(x=>x.includes('method-admin.mjs')));
+ assert.ok(moduleUrls.some(url=>url.includes('v=20261015-auto-artwork-1')),'New print settings module must load in the test browser: '+JSON.stringify(moduleUrls));
+
  assert.equal((await report()).findings.find(f=>f.id==='artwork-type').effectiveArtworkPolicy,'vector-only');
  await frame.locator('#adminArtworkPolicy').selectOption('vector-only');
  assert.equal((await report()).rule.artworkPolicy,'auto-order-colors','Unsaved draft must not affect the editor');
