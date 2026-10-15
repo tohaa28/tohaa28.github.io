@@ -43,6 +43,28 @@ jobs:
           const browser = await chromium.launch({headless:true});
           const browserContext = await browser.newContext();
           const page = await browserContext.newPage();
+          // One canonical server file shared by all browser pages. Simulate GitHub
+          // Contents GET/PUT with write permission and optimistic SHA conflicts.
+          let sharedMethodSettings={version:1,methods:{}},sharedSettingsSha='server-sha-1',writes=0;
+          const centralJson=()=>JSON.stringify(sharedMethodSettings);
+          await browserContext.route("https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/method-settings.json**",route=>
+            route.fulfill({contentType:"application/json",body:centralJson(),headers:{"access-control-allow-origin":"*","cache-control":"no-store"}}));
+          await browserContext.route("https://tohaa28.github.io/gifts-layout-workbench-mockups/method-settings.json**",route=>
+            route.fulfill({contentType:"application/json",body:centralJson(),headers:{"access-control-allow-origin":"*","cache-control":"no-store"}}));
+          await browserContext.route("https://api.github.com/repos/tohaa28/tohaa28.github.io/contents/method-settings.json**",async route=>{
+            const request=route.request(),method=request.method(),auth=request.headers().authorization||"";
+            if(auth!=="Bearer test-write-token")return route.fulfill({status:403,contentType:"application/json",body:'{"message":"Bad credentials"}',headers:{"access-control-allow-origin":"*"}});
+            if(method==="GET")return route.fulfill({contentType:"application/json",body:JSON.stringify({
+              sha:sharedSettingsSha,content:Buffer.from(centralJson()).toString("base64")
+            }),headers:{"access-control-allow-origin":"*"}});
+            if(method!=="PUT")return route.abort();
+            const payload=request.postDataJSON();
+            if(payload.sha!==sharedSettingsSha)return route.fulfill({status:409,contentType:"application/json",body:'{"message":"Conflict"}',headers:{"access-control-allow-origin":"*"}});
+            const next=JSON.parse(Buffer.from(payload.content,"base64").toString("utf8"));
+            if(next.version!==1||!next.methods||typeof next.methods!=="object")return route.fulfill({status:422,body:'{"message":"Invalid settings"}'});
+            sharedMethodSettings=next;writes++;sharedSettingsSha="server-sha-"+(writes+1);
+            return route.fulfill({contentType:"application/json",body:JSON.stringify({commit:{sha:sharedSettingsSha}}),headers:{"access-control-allow-origin":"*"}});
+          });
           // Page CDN may cache old JS for several minutes after publication.
           // Serve the EXACT JS/CSS under test from this checkout, including the
           // iframe's /gifts-layout-workbench-mockups/assets/ imports.
