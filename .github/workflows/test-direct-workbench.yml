@@ -53,7 +53,7 @@ jobs:
             route.fulfill({contentType:"application/json",body:centralJson(),headers:{"access-control-allow-origin":"*","cache-control":"no-store"}}));
           await browserContext.route("https://api.github.com/repos/tohaa28/tohaa28.github.io/contents/method-settings.json**",async route=>{
             const request=route.request(),method=request.method(),auth=request.headers().authorization||"";
-            if(auth!=="Bearer test-write-token")return route.fulfill({status:403,contentType:"application/json",body:'{"message":"Bad credentials"}',headers:{"access-control-allow-origin":"*"}});
+            if(auth!=="Bearer sample")return route.fulfill({status:403,contentType:"application/json",body:'{"message":"Bad credentials"}',headers:{"access-control-allow-origin":"*"}});
             if(method==="GET")return route.fulfill({contentType:"application/json",body:JSON.stringify({
               sha:sharedSettingsSha,content:Buffer.from(centralJson()).toString("base64")
             }),headers:{"access-control-allow-origin":"*"}});
