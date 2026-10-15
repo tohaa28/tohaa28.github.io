@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 export async function verifyMethodAdmin(frame){
  const dialog=frame.locator('#methodAdmin'),report=()=>frame.evaluate(()=>window.gwbLogoPreflight.find(r=>r.fieldIndex===1));
  assert.equal(await dialog.isVisible(),false);
+ // Regression for order 8023221: decal H1, with a white underbase and a
+ // separately named Pantone ink, was wrongly accepted as a raster original.
+ const physicalOrderCheck=await frame.evaluate(async()=>{
+   const {checkLogo}=await import('https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261015-underbase-1');
+   const art={ext:'png',w:60,h:50,pixelW:1200,pixelH:1000,preflight:{artworkType:'raster',hasRaster:true,rasters:[],limitations:[]}};
+   const test=(orderPlace,bindingReliable=true)=>{
+     const result=checkLogo({art,placement:{w:60,h:50},field:{templateScale:1},method:'H1: Деколь,1',orderPlace,orderBindingReliable:bindingReliable,margin:1});
+     return {status:result.findings.find(f=>f.id==='artwork-type')?.status,effective:result.findings.find(f=>f.id==='artwork-type')?.effectiveArtworkPolicy,reportStatus:result.status,code:result.method};
+   };
+   return {listed:test('напротив от ручки [подложка; пантон(Н32446/8435С)]'),
+     absent:test('напротив от ручки'),unverified:test('напротив от ручки [подложка; пантон(Н32446/8435С)]',false)};
+ });
+ assert.deepEqual([physicalOrderCheck.listed.status,physicalOrderCheck.listed.effective,physicalOrderCheck.listed.reportStatus,physicalOrderCheck.listed.code],['bad','vector-only','bad','H1']);
+ assert.deepEqual([physicalOrderCheck.absent.status,physicalOrderCheck.absent.effective],['ok','any']);
+ assert.equal(physicalOrderCheck.unverified.status,'manual');
  const logo=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10"><rect x="1" y="1" width="3" height="8" fill="red"/><rect x="6" y="1" width="3" height="8" fill="blue"/></svg>');
  await frame.locator('#artwork').setInputFiles({name:'admin-colors.svg',mimeType:'image/svg+xml',buffer:logo});await frame.waitForFunction(()=>document.getElementById('artworkName').textContent.includes('admin-colors.svg'));const scale=(await report()).templateScale;await frame.locator('#width').evaluate((el,v)=>{el.value=String(v);el.dispatchEvent(new Event('input',{bubbles:true}));},10/scale);await frame.locator('#editorCenter').click();assert.equal((await report()).findings.find(f=>f.id==='colors').status,'bad');
  const open=async()=>{await frame.locator('#overlay').focus();await frame.page().keyboard.press('Alt+KeyN');await dialog.waitFor({state:'visible'});};
