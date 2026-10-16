@@ -37,6 +37,40 @@
   let hasFonts=false,sourceUnsupported=false;
   const MAX_FILE=25*1024*1024;
   const ALLOWED=new Set('svg g defs path rect circle ellipse line polygon polyline image text tspan use linearGradient radialGradient stop clipPath mask pattern symbol marker filter feGaussianBlur feOffset feMerge feMergeNode feColorMatrix feComponentTransfer feFuncR feFuncG feFuncB feFuncA feBlend feComposite'.split(' '));
+  // Corel/Illustrator SVG frequently stores visual properties in safe .class rules.
+  // Flatten a restricted whitelist to element attributes before dropping <style>.
+  const SAFE_SVG_CSS=new Set('fill stroke stroke-width stroke-linecap stroke-linejoin stroke-miterlimit fill-opacity stroke-opacity opacity fill-rule clip-rule font-family font-size font-weight font-style letter-spacing text-anchor stop-color stop-opacity paint-order'.split(' '));
+  function copySafePaint(element,css){
+    for(const declaration of String(css||'').split(';')){
+      const pos=declaration.indexOf(':');if(pos<0)continue;
+      const key=declaration.slice(0,pos).trim().toLowerCase();
+      const val=declaration.slice(pos+1).replace(/\s*!important\s*$/i,'').trim();
+      if(!SAFE_SVG_CSS.has(key)||!val||val.length>300||/[<>;]/.test(val)
+        ||/javascript:|vbscript:|data:|@import|expression\s*\(/i.test(val)
+        ||(/url\s*\(/i.test(val)&&!/^\s*url\(\s*['"]?#[A-Za-z0-9_.:-]+['"]?\s*\)\s*$/.test(val)))continue;
+      if(!element.hasAttribute(key))element.setAttribute(key,val);
+    }
+  }
+  function flattenSvgStyles(root){
+    const selectors=[];
+    for(const block of Array.from(root.querySelectorAll('style'))){
+      const css=block.textContent||'';
+      const rules=/([^{}]+)\{([^{}]+)\}/g;let m;
+      while((m=rules.exec(css))!==null){
+        for(const sel of m[1].split(',')){
+          const c=sel.trim().match(/^\.([A-Za-z_][\w-]*)$/);
+          if(c)selectors.push({className:c[1],css:m[2]});
+        }
+      }
+    }
+    for(const node of [root,...root.querySelectorAll('*')]){
+      if(!node.localName||node.localName==='style')continue;
+      for(const rule of selectors){
+        if((node.getAttribute('class')||'').split(/\s+/).includes(rule.className))copySafePaint(node,rule.css);
+      }
+      if(node.hasAttribute('style'))copySafePaint(node,node.getAttribute('style'));
+    }
+  }
   function scrub(node){
     if(node.nodeType===8){node.remove();return}
     if(node.nodeType!==1)return;
@@ -228,7 +262,7 @@
         }
       }
       const wrapper=S('g',{'data-label':file.name.replace(/\.svg$/i,'')});
-      const nested=root.cloneNode(true);scrub(nested);
+      const nested=root.cloneNode(true);flattenSvgStyles(nested);scrub(nested);
       if(reset){nested.setAttribute('x','0');nested.setAttribute('y','0');nested.setAttribute('width',String(W));nested.setAttribute('height',String(H))}
       // Root SVG may have a non-zero viewBox origin: nest it rather than shifting paths.
       if(!reset){
