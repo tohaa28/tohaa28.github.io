@@ -1,0 +1,29 @@
+name: Verify live VectorCraft WASM
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-mockups-source
+    paths:
+      - "tests/vectorcraft-runtime-browser.mjs"
+      - ".github/workflows/test-vectorcraft-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser_roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Exercise genuine deployed VectorCraft WebAssembly
+        run: node tests/vectorcraft-runtime-browser.mjs
