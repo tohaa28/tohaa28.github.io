@@ -28,3 +28,4 @@ jobs:
       - name: Exercise genuine deployed VectorCraft WebAssembly
         run: node tests/vectorcraft-runtime-browser.mjs
 # Reload after verified document-open acknowledgment: test production WASM release 38902782144.
+# art-only-release-38911661636: verify deployed cropped-artwork WASM with live Chromium.
