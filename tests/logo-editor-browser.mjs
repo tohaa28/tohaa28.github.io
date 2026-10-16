@@ -40,6 +40,7 @@ try{
   assert.equal(first.events.length,1,'Return triggers normal file change event exactly once');
   await page.locator('#artwork').setInputFiles({name:'import.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 250 160"><script>window.__svgInjected=1</script><path d="M 10 20 L 60 20 L 60 75 Z" fill="#123456"/><image href="https://untrusted.example/track.png" x="0" y="0" width="20" height="20"/></svg>')});
   await page.click('#editorOpenLogoEditor');
+  await page.locator('#gwbVeLayer path').first().waitFor({state:'attached'});
   assert.equal(await page.locator('#gwbVeLayer path').count(),1,'Imports existing vector paths without rasterizing');
   assert.equal(await page.locator('#gwbVeLayer script').count(),0,'Removes executable markup from imported SVG');
   assert.equal(await page.evaluate(()=>window.__svgInjected),undefined,'Does not execute SVG scripts');
@@ -51,6 +52,7 @@ try{
   assert.match(vector,/<path\b/);assert.doesNotMatch(vector,/<script/);
   await page.locator('#artwork').setInputFiles({name:'raster.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y95hwAAAABJRU5ErkJggg==','base64')});
   await page.click('#editorOpenLogoEditor');
+  await page.locator('#gwbVeLayer image').first().waitFor({state:'attached'});
   assert.equal(await page.locator('#gwbVeLayer image').count(),1,'Raster is represented as an embedded image');
   await page.click('#gwbVeApply');
   const raster=await page.locator('#artwork').evaluate(async e=>await e.files[0].text());
