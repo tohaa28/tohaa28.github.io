@@ -656,7 +656,7 @@
   async function open(){
     if(opening)return;opening=true;
     setup();artInput=$('artwork');active=true;shell.hidden=false;
-    initBlank();status='Новый логотип. Можно рисовать и добавлять текст.';
+    initBlank();setTool('select');status='Новый логотип. Можно рисовать и добавлять текст.';
     openedToken=null;
     const bridge=typeof window.gwbGetActiveLogoForEditor==='function'?window.gwbGetActiveLogoForEditor():null;
     let file=null;
