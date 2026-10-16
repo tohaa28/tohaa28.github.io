@@ -11,15 +11,17 @@ try{
    const body=[
      '<!DOCTYPE html><html><body><h1>Mock VectorCraft WASM I/O</h1><script>',
      "const token=decodeURIComponent(location.hash.slice('#gwb='.length));",
-     "window.__seen=[];",
+     "window.__seen=[];window.__fieldSize=null;",
      "window.addEventListener('message',e=>{",
      "if(e.data?.token!==token)return;",
      "if(e.data?.type==='gwb-vectorcraft-open'){",
-     "window.__seen.push({name:e.data.name,bytes:Array.from(new Uint8Array(e.data.bytes))});",
+     "window.__fieldSize=e.data.fieldSizeMm;",
+     "window.__seen.push({name:e.data.name,bytes:Array.from(new Uint8Array(e.data.bytes)),fieldSize:e.data.fieldSizeMm,fieldCanvas:e.data.fieldCanvas});",
      "parent.postMessage({type:'gwb-vectorcraft-opened',token},'*');",
      "}",
      "if(e.data?.type==='gwb-vectorcraft-apply'){",
-     "const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 80\"><path d=\"M10 10 L80 70 Z\" fill=\"#129932\"/></svg>';",
+     "const fw=window.__fieldSize.w*72/25.4,fh=window.__fieldSize.h*72/25.4;",
+     "const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"'+fw+'\" height=\"'+fh+'\" viewBox=\"0 0 '+fw+' '+fh+'\"><path d=\"M10 10 L80 70 Z\" fill=\"#129932\"/></svg>';",
      "parent.postMessage({type:'gwb-vectorcraft-svg',token,bytes:new TextEncoder().encode(svg)},'*');",
      "}",
      "});",
@@ -32,27 +34,37 @@ try{
  await page.evaluate(()=>{
    const original=new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><rect width="12" height="12"/></svg>'],'art.svg',{type:'image/svg+xml'});
    const different=new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><circle r="5"/></svg>'],'art.svg',{type:'image/svg+xml'});
-   window.__placed=[{file:original,placement:{x:22,y:33,w:100,h:60,rotation:30,clipToField:true}},
-                    {file:different,placement:{x:1,y:2,w:80,h:80,rotation:0,clipToField:false}}];
+   window.__placed=[{file:original,field:{x:20,y:30,w:120,h:80},placement:{x:22,y:33,w:100,h:60,rotation:30,clipToField:true}},
+                    {file:different,field:{x:1,y:2,w:80,h:80},placement:{x:1,y:2,w:80,h:80,rotation:0,clipToField:false}}];
    window.__selected=0;window.__applied=[];
    window.gwbGetActiveLogoForEditor=()=>{
      const i=window.__selected;
-     return {token:i+'|'+window.__placed[i].file.name,fieldIndex:i,hasArtwork:true,file:window.__placed[i].file};
+     const item=window.__placed[i],f=item.field,p=item.placement;
+     return {token:i+'|'+item.file.name,fieldIndex:i,hasArtwork:true,file:item.file,
+       fieldSizeMm:{w:f.w,h:f.h},
+       placementMm:{x:p.x-f.x,y:p.y-f.y,w:p.w,h:p.h,rotation:p.rotation,clipToField:p.clipToField}};
    };
-   window.gwbApplyEditedLogoToActiveField=async(file,token)=>{
+   window.gwbApplyEditedLogoToActiveField=async(file,token,options)=>{
      const i=window.__selected,current=window.__placed[i];
      if(token!==i+'|'+current.file.name)throw Error('token mismatch');
-     current.file=file;window.__applied.push(i);
+     if(!options?.fieldCanvas||options.fieldSizeMm.w!==current.field.w||options.fieldSizeMm.h!==current.field.h)throw Error('Wrong field dimensions');
+     current.file=file;current.placement={...current.field,rotation:0,clipToField:current.placement.clipToField};window.__applied.push(i);
    };
  });
+ await page.addScriptTag({path:'assets/vectorcraft-field.js'});
  await page.addScriptTag({path:'assets/vectorcraft-integration.js'});
  await page.locator('#editorOpenLogoEditor').click();
- await page.getByText('Логотип передан в VectorCraft.',{exact:false}).waitFor({timeout:15000});
+ await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const iframe=page.frameLocator('#gwbVectorcraftHost iframe');
  const seen=await iframe.locator('body').evaluate(()=>window.__seen);
  assert.equal(seen.length,1,'Original artwork sent as bytes exactly once');
- assert.equal(seen[0].name,'art.svg');
- assert.equal(String.fromCharCode(...seen[0].bytes.slice(0,4)),'<svg');
+ assert.match(seen[0].name,/art-поле\.svg/);
+ assert.deepEqual(seen[0].fieldSize,{w:120,h:80});
+ assert.equal(seen[0].fieldCanvas,true);
+ const sentXml=new TextDecoder().decode(new Uint8Array(seen[0].bytes));
+ assert.match(sentXml,/width="120mm"/);
+ assert.match(sentXml,/height="80mm"/);
+ assert.match(sentXml,/rotate\(30\)/,'Original logo rotation is embedded in editable artwork');
  assert.equal(await page.locator('#gwbVectorcraftHost').isVisible(),true);
  await page.evaluate(()=>window.postMessage({type:'gwb-vectorcraft-svg',token:location.hash,bytes:new TextEncoder().encode('<svg/>')},'*'));
  assert.deepEqual(await page.evaluate(()=>window.__applied),[],'Untrusted sender did not overwrite the artwork');
@@ -66,10 +78,12 @@ try{
  }));
  assert.match(state.first,/<path\b/,'Returned SVG is the actual contents of the mock editor');
  assert.match(state.second,/<circle/,'Other placement is unchanged, even with identical filename');
- assert.deepEqual(state.geometry[0],{x:22,y:33,w:100,h:60,rotation:30,clipToField:true},'Position/angle/crop preserved');
+ assert.deepEqual(state.geometry[0],{x:20,y:30,w:120,h:80,rotation:0,clipToField:true},'Returned field matches template bounds');
+ assert.match(state.first,/width="120mm"/,'SVG returns exact physical millimetres');
+ assert.match(state.first,/height="80mm"/,'SVG height matches field');
  assert.deepEqual(state.applied,[0],'Exactly one original field replaced');
  await page.locator('#editorOpenLogoEditor').click();
- await page.getByText('Логотип передан в VectorCraft.',{exact:false}).waitFor({timeout:15000});
+ await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  await page.getByRole('button',{name:'Закрыть без изменений'}).click();
  assert.equal(await page.locator('#gwbVectorcraftHost').count(),0);
  assert.deepEqual(await page.evaluate(()=>window.__applied),[0],'Cancel did not replace the field');
