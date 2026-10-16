@@ -34,6 +34,7 @@ fn gwb_install_bridge(host: &Host) {
     let Some(window)=web_sys::window() else{return};
     let inbox=host.inbox.clone();
     let apply=host.bridge_return.clone();
+    let open_pending=host.bridge_open_pending.clone();
     let repaint=host.bridge_ctx.clone();
     let listener=wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent|{
         // The token is an unguessable per-editor hash fragment; the parent
@@ -58,8 +59,8 @@ fn gwb_install_bridge(host: &Host) {
         let size=data.length();
         if size==0||size>40*1024*1024{gwb_send("gwb-vectorcraft-error",None,Some("Размер файла недопустим"));return;}
         inbox.lock().unwrap_or_else(|e|e.into_inner()).push((name,data.to_vec()));
+        open_pending.set(true);
         if let Some(ctx)=repaint.borrow().as_ref(){ctx.request_repaint();}
-        gwb_send("gwb-vectorcraft-opened",None,None);
     });
     if window.add_event_listener_with_callback("message",listener.as_ref().unchecked_ref()).is_ok(){listener.forget();}
 }
