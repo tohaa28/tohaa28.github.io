@@ -48,7 +48,7 @@
     const doc=new DOMParser().parseFromString(s,'image/svg+xml');
     if(doc.querySelector('parsererror'))return;
     layer.replaceChildren();
-    for(const n of Array.from(doc.documentElement.children)){const copy=document.importNode(n,true);scrub(copy);if(copy.isConnected===false&&copy.localName)layer.appendChild(copy)}
+    for(const n of Array.from(doc.documentElement.children)){if(!ALLOWED.has(n.localName))continue;const copy=document.importNode(n,true);scrub(copy);layer.appendChild(copy)}
     selected=null;refresh();
   }
   function undo(dir){
@@ -110,6 +110,7 @@
     for(const id of ['gwbVeDelete','gwbVeUp','gwbVeDown','gwbVeDuplicate'])$(id).disabled=!selected;
     const first=selected&&(selected.localName==='g'?selected.querySelector('text,rect,circle,ellipse,path,line,polygon,polyline,image'):selected);
     $('gwbVeTextBox').hidden=first?.localName!=='text';
+    $('gwbVeUngroup').disabled=!selected||selected.localName!=='g';
     if(first?.localName==='text')$('gwbVeText').value=first.textContent;
     $('gwbVeOpacity').value=selected?.getAttribute('opacity')||'1';
     text($('gwbVeZoomText'),Math.round(zoom*100)+'%');
@@ -159,6 +160,7 @@
       }
       const wrapper=S('g',{'data-label':file.name.replace(/\.svg$/i,'')});
       const nested=root.cloneNode(true);scrub(nested);
+      if(reset){nested.setAttribute('x','0');nested.setAttribute('y','0');nested.setAttribute('width',String(W));nested.setAttribute('height',String(H))}
       // Root SVG may have a non-zero viewBox origin: nest it rather than shifting paths.
       if(!reset){
         nested.setAttribute('x',String(W*.2));nested.setAttribute('y',String(H*.2));
@@ -276,6 +278,36 @@
     const n=selected.cloneNode(true),t=n.getAttribute('transform')||'';
     n.setAttribute('transform','translate(18 18) '+t);selected.after(n);select(n);snapshot();
   }
+  function ungroupSelected(){
+    if(!selected||selected.localName!=='g')return;
+    let group=selected;
+    if(group.children.length===1&&group.firstElementChild.localName==='svg'){
+      const nested=group.firstElementChild;
+      const vb=(nested.getAttribute('viewBox')||'0 0 '+W+' '+H).trim().split(/[\s,]+/).map(Number);
+      const valid=vb.length===4&&vb.every(Number.isFinite)&&vb[2]>0&&vb[3]>0;
+      const vx=valid?vb[0]:0,vy=valid?vb[1]:0,vw=valid?vb[2]:W,vh=valid?vb[3]:H;
+      const x=num(nested.getAttribute('x')),y=num(nested.getAttribute('y'));
+      const width=num(nested.getAttribute('width'),vw),height=num(nested.getAttribute('height'),vh);
+      const scale=Math.min(width/vw,height/vh);
+      const tx=x+(width-vw*scale)/2,ty=y+(height-vh*scale)/2;
+      const old=(group.getAttribute('transform')||'');
+      group.setAttribute('transform',old+' translate('+tx+' '+ty+') scale('+scale+') translate('+(-vx)+' '+(-vy)+')');
+      for(const child of Array.from(nested.children))group.append(child);
+      nested.remove();
+    }
+    const tf=group.getAttribute('transform')||'';
+    const inherited=['fill','stroke','stroke-width','opacity','font-family','font-size'];
+    const children=Array.from(group.children);
+    for(const n of children){
+      for(const attr of inherited){
+        if(group.hasAttribute(attr)&&!n.hasAttribute(attr))n.setAttribute(attr,group.getAttribute(attr));
+      }
+      if(tf)n.setAttribute('transform',tf+' '+(n.getAttribute('transform')||''));
+      group.before(n);
+    }
+    group.remove();selected=children.find(n=>n.localName!=='defs')||null;
+    snapshot();refresh();
+  }
   function deleteSelected(){
     if(!selected)return;
     selected.remove();selected=null;snapshot();
@@ -334,10 +366,10 @@
       '<button type="button" data-tool="rect">▭ Прямоугольник</button><button type="button" data-tool="ellipse">◯ Эллипс</button>',
       '<button type="button" data-tool="line">╱ Линия</button><button type="button" data-tool="pen">⌁ Контур</button>',
       '<button type="button" data-tool="free">✎ Карандаш</button><button type="button" data-tool="text">T Текст</button>',
-      '<i class="gwb-ve-separator"></i><button type="button" id="gwbVeImport">+ Изображение</button>',
+      '<i class="gwb-ve-separator"></i><button type="button" id="gwbVeNew">Новый</button><button type="button" id="gwbVeImport">+ Изображение</button>',
       '<input class="gwb-ve-hiddenfile" id="gwbVeImageFile" type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp">',
       '<button type="button" id="gwbVeUndo">↶ Отменить</button><button type="button" id="gwbVeRedo">↷ Повторить</button>',
-      '<button type="button" id="gwbVeDuplicate">Дублировать</button><button type="button" id="gwbVeDelete">Удалить</button>',
+      '<button type="button" id="gwbVeDuplicate">Дублировать</button><button type="button" id="gwbVeUngroup">Разгруппировать</button><button type="button" id="gwbVeDelete">Удалить</button>',
       '<button type="button" id="gwbVeFit">Вписать</button><button type="button" id="gwbVeMinus">−</button><span id="gwbVeZoomText">100%</span><button type="button" id="gwbVePlus">+</button></div>',
       '<div class="gwb-ve-main"><div class="gwb-ve-stage" id="gwbVeStage">',
       '<svg id="gwbVeCanvas" class="gwb-ve-page" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600"><g id="gwbVeLayer"></g><g id="gwbVeUi"></g></svg>',
@@ -363,10 +395,12 @@
     $('gwbVeCancel').onclick=close;
     $('gwbVeApply').onclick=apply;
     $('gwbVeDownload').onclick=download;
+    $('gwbVeNew').onclick=()=>{if(dirty&&!confirm('Создать чистый документ? Несохранённые изменения будут потеряны.'))return;initBlank();status='Новый SVG-документ';refresh()};
     $('gwbVeImport').onclick=()=>$('gwbVeImageFile').click();
     $('gwbVeImageFile').onchange=async e=>{try{await importFile(e.target.files?.[0],false)}catch(err){status=err.message;refresh()}finally{e.target.value=''}};
     $('gwbVeUndo').onclick=()=>undo(-1);$('gwbVeRedo').onclick=()=>undo(1);
     $('gwbVeDuplicate').onclick=duplicate;$('gwbVeDelete').onclick=deleteSelected;
+    $('gwbVeUngroup').onclick=ungroupSelected;
     $('gwbVeUp').onclick=()=>moveLayer(1);$('gwbVeDown').onclick=()=>moveLayer(-1);
     $('gwbVeFit').onclick=fit;$('gwbVePlus').onclick=()=>setZoom(zoom*1.25);$('gwbVeMinus').onclick=()=>setZoom(zoom/1.25);
     $('gwbVeFill').onchange=e=>changeShapeColor('fill',e.target.value);
@@ -410,6 +444,7 @@
     initBlank();status='Новый логотип. Можно рисовать и добавлять текст.';
     const file=artInput?.files?.[0];
     if(file){try{await importFile(file,true)}catch(err){status=err.message;refresh()}}
+    else if(typeof window.gwbGetEditorReadiness==='function'&&window.gwbGetEditorReadiness()?.logoReady){status='Редактору недоступен исходный файл текущего логотипа. Рисование создаст новый SVG и заменит логотип только после нажатия «Применить в шаблоне».';refresh()}
     fit();refresh();
   }
   function svgBlob(){return new Blob([serialize()],{type:'image/svg+xml;charset=utf-8'})}
@@ -422,6 +457,7 @@
     const input=$('artwork');
     if(!input){status='Поле загрузки логотипа не найдено';refresh();return}
     if(!layer.children.length){status='Добавьте хотя бы один объект перед применением';refresh();return}
+    if(layer.querySelector('image')&&!confirm('В изображении присутствует растр. Даже внутри SVG он не становится векторным. Продолжить?'))return;
     const blob=svgBlob(),file=new File([blob],escapeName(loadedName)+'-edited.svg',{type:'image/svg+xml',lastModified:Date.now()});
     try{
       const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;
