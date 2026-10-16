@@ -49,6 +49,9 @@ jobs:
           test -f save-profile.html
           test -f mockup-profiles.json
           test -f method-settings.json
+          test -f tools/gwb-vector-bridge.py
+          test -f tools/start-vector-bridge.cmd
+          python3 -m py_compile tools/gwb-vector-bridge.py
           node -e 'const x=require("./method-settings.json");if(x.version!==1||!x.methods||typeof x.methods!=="object")process.exit(1)'
           node -e 'const x=require("./mockup-profiles.json"); if(x.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(x.profiles)) process.exit(1)'
           node --check direct-mode.js
@@ -308,6 +311,8 @@ jobs:
           cp source/launcher.js site/gifts-layout-workbench/launcher.js
           cp -R source/assets site/gifts-layout-workbench-mockups/assets
           cp -R source/vendor site/gifts-layout-workbench-mockups/vendor
+          mkdir -p site/gifts-layout-workbench-mockups/tools
+          cp source/tools/gwb-vector-bridge.py source/tools/start-vector-bridge.cmd site/gifts-layout-workbench-mockups/tools/
       - name: Commit GitHub Pages
         run: |
           set -euo pipefail
