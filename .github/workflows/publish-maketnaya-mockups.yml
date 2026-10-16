@@ -274,6 +274,7 @@ jobs:
           npx playwright install --with-deps chromium
           node tests/mockup-cylinder-browser-runner.mjs
           node tests/logo-editor-browser.mjs
+          node tests/vectorcraft-handoff-browser.mjs
 
   publish:
     needs: precheck
