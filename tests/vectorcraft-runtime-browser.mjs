@@ -48,7 +48,8 @@ try{
      bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);
  });
  await page.waitForFunction(()=>window.__vcBlocked.length===1||window.__vcStatus.startsWith('error:'),{timeout:7000});
- assert.equal(await page.evaluate(()=>window.__vcBlocked.length),1,'Second imported document rejected by native WASM bridge');
+ const attempted=await page.evaluate(()=>({blocked:window.__vcBlocked,status:window.__vcStatus,events:window.__vcEvents}));
+ assert.equal(attempted.blocked.length,1,'Second imported document rejected by native WASM bridge: '+JSON.stringify(attempted));
  await page.evaluate(()=>{
    const token='12345678901234567890123412345678';
    document.getElementById('vc').contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);
