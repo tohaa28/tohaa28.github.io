@@ -14,6 +14,26 @@
   let shell,svg,layer,ui,stage,btn,status,layersPanel,tool='select',selected=null;
   let W=900,H=600,zoom=1,gesture=null,history=[],index=-1,dirty=false,loadedName='Логотип';
   let artInput,mode='select',active=false;
+  // The host editor clears input.value after each asynchronous import. Preserve
+  // the selected File only in RAM so the currently selected artwork is editable.
+  const sourceFilesBySlot=new Map();
+  const sourceFilesByName=new Map();
+  const currentSlot=()=>[
+    $('order')?.value||$('editorTitle')?.textContent||'',
+    $('orderTemplates')?.value||$('article')?.value||'',
+    $('orderFieldChoice')?.value||$('fields')?.value||''
+  ].join('|');
+  function captureArtwork(event){
+    const file=event.target.files?.[0];
+    if(!file)return;
+    const slot=currentSlot();
+    if(slot.replace(/\|/g,'').trim())sourceFilesBySlot.set(slot,file);
+    sourceFilesByName.set(file.name,file);
+    // Do not indefinitely retain personal customer artwork in this tab.
+    for(const map of [sourceFilesBySlot,sourceFilesByName]){
+      if(map.size>25)map.delete(map.keys().next().value);
+    }
+  }
   let hasFonts=false,sourceUnsupported=false;
   const MAX_FILE=25*1024*1024;
   const ALLOWED=new Set('svg g defs path rect circle ellipse line polygon polyline image text tspan use linearGradient radialGradient stop clipPath mask pattern symbol marker filter feGaussianBlur feOffset feMerge feMergeNode feColorMatrix feComponentTransfer feFuncR feFuncG feFuncB feFuncA feBlend feComposite'.split(' '));
@@ -443,7 +463,12 @@
   async function open(){
     setup();artInput=$('artwork');active=true;shell.hidden=false;
     initBlank();status='Новый логотип. Можно рисовать и добавлять текст.';
-    const file=artInput?.files?.[0];
+    const label=String($('artworkName')?.textContent||'').trim();
+    const slot=currentSlot();
+    const slotFile=sourceFilesBySlot.get(slot)||null;
+    const labelFile=sourceFilesByName.get(label)||null;
+    const file=artInput?.files?.[0]||slotFile||
+      (labelFile&&(!sourceFilesBySlot.size||Array.from(sourceFilesBySlot.values()).includes(labelFile))?labelFile:null);
     if(file){try{await importFile(file,true)}catch(err){status=err.message;refresh()}}
     else if(typeof window.gwbGetEditorReadiness==='function'&&window.gwbGetEditorReadiness()?.logoReady){status='Редактору недоступен исходный файл текущего логотипа. Рисование создаст новый SVG и заменит логотип только после нажатия «Применить в шаблоне».';refresh()}
     fit();refresh();
@@ -470,6 +495,10 @@
   }
   function start(){
     btn=$('editorOpenLogoEditor');
+    artInput=$('artwork');
+    // Capture phase runs before the existing uploader's onchange handler clears
+    // the file input. Never overwrite its existing handler.
+    if(artInput)artInput.addEventListener('change',captureArtwork,true);
     if(btn)btn.addEventListener('click',open);
     window.gwbLogoEditor={open:open,get active(){return active}};
   }
