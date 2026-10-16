@@ -139,7 +139,6 @@ try{
   await page.locator('#gwbVeLayer #original-imported-vector').waitFor();
   await page.locator('#gwbVeLayers button').filter({hasText:'Контур'}).first().click();
   assert.equal(await page.locator('#gwbVeUi [data-handle]').count(),8,'An actual imported path is selectable, not just the import wrapper');
-  await page.click('#gwbVeFill');
   await page.locator('#gwbVeFill').fill('#aabbcc');
   await page.locator('#gwbVeFill').dispatchEvent('change');
   assert.equal(await page.locator('#original-imported-vector').getAttribute('fill'),'#aabbcc','Imported vector element responds to native fill tools');
