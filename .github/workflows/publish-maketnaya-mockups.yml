@@ -294,8 +294,16 @@ jobs:
       - name: Publish independent Maketnaya with Mockups
         run: |
           set -euo pipefail
+          # VectorCraft is built in a separate pinned Rust/WASM workflow. Preserve
+          # the generated runtime across ordinary Maketnaya source publications.
+          if test -d site/gifts-layout-workbench-mockups/vectorcraft; then
+            cp -a site/gifts-layout-workbench-mockups/vectorcraft /tmp/gwb-vectorcraft-wasm
+          fi
           rm -rf site/gifts-layout-workbench-mockups
           mkdir -p site/gifts-layout-workbench-mockups
+          if test -d /tmp/gwb-vectorcraft-wasm; then
+            cp -a /tmp/gwb-vectorcraft-wasm site/gifts-layout-workbench-mockups/vectorcraft
+          fi
           cp source/index.html site/gifts-layout-workbench-mockups/index.html
           cp source/editor.html site/gifts-layout-workbench-mockups/editor.html
           cp source/mockup.html site/gifts-layout-workbench-mockups/mockup.html
