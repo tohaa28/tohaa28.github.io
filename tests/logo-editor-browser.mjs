@@ -3,6 +3,7 @@ import {chromium} from 'playwright';
 import fs from 'node:fs';
 assert.match(fs.readFileSync('assets/index-BpU9kvz8.js','utf8'),/gwbGetActiveLogoForEditor=function\(\)/,'Published bundle must expose the actual selected logo');
 assert.match(fs.readFileSync('assets/index-BpU9kvz8.js','utf8'),/gwbApplyEditedLogoToActiveField=async function/,'Published bundle must preserve placement when replacing artwork');
+assert.match(fs.readFileSync('assets/index-BpU9kvz8.js','utf8'),/gwbGetPdfLogoVectorOps=async function/,'Compiled bundle can supply original PDF vector geometry');
 
 const browser=await chromium.launch({headless:true});
 const errors=[];
@@ -13,6 +14,7 @@ try{
   await page.setContent('<!doctype html><html><head></head><body><div id="fieldLogoTools"><button id="editorOpenLogoEditor">Редактор логотипа</button></div><input id="artwork" type="file" accept=".svg,.png,.jpg"><span id="artworkName">Выбрать файл</span><p id="status"></p></body></html>');
   await page.evaluate(()=>{window.__changes=[];document.getElementById('artwork').addEventListener('change',e=>window.__changes.push(e.target.files[0]?.name||''))});
   await page.addScriptTag({path:'assets/logo-path.js'});
+  await page.addScriptTag({path:'assets/logo-pdf-import.js'});
   await page.addScriptTag({path:'assets/logo-editor.js'});
   await page.click('#editorOpenLogoEditor');
   assert.equal(await page.locator('#gwbLogoEditor').isVisible(),true,'Logo editor opens in the existing Maketnaya page');
@@ -125,6 +127,68 @@ try{
   assert.match(afterBridge.original,/Поле ОДИН/,'Other placement must remain untouched');
   assert.match(afterBridge.edited,/Исправлено второе/,'Edited artwork replaces only active placement');
   assert.deepEqual(afterBridge.calls,[{index:1,token:'1|same-name.svg'}]);
+  // Existing imported SVG is a nested svg/g/path. It must be possible to
+  // select and alter the original path directly without mandatory ungrouping.
+  await page.evaluate(()=>{
+    window.__current=0;
+    window.__placements[0]=new File([
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 250 160"><g><path id="original-imported-vector" d="M10 20 L100 20 L100 80 Z" fill="#345678"/></g></svg>'
+    ],'same-name.svg',{type:'image/svg+xml'});
+  });
+  await page.click('#editorOpenLogoEditor');
+  await page.locator('#gwbVeLayer #original-imported-vector').waitFor();
+  await page.locator('#gwbVeLayers button').filter({hasText:'Контур'}).first().click();
+  assert.equal(await page.locator('#gwbVeUi [data-handle]').count(),8,'An actual imported path is selectable, not just the import wrapper');
+  await page.click('#gwbVeFill');
+  await page.locator('#gwbVeFill').fill('#aabbcc');
+  await page.locator('#gwbVeFill').dispatchEvent('change');
+  assert.equal(await page.locator('#original-imported-vector').getAttribute('fill'),'#aabbcc','Imported vector element responds to native fill tools');
+  await page.click('#gwbVeApply');
+
+  // PDF-compatible AI / PDF: use actual vector path instructions, not a raster preview.
+  await page.evaluate(()=>{
+    window.__current=1;
+    window.__placements[1]=new File([new Uint8Array([37,80,68,70,45])],'existing.pdf',{type:'application/pdf'});
+    window.gwbGetActiveLogoForEditor=()=>{
+      const i=window.__current,file=window.__placements[i];
+      return {token:i+'|'+file.name,fieldIndex:i,hasArtwork:true,file,name:file.name};
+    };
+    window.__pdfCalls=0;
+    window.gwbGetPdfLogoVectorOps=async()=>{
+      window.__pdfCalls++;
+      return {width:180,height:90,transform:[1,0,0,-1,0,90],
+        ops:[{name:'setFillRGBColor',args:[Uint8Array.from([45,120,180])]},
+          {name:'constructPath',args:['fill',[Float32Array.from([0,12,14,1,85,14,1,85,65,4])],[12,14,85,65]]}]
+      };
+    };
+  });
+  await page.click('#editorOpenLogoEditor');
+  await page.locator('#gwbVeLayer path').waitFor();
+  assert.equal(await page.locator('#gwbVeLayer path').count(),1,'PDF path imported as a real SVG path');
+  assert.equal(await page.locator('#gwbVeLayer path').getAttribute('fill'),'#2d78b4');
+  await page.locator('[data-tool="nodes"]').click();
+  await page.locator('#gwbVeLayer path').click({force:true});
+  assert.ok(await page.locator('#gwbVeUi [data-path-index]').count()>0,'PDF vector anchor points can be edited');
+  await page.click('#gwbVeApply');
+  assert.equal(await page.evaluate(()=>window.__pdfCalls),1);
+  assert.match(await page.evaluate(async()=>await window.__placements[1].text()),/<path\\b/);
+
+  // Mixed/raster PDF must fail closed and retain the original placed artwork.
+  await page.evaluate(()=>{
+    window.__current=1;
+    window.__placements[1]=new File([new Uint8Array([37,80,68,70,45])],'mixed.pdf',{type:'application/pdf'});
+    window.gwbGetPdfLogoVectorOps=async()=>({
+      width:180,height:90,transform:[1,0,0,-1,0,90],ops:[
+        {name:'constructPath',args:['fill',[Float32Array.from([0,1,1,1,80,1,1,80,50,4])],[1,1,80,50]]},
+        {name:'paintImageXObject',args:['RasterImage01']}]
+    });
+  });
+  await page.click('#editorOpenLogoEditor');
+  await page.getByText(/нельзя достоверно перенести/).first().waitFor();
+  const existingBytes=await page.evaluate(async()=>Array.from(new Uint8Array(await window.__placements[1].arrayBuffer())));
+  assert.deepEqual(existingBytes,[37,80,68,70,45],'Mixed-PDF test retains original source bytes');
+  await page.click('#gwbVeCancel');
+
   assert.deepEqual(errors,[],'Browser JavaScript remains free of unhandled errors');
   console.log('Integrated logo editor: original selected field / cubic Bezier nodes / crop / SVG sanitization / vector-raster validation passed');
 }finally{await browser.close()}
