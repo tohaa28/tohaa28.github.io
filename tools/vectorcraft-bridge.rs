@@ -98,12 +98,70 @@ fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Res
     })).map_err(|e|format!("Не удалось установить размер поля: {e}"))?;
     Ok(())
 }
-fn gwb_export_editor(app: &mut VectorcraftApp) {
+// The actual printed artwork is NOT the VectorCraft artboard. Export with the
+// source engine's visual art bounds and send the bounding box relative to the
+// original field separately so Maketnaya restores geometry exactly once.
+fn gwb_send_cropped_logo(bytes: &[u8], note: &str, bounds: [f64;4]) {
+    use js_sys::{Object,Reflect,Uint8Array};
+    use wasm_bindgen::{JsCast,JsValue};
+    let Some(window)=web_sys::window() else {return};
+    let Ok(Some(parent))=window.parent() else {return};
+    let message=Object::new();
+    let set=|key:&str,value:&JsValue|{let _=Reflect::set(&message,&JsValue::from_str(key),value);};
+    set("type",&JsValue::from_str("gwb-vectorcraft-svg"));
+    set("token",&JsValue::from_str(&gwb_token()));
+    set("message",&JsValue::from_str(note));
+    set("bytes",&Uint8Array::from(bytes).into());
+    let rectangle=Object::new();
+    for (key,value) in ["x","y","w","h"].into_iter().zip(bounds) {
+        let _=Reflect::set(&rectangle,&JsValue::from_str(key),&JsValue::from_f64(value));
+    }
+    set("logoBoundsMm",&rectangle.into());
+    if let Ok(method)=Reflect::get(parent.as_ref(),&JsValue::from_str("postMessage")) {
+        if let Some(call)=method.dyn_ref::<js_sys::Function>() {
+            let _=call.call2(parent.as_ref(),&message,&JsValue::from_str("*"));
+        }
+    }
+}
+fn gwb_export_editor(app: &mut VectorcraftApp, requested_field: Option<(f64,f64,bool)>) {
     let Some(st)=app.session.active() else {
         gwb_send("gwb-vectorcraft-error",None,Some("В VectorCraft нет открытого документа"));
         return;
     };
-    let opts=serde_json::json!({"images":"embed","artboard":0,"useArtboards":true});
+    let Some((field_w,field_h,_))=requested_field else {
+        gwb_send("gwb-vectorcraft-error",None,Some("Размер исходного поля нанесения недоступен"));
+        return;
+    };
+    let Some(board)=st.doc.artboards.first() else {
+        gwb_send("gwb-vectorcraft-error",None,Some("Монтажная область VectorCraft не обнаружена"));
+        return;
+    };
+    let mm_to_pt=72.0/25.4;
+    if (board.rect.width()-field_w*mm_to_pt).abs()>0.15 ||
+       (board.rect.height()-field_h*mm_to_pt).abs()>0.15 {
+        gwb_send("gwb-vectorcraft-error",None,Some("Размер монтажной области изменён. Верните размер выбранного поля нанесения в миллиметрах."));
+        return;
+    }
+    let Some(art)=st.doc.art_bounds() else {
+        gwb_send("gwb-vectorcraft-error",None,Some("Нет нарисованных объектов для передачи в Макетную"));
+        return;
+    };
+    let bounds=[
+        (art.x0-board.rect.x0)/mm_to_pt,
+        (art.y0-board.rect.y0)/mm_to_pt,
+        art.width()/mm_to_pt,
+        art.height()/mm_to_pt,
+    ];
+    if !bounds.iter().all(|n|n.is_finite()) ||
+       bounds[2]<=0.001 || bounds[3]<=0.001 ||
+       bounds[2]>2000.0 || bounds[3]>2000.0 ||
+       bounds[0].abs()>2000.0 || bounds[1].abs()>2000.0 {
+        gwb_send("gwb-vectorcraft-error",None,Some("У рисунка некорректные или пустые границы"));
+        return;
+    }
+    // SVG export uses the same visual art bounds, shifting their origin to
+    // (0,0). No page-sized empty margins and no rasterization of vector paths.
+    let opts=serde_json::json!({"images":"embed","useArtboards":false});
     match fileio::encode_with_warnings(&st.doc,"svg",&opts) {
         Ok((bytes,warnings))=>{
             if bytes.is_empty()||bytes.len()>40*1024*1024{
@@ -111,7 +169,7 @@ fn gwb_export_editor(app: &mut VectorcraftApp) {
                 return;
             }
             let notes=warnings.join("\n");
-            gwb_send("gwb-vectorcraft-svg",Some(&bytes),Some(&notes));
+            gwb_send_cropped_logo(&bytes,&notes,bounds);
         }
         Err(err)=>gwb_send("gwb-vectorcraft-error",None,Some(&err.to_string())),
     };
