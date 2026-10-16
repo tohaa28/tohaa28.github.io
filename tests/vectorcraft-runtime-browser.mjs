@@ -24,7 +24,7 @@ try{
     " window.__vcStatus='editing';",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
     " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcStatus='ok';",
-    " }else if(e.data.type==='gwb-vectorcraft-error'){if(String(e.data.message).includes('Открытие других документов'))window.__vcBlocked.push(e.data.message);else window.__vcStatus='error: '+e.data.message;}",
+    " }else if(e.data.type==='gwb-vectorcraft-error'){if(window.__vcExpectRejection){window.__vcBlocked.push(String(e.data.message));window.__vcExpectRejection=false;}else window.__vcStatus='error: '+e.data.message;}",
     "});",
     "f.src='"+BASE+"vectorcraft/index.html#gwb='+token;"
    ].join('\n');
@@ -43,6 +43,7 @@ try{
  // A second valid-looking postMessage must not enqueue another document.
  await page.evaluate(()=>{
    const token='12345678901234567890123412345678',f=document.getElementById('vc');
+   window.__vcExpectRejection=true;
    const bytes=new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><rect width="90" height="90"/></svg>').buffer;
    f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'forbidden-second.svg',
      bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);
@@ -50,6 +51,7 @@ try{
  await page.waitForFunction(()=>window.__vcBlocked.length===1||window.__vcStatus.startsWith('error:'),{timeout:7000});
  const attempted=await page.evaluate(()=>({blocked:window.__vcBlocked,status:window.__vcStatus,events:window.__vcEvents}));
  assert.equal(attempted.blocked.length,1,'Second imported document rejected by native WASM bridge: '+JSON.stringify(attempted));
+ assert.match(attempted.blocked[0],/других документов|второй документ|один документ/i);
  await page.evaluate(()=>{
    const token='12345678901234567890123412345678';
    document.getElementById('vc').contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);
