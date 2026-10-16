@@ -1,0 +1,89 @@
+name: Build VectorCraft WebAssembly
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-mockups-source
+    paths:
+      - "tools/patch-vectorcraft-upstream.py"
+      - "tools/vectorcraft-bridge.rs"
+      - ".github/workflows/build-vectorcraft-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gifts-layout-workbench-mockups-publish
+  cancel-in-progress: false
+
+jobs:
+  compile_vectorcraft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout Maketnaya source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: maketnaya
+      - name: Checkout exact upstream VectorCraft source
+        uses: actions/checkout@v4
+        with:
+          repository: storytold/vectorcraft
+          ref: 8bc65329286dc1b84aa392997bb205613c3e96cb
+          path: vectorcraft
+          submodules: false
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust and Trunk
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: vectorcraft -> target
+          cache-on-failure: true
+      - name: Install Trunk
+        run: |
+          set -euo pipefail
+          cargo install trunk --locked --version 0.21.14
+      - name: Patch VectorCraft browser I/O at pinned source
+        run: python3 maketnaya/tools/patch-vectorcraft-upstream.py vectorcraft
+      - name: Compile actual VectorCraft WebAssembly
+        run: |
+          set -euo pipefail
+          cd vectorcraft/apps/vectorcraft-web
+          trunk build --release
+          test -f ../../dist/web/index.html
+          find ../../dist/web -maxdepth 1 -name '*.wasm' -size +1M | grep -q .
+          find ../../dist/web -maxdepth 1 -name '*.js' | grep -q .
+          du -sh ../../dist/web
+      - name: Include attribution for the Rust engine
+        run: |
+          set -euo pipefail
+          cp vectorcraft/LICENSE-APACHE vectorcraft/dist/web/
+          cp vectorcraft/LICENSE-MIT vectorcraft/dist/web/
+          cp vectorcraft/NOTICE vectorcraft/dist/web/
+          echo 8bc65329286dc1b84aa392997bb205613c3e96cb > vectorcraft/dist/web/UPSTREAM_COMMIT
+      - name: Checkout published GitHub Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+      - name: Publish VectorCraft under Maketnaya directory
+        run: |
+          set -euo pipefail
+          rm -rf site/gifts-layout-workbench-mockups/vectorcraft
+          mkdir -p site/gifts-layout-workbench-mockups/vectorcraft
+          cp -a vectorcraft/dist/web/. site/gifts-layout-workbench-mockups/vectorcraft/
+          cd site
+          git config user.name "maketnaya-vectorcraft-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A gifts-layout-workbench-mockups/vectorcraft
+          if git diff --cached --quiet; then
+            echo "VectorCraft WASM unchanged"
+          else
+            git commit -m "Publish pinned VectorCraft WASM editor with Maketnaya I/O bridge"
+            git push origin main
+          fi
