@@ -17,9 +17,9 @@ try{
     " if(e.source!==f.contentWindow||e.origin!==location.origin||e.data?.token!==token)return;",
     " window.__vcEvents.push(e.data.type);",
     " if(e.data.type==='gwb-vectorcraft-ready'){",
-    " const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"90mm\" height=\"45mm\" viewBox=\"0 0 90 45\"><rect x=\"10\" y=\"10\" width=\"70\" height=\"50\" fill=\"#88cc11\"/></svg>';",
+    " const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100mm\" height=\"50mm\" viewBox=\"0 0 100 50\"><rect x=\"10\" y=\"10\" width=\"70\" height=\"50\" fill=\"#88cc11\"/></svg>';",
     " const bytes=new TextEncoder().encode(svg).buffer;",
-    " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:90,h:45},fieldCanvas:true},location.origin,[bytes]);",
+    " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:90,h:45},fieldCanvas:false},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
     " setTimeout(()=>f.contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin),2000);",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
@@ -46,7 +46,7 @@ try{
    const v=(root.getAttribute('viewBox')||'').split(/\s+/).map(Number);
    return {w:v[2]*25.4/72,h:v[3]*25.4/72};
  },data.svg);
- assert.ok(Math.abs(actual.w-90)<0.1,'Real WASM SVG width must be 90 mm: '+actual.w);
- assert.ok(Math.abs(actual.h-45)<0.1,'Real WASM SVG height must be 45 mm: '+actual.h);
+ assert.ok(Math.abs(actual.w-90)<0.1,'Real WASM must resize a 100 mm source artboard into a 90 mm imprint: '+actual.w);
+ assert.ok(Math.abs(actual.h-45)<0.1,'Real WASM must resize a 50 mm source artboard into a 45 mm imprint: '+actual.h);
  console.log('Genuine VectorCraft WASM roundtrip passed:',{svgBytes:data.svg.length,events:data.events,browserErrors});
 }finally{await browser.close()}
