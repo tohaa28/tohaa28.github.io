@@ -22,7 +22,7 @@ window.gwbGetActiveLogoForEditor=function(){
   };
 };
 window.gwbApplyEditedLogoToActiveField=async function(file,token){
-  if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||!(/\\.svg$/i.test(file.name)))throw new Error("Редактор должен передать SVG до 40 МБ");
+  if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||!(/\.svg$/i.test(file.name)))throw new Error("Редактор должен передать SVG до 40 МБ");
   if(y.busy)throw new Error("Макетная сейчас занята; повторите сохранение");
   Ft();
   const target=y.placements?.[y.active],art=target?.art||null;
