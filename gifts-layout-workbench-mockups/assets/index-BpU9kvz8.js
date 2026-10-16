@@ -78,6 +78,23 @@ window.gwbGetActiveLogoForEditor=function(){
     hasArtwork:!!art
   };
 };
+window.gwbGetPdfLogoVectorOps=async function(token){
+  Ft();
+  const p=y.placements?.[y.active],art=p?.art;
+  const actual=p?[y.active,p.fieldIndex,p.page,art?.name||""].join("|"):null;
+  if(!p||!art?.pdfPage||token!==actual)throw new Error("Исходный PDF выбранного поля недоступен");
+  const page=art.pdfPage,viewport=page.getViewport({scale:1});
+  const list=await page.getOperatorList();
+  const names=Object.fromEntries(Object.entries(xt).map(([k,v])=>[v,k]));
+  if(list.fnArray.length>200000)throw new Error("Слишком большой PDF для обработки контуров в браузере");
+  return {width:viewport.width,height:viewport.height,transform:Array.from(viewport.transform),
+    ops:list.fnArray.map((n,i)=>{
+      const args=list.argsArray[i];
+      return {name:names[n]||String(n),
+        args:n===xt.constructPath?[names[args?.[0]]||args?.[0],args?.[1],args?.[2]]:args};
+    })
+  };
+};
 window.gwbApplyEditedLogoToActiveField=async function(file,token){
   if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||!(/\.svg$/i.test(file.name)))throw new Error("Редактор должен передать SVG до 40 МБ");
   if(y.busy)throw new Error("Макетная сейчас занята; повторите сохранение");
