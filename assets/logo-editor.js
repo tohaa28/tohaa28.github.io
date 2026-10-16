@@ -13,7 +13,7 @@
   const escapeName=s=>String(s||'логотип').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(0,70);
   let shell,svg,layer,ui,stage,btn,status,layersPanel,tool='select',selected=null;
   let W=900,H=600,zoom=1,gesture=null,history=[],index=-1,dirty=false,loadedName='Логотип';
-  let artInput,mode='select',active=false;
+  let artInput,mode='select',active=false,openedToken=null,opening=false;
   // The host editor clears input.value after each asynchronous import. Preserve
   // the selected File only in RAM so the currently selected artwork is editable.
   const sourceFilesBySlot=new Map();
@@ -458,20 +458,40 @@
   function close(){
     if(gesture?.type==='pen')finishPen();
     if(dirty&&!confirm('Закрыть редактор? Несохранённые изменения не попадут в шаблон.'))return;
-    active=false;shell.hidden=true;status='';dirty=false;
+    active=false;shell.hidden=true;status='';dirty=false;openedToken=null;
   }
   async function open(){
+    if(opening)return;opening=true;
     setup();artInput=$('artwork');active=true;shell.hidden=false;
     initBlank();status='Новый логотип. Можно рисовать и добавлять текст.';
-    const label=String($('artworkName')?.textContent||'').trim();
-    const slot=currentSlot();
-    const slotFile=sourceFilesBySlot.get(slot)||null;
-    const labelFile=sourceFilesByName.get(label)||null;
-    const file=artInput?.files?.[0]||slotFile||
-      (!sourceFilesBySlot.size?labelFile:null);
-    if(file){try{await importFile(file,true)}catch(err){status=err.message;refresh()}}
-    else if(typeof window.gwbGetEditorReadiness==='function'&&window.gwbGetEditorReadiness()?.logoReady){status='Редактору недоступен исходный файл текущего логотипа. Рисование создаст новый SVG и заменит логотип только после нажатия «Применить в шаблоне».';refresh()}
-    fit();refresh();
+    openedToken=null;
+    const bridge=typeof window.gwbGetActiveLogoForEditor==='function'?window.gwbGetActiveLogoForEditor():null;
+    let file=null;
+    if(bridge){
+      openedToken=bridge.token;
+      if(bridge.hasArtwork){
+        file=bridge.file;
+        status='Редактируется логотип выбранного поля'+(Number.isInteger(bridge.fieldIndex)?' №'+(bridge.fieldIndex+1):'')+'.';
+        if(!file)status='Исходный файл выбранного поля недоступен. Загрузите подходящий SVG или PNG/JPG.';
+      }else status='В выбранном поле нет логотипа. Создайте новый.';
+    }else if(typeof window.gwbGetActiveLogoForEditor==='function'){
+      status='Выберите конкретное поле для редактирования логотипа.';
+    }else{
+      const label=String($('artworkName')?.textContent||'').trim();
+      const slot=currentSlot();
+      const slotFile=sourceFilesBySlot.get(slot)||null;
+      file=artInput?.files?.[0]||slotFile||
+        (!sourceFilesBySlot.size?sourceFilesByName.get(label):null);
+    }
+    if(file){
+      try{await importFile(file,true)}
+      catch(err){status=err.message;refresh()}
+    }
+    else if(!bridge&&typeof window.gwbGetActiveLogoForEditor!=='function'&&
+      typeof window.gwbGetEditorReadiness==='function'&&window.gwbGetEditorReadiness()?.logoReady){
+      status='Исходный логотип недоступен. Выберите его файл или создайте новый SVG.';
+    }
+    fit();refresh();opening=false;
   }
   function svgBlob(){return new Blob([serialize()],{type:'image/svg+xml;charset=utf-8'})}
   function download(){
@@ -486,6 +506,14 @@
     if(layer.querySelector('image')&&!confirm('В изображении присутствует растр. Даже внутри SVG он не становится векторным. Продолжить?'))return;
     const blob=svgBlob(),file=new File([blob],escapeName(loadedName)+'-edited.svg',{type:'image/svg+xml',lastModified:Date.now()});
     try{
+      if(openedToken!==null&&typeof window.gwbApplyEditedLogoToActiveField==='function'){
+        $('gwbVeApply').disabled=true;
+        try{
+          await window.gwbApplyEditedLogoToActiveField(file,openedToken);
+          dirty=false;active=false;shell.hidden=true;
+        }finally{$('gwbVeApply').disabled=false}
+        return;
+      }
       const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;
       input.dispatchEvent(new Event('input',{bubbles:true}));
       input.dispatchEvent(new Event('change',{bubbles:true}));
