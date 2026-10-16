@@ -48,6 +48,16 @@ function convert(payload){
  let current={matrix:viewport.slice(),fill:'#000000',stroke:'#000000',lineWidth:1,lineCap:0,lineJoin:0,dash:[],dashOffset:0};
  const stack=[],shapes=[],warnings=[];let currentPath='';
  function mark(message){if(!warnings.includes(message))warnings.push(message)}
+ function makePaint(op,d){
+   if(!d)return null;
+   const fill=/fill/i.test(op),stroke=/stroke/i.test(op);
+   const attrs={d,fill:fill?current.fill:'none',stroke:stroke?current.stroke:'none',
+    transform:'matrix('+current.matrix.map(fmt).join(' ')+')'};
+   if(stroke){attrs['stroke-width']=fmt(current.lineWidth);attrs['stroke-linecap']=['butt','round','square'][current.lineCap]||'butt';attrs['stroke-linejoin']=['miter','round','bevel'][current.lineJoin]||'miter';}
+   if(current.dash.length)attrs['stroke-dasharray']=current.dash.join(' ');
+   if(op.toLowerCase().includes('eo'))attrs['fill-rule']='evenodd';
+   return attrs;
+ }
  for(const instruction of ops){
   const op=instruction?.name,a=instruction?.args||[];
   if(op==='save'){stack.push({...current,matrix:current.matrix.slice()});continue}
@@ -76,19 +86,21 @@ function convert(payload){
    const p=pathData(a[1]);
    if(p===null)mark('Неподдерживаемая геометрия PDF');
    else currentPath=p;
+   // In pdf.js 5.x constructPath includes the painting operator, rather
+   // than emitting a separate fill or stroke instruction afterwards.
+   const painting=typeof a[0]==='string'?a[0]:null;
+   if(paint.has(painting)){
+     const attrs=makePaint(painting,currentPath);
+     if(attrs)shapes.push(attrs);
+     currentPath='';
+   }else if(painting&&painting!=='endPath'){
+     mark('Неизвестная операция закрашивания PDF: '+painting);
+   }
    continue;
   }
   if(paint.has(op)||op==='rawFillPath'){
    const d=op==='rawFillPath'?pathData(a[1])||'':currentPath;
-   const fill=/fill/i.test(op),stroke=/stroke/i.test(op);
-   if(d){
-     const attrs={d,fill:fill?current.fill:'none',stroke:stroke?current.stroke:'none',
-      transform:'matrix('+current.matrix.map(fmt).join(' ')+')'};
-     if(stroke){attrs['stroke-width']=fmt(current.lineWidth);attrs['stroke-linecap']=['butt','round','square'][current.lineCap]||'butt';attrs['stroke-linejoin']=['miter','round','bevel'][current.lineJoin]||'miter';}
-     if(current.dash.length)attrs['stroke-dasharray']=current.dash.join(' ');
-     if(op.toLowerCase().includes('eo'))attrs['fill-rule']='evenodd';
-     shapes.push(attrs);
-   }
+   const attrs=makePaint(op,d);if(attrs)shapes.push(attrs);
    currentPath='';continue;
   }
   if(op==='endPath'){currentPath='';continue}
