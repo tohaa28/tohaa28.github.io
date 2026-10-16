@@ -11,7 +11,7 @@ try{
  await page.route(url,async route=>{
    const script=[
     "const token='12345678901234567890123412345678';",
-    "window.__vcStatus='opening';window.__vcEvents=[];",
+    "window.__vcStatus='opening';window.__vcEvents=[];window.__vcBlocked=[];",
     "const f=document.getElementById('vc');",
     "window.addEventListener('message',e=>{",
     " if(e.source!==f.contentWindow||e.origin!==location.origin||e.data?.token!==token)return;",
@@ -21,10 +21,10 @@ try{
     " const bytes=new TextEncoder().encode(svg).buffer;",
     " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
-    " setTimeout(()=>f.contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin),2000);",
+    " window.__vcStatus='editing';",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
     " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcStatus='ok';",
-    " }else if(e.data.type==='gwb-vectorcraft-error'){window.__vcStatus='error: '+e.data.message;}",
+    " }else if(e.data.type==='gwb-vectorcraft-error'){if(String(e.data.message).includes('Открытие других документов'))window.__vcBlocked.push(e.data.message);else window.__vcStatus='error: '+e.data.message;}",
     "});",
     "f.src='"+BASE+"vectorcraft/index.html#gwb='+token;"
    ].join('\n');
@@ -32,9 +32,31 @@ try{
    await route.fulfill({status:200,contentType:'text/html',body});
  });
  await page.goto(url,{waitUntil:'load'});
- await page.waitForFunction(()=>window.__vcStatus==='ok'||window.__vcStatus.startsWith('error:'),{timeout:120000});
- const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds}));
+ await page.waitForFunction(()=>window.__vcStatus==='editing'||window.__vcStatus.startsWith('error:'),{timeout:120000});
+ assert.equal(await page.evaluate(()=>window.__vcStatus),'editing','Embedded VectorCraft must open exactly one artwork document');
+ // Attempt to create/open a second document via native keyboard shortcuts.
+ // These must be blocked inside VectorCraft even if the menu is hidden.
+ await page.frameLocator('#vc').locator('#vectorcraft_canvas').click({position:{x:250,y:210}});
+ await page.keyboard.press('Control+n');
+ await page.keyboard.press('Control+o');
+ await page.keyboard.press('Control+Shift+n');
+ // A second valid-looking postMessage must not enqueue another document.
+ await page.evaluate(()=>{
+   const token='12345678901234567890123412345678',f=document.getElementById('vc');
+   const bytes=new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><rect width="90" height="90"/></svg>').buffer;
+   f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'forbidden-second.svg',
+     bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);
+ });
+ await page.waitForFunction(()=>window.__vcBlocked.length===1||window.__vcStatus.startsWith('error:'),{timeout:7000});
+ assert.equal(await page.evaluate(()=>window.__vcBlocked.length),1,'Second imported document rejected by native WASM bridge');
+ await page.evaluate(()=>{
+   const token='12345678901234567890123412345678';
+   document.getElementById('vc').contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);
+ });
+ await page.waitForFunction(()=>window.__vcStatus==='ok'||window.__vcStatus.startsWith('error:'),{timeout:30000});
+ const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds,blocked:window.__vcBlocked}));
  assert.equal(data.status,'ok',JSON.stringify({status:data.status,browserErrors}));
+ assert.equal(data.blocked.length,1,'Only the original document can be opened in embedded VectorCraft');
  assert.ok(data.events.includes('gwb-vectorcraft-ready'));
  assert.ok(data.events.includes('gwb-vectorcraft-opened'));
  assert.ok(data.events.includes('gwb-vectorcraft-svg'));
