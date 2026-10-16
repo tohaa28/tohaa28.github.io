@@ -21,7 +21,12 @@ fn gwb_send(kind: &str, bytes: Option<&[u8]>, note: Option<&str>) {
     if let Some(data)=bytes{set("bytes",&Uint8Array::from(data).into());}
     // Only the immediate parent receives the message. The parent validates both
     // event.source and event.origin before accessing the file.
-    let _=parent.post_message_with_target_origin(&o,"*");
+    use wasm_bindgen::JsCast as _;
+    if let Ok(method)=Reflect::get(parent.as_ref(),&JsValue::from_str("postMessage")){
+        if let Some(call)=method.dyn_ref::<js_sys::Function>(){
+            let _=call.call2(parent.as_ref(),&o,&JsValue::from_str("*"));
+        }
+    }
 }
 fn gwb_install_bridge(host: &Host) {
     use wasm_bindgen::{JsCast, JsValue};
@@ -30,7 +35,7 @@ fn gwb_install_bridge(host: &Host) {
     let inbox=host.inbox.clone();
     let apply=host.bridge_return.clone();
     let repaint=host.bridge_ctx.clone();
-    let listener=wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event|{
+    let listener=wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent|{
         // The token is an unguessable per-editor hash fragment; the parent
         // only sends to this specific embedded VectorCraft iframe.
         let data=event.data();
