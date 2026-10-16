@@ -475,6 +475,9 @@
       '#gwbLogoEditor .gwb-ve-footer{min-height:34px;display:flex;align-items:center;gap:18px;padding:7px 17px;border-top:1px solid #d4dfdc;background:#fff;color:#63757b}',
       '#gwbLogoEditor .gwb-ve-footer span:first-child{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '#gwbLogoEditor .gwb-ve-hiddenfile{display:none}',
+      '#gwbLogoEditor .gwb-ve-crop-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}',
+      '#gwbLogoEditor .gwb-ve-crop-grid label{display:grid;gap:3px;font-size:11px}',
+      '#gwbLogoEditor .gwb-ve-crop-grid input{width:100%!important}',
       '#gwbLogoEditor .gwb-ve-separator{border-left:1px solid #dae1df;height:24px;margin:0 6px}',
       '@media(max-width:850px){#gwbLogoEditor .gwb-ve-main{grid-template-columns:1fr 205px}#gwbLogoEditor .gwb-ve-aside{padding:10px}#gwbLogoEditor .gwb-ve-stage{padding:18px}}',
       '@media(max-width:600px){#gwbLogoEditor .gwb-ve-main{display:flex;flex-direction:column}#gwbLogoEditor .gwb-ve-aside{max-height:200px;border-left:0;border-top:1px solid #dae1df}#gwbLogoEditor .gwb-ve-header{padding:8px}#gwbLogoEditor .gwb-ve-header button{padding:6px}}'
@@ -490,10 +493,11 @@
       '<button type="button" data-tool="rect">▭ Прямоугольник</button><button type="button" data-tool="ellipse">◯ Эллипс</button>',
       '<button type="button" data-tool="line">╱ Линия</button><button type="button" data-tool="pen">⌁ Контур</button>',
       '<button type="button" data-tool="free">✎ Карандаш</button><button type="button" data-tool="text">T Текст</button>',
+      '<button type="button" data-tool="nodes" title="Перемещать узлы и управляющие точки кривых Безье">Узлы (N)</button><button type="button" id="gwbVeSmooth">Сгладить контур</button>',
       '<i class="gwb-ve-separator"></i><button type="button" id="gwbVeNew">Новый</button><button type="button" id="gwbVeImport">+ Изображение</button>',
       '<input class="gwb-ve-hiddenfile" id="gwbVeImageFile" type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp">',
       '<button type="button" id="gwbVeUndo">↶ Отменить</button><button type="button" id="gwbVeRedo">↷ Повторить</button>',
-      '<button type="button" id="gwbVeDuplicate">Дублировать</button><button type="button" id="gwbVeUngroup">Разгруппировать</button><button type="button" id="gwbVeDelete">Удалить</button>',
+      '<button type="button" id="gwbVeDuplicate">Дублировать</button><button type="button" id="gwbVeGroup">Группировать</button><button type="button" id="gwbVeUngroup">Разгруппировать</button><button type="button" id="gwbVeDelete">Удалить</button>',
       '<button type="button" id="gwbVeFit">Вписать</button><button type="button" id="gwbVeMinus">−</button><span id="gwbVeZoomText">100%</span><button type="button" id="gwbVePlus">+</button></div>',
       '<div class="gwb-ve-main"><div class="gwb-ve-stage" id="gwbVeStage">',
       '<svg id="gwbVeCanvas" class="gwb-ve-page" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600"><g id="gwbVeLayer"></g><g id="gwbVeUi"></g></svg>',
@@ -506,6 +510,12 @@
       '<label>Поворот, ° <input type="number" id="gwbVeRotation" step="15" value="0"></label>',
       '<div id="gwbVeTextBox" hidden><h3>Содержимое текста</h3><textarea id="gwbVeText" rows="3" style="width:100%;resize:vertical"></textarea>',
       '<label>Размер <input type="number" id="gwbVeFont" value="48" min="1" max="500" step="1"></label></div>',
+      '<h3>Растр: обрезка, % от края</h3>',
+      '<div class="gwb-ve-crop-grid"><label>Слева<input id="gwbVeCropleft" type="number" min="0" max="95" value="0"></label>',
+      '<label>Сверху<input id="gwbVeCroptop" type="number" min="0" max="95" value="0"></label>',
+      '<label>Справа<input id="gwbVeCropright" type="number" min="0" max="95" value="0"></label>',
+      '<label>Снизу<input id="gwbVeCropbottom" type="number" min="0" max="95" value="0"></label></div>',
+      '<button id="gwbVeCrop" type="button">Обрезать выделенный растр</button>',
       '<h3>Объекты / слои</h3><div id="gwbVeLayers"></div>',
       '<div style="display:flex;gap:6px"><button id="gwbVeUp" type="button">Выше ↑</button><button id="gwbVeDown" type="button">Ниже ↓</button></div>',
       '<p class="gwb-ve-small">SVG сохраняет векторные контуры. Растровые изображения остаются растром внутри SVG, а текст — редактируемым текстом, не кривыми. Для типографии учитывайте требования нанесения.</p>',
@@ -524,6 +534,9 @@
     $('gwbVeImageFile').onchange=async e=>{try{await importFile(e.target.files?.[0],false)}catch(err){status=err.message;refresh()}finally{e.target.value=''}};
     $('gwbVeUndo').onclick=()=>undo(-1);$('gwbVeRedo').onclick=()=>undo(1);
     $('gwbVeDuplicate').onclick=duplicate;$('gwbVeDelete').onclick=deleteSelected;
+    $('gwbVeGroup').onclick=groupSelection;
+    $('gwbVeSmooth').onclick=smoothSelected;
+    $('gwbVeCrop').onclick=()=>void cropSelected();
     $('gwbVeUngroup').onclick=ungroupSelected;
     $('gwbVeUp').onclick=()=>moveLayer(1);$('gwbVeDown').onclick=()=>moveLayer(-1);
     $('gwbVeFit').onclick=fit;$('gwbVePlus').onclick=()=>setZoom(zoom*1.25);$('gwbVeMinus').onclick=()=>setZoom(zoom/1.25);
@@ -553,6 +566,7 @@
       }
       if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected()}
       else if(e.key.toLowerCase()==='v')setTool('select');
+      else if(e.key.toLowerCase()==='n')setTool('nodes');
       else if(e.key==='Enter'&&tool==='pen')finishPen();
     },true);
     window.addEventListener('beforeunload',e=>{if(active&&dirty){e.preventDefault();e.returnValue=''}});
