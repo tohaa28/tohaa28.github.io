@@ -15,6 +15,16 @@ window.gwbGetActiveLogoForEditor=function(){
   return {
     token:[y.active,placement.fieldIndex,placement.page,art?.name||""].join("|"),
     fieldIndex:placement.fieldIndex,
+    // Both the template field and the artwork placement use real millimetres.
+    fieldSizeMm:{w:placement.field.w,h:placement.field.h},
+    placementMm:placement.placement?{
+      x:placement.placement.x-placement.field.x,
+      y:placement.placement.y-placement.field.y,
+      w:placement.placement.w,
+      h:placement.placement.h,
+      rotation:placement.placement.rotation||0,
+      clipToField:!!placement.placement.clipToField
+    }:null,
     name:art?.name||"",
     ext:art?.ext||"",
     file:art?.bytes?.length?new File([art.bytes],art.name,{type:art.mime||"application/octet-stream"}):null,
@@ -38,7 +48,7 @@ window.gwbGetPdfLogoVectorOps=async function(token){
     })
   };
 };
-window.gwbApplyEditedLogoToActiveField=async function(file,token){
+window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
   if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||!(/\.svg$/i.test(file.name)))throw new Error("Редактор должен передать SVG до 40 МБ");
   if(y.busy)throw new Error("Макетная сейчас занята; повторите сохранение");
   Ft();
@@ -52,7 +62,19 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token){
     const still=y.placements?.[y.active];
     if(still!==target||[y.active,still.fieldIndex,still.page,still.art?.name||""].join("|")!==token)
       throw new Error("Во время обработки было выбрано другое поле; старый логотип сохранён");
-    const keep=target.placement?{...target.placement}:Ze(target.field,next);
+    let keep=target.placement?{...target.placement}:Ze(target.field,next);
+    if(options?.fieldCanvas===true){
+      const actualSize=target.field;
+      const provided=options.fieldSizeMm;
+      if(!provided||!Number.isFinite(provided.w)||!Number.isFinite(provided.h)||
+        Math.abs(provided.w-actualSize.w)>0.01||Math.abs(provided.h-actualSize.h)>0.01)
+        throw new Error("Размер поля нанесения изменился; сохранение отменено");
+      // The imported SVG now contains the full field-sized artboard with the
+      // original placement baked into the editable vector artwork itself.
+      // Therefore it must occupy the entire template field exactly once.
+      keep={x:actualSize.x,y:actualSize.y,w:actualSize.w,h:actualSize.h,
+        rotation:0,clipToField:!!keep.clipToField};
+    }
     target.art=next;target.placement=keep;
     y.art=next;y.placement=keep;
     v("artworkName").textContent=file.name;
