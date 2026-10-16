@@ -7,7 +7,7 @@ try{
   const page=await browser.newPage({viewport:{width:1440,height:900},acceptDownloads:true});
   page.on('pageerror',e=>errors.push(e.message));
   page.on('dialog',d=>d.accept());
-  await page.setContent('<!doctype html><html><head></head><body><div id="fieldLogoTools"><button id="editorOpenLogoEditor">Редактор логотипа</button></div><input id="artwork" type="file" accept=".svg,.png,.jpg"><p id="status"></p></body></html>');
+  await page.setContent('<!doctype html><html><head></head><body><div id="fieldLogoTools"><button id="editorOpenLogoEditor">Редактор логотипа</button></div><input id="artwork" type="file" accept=".svg,.png,.jpg"><span id="artworkName">Выбрать файл</span><p id="status"></p></body></html>');
   await page.evaluate(()=>{window.__changes=[];document.getElementById('artwork').addEventListener('change',e=>window.__changes.push(e.target.files[0]?.name||''))});
   await page.addScriptTag({path:'assets/logo-editor.js'});
   await page.click('#editorOpenLogoEditor');
@@ -38,6 +38,15 @@ try{
   assert.match(first.content,/<rect\b/);
   assert.match(first.content,/Тестовый логотип/);
   assert.equal(first.events.length,1,'Return triggers normal file change event exactly once');
+  await page.evaluate(()=>{
+    const el=document.getElementById('artwork');
+    document.getElementById('artworkName').textContent=el.files[0].name;
+    el.value=''; // the original Maketnaya uploader does this after import
+  });
+  await page.click('#editorOpenLogoEditor');
+  await page.locator('#gwbVeLayer text').first().waitFor({state:'attached'});
+  assert.equal(await page.locator('#gwbVeLayer text').count(),1,'Editor can re-open current artwork after host clears input.value');
+  await page.click('#gwbVeCancel');
   await page.locator('#artwork').setInputFiles({name:'import.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 250 160"><script>window.__svgInjected=1</script><path d="M 10 20 L 60 20 L 60 75 Z" fill="#123456"/><image href="https://untrusted.example/track.png" x="0" y="0" width="20" height="20"/></svg>')});
   await page.click('#editorOpenLogoEditor');
   await page.locator('#gwbVeLayer path').first().waitFor({state:'attached'});
