@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const baseline="12b73cfab8589e119f8a7a0f9262a1b21825a9aa454be96e6b74c8e9ff32d26e";
-const expected="0530ad87aacc148e437267c62e5995fb272f5cc09b113ab8d687c07ad336874d";
+const expected="99b12826b63a21be663dcf4ef78f2717748c84604480fc50b6f9162e86903fcc";
 const edits=[
   [
     "",
@@ -459,18 +459,6 @@ const edits=[
   [
     "./logo-preflight.mjs?v=20261015-underbase-1",
     "./logo-preflight.mjs?v=20261015-server-1"
-  ],
-  [
-    "",
-    "import {mountVectorExternalEditor,restorePlacement} from './vector-external-editor.mjs?v=20261016-1';\nlet gwbVectorBridge;\n"
-  ],
-  [
-    "gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});\n;window.gwbBuildMockupHandoff",
-    "gwbArtworkView=installArtworkView({canvas:pt,getState:()=>y});\ngwbVectorBridge=mountVectorExternalEditor({\n getActive:()=>{\n   const p=y.placements[y.active];\n   return p?.art&&p?.placement?{art:p.art,fieldIndex:p.fieldIndex,\n     key:String(y.active)+\":\"+String(p.fieldIndex)+\":\"+String(p.page)}:null;\n },\n applyEdited:async(file,snapshot)=>{\n   const p=y.placements[y.active];\n   const key=String(y.active)+\":\"+String(p?.fieldIndex)+\":\"+String(p?.page);\n   if(!p||p.art!==snapshot.art||key!==snapshot.key)throw Error(\"Место нанесения изменилось; исходный логотип не заменён.\");\n   if(y.busy)throw Error(\"Дождитесь завершения текущей операции.\");\n   y.busy=true;\n   try{\n     const edited=await Qe(file,\"art\");\n     if(p.art!==snapshot.art)throw Error(\"Исходный логотип был заменён другим инструментом.\");\n     const nextPlacement=restorePlacement(p.placement,p.art,edited);\n     p.art=edited;p.placement=nextPlacement;y.art=edited;y.placement=nextPlacement;\n     v(\"artworkName\").textContent=edited.name;\n     _t();X();\n   }finally{y.busy=false;X();}\n },\n afterReturn:()=>Q(\"Векторный логотип обновлён в выбранном поле.\")\n});\n;window.gwbBuildMockupHandoff"
-  ],
-  [
-    "v(\"editorAddLogo\").textContent=E?\"Заменить логотип\":\"Добавить логотип\",v(\"editorFit\").disabled",
-    "v(\"editorAddLogo\").textContent=E?\"Заменить логотип\":\"Добавить логотип\",gwbVectorBridge?.update(),v(\"editorFit\").disabled"
   ]
 ];
 export function applyLogoPreflight(){

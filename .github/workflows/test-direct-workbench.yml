@@ -1280,8 +1280,6 @@ jobs:
           await verifyMethodAdmin(frame);
           const {verifyVectorView}=await import('./tests/vector-view-browser.mjs');
           await verifyVectorView(frame);
-          const {verifyVectorExternal}=await import('./tests/vector-external-browser.mjs');
-          await verifyVectorExternal(frame);
           const {verifyMockupCylinder}=await import('./tests/mockup-cylinder-browser.mjs');
           await verifyMockupCylinder(browserContext);
           // A one-article order auto-selects its product, but MUST show the
