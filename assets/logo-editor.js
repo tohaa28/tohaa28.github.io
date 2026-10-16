@@ -117,9 +117,22 @@
     const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(ctm.inverse());
     return {x:p.x,y:p.y};
   }
+  const EDITABLE=new Set(['path','rect','circle','ellipse','line','polygon','polyline','image','text','g','svg']);
   function owner(n){
-    while(n&&n.parentNode!==layer)n=n.parentNode;
-    return n&&n.parentNode===layer?n:null;
+    // Imported vectors may be several levels deep (g > svg > g > path).
+    // Return the graphic itself rather than the top-level import wrapper.
+    while(n&&n!==layer&&n!==svg){
+      if(n.nodeType===1&&EDITABLE.has(n.localName)&&layer.contains(n)&&
+        !n.closest('defs,clipPath,mask,pattern,symbol,marker'))return n;
+      n=n.parentNode;
+    }
+    return null;
+  }
+  function parentPoint(el,e){
+    const matrix=el?.parentNode?.getScreenCTM?.();
+    if(!matrix)return point(e);
+    const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(matrix.inverse());
+    return {x:p.x,y:p.y};
   }
   function bbox(el){
     if(!el||typeof el.getBBox!=='function')return null;
@@ -134,7 +147,7 @@
     }catch{return null}
   }
   function select(el,add=false){
-    const next=el&&el.parentNode===layer?el:null;
+    const next=el&&el!==layer&&layer.contains(el)?el:null;
     if(add&&next){
       if(multi.includes(next))multi=multi.filter(n=>n!==next);
       else multi.push(next);
@@ -143,7 +156,10 @@
     refresh();
   }
   function groupSelection(){
-    const nodes=Array.from(layer.children).filter(n=>multi.includes(n));
+    const nodes=multi.filter(n=>layer.contains(n));
+    if(nodes.length>=2&&nodes.some(n=>n.parentNode!==nodes[0].parentNode)){
+      status='Группировка объектов из разных вложенных групп не поддерживается. Сначала разгруппируйте их.';refresh();return;
+    }
     if(nodes.length<2){status='Для группировки выделите два или больше объектов с Shift.';refresh();return}
     const group=S('g',{'data-label':'Группа'});
     nodes[0].before(group);
@@ -199,13 +215,21 @@
     drawHandles();
     const kids=Array.from(layer.children).filter(n=>n.localName!=='defs');
     layersPanel.replaceChildren();
-    kids.slice().reverse().forEach((n,i)=>{
-      const b=document.createElement('button');b.type='button';b.className='gwb-ve-layer'+(n===selected?' is-selected':'');
-      b.textContent=(n.dataset.label||({text:'Текст',image:'Растр',path:'Контур',rect:'Прямоугольник',ellipse:'Эллипс',circle:'Окружность',line:'Линия',g:'Группа'}[n.localName]||n.localName))+' · '+(kids.length-i);
-      b.onclick=()=>select(n);layersPanel.append(b);
-    });
+    let objectNumber=0;
+    function appendTree(node,depth){
+      if(!EDITABLE.has(node.localName))return;
+      const b=document.createElement('button');b.type='button';
+      b.className='gwb-ve-layer'+(node===selected?' is-selected':'');
+      b.style.paddingLeft=(9+Math.min(depth,8)*13)+'px';
+      const name=node.dataset.label||({svg:'SVG',text:'Текст',image:'Растр',path:'Контур',rect:'Прямоугольник',ellipse:'Эллипс',circle:'Окружность',line:'Линия',g:'Группа'}[node.localName]||node.localName);
+      b.textContent=(depth?'↳ ':'')+name+' · '+(++objectNumber);
+      b.onclick=()=>select(node);layersPanel.append(b);
+      if(depth<12&&['g','svg'].includes(node.localName))
+        for(const child of Array.from(node.children))appendTree(child,depth+1);
+    }
+    kids.slice().reverse().forEach(n=>appendTree(n,0));
     $('gwbVeEmpty').hidden=kids.length>0;
-    $('gwbVeGroup').disabled=multi.length<2;
+    $('gwbVeGroup').disabled=multi.length<2||multi.some(n=>n.parentNode!==multi[0].parentNode);
     $('gwbVeSmooth').disabled=!selected||!['path','polyline','polygon'].includes(selected.localName);
     $('gwbVeCrop').disabled=!selected||selected.localName!=='image';
     $('gwbVeUndo').disabled=index<=0;
@@ -241,12 +265,29 @@
     if(!file)return;
     if(file.size>MAX_FILE)throw Error('Файл больше 25 МБ. Для редактора требуется меньший исходник.');
     const type=file.type,ext=(file.name.split('.').pop()||'').toLowerCase();
-    if(!['svg','png','jpg','jpeg','webp'].includes(ext)&&!/^image\/(svg\+xml|png|jpeg|webp)$/.test(type)){
+    if(!['svg','pdf','ai','png','jpg','jpeg','webp'].includes(ext)&&!/^image\/(svg\+xml|png|jpeg|webp)$/.test(type)){
       sourceUnsupported=true;
       throw Error('Встроенное редактирование '+(ext||'этого формата').toUpperCase()+' пока не поддерживается. Исходник остаётся в Макетной без изменений. Для редактирования здесь откройте SVG, PNG или JPG либо создайте новый логотип.');
     }
     const xml=ext==='svg'||type==='image/svg+xml';
-    if(reset){layer.replaceChildren();selected=null;W=900;H=600}
+    if(reset){layer.replaceChildren();selected=null;multi=[];W=900;H=600}
+    if(ext==='pdf'||ext==='ai'){
+      if(!window.gwbImportPdfVector||typeof window.gwbGetPdfLogoVectorOps!=='function'||!openedToken){
+        sourceUnsupported=true;throw Error('Для редактирования PDF/AI откройте логотип, уже размещённый в поле Макетной. Исходник сохранён.');
+      }
+      let vector;
+      try{vector=window.gwbImportPdfVector.convert(await window.gwbGetPdfLogoVectorOps(openedToken))}
+      catch(error){sourceUnsupported=true;throw error}
+      if(reset){W=clamp(vector.width,1,10000);H=clamp(vector.height,1,10000)}
+      const group=S('g',{'data-label':file.name+' · контуры PDF'});
+      for(const attributes of vector.shapes)group.append(S('path',attributes));
+      layer.append(group);
+      hasFonts=false;sourceUnsupported=false;
+      if(reset){history=[];index=-1;zoom=1;loadedName=file.name.replace(/\.[^.]+$/,'');sizeStage();snapshot(true);dirty=false;fit()}else snapshot();
+      select(group.firstElementChild);
+      status='Контуры PDF/AI импортированы как настоящие векторные объекты. Выбирайте любой контур или его узлы.';
+      refresh();return;
+    }
     if(xml){
       const string=await file.text();
       const documentSvg=new DOMParser().parseFromString(string,'image/svg+xml');
@@ -283,6 +324,7 @@
       const image=S('image',{x:reset?0:W*.2,y:reset?0:H*.2,width:img.naturalWidth*scale,height:img.naturalHeight*scale,preserveAspectRatio:'xMidYMid meet','data-label':file.name});
       image.setAttributeNS(XL,'href',uri);layer.appendChild(image);
     }
+    sourceUnsupported=false;
     if(reset){history=[];index=-1;zoom=1;loadedName=file.name.replace(/\.[^.]+$/,'');sizeStage();snapshot(true);dirty=false;fit()}
     else snapshot();
     select(layer.lastElementChild);
@@ -312,7 +354,7 @@
     }
     if(tool==='select'){
       const obj=owner(e.target);select(obj,e.shiftKey);
-      if(obj&&!e.shiftKey)gesture={type:'move',a:p,el:obj,transform:obj.getAttribute('transform')||''};
+      if(obj&&!e.shiftKey)gesture={type:'move',a:parentPoint(obj,e),el:obj,transform:obj.getAttribute('transform')||''};
     }else if(tool==='text'){
       const obj=S('text',{x:p.x,y:p.y,fill:'#253841','font-family':'Arial, sans-serif','font-size':Math.max(18,Math.round(H/18))});
       obj.textContent='Текст';layer.append(obj);select(obj);snapshot();
@@ -341,7 +383,7 @@
       seg[key]=local.x;seg[yk]=local.y;
       g.el.setAttribute('d',window.gwbLogoPath.stringify(g.segments));
     }else if(g.type==='move'){
-      const dx=p.x-g.a.x,dy=p.y-g.a.y;
+      const pp=parentPoint(g.el,e),dx=pp.x-g.a.x,dy=pp.y-g.a.y;
       g.el.setAttribute('transform','translate('+dx+' '+dy+') '+g.transform);
     }else if(g.type==='scale'){
       const b=g.b,dir=g.handle,dx=p.x-g.a.x,dy=p.y-g.a.y;
@@ -636,7 +678,7 @@
     }
     if(file){
       try{await importFile(file,true)}
-      catch(err){status=err.message;refresh()}
+      catch(err){sourceUnsupported=true;status=err.message;refresh()}
     }
     else if(!bridge&&typeof window.gwbGetActiveLogoForEditor!=='function'&&
       typeof window.gwbGetEditorReadiness==='function'&&window.gwbGetEditorReadiness()?.logoReady){
@@ -653,6 +695,7 @@
     if(gesture?.type==='pen')finishPen();
     const input=$('artwork');
     if(!input){status='Поле загрузки логотипа не найдено';refresh();return}
+    if(sourceUnsupported){status='Исходный вектор не удалось импортировать без потерь. Нажмите «Новый» для сознательной замены файла или импортируйте SVG.';refresh();return}
     if(!layer.children.length){status='Добавьте хотя бы один объект перед применением';refresh();return}
     if(layer.querySelector('image')&&!confirm('В изображении присутствует растр. Даже внутри SVG он не становится векторным. Продолжить?'))return;
     const blob=svgBlob(),file=new File([blob],escapeName(loadedName)+'-edited.svg',{type:'image/svg+xml',lastModified:Date.now()});
