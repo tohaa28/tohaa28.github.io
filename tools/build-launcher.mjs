@@ -1,7 +1,9 @@
 import {applyLogoPreflight} from './patch-artwork-preflight.mjs';
 import {stampComponentVersions} from './stamp-component-versions.mjs';
+import {applyLogoEditorBridge} from './patch-logo-editor-bridge.mjs';
 import {launcherCss,motionMarkup,MOTION_DURATION_MS} from './launcher-motion.mjs';
 applyLogoPreflight();
+applyLogoEditorBridge();
 stampComponentVersions();
 import fs from "node:fs";
 
