@@ -81,6 +81,7 @@ try{
   await page.locator('#gwbVeCropleft').fill('20');
   await page.locator('#gwbVeCroptop').fill('20');
   await page.click('#gwbVeCrop');
+  await page.waitForFunction(()=>Number(document.querySelector('#gwbVeLayer image')?.getAttribute('width'))<1,{timeout:3000}).catch(async error=>{throw Error(error.message+' | status='+await page.locator('#gwbVeStatus').textContent())});
   const cropped=await page.locator('#gwbVeLayer image').getAttribute('width');
   assert.ok(Number(cropped)<1,'Raster crop updates the SVG image bounds');
   await page.click('#gwbVeApply');
