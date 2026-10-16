@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import fs from 'node:fs';
+assert.match(fs.readFileSync('assets/index-BpU9kvz8.js','utf8'),/gwbGetActiveLogoForEditor=function\(\)/,'Published bundle must expose the actual selected logo');
+assert.match(fs.readFileSync('assets/index-BpU9kvz8.js','utf8'),/gwbApplyEditedLogoToActiveField=async function/,'Published bundle must preserve placement when replacing artwork');
 
 const browser=await chromium.launch({headless:true});
 const errors=[];
@@ -9,6 +12,7 @@ try{
   page.on('dialog',d=>d.accept());
   await page.setContent('<!doctype html><html><head></head><body><div id="fieldLogoTools"><button id="editorOpenLogoEditor">Редактор логотипа</button></div><input id="artwork" type="file" accept=".svg,.png,.jpg"><span id="artworkName">Выбрать файл</span><p id="status"></p></body></html>');
   await page.evaluate(()=>{window.__changes=[];document.getElementById('artwork').addEventListener('change',e=>window.__changes.push(e.target.files[0]?.name||''))});
+  await page.addScriptTag({path:'assets/logo-path.js'});
   await page.addScriptTag({path:'assets/logo-editor.js'});
   await page.click('#editorOpenLogoEditor');
   assert.equal(await page.locator('#gwbLogoEditor').isVisible(),true,'Logo editor opens in the existing Maketnaya page');
@@ -56,6 +60,17 @@ try{
   assert.equal(await page.locator('#gwbVeLayer image[href]').count(),0,'Removes external SVG image links');
   await page.click('#gwbVeUngroup');
   assert.equal(await page.locator('#gwbVeLayer > path').count(),1,'Ungroup exposes editable SVG elements');
+  await page.click('#gwbVeSmooth');
+  const smooth=await page.locator('#gwbVeLayer > path').getAttribute('d');
+  assert.match(smooth,/C /,'Smooth polyline creates real cubic Bezier segments');
+  await page.locator('[data-tool="nodes"]').click();
+  assert.ok(await page.locator('#gwbVeUi [data-path-index]').count()>1,'Bezier node and control handles are exposed');
+  const beforeNode=await page.locator('#gwbVeLayer > path').getAttribute('d');
+  const handle=page.locator('#gwbVeUi [data-path-index="1"][data-path-key="x"]').first();
+  const pos=await handle.boundingBox();
+  await page.mouse.move(pos.x+pos.width/2,pos.y+pos.height/2);
+  await page.mouse.down();await page.mouse.move(pos.x+pos.width/2+15,pos.y+pos.height/2+9,{steps:5});await page.mouse.up();
+  assert.notEqual(await page.locator('#gwbVeLayer > path').getAttribute('d'),beforeNode,'Dragging a node changes the vector path, not a raster preview');
   await page.click('#gwbVeApply');
   const vector=await page.locator('#artwork').evaluate(async e=>await e.files[0].text());
   assert.match(vector,/<path\b/);assert.doesNotMatch(vector,/<script/);
@@ -63,10 +78,51 @@ try{
   await page.click('#editorOpenLogoEditor');
   await page.locator('#gwbVeLayer image').first().waitFor({state:'attached'});
   assert.equal(await page.locator('#gwbVeLayer image').count(),1,'Raster is represented as an embedded image');
+  await page.locator('#gwbVeCropleft').fill('20');
+  await page.locator('#gwbVeCroptop').fill('20');
+  await page.click('#gwbVeCrop');
+  const cropped=await page.locator('#gwbVeLayer image').getAttribute('width');
+  assert.ok(Number(cropped)<1,'Raster crop updates the SVG image bounds');
   await page.click('#gwbVeApply');
   const raster=await page.locator('#artwork').evaluate(async e=>await e.files[0].text());
   assert.match(raster,/<image\b/,'Raster remains detectable inside output SVG');
   assert.match(raster,/data:image\/png;base64,/);
+  // When the host has cleared <input type=file>, use the active placement bytes,
+  // not any old file remembered by name. Verify the selected field is the only target.
+  await page.evaluate(()=>{
+    const enc=s=>new File([s],'same-name.svg',{type:'image/svg+xml'});
+    window.__placements=[
+      enc('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"><text x="5" y="25">Поле ОДИН</text></svg>'),
+      enc('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"><text x="5" y="25">Поле ДВА</text></svg>')
+    ];
+    window.__current=1;window.__applyCalls=[];
+    window.gwbGetActiveLogoForEditor=()=>{
+      const i=window.__current;
+      return {token:i+'|same-name.svg',fieldIndex:i,hasArtwork:true,file:window.__placements[i],name:'same-name.svg'};
+    };
+    window.gwbApplyEditedLogoToActiveField=async(file,token)=>{
+      const expected=window.__current+'|same-name.svg';
+      if(token!==expected)throw Error('Wrong field');
+      window.__applyCalls.push({index:window.__current,token});
+      window.__placements[window.__current]=file;
+    };
+    document.getElementById('artwork').value='';
+  });
+  await page.click('#editorOpenLogoEditor');
+  await page.getByText('Поле ДВА',{exact:true}).first().waitFor();
+  assert.equal(await page.locator('#gwbVeLayer text').textContent(),'Поле ДВА','Existing selected placement is shown, despite equal filenames');
+  await page.locator('#gwbVeText').fill('Исправлено второе');
+  await page.locator('#gwbVeText').dispatchEvent('change');
+  await page.click('#gwbVeApply');
+  assert.equal(await page.locator('#gwbLogoEditor').isVisible(),false);
+  const afterBridge=await page.evaluate(async()=>({
+    original:await window.__placements[0].text(),
+    edited:await window.__placements[1].text(),
+    calls:window.__applyCalls
+  }));
+  assert.match(afterBridge.original,/Поле ОДИН/,'Other placement must remain untouched');
+  assert.match(afterBridge.edited,/Исправлено второе/,'Edited artwork replaces only active placement');
+  assert.deepEqual(afterBridge.calls,[{index:1,token:'1|same-name.svg'}]);
   assert.deepEqual(errors,[],'Browser JavaScript remains free of unhandled errors');
-  console.log('Integrated SVG logo editor: create / text / undo / import / sanitize / ungroup / raster / apply passed');
+  console.log('Integrated logo editor: original selected field / cubic Bezier nodes / crop / SVG sanitization / vector-raster validation passed');
 }finally{await browser.close()}
