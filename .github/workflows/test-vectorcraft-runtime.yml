@@ -27,3 +27,4 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Exercise genuine deployed VectorCraft WebAssembly
         run: node tests/vectorcraft-runtime-browser.mjs
+# Reload after verified document-open acknowledgment: test production WASM release 38902782144.
