@@ -48,16 +48,18 @@ async function receive(event){
       const bytes=d.bytes instanceof Uint8Array?d.bytes:null;
       if(!bytes||bytes.byteLength===0||bytes.byteLength>40*1024*1024)throw Error('Некорректный или слишком большой SVG');
       const raw=new TextDecoder().decode(bytes);
-      const exact=window.gwbVectorcraftField.normalizeExport(raw,s.fieldSizeMm);
-      const file=new File([exact],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft.svg',{type:'image/svg+xml'});
-      const xml=new DOMParser().parseFromString(exact,'image/svg+xml');
+      const cropped=window.gwbVectorcraftField.normalizeExport(raw,s.fieldSizeMm,d.logoBoundsMm);
+      const file=new File([cropped.svg],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft.svg',{type:'image/svg+xml'});
+      const xml=new DOMParser().parseFromString(cropped.svg,'image/svg+xml');
       if(xml.querySelector('script,foreignObject'))throw Error('SVG содержит неподдерживаемые исполняемые элементы');
       const warnings=String(d.message||'').trim();
       if(warnings&&!confirm('VectorCraft сообщает об особенностях экспорта:\n'+warnings.slice(0,900)+'\nПрименить результат?')){s.apply.disabled=false;notice(s,'Экспорт отменён. Исходный макет сохранён.');return}
       if(active!==s)return;
       if(typeof window.gwbApplyEditedLogoToActiveField!=='function')throw Error('Мост к выбранному полю Макетной недоступен');
       notice(s,'Сохраняем изменённый вектор в выбранном поле…');
-      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{fieldCanvas:s.fieldCanvas,fieldSizeMm:s.fieldSizeMm});
+      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{
+        artworkBoundsMm:cropped.boundsMm,fieldSizeMm:s.fieldSizeMm
+      });
       if(active===s)close(true);
     }catch(error){
       s.apply.disabled=false;
