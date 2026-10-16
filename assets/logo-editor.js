@@ -468,7 +468,7 @@
     const slotFile=sourceFilesBySlot.get(slot)||null;
     const labelFile=sourceFilesByName.get(label)||null;
     const file=artInput?.files?.[0]||slotFile||
-      (labelFile&&(!sourceFilesBySlot.size||Array.from(sourceFilesBySlot.values()).includes(labelFile))?labelFile:null);
+      (!sourceFilesBySlot.size?labelFile:null);
     if(file){try{await importFile(file,true)}catch(err){status=err.message;refresh()}}
     else if(typeof window.gwbGetEditorReadiness==='function'&&window.gwbGetEditorReadiness()?.logoReady){status='Редактору недоступен исходный файл текущего логотипа. Рисование создаст новый SVG и заменит логотип только после нажатия «Применить в шаблоне».';refresh()}
     fit();refresh();
