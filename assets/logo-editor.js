@@ -29,6 +29,7 @@
         ||((key==='href'||key==='xlink:href')&&!(/^#[\w.:-]+$/.test(v)||/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(v)))
         ||/^(?:http:|https:|\/\/)/i.test(v))node.removeAttributeNode(attr);
     }
+    if(node.localName==='image'&&!node.getAttribute('href')&&!node.getAttributeNS(XL,'href')){node.remove();return}
     for(const child of Array.from(node.childNodes))scrub(child);
   }
   function serialize(){
