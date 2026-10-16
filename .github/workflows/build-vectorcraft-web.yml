@@ -7,6 +7,7 @@ on:
     paths:
       - "tools/patch-vectorcraft-upstream.py"
       - "tools/vectorcraft-bridge.rs"
+      - "tools/patch-vectorcraft-single-field.py"
       - ".github/workflows/build-vectorcraft-web.yml"
   workflow_dispatch:
 
@@ -49,6 +50,8 @@ jobs:
           cargo install trunk --locked --version 0.21.14
       - name: Patch VectorCraft browser I/O at pinned source
         run: python3 maketnaya/tools/patch-vectorcraft-upstream.py vectorcraft
+      - name: Lock embedded VectorCraft to the active Maketnaya document
+        run: python3 maketnaya/tools/patch-vectorcraft-single-field.py vectorcraft
       - name: Compile actual VectorCraft WebAssembly
         run: |
           set -euo pipefail
