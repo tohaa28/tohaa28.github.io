@@ -65,6 +65,17 @@ jobs:
           cp vectorcraft/LICENSE-MIT vectorcraft/dist/web/
           cp vectorcraft/NOTICE vectorcraft/dist/web/
           echo 8bc65329286dc1b84aa392997bb205613c3e96cb > vectorcraft/dist/web/UPSTREAM_COMMIT
+      - name: Install browser test dependencies
+        run: |
+          set -euo pipefail
+          cd maketnaya
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Run real VectorCraft browser document roundtrip
+        run: |
+          set -euo pipefail
+          cd maketnaya
+          node tests/vectorcraft-wasm-browser.mjs ../vectorcraft/dist/web
       - name: Checkout published GitHub Pages branch
         uses: actions/checkout@v4
         with:
