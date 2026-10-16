@@ -17,13 +17,13 @@ try{
     " if(e.source!==f.contentWindow||e.origin!==location.origin||e.data?.token!==token)return;",
     " window.__vcEvents.push(e.data.type);",
     " if(e.data.type==='gwb-vectorcraft-ready'){",
-    " const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100mm\" height=\"50mm\" viewBox=\"0 0 100 50\"><rect x=\"10\" y=\"10\" width=\"70\" height=\"50\" fill=\"#88cc11\"/></svg>';",
+    " const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120mm\" height=\"80mm\" viewBox=\"0 0 120 80\"><rect x=\"12\" y=\"8\" width=\"40\" height=\"18\" fill=\"#88cc11\"/></svg>';",
     " const bytes=new TextEncoder().encode(svg).buffer;",
-    " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:90,h:45},fieldCanvas:false},location.origin,[bytes]);",
+    " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
     " setTimeout(()=>f.contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin),2000);",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
-    " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcStatus='ok';",
+    " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcStatus='ok';",
     " }else if(e.data.type==='gwb-vectorcraft-error'){window.__vcStatus='error: '+e.data.message;}",
     "});",
     "f.src='"+BASE+"vectorcraft/index.html#gwb='+token;"
@@ -33,7 +33,7 @@ try{
  });
  await page.goto(url,{waitUntil:'load'});
  await page.waitForFunction(()=>window.__vcStatus==='ok'||window.__vcStatus.startsWith('error:'),{timeout:120000});
- const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||''}));
+ const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds}));
  assert.equal(data.status,'ok',JSON.stringify({status:data.status,browserErrors}));
  assert.ok(data.events.includes('gwb-vectorcraft-ready'));
  assert.ok(data.events.includes('gwb-vectorcraft-opened'));
@@ -46,7 +46,12 @@ try{
    const v=(root.getAttribute('viewBox')||'').split(/\s+/).map(Number);
    return {w:v[2]*25.4/72,h:v[3]*25.4/72};
  },data.svg);
- assert.ok(Math.abs(actual.w-90)<0.1,'Real WASM must resize a 100 mm source artboard into a 90 mm imprint: '+actual.w);
- assert.ok(Math.abs(actual.h-45)<0.1,'Real WASM must resize a 50 mm source artboard into a 45 mm imprint: '+actual.h);
- console.log('Genuine VectorCraft WASM roundtrip passed:',{svgBytes:data.svg.length,events:data.events,browserErrors});
+ assert.ok(Math.abs(actual.w-40)<0.1,'Real WASM must export drawn logo, not 120mm artboard: '+actual.w);
+ assert.ok(Math.abs(actual.h-18)<0.1,'Real WASM must return 18mm painted height, not 80mm field: '+actual.h);
+ assert.ok(data.bounds,'WASM must send independent logo bounds in physical millimetres');
+ for(const [key,expected] of Object.entries({x:12,y:8,w:40,h:18})){
+   assert.ok(Math.abs(data.bounds[key]-expected)<0.1,
+     'WASM must preserve visible artwork '+key+' in millimetres: '+JSON.stringify(data.bounds));
+ }
+ console.log('Genuine VectorCraft cropped-logo roundtrip passed:',{svgBytes:data.svg.length,events:data.events,browserErrors});
 }finally{await browser.close()}
