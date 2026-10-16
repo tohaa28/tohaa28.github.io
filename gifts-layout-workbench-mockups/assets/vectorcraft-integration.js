@@ -32,11 +32,11 @@ async function receive(event){
     try{
       const bytes=await s.file.arrayBuffer();
       if(active!==s)return;
-      s.iframe.contentWindow.postMessage({type:'gwb-vectorcraft-open',token:s.session,name:s.file.name,bytes},ORIGIN,[bytes]);
+      s.iframe.contentWindow.postMessage({type:'gwb-vectorcraft-open',token:s.session,name:s.file.name,bytes,fieldSizeMm:s.fieldSizeMm,fieldCanvas:s.fieldCanvas},ORIGIN,[bytes]);
       notice(s,'Передаём оригинальный файл в VectorCraft…');
     }catch(error){notice(s,'Ошибка передачи файла: '+error.message,true)}
   }else if(d.type==='gwb-vectorcraft-opened'){
-    s.opened=true;notice(s,'Логотип передан в VectorCraft. Редактируйте объекты, затем нажмите «Применить в Макетной».');
+    s.opened=true;notice(s,'Поле '+s.fieldSizeMm.w.toFixed(2)+' × '+s.fieldSizeMm.h.toFixed(2)+' мм. VectorCraft открыл документ — редактируйте логотип.');
     s.apply.disabled=false;
   }else if(d.type==='gwb-vectorcraft-error'){
     s.applying=false;s.apply.disabled=false;
@@ -47,17 +47,17 @@ async function receive(event){
     try{
       const bytes=d.bytes instanceof Uint8Array?d.bytes:null;
       if(!bytes||bytes.byteLength===0||bytes.byteLength>40*1024*1024)throw Error('Некорректный или слишком большой SVG');
-      const file=new File([bytes],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft.svg',{type:'image/svg+xml'});
-      const text=await file.text();
-      const xml=new DOMParser().parseFromString(text,'image/svg+xml');
-      if(xml.documentElement.localName!=='svg'||xml.querySelector('parsererror'))throw Error('VectorCraft вернул некорректный SVG');
+      const raw=new TextDecoder().decode(bytes);
+      const exact=window.gwbVectorcraftField.normalizeExport(raw,s.fieldSizeMm);
+      const file=new File([exact],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft.svg',{type:'image/svg+xml'});
+      const xml=new DOMParser().parseFromString(exact,'image/svg+xml');
       if(xml.querySelector('script,foreignObject'))throw Error('SVG содержит неподдерживаемые исполняемые элементы');
       const warnings=String(d.message||'').trim();
       if(warnings&&!confirm('VectorCraft сообщает об особенностях экспорта:\n'+warnings.slice(0,900)+'\nПрименить результат?')){s.apply.disabled=false;notice(s,'Экспорт отменён. Исходный макет сохранён.');return}
       if(active!==s)return;
       if(typeof window.gwbApplyEditedLogoToActiveField!=='function')throw Error('Мост к выбранному полю Макетной недоступен');
       notice(s,'Сохраняем изменённый вектор в выбранном поле…');
-      await window.gwbApplyEditedLogoToActiveField(file,s.placement);
+      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{fieldCanvas:true,fieldSizeMm:s.fieldSizeMm});
       if(active===s)close(true);
     }catch(error){
       s.apply.disabled=false;
@@ -65,22 +65,32 @@ async function receive(event){
     }
   }
 }
-function open(){
+async function open(){
   if(active)return;
   const selected=window.gwbGetActiveLogoForEditor?.();
   if(!selected){
     alert('Сначала выберите конкретное поле нанесения в Макетной.');
     return;
   }
-  const file=selected.file||new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600"></svg>'],'Новый.svg',{type:'image/svg+xml'});
-  if(file.size>40*1024*1024){alert('VectorCraft принимает файлы размером до 40 МБ.');return}
+  let physical;
+  try{
+    const dimensions=window.gwbVectorcraftField.fieldInfo(selected);
+    const file=selected.file||new File([
+      '<svg xmlns="http://www.w3.org/2000/svg" width="'+dimensions.w+'mm" height="'+dimensions.h+
+      'mm" viewBox="0 0 '+dimensions.w+' '+dimensions.h+'"></svg>'
+    ],'Новый.svg',{type:'image/svg+xml'});
+    if(file.size>40*1024*1024)throw Error('VectorCraft принимает файлы размером до 40 МБ');
+    physical=await window.gwbVectorcraftField.prepare(file,selected);
+  }catch(error){alert('Размеры поля или исходное изображение: '+error.message);return}
+  if(active)return;
+  const {file,fieldSizeMm,fieldCanvas}=physical;
   const token=secret();
   const overlay=el('div');overlay.id='gwbVectorcraftHost';
   Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'2147483450',background:'#20282c',color:'#fff',display:'flex',flexDirection:'column',font:'13px system-ui,sans-serif'});
   const bar=el('div');
   Object.assign(bar.style,{display:'flex',gap:'12px',alignItems:'center',padding:'9px 16px',background:'#435159',minHeight:'55px',boxSizing:'border-box'});
   const heading=el('strong',{textContent:'VectorCraft · Редактор логотипа'});
-  const field=el('span',{textContent:Number.isInteger(selected.fieldIndex)?'Поле '+(selected.fieldIndex+1):'Выбранное поле'});
+  const field=el('span',{textContent:(Number.isInteger(selected.fieldIndex)?'Поле '+(selected.fieldIndex+1):'Выбранное поле')+' · '+fieldSizeMm.w.toFixed(2)+' × '+fieldSizeMm.h.toFixed(2)+' мм'});
   field.style.opacity='.75';
   const space=el('div');space.style.flex='1';
   const apply=el('button',{textContent:'Применить в Макетной',disabled:true,type:'button'});
@@ -95,7 +105,7 @@ function open(){
   const status=el('span',{textContent:'Запускаем VectorCraft WebAssembly…'});
   footer.append(status);overlay.append(bar,iframe,footer);
   const oldOverflow=document.body.style.overflow;
-  active={session:token,iframe,overlay,status,apply,file,filename:file.name,placement:selected.token,oldOverflow,sent:false,opened:false,applying:false};
+  active={session:token,iframe,overlay,status,apply,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false};
   window.addEventListener('message',receive);
   apply.onclick=()=>{
     const s=active;if(!s||s.applying)return;
@@ -115,7 +125,7 @@ function open(){
 function install(){
   const button=document.getElementById('editorOpenLogoEditor');
   if(!button)return;
-  button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();open()},true);
+  button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();void open()},true);
   window.gwbVectorcraftHost={open,close:()=>close()};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
