@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+export async function verifyVectorExternal(frame){
+ const edit=frame.locator('#editorVectorEdit');
+ await edit.waitFor({state:'visible'});
+ assert.equal(await edit.isDisabled(),false);
+ const original=await frame.evaluate(()=>window.gwbLogoPreflight.map(r=>({index:r.fieldIndex,name:r.format,status:r.status})));
+ const snapshot=await frame.locator('#width').inputValue();
+ const angle=await frame.locator('#editorAngle').inputValue();
+ const clip=await frame.locator('#editorClip').isChecked();
+ await edit.click();
+ const dialog=frame.locator('#vectorExternalDialog');
+ await dialog.waitFor({state:'visible'});
+ assert.match(await frame.locator('#vectorExternalName').textContent(),/sharp-stripes.pdf/);
+ const replacement=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 20 10"><path d="M1 1H19V9H1Z" fill="green"/></svg>');
+ await frame.locator('#vectorExternalFile').setInputFiles({name:'edited-return.svg',mimeType:'image/svg+xml',buffer:replacement});
+ await frame.waitForFunction(()=>document.getElementById('artworkName')?.textContent==='edited-return.svg',null,{timeout:15000});
+ assert.equal(await frame.locator('#editorAngle').inputValue(),angle,'Rotation was changed on vector reimport');
+ assert.equal(await frame.locator('#editorClip').isChecked(),clip,'Clipping changed on vector reimport');
+ const revised=Number(await frame.locator('#width').inputValue());
+ assert.ok(revised>0&&revised<=Number(snapshot)+.05,'Physical footprint unexpectedly grew');
+ const after=await frame.evaluate(()=>window.gwbLogoPreflight.map(r=>({index:r.fieldIndex,name:r.format,status:r.status})));
+ assert.equal(after.find(r=>r.index===1)?.name,'svg');
+ assert.deepEqual(after.filter(r=>r.index!==1),original.filter(r=>r.index!==1),'Other print fields were modified');
+ assert.match(await frame.locator('#vectorExternalStatus').textContent(),/возвращён/);
+ await dialog.locator('form button').click();
+ await dialog.waitFor({state:'hidden'});
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
+ await frame.locator('#artwork').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:png});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent==='photo.png');
+ assert.equal(await edit.isVisible(),false,'Vector editor tool must not appear for raster logos');
+ await frame.locator('#artwork').setInputFiles({name:'edited-return.svg',mimeType:'image/svg+xml',buffer:replacement});
+ await frame.waitForFunction(()=>document.getElementById('artworkName').textContent==='edited-return.svg');
+ await edit.waitFor({state:'visible'});
+ console.log('External vector edit: manual return, field identity, geometry, clipping, rotation and raster exclusion passed');
+}
