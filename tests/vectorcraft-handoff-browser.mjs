@@ -61,6 +61,20 @@ try{
  assert.match(seen[0].name,/art-поле\.svg/);
  assert.deepEqual(seen[0].fieldSize,{w:120,h:80});
  assert.equal(seen[0].fieldCanvas,true);
+ const wrongPage=await page.evaluate(()=>{
+   try{
+     window.gwbVectorcraftField.normalizeExport(
+       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"/>',{w:120,h:80});
+     return false;
+   }catch(e){return /Размер страницы VectorCraft/.test(e.message)}
+ });
+ assert.equal(wrongPage,true,'Mismatched artboard never silently stretches the edited vector');
+ const noViewBox=await page.evaluate(async()=>{
+   const src=new File(['<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="20mm"><rect width="100" height="50"/></svg>'],'svg-no-viewbox.svg',{type:'image/svg+xml'});
+   const out=await window.gwbVectorcraftField.prepare(src,{fieldSizeMm:{w:120,h:80},placementMm:{x:4,y:2,w:40,h:20,rotation:0}});
+   return await out.file.text();
+ });
+ assert.match(noViewBox,/<rect/,'Native vector remains editable even when viewBox was omitted');
  const sentXml=new TextDecoder().decode(new Uint8Array(seen[0].bytes));
  assert.match(sentXml,/width="120mm"/);
  assert.match(sentXml,/height="80mm"/);
