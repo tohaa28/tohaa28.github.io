@@ -11,7 +11,7 @@
   const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
   const text=(n,s)=>{if(n)n.textContent=s;};
   const escapeName=s=>String(s||'логотип').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(0,70);
-  let shell,svg,layer,ui,stage,btn,status,layersPanel,tool='select',selected=null;
+  let shell,svg,layer,ui,stage,btn,status,layersPanel,tool='select',selected=null,multi=[];
   let W=900,H=600,zoom=1,gesture=null,history=[],index=-1,dirty=false,loadedName='Логотип';
   let artInput,mode='select',active=false,openedToken=null,opening=false;
   // The host editor clears input.value after each asynchronous import. Preserve
@@ -70,7 +70,7 @@
     if(doc.querySelector('parsererror'))return;
     layer.replaceChildren();
     for(const n of Array.from(doc.documentElement.children)){if(!ALLOWED.has(n.localName))continue;const copy=document.importNode(n,true);scrub(copy);layer.appendChild(copy)}
-    selected=null;refresh();
+    selected=null;multi=[];refresh();
   }
   function undo(dir){
     const next=index+dir;
@@ -99,13 +99,58 @@
       return {x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};
     }catch{return null}
   }
-  function select(el){
-    selected=el&&el.parentNode===layer?el:null;
+  function select(el,add=false){
+    const next=el&&el.parentNode===layer?el:null;
+    if(add&&next){
+      if(multi.includes(next))multi=multi.filter(n=>n!==next);
+      else multi.push(next);
+      selected=multi[multi.length-1]||null;
+    }else{selected=next;multi=next?[next]:[]}
     refresh();
+  }
+  function groupSelection(){
+    const nodes=Array.from(layer.children).filter(n=>multi.includes(n));
+    if(nodes.length<2){status='Для группировки выделите два или больше объектов с Shift.';refresh();return}
+    const group=S('g',{'data-label':'Группа'});
+    nodes[0].before(group);
+    nodes.forEach(n=>group.append(n));
+    select(group);snapshot();
+  }
+  function svgPointForElement(el,p){
+    const a=svg.getScreenCTM(),b=el.getScreenCTM();
+    if(!a||!b)return p;
+    return new DOMPoint(p.x,p.y).matrixTransform(a.inverse().multiply(b));
+  }
+  function pathNodeHandles(){
+    if(tool!=='nodes'||selected?.localName!=='path')return;
+    const segments=window.gwbLogoPath?.parse(selected.getAttribute('d'));
+    if(!segments){status='У этого контура есть дуги или неподдерживаемые команды. Узлы оставлены без изменений.';return}
+    for(let i=0;i<segments.length;i++){
+      const n=segments[i];if(n.cmd==='Z')continue;
+      const pivot=svgPointForElement(selected,{x:n.x,y:n.y});
+      const line=(key,base)=>{
+        const ctrl=svgPointForElement(selected,{x:n[key],y:n[key==='x1'?'y1':'y2']});
+        ui.append(S('line',{x1:base.x,y1:base.y,x2:ctrl.x,y2:ctrl.y,stroke:'#8cb4d5','stroke-width':1/zoom,'pointer-events':'none'}));
+      };
+      if(n.cmd==='C'||n.cmd==='Q'){
+        const prev=segments.slice(0,i).reverse().find(q=>q.cmd!=='Z');
+        if(prev&&Number.isFinite(prev.x))line('x1',svgPointForElement(selected,{x:prev.x,y:prev.y}));
+        if(n.cmd==='C')line('x2',pivot);
+      }
+      for(const k of n.cmd==='C'?['x1','x2','x']:n.cmd==='Q'?['x1','x']:['x']){
+        const yk=k==='x'?'y':k==='x1'?'y1':'y2';
+        const pos=svgPointForElement(selected,{x:n[k],y:n[yk]});
+        const corner=k==='x';
+        ui.append(S(corner?'rect':'circle',corner?
+          {x:pos.x-5/zoom,y:pos.y-5/zoom,width:10/zoom,height:10/zoom,fill:'#fff',stroke:'#1479c5','stroke-width':1.6/zoom,'data-path-index':i,'data-path-key':k,style:'cursor:move'}:
+          {cx:pos.x,cy:pos.y,r:4.4/zoom,fill:'#fbd18b',stroke:'#1479c5','stroke-width':1.2/zoom,'data-path-index':i,'data-path-key':k,style:'cursor:move'}));
+      }
+    }
   }
   function drawHandles(){
     ui.replaceChildren();
     const b=bbox(selected);if(!b)return;
+    if(tool==='nodes'&&selected?.localName==='path'){pathNodeHandles();return}
     const rect=S('rect',{x:b.x,y:b.y,width:b.w,height:b.h,fill:'none',stroke:'#2d7fd0','stroke-width':1.3/zoom,'stroke-dasharray':(5/zoom)+' '+(4/zoom),'pointer-events':'none'});
     ui.appendChild(rect);
     const ps=[['nw',b.x,b.y],['n',b.x+b.w/2,b.y],['ne',b.x+b.w,b.y],['e',b.x+b.w,b.y+b.h/2],['se',b.x+b.w,b.y+b.h],['s',b.x+b.w/2,b.y+b.h],['sw',b.x,b.y+b.h],['w',b.x,b.y+b.h/2]];
@@ -126,6 +171,9 @@
       b.onclick=()=>select(n);layersPanel.append(b);
     });
     $('gwbVeEmpty').hidden=kids.length>0;
+    $('gwbVeGroup').disabled=multi.length<2;
+    $('gwbVeSmooth').disabled=!selected||!['path','polyline','polygon'].includes(selected.localName);
+    $('gwbVeCrop').disabled=!selected||selected.localName!=='image';
     $('gwbVeUndo').disabled=index<=0;
     $('gwbVeRedo').disabled=index>=history.length-1;
     for(const id of ['gwbVeDelete','gwbVeUp','gwbVeDown','gwbVeDuplicate'])$(id).disabled=!selected;
@@ -139,7 +187,7 @@
     text($('gwbVeStatus'),status||'Выберите объект для изменения');
   }
   function initBlank(){
-    W=900;H=600;layer.replaceChildren();selected=null;loadedName='Логотип';history=[];index=-1;dirty=false;hasFonts=false;sourceUnsupported=false;
+    W=900;H=600;layer.replaceChildren();selected=null;multi=[];loadedName='Логотип';history=[];index=-1;dirty=false;hasFonts=false;sourceUnsupported=false;
     sizeStage();snapshot(true);dirty=false;
   }
   function sizeStage(){
@@ -215,15 +263,22 @@
   }
   function begin(e){
     if(e.button!==0||!active)return;
-    const p=point(e),handle=e.target.closest?.('[data-handle]')?.dataset.handle;
+    const p=point(e),node=e.target.closest?.('[data-path-index]'),handle=e.target.closest?.('[data-handle]')?.dataset.handle;
+    if(tool==='nodes'&&selected?.localName==='path'&&node){
+      const segments=window.gwbLogoPath?.parse(selected.getAttribute('d'));
+      if(!segments)return;
+      gesture={type:'node',el:selected,segments,index:Number(node.dataset.pathIndex),key:node.dataset.pathKey};
+      svg.setPointerCapture(e.pointerId);e.preventDefault();return;
+    }
+    if(tool==='nodes'){const obj=owner(e.target);if(obj?.localName==='path')select(obj);return}
     if(handle&&selected){
       const b=bbox(selected);
       gesture={type:'scale',a:p,b,handle,el:selected,transform:selected.getAttribute('transform')||''};
       svg.setPointerCapture(e.pointerId);e.preventDefault();return;
     }
     if(tool==='select'){
-      const obj=owner(e.target);select(obj);
-      if(obj)gesture={type:'move',a:p,el:obj,transform:obj.getAttribute('transform')||''};
+      const obj=owner(e.target);select(obj,e.shiftKey);
+      if(obj&&!e.shiftKey)gesture={type:'move',a:p,el:obj,transform:obj.getAttribute('transform')||''};
     }else if(tool==='text'){
       const obj=S('text',{x:p.x,y:p.y,fill:'#253841','font-family':'Arial, sans-serif','font-size':Math.max(18,Math.round(H/18))});
       obj.textContent='Текст';layer.append(obj);select(obj);snapshot();
@@ -246,7 +301,12 @@
   function motion(e){
     if(!gesture)return;
     const p=point(e),g=gesture;
-    if(g.type==='move'){
+    if(g.type==='node'){
+      const local=new DOMPoint(e.clientX,e.clientY).matrixTransform(g.el.getScreenCTM().inverse());
+      const seg=g.segments[g.index],key=g.key,yk=key==='x'?'y':key==='x1'?'y1':'y2';
+      seg[key]=local.x;seg[yk]=local.y;
+      g.el.setAttribute('d',window.gwbLogoPath.stringify(g.segments));
+    }else if(g.type==='move'){
       const dx=p.x-g.a.x,dy=p.y-g.a.y;
       g.el.setAttribute('transform','translate('+dx+' '+dy+') '+g.transform);
     }else if(g.type==='scale'){
@@ -267,7 +327,7 @@
     if(!gesture||gesture.type==='pen')return;
     const completed=gesture;gesture=null;
     if(svg.hasPointerCapture?.(e.pointerId))svg.releasePointerCapture(e.pointerId);
-    if(completed.type==='move'||completed.type==='scale'||completed.type==='draw'||completed.type==='free'){
+    if(completed.type==='move'||completed.type==='scale'||completed.type==='draw'||completed.type==='free'||completed.type==='node'){
       select(completed.el);snapshot();
     }
   }
@@ -282,6 +342,7 @@
     tool=name;
     document.querySelectorAll('#gwbVeTools [data-tool]').forEach(b=>b.classList.toggle('is-active',b.dataset.tool===name));
     svg.style.cursor=name==='select'?'default':name==='text'?'text':'crosshair';
+    refresh();
   }
   function changeShapeColor(attr,value){
     if(!selected)return;
@@ -328,6 +389,48 @@
     }
     group.remove();selected=children.find(n=>n.localName!=='defs')||null;
     snapshot();refresh();
+  }
+  function smoothSelected(){
+    if(!selected||!window.gwbLogoPath)return;
+    let d='';
+    if(selected.localName==='polyline'||selected.localName==='polygon'){
+      d=window.gwbLogoPath.smoothPolyline(selected.getAttribute('points'),selected.localName==='polygon');
+    }else if(selected.localName==='path'){
+      const seg=window.gwbLogoPath.parse(selected.getAttribute('d'));
+      if(!seg||!seg.length||seg.some(n=>!['M','L','Z'].includes(n.cmd))){
+        status='Сглаживание применяется к ломаным M/L. Для кривых используйте инструмент «Узлы».';refresh();return;
+      }
+      const pts=seg.filter(n=>n.cmd!=='Z').map(n=>n.x+','+n.y).join(' ');
+      d=window.gwbLogoPath.smoothPolyline(pts,seg.some(n=>n.cmd==='Z'));
+    }
+    if(!d){status='Не удалось сгладить выбранную ломаную.';refresh();return}
+    const path=S('path',{d});
+    for(const at of Array.from(selected.attributes))if(!['points','d'].includes(at.name))path.setAttribute(at.name,at.value);
+    selected.replaceWith(path);select(path);snapshot();
+    setTool('nodes');
+  }
+  async function cropSelected(){
+    if(selected?.localName!=='image')return;
+    const el=selected,href=el.getAttribute('href')||el.getAttributeNS(XL,'href')||'';
+    if(!/^data:image\//i.test(href)){status='Обрезка доступна только для встроенного растрового файла';refresh();return}
+    const inputs=['left','top','right','bottom'].map(v=>Number($('gwbVeCrop'+v)?.value||0));
+    if(inputs.some(v=>!Number.isFinite(v)||v<0||v>95)||inputs[0]+inputs[2]>=100||inputs[1]+inputs[3]>=100){
+      status='Неверные отступы обрезки';refresh();return
+    }
+    const img=new Image();
+    try{await new Promise((yes,no)=>{img.onload=yes;img.onerror=()=>no(Error('Растр не удалось декодировать'));img.src=href})}
+    catch(err){status=err.message;refresh();return}
+    const [l,t,r,b]=inputs.map(v=>v/100);
+    const px=Math.floor(img.naturalWidth*l),py=Math.floor(img.naturalHeight*t);
+    const pw=Math.max(1,Math.ceil(img.naturalWidth*(1-r))-px),ph=Math.max(1,Math.ceil(img.naturalHeight*(1-b))-py);
+    const canvas=document.createElement('canvas');canvas.width=pw;canvas.height=ph;
+    canvas.getContext('2d').drawImage(img,px,py,pw,ph,0,0,pw,ph);
+    const x=num(el.getAttribute('x')),y=num(el.getAttribute('y')),w=num(el.getAttribute('width')),h=num(el.getAttribute('height'));
+    el.setAttribute('x',x+w*l);el.setAttribute('y',y+h*t);
+    el.setAttribute('width',w*(1-l-r));el.setAttribute('height',h*(1-t-b));
+    el.setAttributeNS(XL,'href',canvas.toDataURL('image/png'));
+    ['left','top','right','bottom'].forEach(v=>$('gwbVeCrop'+v).value=0);
+    snapshot();status='Растр обрезан без масштабирования оставшихся пикселей.';refresh();
   }
   function deleteSelected(){
     if(!selected)return;
