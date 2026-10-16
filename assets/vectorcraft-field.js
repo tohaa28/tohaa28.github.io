@@ -56,7 +56,7 @@ function importVector(source,svg,p){
     // SVG without viewBox uses CSS user units. Physical root lengths therefore
     // determine the native viewport in CSS pixels at exactly 96 dpi.
     const px=value=>{
-      const m=String(value||'').trim().match(/^([+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+))(mm|cm|in|pt|px)?$/i);
+      const m=String(value||'').trim().match(/^([+]?(?:\d+(?:\.\d*)?|\.\d+))(mm|cm|in|pt|px)?$/i);
       if(!m)return NaN;
       const factors={mm:96/25.4,cm:96/2.54,in:96,pt:96/72,px:1};
       return Number(m[1])*factors[(m[2]||'px').toLowerCase()];
