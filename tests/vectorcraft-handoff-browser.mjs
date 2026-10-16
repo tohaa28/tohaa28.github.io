@@ -112,7 +112,7 @@ try{
  const reopened=await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>window.__seen);
  const reopenedSvg=new TextDecoder().decode(new Uint8Array(reopened[0].bytes));
  assert.match(reopenedSvg,/width="120mm"/,'Editor still has original field-sized workspace on reopen');
- assert.match(reopenedSvg,/translate\(12 8\)/,'Returned cropped logo reopens in the same place within the field');
+ assert.match(reopenedSvg,/translate\(32 17\) rotate\(0\) translate\(-20 -9\)/,'Returned cropped logo reopens with the same net 12 × 8 mm displacement inside its field');
  await page.getByRole('button',{name:'Закрыть без изменений'}).click();
  assert.equal(await page.locator('#gwbVectorcraftHost').count(),0);
  assert.deepEqual(await page.evaluate(()=>window.__applied),[0],'Cancel did not replace the field');
