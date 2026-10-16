@@ -562,7 +562,7 @@
     shell=document.createElement('div');shell.id='gwbLogoEditor';shell.hidden=true;
     shell.setAttribute('role','dialog');shell.setAttribute('aria-modal','true');shell.setAttribute('aria-label','Редактор логотипа');
     shell.innerHTML=[
-      '<div class="gwb-ve-header"><span class="gwb-ve-logo">М</span><div class="gwb-ve-title">Редактор логотипа<small>Встроенный векторный редактор · SVG / PNG / JPG</small></div>',
+      '<div class="gwb-ve-header"><span class="gwb-ve-logo">М</span><div class="gwb-ve-title">Редактор логотипа<small>Встроенный векторный редактор · SVG / PDF / AI / PNG / JPG</small></div>',
       '<button type="button" id="gwbVeCancel">Закрыть</button><button type="button" id="gwbVeDownload">Скачать SVG</button><button type="button" class="gwb-ve-apply" id="gwbVeApply">Применить в шаблоне</button></div>',
       '<div class="gwb-ve-bar" id="gwbVeTools">',
       '<button type="button" class="is-active" data-tool="select" title="Выделить, переместить, масштабировать">Выбор (V)</button>',
