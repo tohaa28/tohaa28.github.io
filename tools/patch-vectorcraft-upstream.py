@@ -16,8 +16,8 @@ def replace_once(before,after):
     if source.count(before)!=1:
         raise RuntimeError(f"VectorCraft upstream API changed: expected unique {before[:90]!r}, found {source.count(before)}")
     source=source.replace(before,after)
-replace_once("    restarts: u32,\n}", "    restarts: u32,\n    bridge_return: Rc<Cell<bool>>,\n    bridge_ctx: Rc<RefCell<Option<egui::Context>>>,\n}")
-replace_once("            restarts: 0,\n", "            restarts: 0,\n            bridge_return: Rc::default(),\n            bridge_ctx: Rc::default(),\n")
+replace_once("    restarts: u32,\n}", "    restarts: u32,\n    bridge_return: Rc<Cell<bool>>,\n    bridge_open_pending: Rc<Cell<bool>>,\n    bridge_ctx: Rc<RefCell<Option<egui::Context>>>,\n}")
+replace_once("            restarts: 0,\n", "            restarts: 0,\n            bridge_return: Rc::default(),\n            bridge_open_pending: Rc::default(),\n            bridge_ctx: Rc::default(),\n")
 replace_once("        track_paste(&host.pasted);\n        run(host, canvas, None).await;",
              "        track_paste(&host.pasted);\n        if gwb_is_embedded(){gwb_install_bridge(&host);}\n        run(host, canvas, None).await;")
 replace_once("                host.pasted.borrow_mut().ctx = Some(ctx.clone());",
@@ -25,7 +25,7 @@ replace_once("                host.pasted.borrow_mut().ctx = Some(ctx.clone());"
 replace_once("            if let Some(el) = element(LOADING_ID) {\n                el.remove();\n            }",
              "            if let Some(el) = element(LOADING_ID) {\n                el.remove();\n            }\n            if gwb_is_embedded(){gwb_send(\"gwb-vectorcraft-ready\",None,None);}")
 replace_once("        app.logic(ctx);",
-             "        app.logic(ctx);\n        if gwb_is_embedded() && self.host.bridge_return.replace(false){gwb_export_editor(app);}")
+             "        app.logic(ctx);\n        if gwb_is_embedded() && self.host.bridge_open_pending.get() && app.session.active().is_some(){\n            self.host.bridge_open_pending.set(false);\n            gwb_send("gwb-vectorcraft-opened",None,None);\n        }\n        if gwb_is_embedded() && self.host.bridge_return.replace(false){gwb_export_editor(app);}")
 replace_once("        recovery_store: Some(Arc::new(BrowserStore { locks })),",
              "        recovery_store: if gwb_is_embedded(){None}else{Some(Arc::new(BrowserStore { locks }))},")
 replace_once("const CANVAS_ID: &str = \"vectorcraft_canvas\";",
