@@ -35,6 +35,7 @@ fn gwb_install_bridge(host: &Host) {
     let inbox=host.inbox.clone();
     let apply=host.bridge_return.clone();
     let open_pending=host.bridge_open_pending.clone();
+    let field=host.bridge_field_mm.clone();
     let repaint=host.bridge_ctx.clone();
     let listener=wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent|{
         // The token is an unguessable per-editor hash fragment; the parent
@@ -52,24 +53,57 @@ fn gwb_install_bridge(host: &Host) {
             if let Some(ctx)=repaint.borrow().as_ref(){ctx.request_repaint();}
             return;
         }
+        let raw=get("fieldSizeMm").unwrap_or(JsValue::NULL);
+        let dimension=|key: &str|Reflect::get(&raw,&JsValue::from_str(key)).ok().and_then(|v|v.as_f64());
+        let (Some(w),Some(h))=(dimension("w"),dimension("h")) else{
+            gwb_send("gwb-vectorcraft-error",None,Some("Размер поля нанесения не указан"));
+            return;
+        };
+        if !w.is_finite()||!h.is_finite()||w<=0.0||h<=0.0||w>2000.0||h>2000.0{
+            gwb_send("gwb-vectorcraft-error",None,Some("Размер поля нанесения некорректен"));
+            return;
+        }
+        let prepared=get("fieldCanvas").and_then(|v|v.as_bool()).unwrap_or(false);
         let name=get("name").and_then(|v|v.as_string()).unwrap_or_default();
         let blob=get("bytes").unwrap_or(JsValue::NULL);
         if name.is_empty()||name.len()>180||blob.is_null()||blob.is_undefined(){gwb_send("gwb-vectorcraft-error",None,Some("Не найден исходный файл"));return;}
         let data=Uint8Array::new(&blob);
         let size=data.length();
         if size==0||size>40*1024*1024{gwb_send("gwb-vectorcraft-error",None,Some("Размер файла недопустим"));return;}
+        *field.borrow_mut()=Some((w,h,prepared));
         inbox.lock().unwrap_or_else(|e|e.into_inner()).push((name,data.to_vec()));
         open_pending.set(true);
         if let Some(ctx)=repaint.borrow().as_ref(){ctx.request_repaint();}
     });
     if window.add_event_listener_with_callback("message",listener.as_ref().unchecked_ref()).is_ok(){listener.forget();}
 }
+fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Result<(), String> {
+    let (w,h,was_prepared)=*field;
+    let (target_w,target_h)=(w*72.0/25.4,h*72.0/25.4);
+    let Some(state)=app.session.active() else{return Err("Логотип ещё не открыт".into());};
+    let Some(board)=state.doc.artboards.first() else{return Err("Отсутствует монтажная область".into());};
+    let (old_w,old_h)=(board.rect.width(),board.rect.height());
+    if (old_w-target_w).abs()<0.02 && (old_h-target_h).abs()<0.02{return Ok(());}
+    if was_prepared{
+        return Err(format!("Подготовленный SVG имеет неверный физический размер: {:.2} × {:.2} мм",
+          old_w*25.4/72.0,old_h*25.4/72.0));
+    }
+    // Native PDF/AI vectors stay editable. Scale the art only when the
+    // document has the same aspect ratio as the imprint field, preventing
+    // unexpected non-proportional stretching of graphic elements.
+    let proportional=(old_w/old_h-target_w/target_h).abs()<0.002;
+    app.session.execute("artboard.setProps",&serde_json::json!({
+       "index":0,"x":0.0,"y":0.0,"width":target_w,"height":target_h,
+       "scaleArt":proportional,"moveArt":true
+    })).map_err(|e|format!("Не удалось установить размер поля: {e}"))?;
+    Ok(())
+}
 fn gwb_export_editor(app: &mut VectorcraftApp) {
     let Some(st)=app.session.active() else {
         gwb_send("gwb-vectorcraft-error",None,Some("В VectorCraft нет открытого документа"));
         return;
     };
-    let opts=serde_json::json!({"images":"embed"});
+    let opts=serde_json::json!({"images":"embed","artboard":0,"useArtboards":true});
     match fileio::encode_with_warnings(&st.doc,"svg",&opts) {
         Ok((bytes,warnings))=>{
             if bytes.is_empty()||bytes.len()>40*1024*1024{
