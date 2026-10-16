@@ -51,10 +51,11 @@ try{
   await page.locator('#gwbVeLayer text').first().waitFor({state:'attached'});
   assert.equal(await page.locator('#gwbVeLayer text').count(),1,'Editor can re-open current artwork after host clears input.value');
   await page.click('#gwbVeCancel');
-  await page.locator('#artwork').setInputFiles({name:'import.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 250 160"><script>window.__svgInjected=1</script><path d="M 10 20 L 60 20 L 60 75 Z" fill="#123456"/><image href="https://untrusted.example/track.png" x="0" y="0" width="20" height="20"/></svg>')});
+  await page.locator('#artwork').setInputFiles({name:'import.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 250 160"><style>.st0{fill:#123456;stroke:#abcabc}</style><script>window.__svgInjected=1</script><path class="st0" d="M 10 20 L 60 20 L 60 75 Z"/><image href="https://untrusted.example/track.png" x="0" y="0" width="20" height="20"/></svg>')});
   await page.click('#editorOpenLogoEditor');
   await page.locator('#gwbVeLayer path').first().waitFor({state:'attached'});
   assert.equal(await page.locator('#gwbVeLayer path').count(),1,'Imports existing vector paths without rasterizing');
+  assert.equal(await page.locator('#gwbVeLayer path').getAttribute('fill'),'#123456','Illustrator-style class colors survive safe import');
   assert.equal(await page.locator('#gwbVeLayer script').count(),0,'Removes executable markup from imported SVG');
   assert.equal(await page.evaluate(()=>window.__svgInjected),undefined,'Does not execute SVG scripts');
   assert.equal(await page.locator('#gwbVeLayer image[href]').count(),0,'Removes external SVG image links');
