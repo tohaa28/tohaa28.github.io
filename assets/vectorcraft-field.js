@@ -51,11 +51,19 @@ function safeSvg(text){
 function importVector(source,svg,p){
   const view=source.getAttribute('viewBox');
   const nums=view?view.trim().split(/[\s,]+/).map(Number):null;
-  const natural=nums&&nums.length===4&&nums.every(Number.isFinite)&&nums[2]>0&&nums[3]>0?nums:null;
+  let natural=nums&&nums.length===4&&nums.every(Number.isFinite)&&nums[2]>0&&nums[3]>0?nums:null;
   if(!natural){
-    // Root size without viewBox is interpreted in CSS px / physical units by SVG,
-    // but we cannot safely guess the intrinsic design-space coordinates.
-    throw Error('У SVG отсутствует корректный viewBox. Добавьте viewBox в исходный вектор.');
+    // SVG without viewBox uses CSS user units. Physical root lengths therefore
+    // determine the native viewport in CSS pixels at exactly 96 dpi.
+    const px=value=>{
+      const m=String(value||'').trim().match(/^([+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+))(mm|cm|in|pt|px)?$/i);
+      if(!m)return NaN;
+      const factors={mm:96/25.4,cm:96/2.54,in:96,pt:96/72,px:1};
+      return Number(m[1])*factors[(m[2]||'px').toLowerCase()];
+    };
+    const w=px(source.getAttribute('width')),h=px(source.getAttribute('height'));
+    if(Number.isFinite(w)&&Number.isFinite(h)&&w>0&&h>0)natural=[0,0,w,h];
+    else throw Error('SVG без viewBox должен содержать корректные физические ширину и высоту.');
   }
   const group=svg.ownerDocument.createElementNS(NS,'g');
   group.setAttribute('data-gwb-logo','imported');
