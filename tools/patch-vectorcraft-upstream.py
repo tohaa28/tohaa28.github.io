@@ -16,8 +16,8 @@ def replace_once(before,after):
     if source.count(before)!=1:
         raise RuntimeError(f"VectorCraft upstream API changed: expected unique {before[:90]!r}, found {source.count(before)}")
     source=source.replace(before,after)
-replace_once("    restarts: u32,\n}", "    restarts: u32,\n    bridge_return: Rc<Cell<bool>>,\n    bridge_open_pending: Rc<Cell<bool>>,\n    bridge_ctx: Rc<RefCell<Option<egui::Context>>>,\n    bridge_field_mm: Rc<RefCell<Option<(f64,f64,bool)>>>,\n}")
-replace_once("            restarts: 0,\n", "            restarts: 0,\n            bridge_return: Rc::default(),\n            bridge_open_pending: Rc::default(),\n            bridge_ctx: Rc::default(),\n            bridge_field_mm: Rc::default(),\n")
+replace_once("    restarts: u32,\n}", "    restarts: u32,\n    bridge_return: Rc<Cell<bool>>,\n    bridge_open_pending: Rc<Cell<bool>>,\n    bridge_document_received: Rc<Cell<bool>>,\n    bridge_ctx: Rc<RefCell<Option<egui::Context>>>,\n    bridge_field_mm: Rc<RefCell<Option<(f64,f64,bool)>>>,\n}")
+replace_once("            restarts: 0,\n", "            restarts: 0,\n            bridge_return: Rc::default(),\n            bridge_open_pending: Rc::default(),\n            bridge_document_received: Rc::default(),\n            bridge_ctx: Rc::default(),\n            bridge_field_mm: Rc::default(),\n")
 replace_once("        track_paste(&host.pasted);\n        run(host, canvas, None).await;",
              "        track_paste(&host.pasted);\n        if gwb_is_embedded(){gwb_install_bridge(&host);}\n        run(host, canvas, None).await;")
 replace_once("                host.pasted.borrow_mut().ctx = Some(ctx.clone());",
