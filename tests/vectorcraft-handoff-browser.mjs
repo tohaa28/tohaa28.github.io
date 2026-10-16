@@ -47,8 +47,10 @@ try{
    window.gwbApplyEditedLogoToActiveField=async(file,token,options)=>{
      const i=window.__selected,current=window.__placed[i];
      if(token!==i+'|'+current.file.name)throw Error('token mismatch');
-     if(!options?.fieldCanvas||options.fieldSizeMm.w!==current.field.w||options.fieldSizeMm.h!==current.field.h)throw Error('Wrong field dimensions');
-     current.file=file;current.placement={...current.field,rotation:0,clipToField:current.placement.clipToField};window.__applied.push(i);
+     if(options.fieldSizeMm.w!==current.field.w||options.fieldSizeMm.h!==current.field.h)throw Error('Wrong field dimensions');
+     current.file=file;
+     if(options.fieldCanvas)current.placement={...current.field,rotation:0,clipToField:current.placement.clipToField};
+     window.__applied.push(i);
    };
  });
  await page.addScriptTag({path:'assets/vectorcraft-field.js'});
@@ -101,6 +103,25 @@ try{
  await page.getByRole('button',{name:'Закрыть без изменений'}).click();
  assert.equal(await page.locator('#gwbVectorcraftHost').count(),0);
  assert.deepEqual(await page.evaluate(()=>window.__applied),[0],'Cancel did not replace the field');
+ // Native PDF/AI is handed to VectorCraft as actual original bytes, not a fake
+ // raster or an SVG container. Its original placement is intentionally preserved.
+ await page.evaluate(()=>{
+   window.__selected=1;
+   window.__placed[1].file=new File([new TextEncoder().encode('%PDF-1.4')],'original.pdf',{type:'application/pdf'});
+ });
+ await page.locator('#editorOpenLogoEditor').click();
+ await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
+ const native=await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>window.__seen);
+ assert.equal(native[0].name,'original.pdf');
+ assert.equal(native[0].fieldCanvas,false,'Native vector format must go to the real VectorCraft import engine');
+ assert.deepEqual(native[0].fieldSize,{w:80,h:80});
+ assert.equal(new TextDecoder().decode(new Uint8Array(native[0].bytes.slice(0,8))),'%PDF-1.4');
+ await page.getByRole('button',{name:'Применить в Макетной'}).click();
+ await page.locator('#gwbVectorcraftHost').waitFor({state:'detached'});
+ const afterPdf=await page.evaluate(async()=>({xml:await window.__placed[1].file.text(),placement:window.__placed[1].placement,applied:window.__applied}));
+ assert.match(afterPdf.xml,/width="80mm"/);
+ assert.deepEqual(afterPdf.placement,{x:1,y:2,w:80,h:80,rotation:0,clipToField:false},'Native PDF/AI keeps its original placement');
+ assert.deepEqual(afterPdf.applied,[0,1]);
  assert.deepEqual(errors,[],'No browser errors');
  console.log('VectorCraft in-browser handoff: original bytes / session origin / selected-field return / geometry / cancel passed');
 }finally{await browser.close()}
