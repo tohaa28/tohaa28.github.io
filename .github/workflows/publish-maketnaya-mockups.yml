@@ -52,6 +52,7 @@ jobs:
           test -f tools/gwb-vector-bridge.py
           test -f tools/start-vector-bridge.cmd
           python3 -m py_compile tools/gwb-vector-bridge.py
+          python3 -m unittest discover -s tests -p 'test_vector_bridge.py' -v
           node -e 'const x=require("./method-settings.json");if(x.version!==1||!x.methods||typeof x.methods!=="object")process.exit(1)'
           node -e 'const x=require("./mockup-profiles.json"); if(x.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(x.profiles)) process.exit(1)'
           node --check direct-mode.js
