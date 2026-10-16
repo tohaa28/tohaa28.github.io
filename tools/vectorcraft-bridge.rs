@@ -35,6 +35,7 @@ fn gwb_install_bridge(host: &Host) {
     let inbox=host.inbox.clone();
     let apply=host.bridge_return.clone();
     let open_pending=host.bridge_open_pending.clone();
+    let document_received=host.bridge_document_received.clone();
     let field=host.bridge_field_mm.clone();
     let repaint=host.bridge_ctx.clone();
     let listener=wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent|{
@@ -51,6 +52,12 @@ fn gwb_install_bridge(host: &Host) {
         if event_type=="gwb-vectorcraft-apply"{
             apply.set(true);
             if let Some(ctx)=repaint.borrow().as_ref(){ctx.request_repaint();}
+            return;
+        }
+        // An embedded editor is bound to ONE Maketnaya placement; a second
+        // postMessage must never open or replace another document.
+        if document_received.get() {
+            gwb_send("gwb-vectorcraft-error",None,Some("Открытие других документов отключено. Редактируйте логотип текущего поля."));
             return;
         }
         let raw=get("fieldSizeMm").unwrap_or(JsValue::NULL);
@@ -70,6 +77,7 @@ fn gwb_install_bridge(host: &Host) {
         let data=Uint8Array::new(&blob);
         let size=data.length();
         if size==0||size>40*1024*1024{gwb_send("gwb-vectorcraft-error",None,Some("Размер файла недопустим"));return;}
+        document_received.set(true);
         *field.borrow_mut()=Some((w,h,prepared));
         inbox.lock().unwrap_or_else(|e|e.into_inner()).push((name,data.to_vec()));
         open_pending.set(true);
@@ -124,6 +132,10 @@ fn gwb_send_cropped_logo(bytes: &[u8], note: &str, bounds: [f64;4]) {
     }
 }
 fn gwb_export_editor(app: &mut VectorcraftApp, requested_field: Option<(f64,f64,bool)>) {
+    if app.session.documents().len()!=1 {
+        gwb_send("gwb-vectorcraft-error",None,Some("В Макетной разрешён только один документ текущего поля"));
+        return;
+    }
     let Some(st)=app.session.active() else {
         gwb_send("gwb-vectorcraft-error",None,Some("В VectorCraft нет открытого документа"));
         return;
