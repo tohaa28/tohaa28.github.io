@@ -57,7 +57,7 @@ async function receive(event){
       if(active!==s)return;
       if(typeof window.gwbApplyEditedLogoToActiveField!=='function')throw Error('Мост к выбранному полю Макетной недоступен');
       notice(s,'Сохраняем изменённый вектор в выбранном поле…');
-      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{fieldCanvas:true,fieldSizeMm:s.fieldSizeMm});
+      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{fieldCanvas:s.fieldCanvas,fieldSizeMm:s.fieldSizeMm});
       if(active===s)close(true);
     }catch(error){
       s.apply.disabled=false;
