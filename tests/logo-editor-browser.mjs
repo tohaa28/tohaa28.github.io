@@ -152,6 +152,12 @@ try{
       const i=window.__current,file=window.__placements[i];
       return {token:i+'|'+file.name,fieldIndex:i,hasArtwork:true,file,name:file.name};
     };
+    window.gwbApplyEditedLogoToActiveField=async(file,token)=>{
+      const i=window.__current,original=window.__placements[i];
+      if(token!==i+'|'+original.name)throw Error('Wrong selected PDF field');
+      window.__placements[i]=file;
+      window.__applyCalls.push({index:i,token});
+    };
     window.__pdfCalls=0;
     window.gwbGetPdfLogoVectorOps=async()=>{
       window.__pdfCalls++;
