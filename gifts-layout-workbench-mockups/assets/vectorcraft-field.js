@@ -107,26 +107,35 @@ async function prepare(file,selected){
   return {file:new File([data],file.name.replace(/\.[^.]+$/,'')+'-поле.svg',{type:'image/svg+xml'}),
     fieldSizeMm:{w,h},fieldCanvas:true};
 }
-function normalizeExport(text,field){
-  const {w,h}=fieldInfo({fieldSizeMm:field});
+function normalizeExport(text,field,logoBoundsMm){
+  const {w:fieldW,h:fieldH}=fieldInfo({fieldSizeMm:field});
+  const b=logoBoundsMm;
+  if(!b||!['x','y','w','h'].every(key=>typeof b[key]==='number'&&Number.isFinite(b[key])))
+    throw Error('VectorCraft не передал реальные границы рисунка');
+  if(b.w<=0.001||b.h<=0.001||b.w>2000||b.h>2000||
+    Math.abs(b.x)>2000||Math.abs(b.y)>2000)
+    throw Error('Неверные размеры или координаты нарисованного логотипа');
   const input=new DOMParser().parseFromString(text,'image/svg+xml');
   const svg=input.documentElement;
   if(svg.localName!=='svg'||input.querySelector('parsererror'))
     throw Error('VectorCraft вернул повреждённый SVG');
   const view=svg.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
   if(!view||view.length!==4||!view.every(Number.isFinite)||view[2]<=0||view[3]<=0)
-    throw Error('VectorCraft не передал размер страницы SVG');
+    throw Error('VectorCraft не передал габарит рисунка в SVG');
   const actualW=view[2]/ratio,actualH=view[3]/ratio;
-  // The SVG export from VectorCraft uses numeric coordinates in 72pt/inch.
-  // Fail closed if VectorCraft's own page size was changed: never invisibly
-  // stretch edited shapes into a differently sized imprint field.
-  if(Math.abs(actualW-w)>0.15||Math.abs(actualH-h)>0.15)
-    throw Error('Размер страницы VectorCraft '+fmt(actualW)+' × '+fmt(actualH)+
-      ' мм отличается от поля нанесения '+fmt(w)+' × '+fmt(h)+' мм. Верните размер монтажной области.');
-  svg.setAttribute('width',fmt(w)+'mm');
-  svg.setAttribute('height',fmt(h)+'mm');
-  svg.setAttribute('data-gwb-imprint-field','true');
-  return new XMLSerializer().serializeToString(input);
+  // Match independently measured bounds from the Rust engine. Do not accept
+  // the entire print field as a fake logo or silently stretch the artwork.
+  if(Math.abs(actualW-b.w)>0.15||Math.abs(actualH-b.h)>0.15)
+    throw Error('Размер SVG '+fmt(actualW)+' × '+fmt(actualH)+
+      ' мм не соответствует нарисованному логотипу '+fmt(b.w)+' × '+fmt(b.h)+' мм');
+  if(b.w>fieldW*10||b.h>fieldH*10)
+    throw Error('Габарит рисунка значительно превышает выбранное поле');
+  svg.setAttribute('width',fmt(b.w)+'mm');
+  svg.setAttribute('height',fmt(b.h)+'mm');
+  svg.removeAttribute('data-gwb-imprint-field');
+  return {svg:new XMLSerializer().serializeToString(input),
+    boundsMm:{x:b.x,y:b.y,w:b.w,h:b.h}};
 }
+
 root.gwbVectorcraftField={prepare,normalizeExport,fieldInfo};
 })(window);

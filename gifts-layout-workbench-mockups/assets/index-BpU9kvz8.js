@@ -120,7 +120,24 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     if(still!==target||[y.active,still.fieldIndex,still.page,still.art?.name||""].join("|")!==token)
       throw new Error("Во время обработки было выбрано другое поле; старый логотип сохранён");
     let keep=target.placement?{...target.placement}:Ze(target.field,next);
-    if(options?.fieldCanvas===true){
+    if(options?.artworkBoundsMm){
+      const sourceField=target.field,provided=options.fieldSizeMm;
+      const b=options.artworkBoundsMm;
+      if(!provided||![provided.w,provided.h].every(Number.isFinite)||
+        Math.abs(provided.w-sourceField.w)>0.01||Math.abs(provided.h-sourceField.h)>0.01)
+        throw new Error("Поле нанесения изменилось: сохранение отменено");
+      if(!["x","y","w","h"].every(k=>Number.isFinite(b[k]))||
+        b.w<=0.001||b.h<=0.001||b.w>2000||b.h>2000||
+        Math.abs(b.x)>2000||Math.abs(b.y)>2000)
+        throw new Error("Редактор передал неверные габариты логотипа");
+      if(Math.abs(next.w-b.w)>0.15||Math.abs(next.h-b.h)>0.15)
+        throw new Error("Размер SVG не соответствует фактическому рисунку");
+      // The SVG has already been cropped and translated to local (0,0)
+      // by VectorCraft. Only its bounds, not the old full-page dimensions,
+      // determine the placement. Rotation is baked into editable geometry.
+      keep={x:sourceField.x+b.x,y:sourceField.y+b.y,
+        w:b.w,h:b.h,rotation:0,clipToField:!!keep.clipToField};
+    }else if(options?.fieldCanvas===true){
       const actualSize=target.field;
       const provided=options.fieldSizeMm;
       if(!provided||!Number.isFinite(provided.w)||!Number.isFinite(provided.h)||
@@ -136,7 +153,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     y.art=next;y.placement=keep;
     v("artworkName").textContent=file.name;
     _t();X();
-    Q("Изменённый логотип применён к выбранному полю без изменения размера и положения.");
+    Q(options?.artworkBoundsMm?"Из VectorCraft возвращён только нарисованный логотип с его габаритами и положением.":"Изменённый логотип применён к выбранному полю.");
     window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
     return {name:file.name,fieldIndex:target.fieldIndex};
   }finally{y.busy=false;X()}
