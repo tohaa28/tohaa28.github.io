@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: gifts-layout-workbench-mockups-publish
-  cancel-in-progress: false
+  group: maketnaya-vectorcraft-wasm-build
+  cancel-in-progress: true
 
 jobs:
   compile_vectorcraft:
