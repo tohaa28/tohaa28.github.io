@@ -176,7 +176,7 @@ try{
   assert.ok(await page.locator('#gwbVeUi [data-path-index]').count()>0,'PDF vector anchor points can be edited');
   await page.click('#gwbVeApply');
   assert.equal(await page.evaluate(()=>window.__pdfCalls),1);
-  assert.match(await page.evaluate(async()=>await window.__placements[1].text()),/<path\\b/);
+  assert.match(await page.evaluate(async()=>await window.__placements[1].text()),/<path\b/);
 
   // Mixed/raster PDF must fail closed and retain the original placed artwork.
   await page.evaluate(()=>{
