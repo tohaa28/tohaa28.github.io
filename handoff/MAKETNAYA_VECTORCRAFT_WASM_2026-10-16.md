@@ -49,3 +49,12 @@ Never commit customer artwork. Don't store file bytes in Git, localStorage, sess
 - Asset is 64.7 MB, consider WASM optimization/compression/caching for faster initial loads. Do not infer this indicates an image was rasterized: compiled engine has a large wasm runtime.
 - Browser test validates real SVG roundtrip, not every PDF/AI/CDR import nuance nor visual equivalence in the full order after editing. Retest complex production files with user-provided cases.
 - The mock iframe test validates token/origin/source isolation and unchanged placements. The live WASM browser smoke validates actual engine input/output. Together they cover the critical bridge in this stage.
+
+## Verified import-ready hardening (2026-10-16)
+- Final pinned Rust source patch `tools/patch-vectorcraft-upstream.py` and `tools/vectorcraft-bridge.rs` add `bridge_open_pending`: the opener now sends `gwb-vectorcraft-opened` only from `WebShell::logic` after `app.session.active().is_some()`, rather than acknowledging mere receipt of the file bytes.
+- `backup-vectorcraft-wasm-verified-before-open-ack-20261016` (source) and `backup-published-vectorcraft-wasm-before-open-ack-20261016` (main) preserve last known good integration.
+- New WASM compilation `38902782144` **success**; new main published wasm `vectorcraft-web-97789efabaaad4d_bg.wasm` (64,739,947 B), JS glue and upstream license notices in `main/gifts-layout-workbench-mockups/vectorcraft/`.
+- GitHub Pages deployment `38903780819` **success**.
+- The **real deployed** Chromium browser test `38903848791` **success** after new Pages publication, with observed ready → opened → svg message chain, SVG return 318 bytes, browserErrors `[]`.
+- Regular Maketnaya publication `38902782198` precheck + publish + browser_verify all **success** and no change to `mockup-profiles.json` (`ddb84fdc0d656341770a2399f5a10f0e21f5d72c`) or `method-settings.json` (`cbf6c8204e4fb3892d806342d37debefb8d9038e`) on source/main.
+- Users should start their bookmark on gifts.ru; VectorCraft is loaded in an embedded cross-origin iframe. It requires browser WASM with WebGPU/WebGL2. Native vector editing is performed inside VectorCraft, and the original logo is only replaced in Maketnaya when `Применить в Макетной` is used. The older logo editor is still available through the fallback link.
