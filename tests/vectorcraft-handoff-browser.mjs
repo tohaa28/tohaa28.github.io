@@ -20,9 +20,12 @@ try{
      "parent.postMessage({type:'gwb-vectorcraft-opened',token},'*');",
      "}",
      "if(e.data?.type==='gwb-vectorcraft-apply'){",
-     "const fw=window.__fieldSize.w*72/25.4,fh=window.__fieldSize.h*72/25.4;",
-     "const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"'+fw+'\" height=\"'+fh+'\" viewBox=\"0 0 '+fw+' '+fh+'\"><path d=\"M10 10 L80 70 Z\" fill=\"#129932\"/></svg>';",
-     "parent.postMessage({type:'gwb-vectorcraft-svg',token,bytes:new TextEncoder().encode(svg)},'*');",
+     "const b=window.__fieldSize.w===120?{x:12,y:8,w:40,h:18}:{x:5,y:4,w:22,h:12};",
+     "const fw=b.w*72/25.4,fh=b.h*72/25.4;",
+     "const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"'+fw+'\" height=\"'+fh+'\" viewBox=\"0 0 '+fw+' '+fh+'\"><path d=\"M0 0 L'+fw+' '+fh+' Z\" fill=\"#129932\"/></svg>';",
+     "parent.postMessage({type:'gwb-vectorcraft-svg',token,bytes:new TextEncoder().encode(svg),logoBoundsMm:b},'*');",
+
+
      "}",
      "});",
      "parent.postMessage({type:'gwb-vectorcraft-ready',token},'*');",
@@ -48,8 +51,13 @@ try{
      const i=window.__selected,current=window.__placed[i];
      if(token!==i+'|'+current.file.name)throw Error('token mismatch');
      if(options.fieldSizeMm.w!==current.field.w||options.fieldSizeMm.h!==current.field.h)throw Error('Wrong field dimensions');
+     const b=options.artworkBoundsMm;
+     if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))throw Error('Missing visible art bounds');
+     const parsed=new DOMParser().parseFromString(await file.text(),'image/svg+xml').documentElement;
+     if(parsed.getAttribute('width')!==b.w+'mm')throw Error('Artwork SVG not cropped');
      current.file=file;
-     if(options.fieldCanvas)current.placement={...current.field,rotation:0,clipToField:current.placement.clipToField};
+     current.placement={x:current.field.x+b.x,y:current.field.y+b.y,w:b.w,h:b.h,
+       rotation:0,clipToField:current.placement.clipToField};
      window.__applied.push(i);
    };
  });
@@ -66,9 +74,10 @@ try{
  const wrongPage=await page.evaluate(()=>{
    try{
      window.gwbVectorcraftField.normalizeExport(
-       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"/>',{w:120,h:80});
+       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"/>',
+       {w:120,h:80},{x:12,y:8,w:40,h:18});
      return false;
-   }catch(e){return /Размер страницы VectorCraft/.test(e.message)}
+   }catch(e){return /не соответствует нарисованному логотипу/.test(e.message)}
  });
  assert.equal(wrongPage,true,'Mismatched artboard never silently stretches the edited vector');
  const noViewBox=await page.evaluate(async()=>{
@@ -94,9 +103,9 @@ try{
  }));
  assert.match(state.first,/<path\b/,'Returned SVG is the actual contents of the mock editor');
  assert.match(state.second,/<circle/,'Other placement is unchanged, even with identical filename');
- assert.deepEqual(state.geometry[0],{x:20,y:30,w:120,h:80,rotation:0,clipToField:true},'Returned field matches template bounds');
- assert.match(state.first,/width="120mm"/,'SVG returns exact physical millimetres');
- assert.match(state.first,/height="80mm"/,'SVG height matches field');
+ assert.deepEqual(state.geometry[0],{x:32,y:38,w:40,h:18,rotation:0,clipToField:true},'Artwork returns in its own 40 × 18 mm bounding box at +12,+8 mm');
+ assert.match(state.first,/width="40mm"/,'SVG width is only drawn logo, not original 120 mm artboard');
+ assert.match(state.first,/height="18mm"/,'SVG height is only drawn logo');
  assert.deepEqual(state.applied,[0],'Exactly one original field replaced');
  await page.locator('#editorOpenLogoEditor').click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
@@ -119,8 +128,8 @@ try{
  await page.getByRole('button',{name:'Применить в Макетной'}).click();
  await page.locator('#gwbVectorcraftHost').waitFor({state:'detached'});
  const afterPdf=await page.evaluate(async()=>({xml:await window.__placed[1].file.text(),placement:window.__placed[1].placement,applied:window.__applied}));
- assert.match(afterPdf.xml,/width="80mm"/);
- assert.deepEqual(afterPdf.placement,{x:1,y:2,w:80,h:80,rotation:0,clipToField:false},'Native PDF/AI keeps its original placement');
+ assert.match(afterPdf.xml,/width="22mm"/);
+ assert.deepEqual(afterPdf.placement,{x:6,y:6,w:22,h:12,rotation:0,clipToField:false},'Native PDF/AI returns only 22×12 mm artwork at the correct field offset');
  assert.deepEqual(afterPdf.applied,[0,1]);
  assert.deepEqual(errors,[],'No browser errors');
  console.log('VectorCraft in-browser handoff: original bytes / session origin / selected-field return / geometry / cancel passed');
