@@ -119,7 +119,7 @@ function normalizeExport(text,field,logoBoundsMm){
   const svg=input.documentElement;
   if(svg.localName!=='svg'||input.querySelector('parsererror'))
     throw Error('VectorCraft вернул повреждённый SVG');
-  const view=svg.getAttribute('viewBox')?.trim().split(/[\\s,]+/).map(Number);
+  const view=svg.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
   if(!view||view.length!==4||!view.every(Number.isFinite)||view[2]<=0||view[3]<=0)
     throw Error('VectorCraft не передал габарит рисунка в SVG');
   const actualW=view[2]/ratio,actualH=view[3]/ratio;
