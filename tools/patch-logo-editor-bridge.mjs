@@ -7,7 +7,7 @@ const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const original='99b12826b63a21be663dcf4ef78f2717748c84604480fc50b6f9162e86903fcc';
 const anchor='v("artwork").onchange=c=>Ai(c,"art");';
-const bridge=String.raw\`
+const bridge=String.raw`
 window.gwbGetActiveLogoForEditor=function(){
   Ft();
   const placement=y.placements?.[y.active],art=placement?.art||null;
@@ -45,7 +45,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token){
     return {name:file.name,fieldIndex:target.fieldIndex};
   }finally{y.busy=false;X()}
 };
-\`;
+`;
 export function applyLogoEditorBridge(){
   const source=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
   if(source.includes('window.gwbGetActiveLogoForEditor=function()')){
