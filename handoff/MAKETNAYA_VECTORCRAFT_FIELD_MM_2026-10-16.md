@@ -19,3 +19,12 @@
 - Backup branches: `backup-before-vectorcraft-field-size-20261016`, `backup-published-before-vectorcraft-field-size-20261016`.
 - Не менять исходные `mockup-profiles.json`, `method-settings.json` или алгоритмы PrintCheck, cylindrical mockup; при rollback брать актуальные реестры из main.
 - `tests/vectorcraft-handoff-browser.mjs` тестирует изолированную протокольную оболочку с имитацией iframe; `tests/vectorcraft-runtime-browser.mjs` обязан тестировать **настоящий** WASM и сохранённый размер перед тем, как утверждать готовность.
+
+## Проверка и публикация
+- Source commit with field-mm bridge: `a1132438d38fa0ef913c392e148ebee22767d0ac`; corrected 100×50 → 90×45 actual browser test: `d48e384572949870607c50a413250d9155a878d1`.
+- GitHub Actions `38906322578` («Build VectorCraft WebAssembly») — **success**, опубликован реальный новый Rust/WASM `vectorcraft-web-c3513163990f5dfc_bg.wasm` (64,744,107 bytes).
+- GitHub Pages run `38907747803` — **success**, обеспечивает доступность нового WASM.
+- Браузерный тест реального движка `38907819630` — **success**: исходный документ SVG 100×50 мм импортирован в VectorCraft с требуемым полем 90×45 мм, возвращённый SVG физически 90×45 мм; `svgBytes=372`, `browserErrors=[]`. Это реальный Chromium/WebAssembly, не имитация iframe.
+- Обычный workflow публикации Макетной `38906951940` — предварительные/браузерные проверки success, включая передачу полей SVG + PDF и отмену. Финальный publisher с обновлённым runtime smoke — `38907819765`: проверить browser_verify before declaring final publication.
+- После публикации обязательно повторно сравнить SHA реестров из `main` и source: `mockup-profiles.json` `ddb84fdc0d656341770a2399f5a10f0e21f5d72c`, `method-settings.json` `cbf6c8204e4fb3892d806342d37debefb8d9038e`.
+- Для штатной проверки: запустить закладку Макетной на gifts.ru, выбрать поле 90×45, открыть «Редактор логотипа», увидеть в заголовке «90 × 45 мм», отредактировать кривую и нажать «Применить в Макетной»; возвращённое поле должно остаться 90×45 мм без второго поворота или масштабирования логотипа.
