@@ -81,6 +81,10 @@ export function mountVectorExternalEditor({getActive,applyEdited,afterReturn=()=
    if(!/\.(?:svg|pdf|ai)$/i.test(file?.name||''))throw Error('Для возврата векторного логотипа нужен SVG, PDF или PDF-совместимый AI.');
    if(file.size>40*1024*1024)throw Error('Размер изменённого файла больше 40 МБ.');
    await applyEdited(file,original);
+   // Follow further Ctrl+S saves of the same native file. The source artwork
+   // object changes on successful import, but the field identity must not.
+   const updated=current();
+   if(updated?.key===original.key)original={...updated};
    status('Изменённый логотип возвращён в исходное поле. Технические проверки пересчитаны.');
    afterReturn();
  }
