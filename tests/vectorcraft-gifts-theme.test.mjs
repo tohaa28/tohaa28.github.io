@@ -44,6 +44,13 @@ test('Embedded egui Apply and immersive controls never replace existing handoff'
   const js=read('assets/vectorcraft-integration.js');
   const launcher=read('tools/build-launcher.mjs');
   assert.match(patch,/gwb_native_toolbar_apply/);
+  assert.match(patch,/Перенести на шаблон артикула/);
+  assert.doesNotMatch(patch,/Применить в Макетной/,'Old button caption must disappear');
+  assert.match(patch,/egui::vec2\(242\.0, WIDGET_H\)/,'Full Russian caption fits the toolbar');
+  assert.match(js,/bar\.append\(heading,field,space,fullscreenBtn,cancel\)/,
+    'Maketnaya toolbar has no Apply button');
+  assert.doesNotMatch(js,/textContent:'Применить в Макетной'/);
+  assert.match(js,/s\.apply\.click\(\)/,'Native button uses existing guarded export');
   assert.match(patch,/ui.put\(raised, button\)/);
   assert.match(patch,/egui::vec2\(0\.0, -3\.0\)/,'Toolbar button raised by 3 px without changing layout slot');
   assert.match(patch,/gwb-vectorcraft-apply-request/);
