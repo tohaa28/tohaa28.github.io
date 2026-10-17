@@ -8,7 +8,38 @@ window.gwbPersonalLayoutLibraryInstalled=true;
 const DB='gwb-personal-layouts-v1',TABLE='layouts',VERSION=1;
 const LIMIT=60*1024*1024;
 const $=id=>document.getElementById(id);
-let panel,entries,notice,accountLabel,displayArticle='',displayIdentity='',renderSerial=0,dbPromise;
+let panel,entries,notice,accountLabel,cloudBadge,saveButton,displayArticle='',displayIdentity='',renderSerial=0,dbPromise;
+let serverIdentity=null,serverCheckedFor='';
+const serverBase='/private/maketnaya-layouts/v1';
+async function cloudRequest(path,method='GET',data){
+  const headers={'Accept':'application/json'};
+  if(data)headers['Content-Type']='application/json';
+  const response=await fetch(serverBase+path,{method,headers,body:data?JSON.stringify(data):undefined,
+    credentials:'include',cache:'no-store',redirect:'error'});
+  if(!response.headers.get('content-type')?.includes('application/json'))
+    throw Error('Защищённый сервер макетов не подключён');
+  const result=await response.json();
+  if(!response.ok)throw Error(result.error||'Ошибка сервера макетов');
+  return result;
+}
+const encodeState=state=>({...state,items:state.items.map(p=>({
+  ...p,artwork:{...p.artwork,bytes:b64(p.artwork.bytes)}}))});
+const decodeState=state=>({...state,items:state.items.map(p=>({
+  ...p,artwork:{...p.artwork,bytes:fromB64(p.artwork.bytes)}}))});
+async function checkServer(){
+  const username=user();
+  if(!username||serverCheckedFor===username)return;
+  serverCheckedFor=username;serverIdentity=null;
+  try{
+    const res=await cloudRequest('/me');
+    if(!res.authenticated||typeof res.id!=='string'||clean(res.name)!==username)
+      throw Error('Сервер подтвердил другого пользователя');
+    serverIdentity=res;
+  }catch{serverIdentity=null}
+  if(cloudBadge)cloudBadge.textContent=serverIdentity?'Серверное хранилище активно':'Сервер недоступен · локальный резерв';
+  if(saveButton)saveButton.textContent=serverIdentity?'Сохранить на сервер':'Сохранить локальную копию';
+  void render();
+}
 const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:1px solid #d5e0cd;background:#fbfdf8;border-radius:8px;display:grid;gap:8px;font:12px/1.4 system-ui,sans-serif;color:#455449}
   #gwbPersonalLibrary .gwb-lib-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #gwbPersonalLibrary .gwb-lib-head strong{font-size:13px}
@@ -140,8 +171,14 @@ async function doSave(){
     if(!title)throw Error('Введите название варианта');
     const record={id:crypto.randomUUID(),scope:scope(),profile:user(),article:article(),title,
       savedAt:new Date().toISOString(),personal:true,orderId:null,status:'personal-draft',preview:capturePreview(),data:state};
-    await operate('readwrite',store=>store.put(record));
-    status('Личный вариант сохранён в браузере. В заказ он не передавался.');
+    if(serverIdentity){
+      await cloudRequest('/layouts?article='+encodeURIComponent(record.article),'POST',{
+        article:record.article,title:record.title,preview:record.preview,layout:encodeState(record.data)});
+      status('Личный вариант сохранён на сервере. В заказ он не передавался.');
+    }else{
+      await operate('readwrite',store=>store.put(record));
+      status('СЕРВЕР НЕДОСТУПЕН: сохранена только локальная копия.',true);
+    }
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
@@ -252,20 +289,27 @@ function install(){
   accountLabel=document.createElement('span');
   accountLabel.id='gwbLibAuthenticatedUser';accountLabel.className='gwb-lib-badge';
   accountLabel.setAttribute('aria-live','polite');
-  const save=button('Сохранить вариант',doSave);save.className='gwb-lib-save';
+  const save=button('Сохранить локальную копию',doSave);save.className='gwb-lib-save';saveButton=save;
+  cloudBadge=document.createElement('span');cloudBadge.className='gwb-lib-badge';
+  cloudBadge.textContent='Сервер недоступен';
   const fileLabel=document.createElement('label');fileLabel.className='gwb-lib-file';fileLabel.textContent='Импортировать копию';
   const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
   input.onchange=()=>{const f=input.files?.[0];input.value='';if(f)void importBackup(f)};
   fileLabel.append(input);
-  controls.append(accountLabel,save,fileLabel);
+  controls.append(accountLabel,cloudBadge,save,fileLabel);
   const count=document.createElement('small');count.id='gwbLibCount';
   entries=document.createElement('div');entries.className='gwb-lib-list';
   notice=document.createElement('div');notice.className='gwb-lib-status';notice.setAttribute('role','status');
   const hint=document.createElement('small');
-  hint.textContent='Имя пользователя определяется из входа gifts.ru. Пока серверная авторизация не подключена, записи хранятся только в этом браузере. Для переноса на другое устройство экспортируйте JSON.';
+  hint.textContent='Имя берётся из авторизации gifts.ru. При подключённом сервере варианты сохраняются на сервере; без него доступны только явно помеченные локальные копии с экспортом JSON.';
   panel.append(heading,articleLabel,controls,count,entries,hint,notice);
   host.append(panel);
-  const update=()=>setTimeout(()=>{if(displayArticle!==article()||displayIdentity!==user())void render()},160);
+  const update=()=>setTimeout(()=>{
+    if(displayArticle!==article()||displayIdentity!==user()){
+      if(displayIdentity!==user()){serverIdentity=null;serverCheckedFor='';void checkServer()}
+      void render();
+    }
+  },160);
   $('orderTemplates')?.addEventListener('change',update);
   $('orderTemplateList')?.addEventListener('click',update);
   window.addEventListener('gwb-editor-readiness-changed',update);
@@ -282,6 +326,7 @@ function install(){
   // any Maketnaya DOM node.
   window.addEventListener('focus',update);
   void render();
+  void checkServer();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
