@@ -69,6 +69,10 @@ function meta(doc){return{id:doc.id,article:doc.article,title:doc.title,
 async function handle(req,res){
   try{
     if(!['GET','POST','DELETE'].includes(req.method))return response(res,405,{error:'Method not allowed'});
+    if(req.method!=='GET'&&req.headers.origin!=='https://gifts.ru')
+      return response(res,403,{error:'Разрешены только запросы с gifts.ru'});
+    if(req.method==='POST'&&!/^application\\/json(?:;|$)/i.test(req.headers['content-type']||''))
+      return response(res,415,{error:'Нужен application/json'});
     const p=principal(req); // principal is signed by gifts.ru trusted server, NEVER from browser login field
     const url=new URL(req.url,'http://127.0.0.1');
     if(url.pathname==='/v1/me'&&req.method==='GET')
