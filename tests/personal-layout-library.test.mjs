@@ -38,7 +38,13 @@ test('Personal layout library is opt-in, per profile and article, not order regi
   assert.match(lib,/giftsIdentity\(\)/);
   assert.doesNotMatch(lib,/Имя профиля личной библиотеки/);
   assert.match(lib,/confirm\('Восстановить/);
-  assert.match(lib,/gwb-personal-layout-backup\/v1/);
+  assert.match(lib,/gwbCreateReadyLayoutPdf/);
+  assert.match(lib,/application\/pdf/);
+  assert.match(lib,/Скачать PDF/);
+  assert.match(lib,/const host=\$\('orderEditor'\)/);
+  assert.doesNotMatch(lib,/Импортировать копию|Копия JSON/);
+  assert.doesNotMatch(read('editor.html'),/gwbMotionToggle/);
+  assert.match(read('server/personal-layouts/index.mjs'),/\.pdf/);
   assert.doesNotMatch(lib,/api\.github\.com|mockup-profiles\.json|method-settings\.json/);
   assert.match(bridge,/window\.gwbCapturePersonalLayout=function/);
   assert.match(bridge,/window\.gwbRestorePersonalLayout=async function/);
