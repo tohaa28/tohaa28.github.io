@@ -113,21 +113,16 @@ patch('apps/vectorcraft-web/src/web.rs', [
      '            bridge_native_style: Rc::default(),\n'),
     ('        app.logic(ctx);\n',
      '''        app.logic(ctx);
-        if gwb_is_embedded() && app.session.active().is_some() {
-            // In-engine egui action, not a duplicate browser art exporter:
-            // the parent validates session and invokes the existing Apply path.
-            egui::Area::new(egui::Id::new("gwb_apply_logo_to_maketnaya"))
-                .order(egui::Order::Foreground)
-                .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-18.0, 62.0))
-                .show(ctx, |ui| {
-                    let label=egui::RichText::new("Применить в Макетной")
-                        .strong().color(egui::Color32::WHITE);
-                    let button=egui::Button::new(label)
-                        .fill(egui::Color32::from_rgb(95, 145, 15));
-                    if ui.add(button).clicked() {
-                        gwb_send("gwb-vectorcraft-apply-request",None,None);
-                    }
-                });
+        // The native VectorCraft top application bar signals this action through
+        // the current egui Context. It stays in the toolbar instead of floating
+        // above the artwork where dock panels could cover it.
+        if gwb_is_embedded() && ctx.data_mut(|data| {
+            let id=egui::Id::new("gwb_native_toolbar_apply");
+            let requested=data.get_temp::<bool>(id).unwrap_or(false);
+            if requested { data.remove::<bool>(id); }
+            requested
+        }) {
+            gwb_send("gwb-vectorcraft-apply-request",None,None);
         }
         if gwb_is_embedded() && self.host.bridge_gifts_pending.replace(false) {
             let gifts=self.host.bridge_gifts_style.get();
@@ -148,4 +143,33 @@ patch('apps/vectorcraft-web/src/web.rs', [
         }
 ''')
 ])
+# Render the call to action inside the ACTUAL VectorCraft native app bar.
+# It is not an overlay and no image/document operations are changed.
+patch('crates/ui-egui/src/chrome.rs', [
+    ('''            if discord {
+                ui.add_space(10.0);
+                crate::community::discord_button(app, ui, false);
+            }''',
+     '''            if app.single_field_mode && app.session.active().is_some() {
+                // Maketnaya-only: a highly visible green action in VectorCraft's
+                // real top toolbar, immediately beside the search/workspace group.
+                // No replacement of the document and no export in the UI crate.
+                ui.add_space(10.0);
+                let label=egui::RichText::new("Применить в Макетной")
+                    .strong().size(12.0).color(egui::Color32::WHITE);
+                let button=egui::Button::new(label)
+                    .fill(egui::Color32::from_rgb(95, 145, 15));
+                if ui.add_sized([176.0, WIDGET_H], button)
+                    .on_hover_text("Передать отредактированный логотип в выбранное поле Макетной")
+                    .clicked() {
+                    ui.ctx().data_mut(|data|
+                        data.insert_temp(egui::Id::new("gwb_native_toolbar_apply"),true));
+                }
+            }
+            if discord {
+                ui.add_space(10.0);
+                crate::community::discord_button(app, ui, false);
+            }'''),
+])
+print('Installed visible Apply action into genuine VectorCraft top application bar')
 print('Installed live, in-place gifts/native theme selector; no documents reloaded')
