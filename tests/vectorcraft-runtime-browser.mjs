@@ -35,6 +35,12 @@ try{
  await page.goto(url,{waitUntil:'load'});
  await page.waitForFunction(()=>window.__vcStatus==='editing'||window.__vcStatus.startsWith('error:'),{timeout:120000});
  assert.equal(await page.evaluate(()=>window.__vcStatus),'editing','Embedded VectorCraft must open exactly one artwork document');
+ // Sample pixels from the native egui app bar, not the Maketnaya overlay.
+ // A style acknowledgment alone is not enough: the Rust canvas must visibly
+ // change from its native dark chrome to light gifts.ru colors.
+ const barSample={x:700,y:18,width:120,height:20};
+ await page.waitForTimeout(180);
+ const nativePicture=await page.screenshot({clip:barSample});
  // This message is handled inside the real Rust/egui UI; neither the iframe
  // nor the document can be recreated during gifts -> native transitions.
  const changeTheme=mode=>page.evaluate(mode=>{
@@ -45,6 +51,10 @@ try{
  },mode);
  await changeTheme('gifts');
  await page.waitForFunction(()=>window.__vcThemeAcks.includes('gifts'),null,{timeout:12000});
+ await page.waitForTimeout(200);
+ const giftsPicture=await page.screenshot({clip:barSample});
+ assert.notDeepEqual(giftsPicture,nativePicture,
+     'The actual VectorCraft egui canvas must visibly change colors in gifts.ru mode');
  await changeTheme('native');
  await page.waitForFunction(()=>window.__vcThemeAcks.includes('native'),null,{timeout:12000});
  assert.deepEqual(await page.evaluate(()=>window.__vcThemeAcks),['gifts','native'],
