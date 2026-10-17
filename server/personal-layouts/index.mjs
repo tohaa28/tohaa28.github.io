@@ -11,7 +11,7 @@ const root=resolve(process.env.GWB_PRIVATE_LAYOUT_ROOT||'/var/lib/maketnaya-pers
 const key=process.env.GIFTS_IDENTITY_HMAC_KEY||'';
 const port=Number(process.env.GWB_LAYOUTS_PORT||8787);
 const addr=process.env.GWB_LAYOUTS_BIND||'127.0.0.1';
-const maxBody=85*1024*1024;
+const maxBody=145*1024*1024,pdfLimit=45*1024*1024;
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const validArticle=x=>typeof x==='string'&&/^[\w.\-]{2,48}$/.test(x);
 function response(res,code,data){
@@ -40,6 +40,7 @@ function principal(req){
   return {id,name};
 }
 function dirFor(p,a){return join(root,hash(p.id),hash(a))}
+function pdfPath(p,a,id){return pathFor(p,a,id).replace(/\.json$/,'.pdf')}
 function pathFor(p,a,id){if(!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id))
  throw Object.assign(Error('Недопустимый идентификатор макета'),{status:400});
  return join(dirFor(p,a),id+'.json')}
@@ -65,10 +66,17 @@ function checkDraft(d,article){
     total+=item.artwork.bytes.length;
   }
   if(total>maxBody)throw Object.assign(Error('Макет превышает лимит'),{status:413});
+  if(typeof d.pdf!=='string'||d.pdf.length<12||
+     d.pdf.length>Math.ceil(pdfLimit*4/3)+8||!/^[A-Za-z0-9+/]*={0,2}$/.test(d.pdf))
+     throw Object.assign(Error('Нужен настоящий PDF макета'),{status:400});
+  const pdf=Buffer.from(d.pdf,'base64');
+  if(pdf.byteLength<8||pdf.byteLength>pdfLimit||pdf.toString('ascii',0,5)!=='%PDF-')
+     throw Object.assign(Error('Файл макета не является PDF'),{status:400});
+  return pdf;
 }
 function meta(doc){return{id:doc.id,article:doc.article,title:doc.title,
    savedAt:doc.savedAt,preview:doc.preview||'',itemCount:doc.layout?.items?.length||0,
-   status:'personal-draft',orderId:null}}
+   status:'personal-draft',orderId:null,hasPdf:!!doc.pdfName}}
 async function handle(req,res){
   try{
     if(!['GET','POST','DELETE'].includes(req.method))return response(res,405,{error:'Method not allowed'});
@@ -82,9 +90,9 @@ async function handle(req,res){
       return response(res,200,{authenticated:true,id:p.id,name:p.name});
     const article=url.searchParams.get('article');
     if(!validArticle(article))return response(res,400,{error:'Укажите артикул'});
-    const match=url.pathname.match(/^\/v1\/layouts(?:\/([0-9a-f-]+))?$/i);
+    const match=url.pathname.match(/^\/v1\/layouts(?:\/([0-9a-f-]+)(\/pdf)?)?$/i);
     if(!match)return response(res,404,{error:'Not found'});
-    const id=match[1];
+    const id=match[1],isPdf=match[2]==='/pdf';
     if(!id&&req.method==='GET'){
       let names=[];try{names=(await readdir(dirFor(p,article))).filter(x=>x.endsWith('.json'))}
       catch(e){if(e.code!=='ENOENT')throw e}
@@ -96,15 +104,24 @@ async function handle(req,res){
       return response(res,200,{items:all.sort((a,b)=>b.savedAt.localeCompare(a.savedAt))});
     }
     if(!id&&req.method==='POST'){
-      const input=await bodyJSON(req);checkDraft(input,article);
+      const input=await bodyJSON(req);const pdfBytes=checkDraft(input,article);
       const id=randomUUID(),dir=dirFor(p,article);
       const document={id,article,principalId:p.id,title:input.title,savedAt:new Date().toISOString(),
         preview:typeof input.preview==='string'&&input.preview.length<130000&&
-          /^data:image\/jpeg;base64,/.test(input.preview)?input.preview:'',layout:input.layout};
+          /^data:image\/jpeg;base64,/.test(input.preview)?input.preview:'',
+        pdfName:'art_'+article+'_layout.pdf',layout:input.layout};
       await mkdir(dir,{recursive:true,mode:0o700});
       const tmp=join(dir,'.'+id+'.'+randomUUID()+'.tmp');
-      await writeFile(tmp,JSON.stringify(document),{mode:0o600,flag:'wx'});
-      await rename(tmp,pathFor(p,article,id));
+      const pdfTmp=join(dir,'.'+id+'.'+randomUUID()+'.pdf.tmp');
+      try{
+        await writeFile(pdfTmp,pdfBytes,{mode:0o600,flag:'wx'});
+        await rename(pdfTmp,pdfPath(p,article,id));
+        await writeFile(tmp,JSON.stringify(document),{mode:0o600,flag:'wx'});
+        await rename(tmp,pathFor(p,article,id));
+      }catch(error){
+        await Promise.allSettled([unlink(tmp),unlink(pdfTmp),unlink(pdfPath(p,article,id))]);
+        throw error;
+      }
       return response(res,201,meta(document));
     }
     if(!id)return response(res,405,{error:'Method not allowed'});
@@ -113,8 +130,27 @@ async function handle(req,res){
     try{saved=JSON.parse(await readFile(file,'utf8'))}
     catch(e){if(e.code==='ENOENT')return response(res,404,{error:'Макет не найден'});throw e}
     if(saved.principalId!==p.id||saved.article!==article)return response(res,404,{error:'Макет не найден'});
+    if(req.method==='GET'&&isPdf){
+      if(!saved.pdfName)return response(res,404,{error:'PDF отсутствует в старом варианте'});
+      let pdf;
+      try{pdf=await readFile(pdfPath(p,article,id))}
+      catch(e){if(e.code==='ENOENT')return response(res,404,{error:'PDF отсутствует'});throw e}
+      if(pdf.toString('ascii',0,5)!=='%PDF-')
+        return response(res,500,{error:'Хранимый PDF повреждён'});
+      res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':pdf.length,
+        'Content-Disposition':'attachment; filename="art_'+article+'_layout.pdf"',
+        'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff',
+        'Cross-Origin-Resource-Policy':'same-origin'});
+      return res.end(pdf);
+    }
     if(req.method==='GET')return response(res,200,{...meta(saved),layout:saved.layout});
-    if(req.method==='DELETE'){await unlink(file);return response(res,200,{deleted:true})}
+    if(req.method==='DELETE'){
+      if(isPdf)return response(res,405,{error:'Method not allowed'});
+      await unlink(file);
+      if(saved.pdfName)try{await unlink(pdfPath(p,article,id))}
+        catch(e){if(e.code!=='ENOENT')throw e}
+      return response(res,200,{deleted:true});
+    }
     return response(res,405,{error:'Method not allowed'});
   }catch(e){return response(res,e.status||500,{error:e.status?e.message:'Ошибка сервера'})}
 }
