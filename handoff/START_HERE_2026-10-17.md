@@ -1,3 +1,5 @@
+> **АКТУАЛИЗАЦИЯ после этого базового handoff, 17 октября:** UI VectorCraft получил скрытые переключатели old/native, fullscreen (Esc для выхода), настоящий Apply в egui и скрытие родительского «Закрыть Макетную». **Новая каноническая точка для продолжения:** [MAKETNAYA_VECTORCRAFT_IMMERSIVE_2026-10-17.md](MAKETNAYA_VECTORCRAFT_IMMERSIVE_2026-10-17.md), source checkpoint `checkpoint-maketnaya-vectorcraft-immersive-20261017-source`, production checkpoint `checkpoint-maketnaya-vectorcraft-immersive-20261017-production`. Сохраняйте описанные ниже более старые контрольные точки; не считайте их последней версией.
+
 # АКТУАЛЬНЫЙ HANDOFF — Макетная / VectorCraft / PrintCheck / Редактор мокапов
 
 **Срез:** 17 октября 2026 г. **ЭТО ГЛАВНЫЙ ДОКУМЕНТ ДЛЯ ПРОДОЛЖЕНИЯ В НОВОМ ЧАТЕ.** Он важнее старых `PROJECT_HANDOFF.md` и `CURRENT_HANDOFF_MAKETNAYA_PRINTCHECK.md` в части состояния 17 октября. Для архивных деталей продолжайте читать старые документы; НЕ стирайте их.
