@@ -81,12 +81,12 @@ try{
  assert.deepEqual(await iframe.locator('body').evaluate(()=>window.__themeChanges),['gifts'],
    'Opening an embedded VectorCraft session automatically sets the actual engine to gifts.ru');
  await skin.click();
- const native=page.getByRole('button',{name:'Стиль gifts.ru',exact:true});
- await native.waitFor({timeout:10000});
- assert.equal(await native.getAttribute('aria-pressed'),'false','Native VectorCraft style remains available');
+ const nativeSwitch=page.getByRole('button',{name:'Стиль gifts.ru',exact:true});
+ await nativeSwitch.waitFor({timeout:10000});
+ assert.equal(await nativeSwitch.getAttribute('aria-pressed'),'false','Native VectorCraft style remains available');
  const nativeColor=await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor);
  assert.notEqual(nativeColor,giftsColor,'Switching to native style changes the chrome');
- await native.click();
+ await nativeSwitch.click();
  await skin.waitFor({timeout:10000});
  assert.equal(await skin.getAttribute('aria-pressed'),'true','Can switch back to gifts.ru without reopening artwork');
  assert.equal(await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor),giftsColor);
