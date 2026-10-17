@@ -1,3 +1,5 @@
+> **ОБНОВЛЕНИЕ 17.10.2026 — ПОСЛЕДНЕЕ СОСТОЯНИЕ:** восстановить прежде всего [новый handoff VectorCraft immersive](handoff/MAKETNAYA_VECTORCRAFT_IMMERSIVE_2026-10-17.md). Полноэкранный режим, скрытые устаревшие переключатели, `Применить в Макетной` внутри реального egui VectorCraft, скрытие внешней кнопки закрытия — выполнены и опубликованы. Замороженные checkpoint refs: `checkpoint-maketnaya-vectorcraft-immersive-20261017-source` (b58a7a024bc5c45ce586494d279b33cf34d97e48) и `checkpoint-maketnaya-vectorcraft-immersive-20261017-production` (7a54ade50995414ef41c04e450cd13a0509ab182). CI: 39054009557; живой WASM: 39054009562; Pages: 39054084859 — все SUCCESS. Сохранить свежие JSON реестры, не откатывать со старой точкой.
+
 # Важное: действующее состояние Макетной (17.10.2026)
 
 Для **продолжения проекта в новом чате** сначала открыть:
