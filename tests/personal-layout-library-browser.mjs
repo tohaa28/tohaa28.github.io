@@ -7,6 +7,9 @@ try{
  const url='https://gifts.ru/__personal_layout_library_test';
  await page.route(url,route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',
    body:'<!doctype html><html lang="ru"><body><header><g-droper><a href="/private/cabinet">Личный кабинет</a><g-drop><div class="drop--padding"><span class="opacity-half">Пользователь A</span></div></g-drop></g-droper></header><div id="orderEditor"><div id="orderFieldChoiceBox"><select id="orderTemplates"><option value="0">Артикул 15637</option></select><div id="orderTemplateList"></div></div><canvas id="templateCanvas" width="100" height="100"></canvas><canvas id="overlay" width="100" height="100"></canvas></div></body></html>'}));
+ await page.route('https://gifts.ru/private/maketnaya-layouts/**',r=>r.fulfill({
+   status:503,contentType:'application/json; charset=utf-8',body:JSON.stringify({error:'API not deployed'})
+ }));
  await page.goto(url);
  await page.evaluate(()=>{
    window.__article='15637';window.__restored=[];window.__captured=0;
@@ -34,7 +37,7 @@ try{
  }));
  assert.equal(ident.accountText,'Пользователь gifts.ru: Пользователь A',
    'Identity must be resolved from real gifts.ru header: '+JSON.stringify(ident));
- await lib.getByRole('button',{name:'Сохранить вариант'}).click();
+ await lib.getByRole('button',{name:'Сохранить локальную копию'}).click();
  await lib.getByRole('button',{name:'Восстановить'}).waitFor();
  assert.equal(await page.evaluate(()=>window.__restored.length),0,'Saved drafts must not automatically appear in current order');
  const row=lib.locator('.gwb-lib-item');assert.equal(await row.count(),1);
