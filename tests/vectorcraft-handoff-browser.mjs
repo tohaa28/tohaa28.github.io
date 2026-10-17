@@ -71,28 +71,28 @@ try{
  await page.locator('#editorOpenLogoEditor').click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const iframe=page.frameLocator('#gwbVectorcraftHost iframe');
- const skin=page.getByRole('button',{name:'Стиль gifts.ru ✓'});
- const simple=page.getByRole('button',{name:'Открыть прежний редактор'});
- await skin.waitFor({timeout:10000});
- assert.equal(await skin.isEnabled(),true,'gifts.ru skin is initialized and switch can revert to native');
- assert.equal(await simple.isVisible(),true,'Simple editor link preserved');
- assert.equal(await skin.getAttribute('aria-pressed'),'true','gifts.ru is the default skin');
- const giftsColor=await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor);
+ const skin=page.locator('#gwbVectorcraftHost button').filter({hasText:'Стиль gifts.ru'});
+ const simple=page.locator('#gwbVectorcraftHost button').filter({hasText:'Открыть прежний редактор'});
+ assert.equal(await skin.count(),1,'Native theme switch is retained internally');
+ assert.equal(await simple.count(),1,'Legacy editor is retained internally');
+ assert.equal(await skin.isHidden(),true,'Native VectorCraft style switch is hidden');
+ assert.equal(await simple.isHidden(),true,'Legacy/simple editor switch is hidden');
+ assert.equal(await skin.getAttribute('aria-pressed'),'true','gifts.ru remains default');
  assert.deepEqual(await iframe.locator('body').evaluate(()=>window.__themeChanges),['gifts'],
    'Opening an embedded VectorCraft session automatically sets the actual engine to gifts.ru');
- await skin.click();
- const nativeSwitch=page.getByRole('button',{name:'Стиль gifts.ru',exact:true});
- await nativeSwitch.waitFor({timeout:10000});
- assert.equal(await nativeSwitch.getAttribute('aria-pressed'),'false','Native VectorCraft style remains available');
- const nativeColor=await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor);
- assert.notEqual(nativeColor,giftsColor,'Switching to native style changes the chrome');
- await nativeSwitch.click();
- await skin.waitFor({timeout:10000});
- assert.equal(await skin.getAttribute('aria-pressed'),'true','Can switch back to gifts.ru without reopening artwork');
- assert.equal(await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor),giftsColor);
- assert.deepEqual(await iframe.locator('body').evaluate(()=>window.__themeChanges),['gifts','native','gifts']);
  assert.equal(await iframe.locator('body').evaluate(()=>window.__seen.length),1,
-   'Switching skin preserves the original document without reimporting it');
+   'Hiding controls does not re-import or mutate active artwork');
+ // Browser fullscreen must remove the Maketnaya header/footer yet keep the
+ // same iframe, not create a second VectorCraft document.
+ await page.getByRole('button',{name:'На весь экран'}).click();
+ await page.waitForFunction(()=>document.fullscreenElement?.id==='gwbVectorcraftHost',{timeout:12000});
+ assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).isVisible(),false,
+   'Outer Apply remains present but the Maketnaya chrome is hidden in fullscreen');
+ assert.equal(await iframe.locator('body').evaluate(()=>window.__seen.length),1);
+ await page.evaluate(()=>document.exitFullscreen());
+ await page.waitForFunction(()=>!document.fullscreenElement);
+ assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).isVisible(),true,
+   'Original outer Apply reappears after leaving fullscreen');
  const seen=await iframe.locator('body').evaluate(()=>window.__seen);
  assert.equal(seen.length,1,'Original artwork sent as bytes exactly once');
  assert.match(seen[0].name,/art-поле\.svg/);
@@ -120,7 +120,11 @@ try{
  assert.equal(await page.locator('#gwbVectorcraftHost').isVisible(),true);
  await page.evaluate(()=>window.postMessage({type:'gwb-vectorcraft-svg',token:location.hash,bytes:new TextEncoder().encode('<svg/>')},'*'));
  assert.deepEqual(await page.evaluate(()=>window.__applied),[],'Untrusted sender did not overwrite the artwork');
- await page.getByRole('button',{name:'Применить в Макетной'}).click();
+ // Simulate the trusted message emitted by the genuine in-engine egui Apply
+ // action. It must use exactly the same export/validation pipeline as the header.
+ await iframe.locator('body').evaluate(()=>parent.postMessage({
+   type:'gwb-vectorcraft-apply-request',token:decodeURIComponent(location.hash.slice('#gwb='.length))
+ },'*'));
  await page.locator('#gwbVectorcraftHost').waitFor({state:'detached'});
  const state=await page.evaluate(async()=>({
   first:await window.__placed[0].file.text(),
