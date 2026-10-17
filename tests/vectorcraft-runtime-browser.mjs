@@ -22,7 +22,8 @@ try{
     " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
     " window.__vcStatus='editing';",
-    " }else if(e.data.type==='gwb-vectorcraft-theme-applied'){window.__vcThemeAcks.push(e.data.message);}",
+    " }else if(e.data.type==='gwb-vectorcraft-theme-applied'){",
+    " window.__vcThemeAcks.push(e.data.message);",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
     " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcStatus='ok';",
     " }else if(e.data.type==='gwb-vectorcraft-error'){if(window.__vcExpectRejection){window.__vcBlocked.push(String(e.data.message));window.__vcExpectRejection=false;}else window.__vcStatus='error: '+e.data.message;}",
@@ -33,7 +34,16 @@ try{
    await route.fulfill({status:200,contentType:'text/html',body});
  });
  await page.goto(url,{waitUntil:'load'});
- await page.waitForFunction(()=>window.__vcStatus==='editing'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:120000});
+ await page.waitForFunction(()=>!!window.__vcStatus||document.readyState==='complete',null,{timeout:10000});
+ const boot=await page.evaluate(()=>({state:window.__vcStatus,scriptError:document.querySelector('iframe')?.src}));
+ assert.equal(boot.state,'opening','Test parent must initialize its message handler before loading WASM: '+JSON.stringify({boot,browserErrors}));
+ try{
+   await page.waitForFunction(()=>window.__vcStatus==='editing'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:50000});
+ }catch(error){
+   throw Error('VectorCraft WASM boot did not complete: '+JSON.stringify(
+      {state:await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents||[]})),browserErrors})+
+      ' / '+error.message);
+ }
  assert.equal(await page.evaluate(()=>window.__vcStatus),'editing','Embedded VectorCraft must open exactly one artwork document');
  // Sample pixels from the native egui app bar, not the Maketnaya overlay.
  // A style acknowledgment alone is not enough: the Rust canvas must visibly
