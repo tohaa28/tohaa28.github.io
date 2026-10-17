@@ -76,6 +76,8 @@ const source = `(() => {
   const frame = document.createElement("iframe");
   frame.className = "gwb-frame";
   frame.title = "Макетная + мокапы";
+  frame.setAttribute("allowfullscreen", "");
+  frame.setAttribute("allow", "fullscreen");
 
   const motionStage = document.createElement("div");
   motionStage.className = "gwb-motion-stage";
@@ -92,6 +94,7 @@ const source = `(() => {
   const closeWorkbench = () => {
     if (host.classList.contains("gwb-closing")) return;
     host.classList.add("gwb-closing");
+    window.removeEventListener("message",onEditorVisibility);
     setTimeout(() => {
       host.remove();
       document.documentElement.style.overflow = "";
@@ -99,6 +102,16 @@ const source = `(() => {
     }, 900);
   };
   close.onclick = closeWorkbench;
+
+  // VectorCraft lives inside the workbench iframe; the close X belongs to
+  // this outer gifts.ru launcher. Accept state only from OUR own frame.
+  const onEditorVisibility = event => {
+    if (event.source !== frame.contentWindow || event.origin !== location.origin ||
+        event.data?.type !== "gwb-maketnaya-vectorcraft-visibility") return;
+    close.style.display = event.data.visible ? "none" : "";
+    close.disabled = !!event.data.visible;
+  };
+  window.addEventListener("message",onEditorVisibility);
 
   host.append(style, frame, motionStage, close);
   document.documentElement.style.overflow = "hidden";
