@@ -158,6 +158,81 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     return {name:file.name,fieldIndex:target.fieldIndex};
   }finally{y.busy=false;X()}
 };
+// Personal variants are separate from order submissions. Capturing or restoring
+// them happens ONLY after an explicit user action; never on basket refresh.
+window.gwbCurrentLibraryArticle=function(){return String(y.selectedEntry?.article||"").trim();};
+window.gwbCapturePersonalLayout=function(){
+  Ft();
+  if(y.busy||!y.template||!y.selectedEntry?.article)
+    throw Error("Откройте шаблон артикула из заказа");
+  const article=String(y.selectedEntry.article).trim();
+  const placed=y.placements.filter(p=>p.art?.bytes?.length&&p.placement&&p.field);
+  if(!placed.length)throw Error("Нет размещённых логотипов для сохранения");
+  const fields=y.template.fieldOptions||[];
+  return {schema:"gwb-personal-layout/v1",article,createdAt:new Date().toISOString(),
+    fields:fields.map(f=>({page:f.page,w:f.w,h:f.h,x:f.x,y:f.y})),
+    items:placed.map(p=>({
+      fieldIndex:p.fieldIndex,page:p.page,
+      placement:{x:p.placement.x-p.field.x,y:p.placement.y-p.field.y,
+        w:p.placement.w,h:p.placement.h,rotation:p.placement.rotation||0,
+        clipToField:!!p.placement.clipToField},
+      artwork:{name:p.art.name,mime:p.art.mime||"application/octet-stream",
+        bytes:new Uint8Array(p.art.bytes)}
+    }))};
+};
+window.gwbRestorePersonalLayout=async function(saved){
+  if(!saved||saved.schema!=="gwb-personal-layout/v1"||!Array.isArray(saved.items))
+    throw Error("Формат сохранённого макета не поддерживается");
+  if(y.busy||!y.selectedEntry?.article||!y.template)
+    throw Error("Сначала откройте шаблон артикула");
+  const article=String(y.selectedEntry.article).trim(),template=y.template;
+  if(saved.article!==article)throw Error("Этот вариант сохранён для другого артикула");
+  const fields=template.fieldOptions||[];
+  if(saved.fields?.length!==fields.length)throw Error("Количество полей конструктора изменилось");
+  const near=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<0.25;
+  for(let i=0;i<fields.length;i++){
+    const a=saved.fields[i],b=fields[i];
+    if(!a||a.page!==b.page||!near(a.w,b.w)||!near(a.h,b.h)||
+       !near(a.x,b.x)||!near(a.y,b.y))
+      throw Error("Поля текущего конструктора не совпадают с сохранённым вариантом");
+  }
+  if(!saved.items.length||saved.items.length>100)throw Error("Пустая или слишком большая запись");
+  const seen=new Set();
+  for(const p of saved.items){
+    const idx=p.fieldIndex,field=fields[idx],pl=p.placement;
+    if(!Number.isInteger(idx)||!field||seen.has(idx)||p.page!==field.page||
+       !pl||!["x","y","w","h","rotation"].every(k=>Number.isFinite(pl[k]))||
+       pl.w<=0||pl.h<=0||pl.w>2000||pl.h>2000||
+       !(p.artwork?.bytes instanceof Uint8Array)||!p.artwork.bytes.length||
+       p.artwork.bytes.length>40*1024*1024)
+      throw Error("Сохранённый вариант содержит неверное поле или логотип");
+    seen.add(idx);
+  }
+  y.busy=true;X();
+  try{
+    const prepared=[];
+    for(const p of saved.items){
+      const field={...fields[p.fieldIndex]};
+      const file=new File([p.artwork.bytes],String(p.artwork.name||"logo.svg").slice(0,180),{
+        type:String(p.artwork.mime||"application/octet-stream").slice(0,80)});
+      const art=await Qe(file,"art");
+      const pl=p.placement;
+      prepared.push({field,fieldIndex:p.fieldIndex,page:field.page,art,
+        placement:{x:field.x+pl.x,y:field.y+pl.y,w:pl.w,h:pl.h,
+          rotation:pl.rotation,clipToField:!!pl.clipToField}});
+    }
+    if(y.template!==template||String(y.selectedEntry?.article||"").trim()!==article)
+      throw Error("Артикул сменился при восстановлении — текущий макет не затронут");
+    y.placements=prepared;
+    y.active=-1;y.field=null;y.art=null;y.placement=null;
+    _t();X();
+  }finally{y.busy=false;X();}
+  if(y.placements.length)await zn(0);
+  Q("Личный вариант восстановлен. Он не отправлен в заказ.");
+  window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
+  return {article,count:y.placements.length};
+};
+
 v("artwork").onchange=c=>Ai(c,"art");v("manualTemplate").onchange=c=>Ai(c,"template");v("drawField").onclick=()=>{y.template&&(y.draw=!y.draw,y.draw&&(Ft(),y.active=-1,y.field=null,y.art=null,y.placement=null,_t(),X()),v("drawField").textContent=y.draw?"Обведите рамку на шаблоне":"Выделить поле",Q(y.draw?"Выделение поля: потяните от угла до угла":"Редактирование нанесения"))};v("clearField").onclick=()=>{Ft(),y.active=-1,y.field=null,y.art=null,y.placement=null,Qt(),_t(),X()};v("fit").onclick=bi;v("center").onclick=jn;v("fillEmpty").onclick=()=>{if(!(!y.art||!y.template?.fieldOptions?.length)){Ft();for(const[c,t]of y.template.fieldOptions.entries()){const e=y.placements.find(s=>s.fieldIndex===c);e?e.art||(e.art=y.art,e.placement=Ze(e.field,y.art)):y.placements.push({field:{...t},fieldIndex:c,page:t.page,art:y.art,placement:Ze(t,y.art)})}_t(),X(),Q("Текущее лого добавлено во все пустые поля. Для замены выберите поле и загрузите другой файл.")}};v("removePlacement").onclick=()=>{y.active<0||(y.placements.splice(y.active,1),y.active=-1,y.field=null,y.art=null,y.placement=null,Qt(),_t(),X(),Q("Логотип удалён из поля. Остальные нанесения сохранены."))};v("simpleDraw").onclick=()=>v("drawField").click();v("simpleFill").onclick=()=>v("fillEmpty").click();v("simpleFit").onclick=bi;v("simpleCenter").onclick=jn;v("simpleExport").onclick=()=>v("export").click();for(const[c,t]of[["rotateLeft",-90],["rotateRight",90]])v(c).onclick=()=>{y.placement&&(y.placement.rotation=((y.placement.rotation||0)+t+360)%360,X())};v("editorAddLogo").onclick=()=>v("artwork").click();v("editorFit").onclick=()=>bi();v("editorCenter").onclick=()=>jn();v("editorRotateLeft").onclick=()=>v("rotateLeft").click();v("editorRotateRight").onclick=()=>v("rotateRight").click();v("editorAngle").oninput=()=>{const c=Number(v("editorAngle").value);y.placement&&Number.isFinite(c)&&Math.abs(c)<=360&&(y.placement.rotation=c,v("rotation").value=String(c),X())};v("editorRemoveLogo").onclick=()=>{if(y.active<0)return;const c=y.placements[y.active];if(!c?.art||!c?.placement)return;c.art=null,c.placement=null,y.art=null,y.placement=null,y.field=c.field,Qt(),_t(),X(),Q("Логотип удалён из выбранного места нанесения.")};v("rotation").oninput=()=>{const c=Number(v("rotation").value);y.placement&&Number.isFinite(c)&&Math.abs(c)<=360&&(y.placement.rotation=c,v("editorAngle").value=String(c),X())};v("clipToField").onchange=()=>{y.placement&&(y.placement.clipToField=v("clipToField").checked,v("editorClip").checked=v("clipToField").checked,X())};v("editorClip").onchange=()=>{y.placement&&(y.placement.clipToField=v("editorClip").checked,v("clipToField").checked=v("editorClip").checked,X())};v("confirmErrors").onchange=X;for(const c of["width","height"])v(c).oninput=()=>{const t=y.placement,e=Number(v(c).value);if(!t||!Number.isFinite(e)||e<=0)return;const s=t.w/t.h;c==="width"?(t.w=e,v("lockRatio").checked&&(t.h=e/s)):(t.h=e,v("lockRatio").checked&&(t.w=e*s)),X()};v("guard").oninput=X;v("minDpi").oninput=X;v("method").oninput=X;document.getElementById("preflightMarkers")?.addEventListener("change",X);async function Kn(c){const t=y.template;if(!t?.pdf||y.busy)return;const e=y.page+c;if(!(e<0||e>=t.pages)){Ft(),y.busy=!0;try{await fs(t,e),y.page=e,y.active=-1,y.field=null,y.art=null,y.placement=null,y.view=null,await Fe(!1),_t(),X(),await zt(),Q("Выберите поле на этой странице или в списке")}catch(s){It(s)}finally{y.busy=!1,X()}}}v("prevPage").onclick=()=>Kn(-1);v("nextPage").onclick=()=>Kn(1);async function Jn(c){if(c.svg.text)throw new Error("Для точного векторного PDF переведите текст SVG в кривые. Исходник можно сохранить в проект.");if(c.svg.effects)throw new Error("SVG с фильтрами или масками: экспортируйте исходник в PDF в векторном редакторе.");const t=c.svg.root.cloneNode(!0);t.setAttribute("width",String(c.w*Bt)),t.setAttribute("height",String(c.h*Bt));const e=document.createElement("div");e.style.cssText="position:fixed;left:-100000px;top:0;",e.append(t),document.body.append(e);try{const s=new window.jspdf.jsPDF({orientation:c.w>c.h?"landscape":"portrait",unit:"pt",format:[c.w*Bt,c.h*Bt],compress:!0});return await s.svg(t,{x:0,y:0,width:c.w*Bt,height:c.h*Bt}),new Uint8Array(s.output("arraybuffer"))}finally{e.remove()}}function mo(c){return{format:"gifts-layout-project",version:2,created:new Date().toISOString(),order:v("order").value,article:v("article").value,method:v("method").value,orderItem:y.selectedEntry?{itemId:y.selectedEntry.itemId,quantity:y.selectedEntry.quantity,place:y.selectedEntry.place,places:y.selectedEntry.places,product:y.selectedEntry.product}:null,template_name:y.template.name,placements:y.placements.map(t=>({fieldIndex:t.fieldIndex,page:t.page,field:t.field,placement:t.placement,artwork_name:t.art?.name||null,artwork_path:t.art?c.get(t.art):null})),guard:v("guard").value,minDpi:v("minDpi").value,checks:pe(),logoPreflight:window.gwbLogoPreflight||[],productionApproved:!1}}function Qn(){Ft();const c=y.placements.filter(t=>t.art&&t.placement&&t.field);if(!c.length)throw new Error("Загрузите логотип хотя бы в одно поле.");for(const t of c)if(!Number.isInteger(t.page)||t.page<0||t.page>=y.template.pages||!["x","y","w","h"].every(e=>Number.isFinite(t.placement[e]))||t.placement.w<=0||t.placement.h<=0||!Number.isFinite(t.placement.rotation||0)||Math.abs(t.placement.rotation||0)>360)throw new Error("Некорректные координаты логотипа.");if(pe().some(t=>t.status==="bad")&&!v("confirmErrors").checked)throw new Error("Исправьте ошибки проверки или подтвердите скачивание макета с ошибками.");return c}let je=null;async function Zn(c,t){if(location.hostname==="layout.local"&&window.NativeSave){if(!window.NativeSave.start(t))throw Error("Не удалось создать ZIP в Загрузках Android.");const s=new Uint8Array(await c.arrayBuffer());for(let i=0;i<s.length;i+=49152){const n=s.subarray(i,i+49152);if(!window.NativeSave.chunk(btoa(String.fromCharCode(...n))))throw Error("Не удалось записать ZIP в Загрузки Android.")}if(!window.NativeSave.finish())throw Error("Не удалось завершить сохранение ZIP.");v("downloadResult").hidden=!0;return}je&&URL.revokeObjectURL(je),je=URL.createObjectURL(c);const e=v("downloadResult");e.href=je,e.download=t,e.hidden=!1,e.textContent="Скачать "+t,e.click()}async function tr(){if(y.busy||!y.template)return!1;y.busy=!0,X(),Q("Собираю один PDF со всеми логотипами…");try{const c=Qn(),t=await hn({template:y.template,placements:c},PDFLib,Jn),e=Hn([v("order").value,v("article").value,"макет"].filter(Boolean).join("_"))+".pdf";return await Zn(new Blob([t],{type:"application/pdf"}),e),Q(`Сохранён один PDF: ${c.length} логотипов в ${new Set(c.map(s=>s.fieldIndex??s.field)).size} полях.`),!0}catch(c){return It(c),!1}finally{y.busy=!1,X()}}async function bo(){if(!(y.busy||!y.template)){y.busy=!0,X(),Q("Сохраняю макет и исходники…");try{const c=Qn(),t=new JSZip,e=new Map;t.file("originals/template."+y.template.ext,y.template.bytes);for(const i of y.placements)if(i.art&&!e.has(i.art)){const n=`originals/artwork_${String(e.size+1).padStart(2,"0")}.${i.art.ext}`;e.set(i.art,n),t.file(n,i.art.bytes)}const s=mo(e);try{t.file("ready_layout.pdf",await hn({template:y.template,placements:c},PDFLib,Jn))}catch(i){s.export_error=i.message}t.file("project.json",JSON.stringify(s,null,2)),t.file("CHECKS.txt",pe().map(i=>i.status.toUpperCase()+": "+i.text).join(`
 `)+`
 
