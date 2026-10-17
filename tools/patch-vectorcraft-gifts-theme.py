@@ -155,17 +155,17 @@ patch('crates/ui-egui/src/chrome.rs', [
                 // real top toolbar, immediately beside the search/workspace group.
                 // No replacement of the document and no export in the UI crate.
                 ui.add_space(10.0);
-                let label=egui::RichText::new("Применить в Макетной")
+                let label=egui::RichText::new("Перенести на шаблон артикула")
                     .strong().size(12.0).color(egui::Color32::WHITE);
                 let button=egui::Button::new(label)
                     .fill(egui::Color32::from_rgb(95, 145, 15));
                 // Keep the horizontal layout slot unchanged and raise only
                 // this button by 3 px for visual centering inside the 32 px bar.
                 let (slot, _) = ui.allocate_exact_size(
-                    egui::vec2(176.0, WIDGET_H), egui::Sense::hover());
+                    egui::vec2(242.0, WIDGET_H), egui::Sense::hover());
                 let raised=slot.translate(egui::vec2(0.0, -3.0));
                 if ui.put(raised, button)
-                    .on_hover_text("Передать отредактированный логотип в выбранное поле Макетной")
+                    .on_hover_text("Перенести отредактированный логотип в выбранное поле шаблона артикула")
                     .clicked() {
                     ui.ctx().data_mut(|data|
                         data.insert_temp(egui::Id::new("gwb_native_toolbar_apply"),true));
