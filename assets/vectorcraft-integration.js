@@ -152,7 +152,7 @@ async function open(){
   const iframe=el('iframe',{title:'VectorCraft — векторный редактор',allow:'webgpu; clipboard-read; clipboard-write; fullscreen'});
   Object.assign(iframe.style,{flex:'1',width:'100%',border:0,minHeight:'0',background:'#262626'});
   const footer=el('div');
-  Object.assign(footer.style,{background:'#334047',minHeight:'29px',display:'flex',alignItems:'center',padding:'4px 16px'});
+  Object.assign(footer.style,{background:'#334047',minHeight:'29px',display:'flex',alignItems:'center',gap:'9px',flexWrap:'wrap',padding:'6px 16px'});
   const status=el('span',{textContent:'Запускаем VectorCraft WebAssembly…'});
   status.style.flex='1';
   footer.append(status);overlay.append(bar,iframe,footer);
