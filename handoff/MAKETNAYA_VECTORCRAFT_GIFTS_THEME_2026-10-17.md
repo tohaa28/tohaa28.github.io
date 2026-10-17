@@ -30,3 +30,12 @@
 
 ## Откат
 Рекомендуемый откат стиля не требует Git: просто выключить кнопку «Стиль gifts.ru» — все исходные егui-параметры восстановятся из снимка без перезагрузки. Для отката кода использовать резервные ветки, затем синхронизировать с актуальными server JSON, не восстанавливая их из старой копии без сравнения.
+
+## Итоговая публикация и подтверждение — успешно
+- Компиляция подлинного Rust/WebAssembly VectorCraft: [`39021081065`](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39021081065) — **success**, обновлённый `vectorcraft-web-387ea92584a5506a_bg.wasm` размером 64,756,916 байт. Ранний `39020725401` упал из-за устаревшего egui API `ctx.style/set_style`; исправлено на поддерживаемые egui 0.36 `ctx.global_style/set_global_style`.
+- GitHub Pages production WebAssembly deployment [`39021573521`](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39021573521) — **success**.
+- Реальный Chromium/WebAssembly тест [`39021992518`](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39021992518) — **success**. Проверены `gwb-vectorcraft-theme-applied: gifts`, `native`, изменение настоящих пикселей egui-панели после включения gifts-режима (не только внешний CSS), отсутствие повторного открытия, сохранение защиты от второго документа и экспорт того же SVG 40×18 мм с координатами 12,8 мм. `browserErrors: []`.
+- Общий CI `39021992566` — **success**, precheck, publish, browser_verify / browser-test. Включает имитационные UI-тесты, сравнение цветов контейнера при переключении gifts/native, сохранение позиции печати и соседнего поля, тесты PrintCheck/цилиндрических мокапов, запуск gifts.ru.
+- Развёртывание GitHub Pages `39022054385` — **success**.
+- На исходной и опубликованной ветках одинаковые SHA данных: `mockup-profiles.json` — `ddb84fdc0d656341770a2399f5a10f0e21f5d72c`; `method-settings.json` — `cbf6c8204e4fb3892d806342d37debefb8d9038e`. Настройки PrintCheck и мокапов не изменены.
+- Существующие пользовательские точки восстановления и новые backup branches сохранены. Никакие правки логотипов не отправляются на сервер при переключении стиля: используется только работа с egui Context.
