@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {readFileSync} from 'node:fs';
 const browser=await chromium.launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});
  const url='https://gifts.ru/__personal_layout_library_test';
  await page.route(url,route=>route.fulfill({status:200,contentType:'text/html',
-   body:'<!doctype html><html lang="ru"><body><div id="orderEditor"><div id="orderFieldChoiceBox"><select id="orderTemplates"><option value="0">Артикул 15637</option></select><div id="orderTemplateList"></div></div></div></body></html>'}));
+   body:'<!doctype html><html lang="ru"><body><div id="orderEditor"><div id="orderFieldChoiceBox"><select id="orderTemplates"><option value="0">Артикул 15637</option></select><div id="orderTemplateList"></div></div><canvas id="templateCanvas" width="100" height="100"></canvas><canvas id="overlay" width="100" height="100"></canvas></div></body></html>'}));
  await page.goto(url);
  await page.evaluate(()=>{
    window.__article='15637';window.__restored=[];window.__captured=0;
@@ -51,5 +52,39 @@ try{
  await page.evaluate(()=>{window.__article='15637';window.dispatchEvent(new CustomEvent('gwb-editor-readiness-changed'))});
  await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 1');
  assert.equal(await row.count(),1);
- console.log('Personal IndexedDB library: explicit restore, per-user and per-article isolation passed');
+ assert.equal(await row.locator('img.gwb-lib-preview').count(),1,
+   'Saved artwork should display a visual thumbnail without exposing it to the server');
+ const pending=page.waitForEvent('download');
+ await row.getByRole('button',{name:'Копия JSON'}).click();
+ const downloaded=await pending;
+ assert.match(downloaded.suggestedFilename(),/maketnaya-15637-/);
+ const backup=readFileSync(await downloaded.path());
+ const parsed=JSON.parse(backup.toString());
+ assert.equal(parsed.layout.items[0].artwork.bytes.length>20,true);
+ await lib.locator('input[type=file]').setInputFiles({
+   name:'restored-layout.json',mimeType:'application/json',buffer:backup
+ });
+ await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 2');
+ assert.equal(await page.evaluate(()=>window.__restored.length),1,
+   'Import must add a draft but never apply it to an open order');
+
+ // Verify persistence after a full browser reload of the SAME gifts.ru origin.
+ await page.reload();
+ await page.evaluate(()=>{
+   window.__article='15637';window.__restored=[];
+   window.gwbCurrentLibraryArticle=()=>window.__article;
+   window.gwbRestorePersonalLayout=async data=>{
+      window.__restored.push(data);return{article:window.__article,count:data.items.length};
+   };
+   window.confirm=()=>true;
+ });
+ await page.addScriptTag({path:'assets/personal-layout-library.js'});
+ const reopened=page.locator('#gwbPersonalLibrary');
+ await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 2');
+ assert.equal(await page.evaluate(()=>window.__restored.length),0,
+    'Reload never automatically restores drafts into a new order');
+ await reopened.getByRole('button',{name:'Восстановить'}).first().click();
+ await page.waitForFunction(()=>window.__restored.length===1);
+ assert.equal(await page.evaluate(()=>window.__restored[0].article),'15637');
+ console.log('Personal IndexedDB: thumbnails, profiles, articles, backup round-trip, reload persistence and explicit restore passed');
 }finally{await browser.close()}
