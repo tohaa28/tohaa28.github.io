@@ -6,7 +6,7 @@
 if(window.gwbVectorcraftIntegrationInstalled)return;
 window.gwbVectorcraftIntegrationInstalled=true;
 const ORIGIN='https://tohaa28.github.io';
-const URL_BASE=ORIGIN+'/gifts-layout-workbench-mockups/vectorcraft/index.html';
+const URL_BASE=ORIGIN+'/gifts-layout-workbench-mockups/vectorcraft/index.html?v=20261017-transfer-only-1';
 let active=null;
 const el=(tag,opts={})=>Object.assign(document.createElement(tag),opts);
 function reportEditorVisibility(visible){
