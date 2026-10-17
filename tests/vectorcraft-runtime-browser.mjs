@@ -21,7 +21,7 @@ try{
     " const bytes=new TextEncoder().encode(svg).buffer;",
     " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
-    " window.__vcStatus='editing';",
+    " window.__vcStatus='editing';window.__vcColorModel=e.data.message;",
     " }else if(e.data.type==='gwb-vectorcraft-apply-request'){",
     " window.__vcInlineApplyCount=(window.__vcInlineApplyCount||0)+1;",
     " f.contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);",
@@ -48,6 +48,8 @@ try{
       ' / '+error.message);
  }
  assert.equal(await page.evaluate(()=>window.__vcStatus),'editing','Embedded VectorCraft must open exactly one artwork document');
+ assert.equal(await page.evaluate(()=>window.__vcColorModel),'CMYK',
+    'Real compiled WASM must confirm that the ACTIVE editable document uses CMYK');
  // Sample pixels from the native egui app bar, not the Maketnaya overlay.
  // A style acknowledgment alone is not enough: the Rust canvas must visibly
  // change from its native dark chrome to light gifts.ru colors.
