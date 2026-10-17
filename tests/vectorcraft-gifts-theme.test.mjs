@@ -38,3 +38,24 @@ test('Theme toggle is adjacent to simple-editor button, preserves artwork sessio
   assert.match(js,/gwbApplyEditedLogoToActiveField/);
   assert.doesNotMatch(js,/themeBtn\.onclick=.+iframe\.src=/);
 });
+
+test('Embedded egui Apply and immersive controls never replace existing handoff',()=>{
+  const patch=read('tools/patch-vectorcraft-gifts-theme.py');
+  const js=read('assets/vectorcraft-integration.js');
+  const launcher=read('tools/build-launcher.mjs');
+  assert.match(patch,/gwb_apply_logo_to_maketnaya/);
+  assert.match(patch,/egui::Area::new/);
+  assert.match(patch,/gwb-vectorcraft-apply-request/);
+  assert.match(js,/gwb-vectorcraft-apply-request/);
+  assert.match(js,/s\.apply\.click\(\)/,'In-engine Apply must reuse original export validation');
+  assert.match(js,/fallback\.hidden=true/);
+  assert.match(js,/themeBtn\.hidden=true/);
+  assert.match(js,/requestFullscreen\(\)/);
+  assert.match(js,/document\.exitFullscreen\(\)/);
+  assert.match(js,/reportEditorVisibility\(true\)/);
+  assert.match(js,/reportEditorVisibility\(false\)/);
+  assert.match(launcher,/event\.source !== frame\.contentWindow/);
+  assert.match(launcher,/gwb-maketnaya-vectorcraft-visibility/);
+  assert.match(launcher,/close\.style\.display = event\.data\.visible \? "none" : ""/);
+  assert.match(launcher,/frame\.setAttribute\("allowfullscreen", ""\)/);
+});
