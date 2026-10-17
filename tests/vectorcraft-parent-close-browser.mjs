@@ -34,8 +34,9 @@ try {
       window.__editorSignals.push(hide);
     });
   });
+  await page.frameLocator('#gwb-frame').locator('#editorOpenLogoEditor').waitFor();
   const frame=page.frame({name:'workbench'});
-  await frame.locator('#editorOpenLogoEditor').waitFor();
+  assert.ok(frame,'The srcdoc workbench iframe must be mounted');
   await frame.evaluate(()=>{
     const file=new File(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'],
       'logo.svg',{type:'image/svg+xml'});
