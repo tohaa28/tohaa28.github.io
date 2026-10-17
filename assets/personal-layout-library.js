@@ -5,10 +5,10 @@
 'use strict';
 if(window.gwbPersonalLayoutLibraryInstalled)return;
 window.gwbPersonalLayoutLibraryInstalled=true;
-const DB='gwb-personal-layouts-v1',TABLE='layouts',PROFILE='gwb.personalLayout.profile.v1',VERSION=1;
+const DB='gwb-personal-layouts-v1',TABLE='layouts',VERSION=1;
 const LIMIT=60*1024*1024;
 const $=id=>document.getElementById(id);
-let panel,entries,notice,profile,displayArticle='',renderSerial=0,dbPromise;
+let panel,entries,notice,accountLabel,displayArticle='',displayIdentity='',renderSerial=0,dbPromise;
 const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:1px solid #d5e0cd;background:#fbfdf8;border-radius:8px;display:grid;gap:8px;font:12px/1.4 system-ui,sans-serif;color:#455449}
   #gwbPersonalLibrary .gwb-lib-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #gwbPersonalLibrary .gwb-lib-head strong{font-size:13px}
@@ -69,9 +69,30 @@ async function one(id){
     r.onerror=()=>reject(r.error);
   });
 }
-const clean=v=>String(v||'').trim().slice(0,64);
+const clean=v=>String(v||'').replace(/\\s+/g,' ').trim().slice(0,96);
+// This is display identity from the REAL authenticated gifts.ru header,
+// never a manually entered profile. It is not a server-validated credential.
+function giftsIdentity(){
+  try{
+    const site=window.parent!==window?window.parent:window;
+    if(site.location.origin!=='https://gifts.ru')return '';
+    const doc=site.document;
+    const menus=[...doc.querySelectorAll('g-droper')];
+    for(const menu of menus){
+      const cabinet=[...menu.querySelectorAll('a[href]')].some(a=>{
+        try{return new URL(a.getAttribute('href'),site.location.href).pathname==='/private/cabinet'}catch{return false}
+      });
+      if(!cabinet)continue;
+      const label=menu.querySelector('g-drop .drop--padding .opacity-half')
+        ||menu.querySelector('g-drop .drop-item--image .opacity-half');
+      const name=clean(label?.textContent);
+      if(name&&name.length>=2&&name.length<96)return name;
+    }
+    return '';
+  }catch{return ''}
+}
 const article=()=>String(window.gwbCurrentLibraryArticle?.()||'').trim();
-const user=()=>clean(profile?.value);
+const user=()=>giftsIdentity();
 const scope=()=>user().toLocaleLowerCase('ru-RU')+'|'+article();
 function status(text,bad=false){if(!notice)return;notice.textContent=text;notice.style.color=bad?'#ae3434':'#667766'}
 function capturePreview(){
@@ -93,7 +114,7 @@ function capturePreview(){
   }catch{return ''}
 }
 function ensure(){
-  if(!user())throw Error('Введите имя профиля пользователя на этом устройстве');
+  if(!user())throw Error('Войдите в gifts.ru: не удалось определить имя из личного меню авторизованного пользователя');
   if(!article())throw Error('Сначала выберите артикул и откройте его конструктор');
 }
 function button(text,action){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=action;return b}
@@ -187,11 +208,15 @@ async function render(){
   entries.replaceChildren();
   $('gwbLibArticle').textContent=now?'Артикул '+now:'Выберите артикул';
   if(!now)return;
-  if(!user()){status('Укажите свой профиль. Библиотека находится только в этом браузере.');return}
+  const currentUser=user();
+  if(accountLabel)accountLabel.textContent=currentUser?'Пользователь gifts.ru: '+currentUser:
+    'Нет авторизованного пользователя gifts.ru';
+  displayIdentity=currentUser;
+  if(!currentUser){$('gwbLibCount').textContent='';status('Авторизуйтесь на gifts.ru. Макеты не привязаны к произвольному имени.');return}
   try{
     const list=(await allFor(scope())).filter(r=>r.status==='personal-draft')
       .sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
-    if(generation!==renderSerial||now!==article())return;
+    if(generation!==renderSerial||now!==article()||currentUser!==user())return;
     $('gwbLibCount').textContent='Сохранено: '+list.length;
     if(!list.length){const empty=document.createElement('small');empty.textContent='Для этого артикула ещё нет сохранённых вариантов.';entries.append(empty)}
     for(const r of list){
@@ -224,29 +249,38 @@ function install(){
   heading.append(title,badge);
   const articleLabel=document.createElement('div');articleLabel.id='gwbLibArticle';
   const controls=document.createElement('div');controls.className='gwb-lib-actions';
-  profile=document.createElement('input');profile.type='text';profile.maxLength=64;profile.placeholder='Локальный профиль (не логин gifts.ru)';
-  profile.autocomplete='off';profile.setAttribute('aria-label','Имя профиля личной библиотеки');
-  try{profile.value=localStorage.getItem(PROFILE)||''}catch{}
-  profile.addEventListener('change',()=>{try{localStorage.setItem(PROFILE,user())}catch{};void render()});
+  accountLabel=document.createElement('span');
+  accountLabel.id='gwbLibAuthenticatedUser';accountLabel.className='gwb-lib-badge';
+  accountLabel.setAttribute('aria-live','polite');
   const save=button('Сохранить вариант',doSave);save.className='gwb-lib-save';
   const fileLabel=document.createElement('label');fileLabel.className='gwb-lib-file';fileLabel.textContent='Импортировать копию';
   const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
   input.onchange=()=>{const f=input.files?.[0];input.value='';if(f)void importBackup(f)};
   fileLabel.append(input);
-  controls.append(profile,save,fileLabel);
+  controls.append(accountLabel,save,fileLabel);
   const count=document.createElement('small');count.id='gwbLibCount';
   entries=document.createElement('div');entries.className='gwb-lib-list';
   notice=document.createElement('div');notice.className='gwb-lib-status';notice.setAttribute('role','status');
   const hint=document.createElement('small');
-  hint.textContent='Данные хранятся только в этом браузере. Имя профиля не обеспечивает защиту от других пользователей этого браузера. Для переноса на другой компьютер сохраните JSON-копию.';
+  hint.textContent='Имя пользователя определяется из входа gifts.ru. Пока серверная авторизация не подключена, записи хранятся только в этом браузере. Для переноса на другое устройство экспортируйте JSON.';
   panel.append(heading,articleLabel,controls,count,entries,hint,notice);
   host.append(panel);
-  const update=()=>setTimeout(()=>{if(displayArticle!==article())void render()},160);
+  const update=()=>setTimeout(()=>{if(displayArticle!==article()||displayIdentity!==user())void render()},160);
   $('orderTemplates')?.addEventListener('change',update);
   $('orderTemplateList')?.addEventListener('click',update);
   window.addEventListener('gwb-editor-readiness-changed',update);
   const picker=$('orderFieldChoiceBox');
   if(picker)new MutationObserver(update).observe(picker,{attributes:true,attributeFilter:['hidden']});
+  try{
+    const site=window.parent!==window?window.parent:window;
+    if(site.location.origin==='https://gifts.ru'){
+      const target=site.document.querySelector('header')||site.document.body;
+      if(target)new MutationObserver(update).observe(target,{childList:true,subtree:true,characterData:true});
+    }
+  }catch{}
+  // The gifts.ru authorization can change in the parent without mutating
+  // any Maketnaya DOM node.
+  window.addEventListener('focus',update);
   void render();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
