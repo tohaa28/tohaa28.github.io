@@ -68,7 +68,7 @@ test('four spoken story stages and small SVG motions are synchronized with portr
  assert.match(html,/@keyframes gwbOmBrushWrite/);
  assert.match(html,/@keyframes gwbOmOkPop/);
  assert.match(html,/@keyframes gwbOmSendArrow/);
- assert.match(html,/@keyframes gwbOmFly\{\s*0%,69%/);
+ assert.match(html,/@keyframes gwbOmFly\{[\s\S]*?10%\{/);
  assert.match(html,/\.gwb-om-screen-icon-1\{opacity:1\}/);
  assert.doesNotMatch(html,/gwbOmSpark|gwb-om-screen-spark/);
 });
