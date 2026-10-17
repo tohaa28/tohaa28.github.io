@@ -9,8 +9,7 @@ const DB='gwb-personal-layouts-v1',TABLE='layouts',PROFILE='gwb.personalLayout.p
 const LIMIT=60*1024*1024;
 const $=id=>document.getElementById(id);
 let panel,entries,notice,profile,displayArticle='',renderSerial=0,dbPromise;
-const styles=String.raw
-  \`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:1px solid #d5e0cd;background:#fbfdf8;border-radius:8px;display:grid;gap:8px;font:12px/1.4 system-ui,sans-serif;color:#455449}
+const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:1px solid #d5e0cd;background:#fbfdf8;border-radius:8px;display:grid;gap:8px;font:12px/1.4 system-ui,sans-serif;color:#455449}
   #gwbPersonalLibrary .gwb-lib-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #gwbPersonalLibrary .gwb-lib-head strong{font-size:13px}
   #gwbPersonalLibrary .gwb-lib-badge{font-size:10px;color:#6c754f}
@@ -24,7 +23,7 @@ const styles=String.raw
   #gwbPersonalLibrary .gwb-lib-status{min-height:16px;font-size:11px;color:#667766}
   #gwbPersonalLibrary .gwb-lib-list{display:grid;gap:6px;max-height:280px;overflow-y:auto}
   #gwbPersonalLibrary .gwb-lib-file input{display:none}
-  #gwbPersonalLibrary[hidden]{display:none!important}\`;
+  #gwbPersonalLibrary[hidden]{display:none!important}`;
 function openDb(){
   if(!('indexedDB' in window))return Promise.reject(Error('Этот браузер не поддерживает локальное хранилище'));
   if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{
