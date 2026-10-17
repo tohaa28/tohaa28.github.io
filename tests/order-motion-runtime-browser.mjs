@@ -26,7 +26,7 @@ try{
  await page.goto('https://gifts.ru/__gwb_motion_realistic_test');
  const mover=page.locator('.gwb-om-sheet-1');
  await mover.waitFor();
- assert.equal(await page.locator('#gwbOrdersMotion').getAttribute('data-motion'),'play');
+ assert.equal(await page.locator('#gwbMotionToggle').count(),0,'Header has no pause control');
  const s1=await mover.evaluate(el=>({time:el.getAnimations()[0]?.currentTime||0,
    name:getComputedStyle(el).animationName,opacity:getComputedStyle(el).opacity,
    left:el.getBoundingClientRect().left}));
@@ -36,12 +36,5 @@ try{
    left:el.getBoundingClientRect().left}));
  assert.ok(s2.time>s1.time+1000,'Animation clock did not advance: '+JSON.stringify({s1,s2}));
  assert.ok(Math.abs(s1.left-s2.left)>1,'Sheet must physically move on screen: '+JSON.stringify({s1,s2}));
- const toggle=page.locator('#gwbMotionToggle');
- assert.equal(await toggle.count(),1,'Play/pause control must be present');
- await toggle.evaluate(el=>el.click());
- assert.equal(await page.locator('#gwbOrdersMotion').getAttribute('data-motion'),'pause');
- assert.equal(await mover.evaluate(el=>getComputedStyle(el).animationName),'none');
- await toggle.evaluate(el=>el.click());
- assert.equal(await mover.evaluate(el=>getComputedStyle(el).animationName),'gwbOmFly');
- console.log('Top header visibly moves with reduced-motion OS preference, and explicit pause/play works');
+ console.log('Header animation runs continuously with no pause button even on reduced-motion browser');
 }finally{await browser.close()}
