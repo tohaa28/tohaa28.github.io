@@ -185,25 +185,34 @@ async function doSave(){
 async function doRestore(id){
   try{
     ensure();
-    const r=await one(id);
-    if(!r||r.scope!==scope()||r.article!==article()||r.status!=='personal-draft')
+    const r=serverIdentity?
+      await cloudRequest('/layouts/'+encodeURIComponent(id)+'?article='+encodeURIComponent(article())):
+      await one(id);
+    if(!r||(serverIdentity?r.article!==article():r.scope!==scope())||r.status!=='personal-draft')
       throw Error('Вариант недоступен для этого профиля и артикула');
     if(!confirm('Восстановить «'+r.title+'» в открытом редакторе?\nТекущие несохранённые размещения будут заменены. В заказ ничего автоматически не отправляется.'))return;
-    const restored=await window.gwbRestorePersonalLayout(r.data);
+    const restored=await window.gwbRestorePersonalLayout(serverIdentity?decodeState(r.layout):r.data);
     status('Восстановлено '+restored.count+' размещений. Это личный вариант, не макет заказа.');
   }catch(e){status(e.message||String(e),true)}
 }
 async function doDelete(id){
   try{
-    const r=await one(id);
-    if(!r||r.scope!==scope())throw Error('Не найдено');
+    const r=serverIdentity?
+      await cloudRequest('/layouts/'+encodeURIComponent(id)+'?article='+encodeURIComponent(article())):
+      await one(id);
+    if(!r||(serverIdentity?r.article!==article():r.scope!==scope()))throw Error('Не найдено');
     if(!confirm('Удалить личный вариант «'+r.title+'»?'))return;
-    await operate('readwrite',store=>store.delete(id));
+    if(serverIdentity)await cloudRequest('/layouts/'+encodeURIComponent(id)+'?article='+encodeURIComponent(article()),'DELETE');
+    else await operate('readwrite',store=>store.delete(id));
     status('Вариант удалён. Макеты заказов не затронуты.');
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
-function exportRecord(r){
+async function exportRecord(r){
+  if(serverIdentity){
+    const saved=await cloudRequest('/layouts/'+encodeURIComponent(r.id)+'?article='+encodeURIComponent(article()));
+    r={...saved,data:decodeState(saved.layout)};
+  }
   const data={...r.data,items:r.data.items.map(p=>({
     ...p,artwork:{...p.artwork,bytes:b64(p.artwork.bytes)}
   }))};
@@ -231,8 +240,14 @@ async function importBackup(file){
       title:clean(raw.title)||'Импортированный вариант',savedAt:new Date().toISOString(),
       orderId:null,personal:true,status:'personal-draft',
       preview:/^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(raw.preview||'')&&raw.preview.length<130000?raw.preview:'',data};
-    await operate('readwrite',store=>store.put(rec));
-    status('Резервная копия импортирована в личную библиотеку, но не помещена в заказ.');
+    if(serverIdentity){
+      await cloudRequest('/layouts?article='+encodeURIComponent(rec.article),'POST',{
+        article:rec.article,title:rec.title,preview:rec.preview,layout:encodeState(rec.data)});
+      status('JSON-копия сохранена на сервере и не является макетом заказа.');
+    }else{
+      await operate('readwrite',store=>store.put(rec));
+      status('СЕРВЕР НЕДОСТУПЕН: JSON-копия сохранена только локально.',true);
+    }
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
@@ -251,7 +266,9 @@ async function render(){
   displayIdentity=currentUser;
   if(!currentUser){$('gwbLibCount').textContent='';status('Авторизуйтесь на gifts.ru. Макеты не привязаны к произвольному имени.');return}
   try{
-    const list=(await allFor(scope())).filter(r=>r.status==='personal-draft')
+    const list=(serverIdentity?
+      (await cloudRequest('/layouts?article='+encodeURIComponent(now))).items:
+      await allFor(scope())).filter(r=>r.status==='personal-draft')
       .sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
     if(generation!==renderSerial||now!==article()||currentUser!==user())return;
     $('gwbLibCount').textContent='Сохранено: '+list.length;
@@ -265,11 +282,11 @@ async function render(){
       const label=document.createElement('div');label.style.flex='1';
       const title=document.createElement('strong');title.textContent=r.title;
       const meta=document.createElement('div');meta.className='gwb-lib-meta';
-      meta.textContent=new Date(r.savedAt).toLocaleString('ru-RU')+' · '+r.data.items.length+' полей · личный черновик';
+      meta.textContent=new Date(r.savedAt).toLocaleString('ru-RU')+' · '+(r.itemCount||r.data?.items?.length||0)+' полей · '+(serverIdentity?'на сервере':'локально');
       label.append(title,meta);
       const actions=document.createElement('div');actions.className='gwb-lib-actions';
       actions.append(button('Восстановить',()=>doRestore(r.id)),
-        button('Копия JSON',()=>exportRecord(r)),button('Удалить',()=>doDelete(r.id)));
+        button('Копия JSON',()=>void exportRecord(r).catch(e=>status(e.message,true))),button('Удалить',()=>doDelete(r.id)));
       item.append(label,actions);entries.append(item);
     }
     if(!notice.textContent||notice.textContent.startsWith('Укажите'))status('Варианты не подставляются автоматически в заказы.');
