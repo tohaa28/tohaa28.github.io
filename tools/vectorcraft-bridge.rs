@@ -38,17 +38,31 @@ fn gwb_install_bridge(host: &Host) {
     let document_received=host.bridge_document_received.clone();
     let field=host.bridge_field_mm.clone();
     let repaint=host.bridge_ctx.clone();
+    let gifts=host.bridge_gifts_style.clone();
+    let gifts_pending=host.bridge_gifts_pending.clone();
     let listener=wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent|{
         // The token is an unguessable per-editor hash fragment; the parent
         // only sends to this specific embedded VectorCraft iframe.
         let data=event.data();
         let get=|key:&str|Reflect::get(&data,&JsValue::from_str(key)).ok();
         let event_type=get("type").and_then(|v|v.as_string()).unwrap_or_default();
-        if event_type!="gwb-vectorcraft-open"&&event_type!="gwb-vectorcraft-apply"{return;}
+        if event_type!="gwb-vectorcraft-open"&&event_type!="gwb-vectorcraft-apply"&&event_type!="gwb-vectorcraft-theme"{return;}
         let token=get("token").and_then(|v|v.as_string()).unwrap_or_default();
         if token.is_empty()||token!=gwb_token(){return;}
         let origin=event.origin();
         if origin!="https://gifts.ru"&&origin!="https://tohaa28.github.io"&&origin!="http://localhost"&&origin!="http://127.0.0.1"{return;}
+        if event_type=="gwb-vectorcraft-theme"{
+            let mode=get("mode").and_then(|v|v.as_string()).unwrap_or_default();
+            if mode!="gifts"&&mode!="native"{return;}
+            if gifts.get()!=(mode=="gifts"){
+                gifts.set(mode=="gifts");
+                gifts_pending.set(true);
+                if let Some(ctx)=repaint.borrow().as_ref(){ctx.request_repaint();}
+            } else {
+                gwb_send("gwb-vectorcraft-theme-applied",None,Some(&mode));
+            }
+            return;
+        }
         if event_type=="gwb-vectorcraft-apply"{
             apply.set(true);
             if let Some(ctx)=repaint.borrow().as_ref(){ctx.request_repaint();}
