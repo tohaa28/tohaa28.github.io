@@ -100,6 +100,11 @@ fn gwb_install_bridge(host: &Host) {
     if window.add_event_listener_with_callback("message",listener.as_ref().unchecked_ref()).is_ok(){listener.forget();}
 }
 fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Result<(), String> {
+    // Every artwork opened inside Maketnaya uses genuine VectorCraft CMYK
+    // document mode. Preserve incoming object colours as editable objects;
+    // changing the working space is not a destructive RGB->CMYK rasterization.
+    let Some(doc)=app.session.active_mut() else{return Err("Логотип ещё не открыт".into());};
+    doc.doc.color_mode=vectorcraft_doc::ColorMode::Cmyk;
     let (w,h,was_prepared)=*field;
     let (target_w,target_h)=(w*72.0/25.4,h*72.0/25.4);
     let Some(state)=app.session.active() else{return Err("Логотип ещё не открыт".into());};
