@@ -91,6 +91,7 @@ try{
  assert.equal(await iframe.locator('body').evaluate(()=>window.__seen.length),1);
  await page.evaluate(()=>document.exitFullscreen());
  await page.waitForFunction(()=>!document.fullscreenElement);
+ await page.getByRole('button',{name:'Применить в Макетной'}).waitFor({state:'visible',timeout:12000});
  assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).isVisible(),true,
    'Original outer Apply reappears after leaving fullscreen');
  const seen=await iframe.locator('body').evaluate(()=>window.__seen);
