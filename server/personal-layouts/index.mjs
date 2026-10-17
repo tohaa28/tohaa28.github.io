@@ -23,14 +23,17 @@ function response(res,code,data){
 }
 function principal(req){
   if(!key||key.length<32)throw Object.assign(Error('Не настроена проверка сеанса gifts.ru'),{status:503});
-  const id=req.headers['x-gifts-user-id'],name=req.headers['x-gifts-user-name'];
+  const id=req.headers['x-gifts-user-id'],encodedName=req.headers['x-gifts-user-name-b64'];
   const stamp=req.headers['x-gifts-identity-time'],sig=req.headers['x-gifts-identity-signature'];
-  if(typeof id!=='string'||typeof name!=='string'||typeof stamp!=='string'||typeof sig!=='string'
-    ||!id||id.length>128||!name||name.length>160||!/^\d{10,13}$/.test(stamp))
+  if(typeof id!=='string'||typeof encodedName!=='string'||typeof stamp!=='string'||typeof sig!=='string'
+    ||!id||id.length>128||!encodedName||encodedName.length>300||
+    !/^[A-Za-z0-9_-]+$/.test(encodedName)||!/^\d{10,13}$/.test(stamp))
     throw Object.assign(Error('Нет подтверждённой авторизации gifts.ru'),{status:401});
+  const name=Buffer.from(encodedName,'base64url').toString('utf8').trim();
+  if(!name||name.length>160)throw Object.assign(Error('Неизвестный пользователь'),{status:401});
   const ms=Number(stamp);if(Math.abs(Date.now()-ms)>60_000)
     throw Object.assign(Error('Сеанс авторизации устарел'),{status:401});
-  const expected=createHmac('sha256',key).update(id+'\n'+name+'\n'+stamp).digest('hex');
+  const expected=createHmac('sha256',key).update(id+'\n'+encodedName+'\n'+stamp).digest('hex');
   const a=Buffer.from(sig),b=Buffer.from(expected);
   if(a.length!==b.length||!timingSafeEqual(a,b))
     throw Object.assign(Error('Недействительная подпись gifts.ru'),{status:401});
