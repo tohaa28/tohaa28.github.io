@@ -5,6 +5,7 @@ import {spawn} from 'node:child_process';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {samplePdf} from './personal-layout-pdf-fixture.mjs';
 
 test('Private server authenticates each gifts principal and never mixes article layouts',async()=>{
   const root=await mkdtemp(join(tmpdir(),'gwb-layout-server-'));
@@ -36,16 +37,28 @@ test('Private server authenticates each gifts principal and never mixes article 
       await new Promise(resolve=>setTimeout(resolve,75));
     }
     assert.ok(ready,'Private backend did not start: '+stderr);
-    const draft={article:'15637',title:'Variant A',layout:{
+    const sample=samplePdf();
+    const draft={article:'15637',title:'Variant A',pdf:sample.toString('base64'),pdfName:'art_15637_layout.pdf',layout:{
       schema:'gwb-personal-layout/v1',article:'15637',fields:[{x:0,y:0,w:100,h:50,page:0}],
       items:[{fieldIndex:0,artwork:{name:'logo.svg',bytes:Buffer.from('<svg/>').toString('base64')}}]}};
     const saved=await read('/v1/layouts?article=15637','POST','id-a','User A',draft);
     assert.equal(saved.status,201,JSON.stringify(saved));
     const id=saved.data.id;assert.ok(id);
+    assert.equal(saved.data.hasPdf,true,'Server must store real PDF');
+    const fetchedPdf=await fetch(base+'/v1/layouts/'+id+'/pdf?article=15637',{
+      headers:headers('id-a','User A')});
+    assert.equal(fetchedPdf.status,200);
+    assert.match(fetchedPdf.headers.get('content-type'),/application\/pdf/);
+    assert.deepEqual(Buffer.from(await fetchedPdf.arrayBuffer()),sample);
+    const wrongOwnerPdf=await fetch(base+'/v1/layouts/'+id+'/pdf?article=15637',{
+      headers:headers('id-b','User B')});
+    assert.equal(wrongOwnerPdf.status,404);
     assert.equal((await read('/v1/layouts?article=15637')).data.items.length,1);
     assert.equal((await read('/v1/layouts?article=17488')).data.items.length,0);
     assert.equal((await read('/v1/layouts?article=15637','GET','id-b','User B')).data.items.length,0);
     assert.equal((await read('/v1/layouts/'+id+'?article=15637','GET','id-b','User B')).status,404);
+    const damaged={...draft,pdf:Buffer.from('not a pdf').toString('base64')};
+    assert.equal((await read('/v1/layouts?article=15637','POST','id-a','User A',damaged)).status,400);
     const loaded=await read('/v1/layouts/'+id+'?article=15637');
     assert.equal(loaded.status,200);assert.equal(loaded.data.layout.items.length,1);
     const forged=await fetch(base+'/v1/me',{headers:{'X-Gifts-User-Id':'id-a',
@@ -61,6 +74,9 @@ test('Private server authenticates each gifts principal and never mixes article 
     const deleted=await read('/v1/layouts/'+id+'?article=15637','DELETE');
     assert.equal(deleted.status,200);
     assert.equal((await read('/v1/layouts?article=15637')).data.items.length,0);
+    const deletedPdf=await fetch(base+'/v1/layouts/'+id+'/pdf?article=15637',{
+      headers:headers('id-a','User A')});
+    assert.equal(deletedPdf.status,404);
   }finally{
     server.kill('SIGTERM');
     await rm(root,{recursive:true,force:true});
