@@ -62,6 +62,7 @@ try {
   await page.waitForFunction(()=>document.querySelector('.gwb-close')?.disabled===false);
   assert.equal(await page.locator('.gwb-close').isVisible(),true,
     'Outer close is restored when VectorCraft is closed');
+  await page.waitForFunction(()=>window.__editorSignals.length===2);
   assert.deepEqual(await page.evaluate(()=>window.__editorSignals),[true,false]);
 
   // Keep the older editor functioning and apply the same visibility contract.
@@ -78,6 +79,7 @@ try {
   });
   await page.waitForFunction(()=>document.querySelector('.gwb-close')?.disabled===false);
   assert.equal(await page.locator('.gwb-close').isVisible(),true);
+  await page.waitForFunction(()=>window.__editorSignals.length===4);
   assert.deepEqual(await page.evaluate(()=>window.__editorSignals),[true,false,true,false]);
   console.log('Srcdoc bookmarklet: both logo editors correctly hide/restore Maketnaya close button');
 } finally {
