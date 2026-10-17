@@ -33,7 +33,7 @@ try{
    await route.fulfill({status:200,contentType:'text/html',body});
  });
  await page.goto(url,{waitUntil:'load'});
- await page.waitForFunction(()=>window.__vcStatus==='editing'||window.__vcStatus.startsWith('error:'),{timeout:120000});
+ await page.waitForFunction(()=>window.__vcStatus==='editing'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:120000});
  assert.equal(await page.evaluate(()=>window.__vcStatus),'editing','Embedded VectorCraft must open exactly one artwork document');
  // Sample pixels from the native egui app bar, not the Maketnaya overlay.
  // A style acknowledgment alone is not enough: the Rust canvas must visibly
@@ -73,7 +73,7 @@ try{
    f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'forbidden-second.svg',
      bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);
  });
- await page.waitForFunction(()=>window.__vcBlocked.length===1||window.__vcStatus.startsWith('error:'),{timeout:7000});
+ await page.waitForFunction(()=>window.__vcBlocked.length===1||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:7000});
  const attempted=await page.evaluate(()=>({blocked:window.__vcBlocked,status:window.__vcStatus,events:window.__vcEvents}));
  assert.equal(attempted.blocked.length,1,'Second imported document rejected by native WASM bridge: '+JSON.stringify(attempted));
  assert.match(attempted.blocked[0],/других документов|второй документ|один документ/i);
@@ -81,7 +81,7 @@ try{
    const token='12345678901234567890123412345678';
    document.getElementById('vc').contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);
  });
- await page.waitForFunction(()=>window.__vcStatus==='ok'||window.__vcStatus.startsWith('error:'),{timeout:30000});
+ await page.waitForFunction(()=>window.__vcStatus==='ok'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:30000});
  const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds,blocked:window.__vcBlocked}));
  assert.equal(data.status,'ok',JSON.stringify({status:data.status,browserErrors}));
  assert.equal(data.blocked.length,1,'Only the original document can be opened in embedded VectorCraft');
