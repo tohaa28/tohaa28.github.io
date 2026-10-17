@@ -1,3 +1,5 @@
+> **ИТОГ: ПРОВЕРЕНО И ОПУБЛИКОВАНО.** Исходники и production заморожены в отдельных контрольных ветках, все браузерные и Rust/WASM проверки успешны.
+
 # Макетная — библиотека сохранённых вариантов v2, подтверждение CMYK, сохранение интерфейса
 17 октября 2026. Продолжение [предыдущей контрольной точки](MAKETNAYA_HEADER_CMYK_PERSONAL_LIBRARY_2026-10-17.md).
 
@@ -5,7 +7,7 @@
 - Предыдущая source checkpoint: `checkpoint-maketnaya-header-cmyk-personal-library-20261017-source` (`3a9ebd1507fea24d652f33682be3680fefdd842d`).
 - Предыдущая production checkpoint: `checkpoint-maketnaya-header-cmyk-personal-library-20261017-production` (`72965f42fda8278434d1e0895c8be9be5f72732f`).
 - Новая **функциональная source checkpoint**: `checkpoint-maketnaya-cmyk-verified-personal-library-v2-20261017-source` (`55af55c53ce29ada9caa93d40977c9d14e2fa923`). Это НЕ двигающаяся ветка HEAD.
-- Production checkpoint создать только после подтверждения Rust/WASM и публикации.
+- **Подтверждённая production checkpoint**: `checkpoint-maketnaya-cmyk-verified-personal-library-v2-20261017-production` (`b317413411cbefde773f645be154d90a950c1874`). Контрольную ветку не перемещать.
 
 ## Функциональные изменения (продолжение)
 1. `assets/personal-layout-library.js`: при явном сохранении варианта берётся миниатюра текущего макета. Фотография страницы конструктора и слой логотипа объединяются на клиенте в маленький JPEG. Невозможность создать thumbnail (canvas security/taint) **не блокирует** сохранение оригиналов. Миниатюры показаны в списке рядом с названием, датой, числом полей. Сохраняются только в локальном IndexedDB, также включаются в явный JSON экспорт/импорт.
@@ -18,9 +20,9 @@
 
 ## Проверено и ожидает завершения
 - `39063977401` — Publish Maketnaya with Mockups: `precheck`, `publish` и `browser_verify` **SUCCESS**. Дополнительно проверены все предыдущие PrintCheck, цилиндрические мокапы, кнопки редакторов, навигация gifts.ru, CSS анимации.
-- `39063715789` — Build VectorCraft WebAssembly: компиляция в момент написания документа ещё в работе; не утверждать успех до статуса success.
-- После успеха builder дождаться GitHub Pages, повторно запустить `Verify live VectorCraft WASM` job с новым `message:"CMYK"` и принять production только при success.
-- `39063728694` — ранний отрицательный браузерный тест CMYK на **старом** WASM до публикации нового. Это подтверждает, что тест действительно ловит отсутствие нового протокола; не считать итоговой ошибкой свежего исходника.
+- `39063715789` — Build VectorCraft WebAssembly: **SUCCESS**.
+- `39064472578` — GitHub Pages **SUCCESS**; `39063728694`, попытка **2** — **SUCCESS**, Chromium проверил нативное свойство CMYK активного документа, блокировку второго документа и точный art-only SVG roundtrip. Production принята.
+- `39063728694`, попытка **1**, проверяла старый WASM и ожидаемо не получила подтверждение CMYK. Успешная попытка **2** на новой опубликованной сборке закрыла этот пункт.
 - Source и main `mockup-profiles.json` blob SHA `ddb84fdc0d656341770a2399f5a10f0e21f5d72c` и `method-settings.json` blob SHA `cbf6c8204e4fb3892d806342d37debefb8d9038e` совпадают — реестры не изменены.
 
 ## Архитектура и ограничения
