@@ -5,10 +5,41 @@
 'use strict';
 if(window.gwbPersonalLayoutLibraryInstalled)return;
 window.gwbPersonalLayoutLibraryInstalled=true;
-const DB='gwb-personal-layouts-v1',TABLE='layouts',PROFILE='gwb.personalLayout.profile.v1',VERSION=1;
+const DB='gwb-personal-layouts-v1',TABLE='layouts',VERSION=1;
 const LIMIT=60*1024*1024;
 const $=id=>document.getElementById(id);
-let panel,entries,notice,profile,displayArticle='',renderSerial=0,dbPromise;
+let panel,entries,notice,accountLabel,cloudBadge,saveButton,displayArticle='',displayIdentity='',renderSerial=0,dbPromise;
+let serverIdentity=null,serverCheckedFor='';
+const serverBase='/private/maketnaya-layouts/v1';
+async function cloudRequest(path,method='GET',data){
+  const headers={'Accept':'application/json'};
+  if(data)headers['Content-Type']='application/json';
+  const response=await fetch(serverBase+path,{method,headers,body:data?JSON.stringify(data):undefined,
+    credentials:'include',cache:'no-store',redirect:'error'});
+  if(!response.headers.get('content-type')?.includes('application/json'))
+    throw Error('Защищённый сервер макетов не подключён');
+  const result=await response.json();
+  if(!response.ok)throw Error(result.error||'Ошибка сервера макетов');
+  return result;
+}
+const encodeState=state=>({...state,items:state.items.map(p=>({
+  ...p,artwork:{...p.artwork,bytes:b64(p.artwork.bytes)}}))});
+const decodeState=state=>({...state,items:state.items.map(p=>({
+  ...p,artwork:{...p.artwork,bytes:fromB64(p.artwork.bytes)}}))});
+async function checkServer(){
+  const username=user();
+  if(!username||serverCheckedFor===username)return;
+  serverCheckedFor=username;serverIdentity=null;
+  try{
+    const res=await cloudRequest('/me');
+    if(!res.authenticated||typeof res.id!=='string'||clean(res.name)!==username)
+      throw Error('Сервер подтвердил другого пользователя');
+    serverIdentity=res;
+  }catch{serverIdentity=null}
+  if(cloudBadge)cloudBadge.textContent=serverIdentity?'Серверное хранилище активно':'Сервер недоступен · локальный резерв';
+  if(saveButton)saveButton.textContent=serverIdentity?'Сохранить на сервер':'Сохранить локальную копию';
+  void render();
+}
 const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:1px solid #d5e0cd;background:#fbfdf8;border-radius:8px;display:grid;gap:8px;font:12px/1.4 system-ui,sans-serif;color:#455449}
   #gwbPersonalLibrary .gwb-lib-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #gwbPersonalLibrary .gwb-lib-head strong{font-size:13px}
@@ -69,9 +100,30 @@ async function one(id){
     r.onerror=()=>reject(r.error);
   });
 }
-const clean=v=>String(v||'').trim().slice(0,64);
+const clean=v=>String(v||'').replace(/\s+/g,' ').trim().slice(0,96);
+// This is display identity from the REAL authenticated gifts.ru header,
+// never a manually entered profile. It is not a server-validated credential.
+function giftsIdentity(){
+  try{
+    const site=window.parent!==window?window.parent:window;
+    if(site.location.origin!=='https://gifts.ru')return '';
+    const doc=site.document;
+    const menus=[...doc.querySelectorAll('g-droper')];
+    for(const menu of menus){
+      const cabinet=[...menu.querySelectorAll('a[href]')].some(a=>{
+        try{return new URL(a.getAttribute('href'),site.location.href).pathname==='/private/cabinet'}catch{return false}
+      });
+      if(!cabinet)continue;
+      const label=menu.querySelector('g-drop .drop--padding .opacity-half')
+        ||menu.querySelector('g-drop .drop-item--image .opacity-half');
+      const name=clean(label?.textContent);
+      if(name&&name.length>=2&&name.length<96)return name;
+    }
+    return '';
+  }catch{return ''}
+}
 const article=()=>String(window.gwbCurrentLibraryArticle?.()||'').trim();
-const user=()=>clean(profile?.value);
+const user=()=>giftsIdentity();
 const scope=()=>user().toLocaleLowerCase('ru-RU')+'|'+article();
 function status(text,bad=false){if(!notice)return;notice.textContent=text;notice.style.color=bad?'#ae3434':'#667766'}
 function capturePreview(){
@@ -93,7 +145,7 @@ function capturePreview(){
   }catch{return ''}
 }
 function ensure(){
-  if(!user())throw Error('Введите имя профиля пользователя на этом устройстве');
+  if(!user())throw Error('Войдите в gifts.ru: не удалось определить имя из личного меню авторизованного пользователя');
   if(!article())throw Error('Сначала выберите артикул и откройте его конструктор');
 }
 function button(text,action){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=action;return b}
@@ -119,33 +171,48 @@ async function doSave(){
     if(!title)throw Error('Введите название варианта');
     const record={id:crypto.randomUUID(),scope:scope(),profile:user(),article:article(),title,
       savedAt:new Date().toISOString(),personal:true,orderId:null,status:'personal-draft',preview:capturePreview(),data:state};
-    await operate('readwrite',store=>store.put(record));
-    status('Личный вариант сохранён в браузере. В заказ он не передавался.');
+    if(serverIdentity){
+      await cloudRequest('/layouts?article='+encodeURIComponent(record.article),'POST',{
+        article:record.article,title:record.title,preview:record.preview,layout:encodeState(record.data)});
+      status('Личный вариант сохранён на сервере. В заказ он не передавался.');
+    }else{
+      await operate('readwrite',store=>store.put(record));
+      status('СЕРВЕР НЕДОСТУПЕН: сохранена только локальная копия.',true);
+    }
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
 async function doRestore(id){
   try{
     ensure();
-    const r=await one(id);
-    if(!r||r.scope!==scope()||r.article!==article()||r.status!=='personal-draft')
+    const r=serverIdentity?
+      await cloudRequest('/layouts/'+encodeURIComponent(id)+'?article='+encodeURIComponent(article())):
+      await one(id);
+    if(!r||(serverIdentity?r.article!==article():r.scope!==scope())||r.status!=='personal-draft')
       throw Error('Вариант недоступен для этого профиля и артикула');
     if(!confirm('Восстановить «'+r.title+'» в открытом редакторе?\nТекущие несохранённые размещения будут заменены. В заказ ничего автоматически не отправляется.'))return;
-    const restored=await window.gwbRestorePersonalLayout(r.data);
+    const restored=await window.gwbRestorePersonalLayout(serverIdentity?decodeState(r.layout):r.data);
     status('Восстановлено '+restored.count+' размещений. Это личный вариант, не макет заказа.');
   }catch(e){status(e.message||String(e),true)}
 }
 async function doDelete(id){
   try{
-    const r=await one(id);
-    if(!r||r.scope!==scope())throw Error('Не найдено');
+    const r=serverIdentity?
+      await cloudRequest('/layouts/'+encodeURIComponent(id)+'?article='+encodeURIComponent(article())):
+      await one(id);
+    if(!r||(serverIdentity?r.article!==article():r.scope!==scope()))throw Error('Не найдено');
     if(!confirm('Удалить личный вариант «'+r.title+'»?'))return;
-    await operate('readwrite',store=>store.delete(id));
+    if(serverIdentity)await cloudRequest('/layouts/'+encodeURIComponent(id)+'?article='+encodeURIComponent(article()),'DELETE');
+    else await operate('readwrite',store=>store.delete(id));
     status('Вариант удалён. Макеты заказов не затронуты.');
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
-function exportRecord(r){
+async function exportRecord(r){
+  if(serverIdentity){
+    const saved=await cloudRequest('/layouts/'+encodeURIComponent(r.id)+'?article='+encodeURIComponent(article()));
+    r={...saved,data:decodeState(saved.layout)};
+  }
   const data={...r.data,items:r.data.items.map(p=>({
     ...p,artwork:{...p.artwork,bytes:b64(p.artwork.bytes)}
   }))};
@@ -173,8 +240,14 @@ async function importBackup(file){
       title:clean(raw.title)||'Импортированный вариант',savedAt:new Date().toISOString(),
       orderId:null,personal:true,status:'personal-draft',
       preview:/^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(raw.preview||'')&&raw.preview.length<130000?raw.preview:'',data};
-    await operate('readwrite',store=>store.put(rec));
-    status('Резервная копия импортирована в личную библиотеку, но не помещена в заказ.');
+    if(serverIdentity){
+      await cloudRequest('/layouts?article='+encodeURIComponent(rec.article),'POST',{
+        article:rec.article,title:rec.title,preview:rec.preview,layout:encodeState(rec.data)});
+      status('JSON-копия сохранена на сервере и не является макетом заказа.');
+    }else{
+      await operate('readwrite',store=>store.put(rec));
+      status('СЕРВЕР НЕДОСТУПЕН: JSON-копия сохранена только локально.',true);
+    }
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
@@ -187,11 +260,17 @@ async function render(){
   entries.replaceChildren();
   $('gwbLibArticle').textContent=now?'Артикул '+now:'Выберите артикул';
   if(!now)return;
-  if(!user()){status('Укажите свой профиль. Библиотека находится только в этом браузере.');return}
+  const currentUser=user();
+  if(accountLabel)accountLabel.textContent=currentUser?'Пользователь gifts.ru: '+currentUser:
+    'Нет авторизованного пользователя gifts.ru';
+  displayIdentity=currentUser;
+  if(!currentUser){$('gwbLibCount').textContent='';status('Авторизуйтесь на gifts.ru. Макеты не привязаны к произвольному имени.');return}
   try{
-    const list=(await allFor(scope())).filter(r=>r.status==='personal-draft')
+    const list=(serverIdentity?
+      (await cloudRequest('/layouts?article='+encodeURIComponent(now))).items:
+      await allFor(scope())).filter(r=>r.status==='personal-draft')
       .sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
-    if(generation!==renderSerial||now!==article())return;
+    if(generation!==renderSerial||now!==article()||currentUser!==user())return;
     $('gwbLibCount').textContent='Сохранено: '+list.length;
     if(!list.length){const empty=document.createElement('small');empty.textContent='Для этого артикула ещё нет сохранённых вариантов.';entries.append(empty)}
     for(const r of list){
@@ -203,11 +282,11 @@ async function render(){
       const label=document.createElement('div');label.style.flex='1';
       const title=document.createElement('strong');title.textContent=r.title;
       const meta=document.createElement('div');meta.className='gwb-lib-meta';
-      meta.textContent=new Date(r.savedAt).toLocaleString('ru-RU')+' · '+r.data.items.length+' полей · личный черновик';
+      meta.textContent=new Date(r.savedAt).toLocaleString('ru-RU')+' · '+(r.itemCount||r.data?.items?.length||0)+' полей · '+(serverIdentity?'на сервере':'локально');
       label.append(title,meta);
       const actions=document.createElement('div');actions.className='gwb-lib-actions';
       actions.append(button('Восстановить',()=>doRestore(r.id)),
-        button('Копия JSON',()=>exportRecord(r)),button('Удалить',()=>doDelete(r.id)));
+        button('Копия JSON',()=>void exportRecord(r).catch(e=>status(e.message,true))),button('Удалить',()=>doDelete(r.id)));
       item.append(label,actions);entries.append(item);
     }
     if(!notice.textContent||notice.textContent.startsWith('Укажите'))status('Варианты не подставляются автоматически в заказы.');
@@ -224,30 +303,47 @@ function install(){
   heading.append(title,badge);
   const articleLabel=document.createElement('div');articleLabel.id='gwbLibArticle';
   const controls=document.createElement('div');controls.className='gwb-lib-actions';
-  profile=document.createElement('input');profile.type='text';profile.maxLength=64;profile.placeholder='Локальный профиль (не логин gifts.ru)';
-  profile.autocomplete='off';profile.setAttribute('aria-label','Имя профиля личной библиотеки');
-  try{profile.value=localStorage.getItem(PROFILE)||''}catch{}
-  profile.addEventListener('change',()=>{try{localStorage.setItem(PROFILE,user())}catch{};void render()});
-  const save=button('Сохранить вариант',doSave);save.className='gwb-lib-save';
+  accountLabel=document.createElement('span');
+  accountLabel.id='gwbLibAuthenticatedUser';accountLabel.className='gwb-lib-badge';
+  accountLabel.setAttribute('aria-live','polite');
+  const save=button('Сохранить локальную копию',doSave);save.className='gwb-lib-save';saveButton=save;
+  cloudBadge=document.createElement('span');cloudBadge.className='gwb-lib-badge';
+  cloudBadge.textContent='Сервер недоступен';
   const fileLabel=document.createElement('label');fileLabel.className='gwb-lib-file';fileLabel.textContent='Импортировать копию';
   const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
   input.onchange=()=>{const f=input.files?.[0];input.value='';if(f)void importBackup(f)};
   fileLabel.append(input);
-  controls.append(profile,save,fileLabel);
+  controls.append(accountLabel,cloudBadge,save,fileLabel);
   const count=document.createElement('small');count.id='gwbLibCount';
   entries=document.createElement('div');entries.className='gwb-lib-list';
   notice=document.createElement('div');notice.className='gwb-lib-status';notice.setAttribute('role','status');
   const hint=document.createElement('small');
-  hint.textContent='Данные хранятся только в этом браузере. Имя профиля не обеспечивает защиту от других пользователей этого браузера. Для переноса на другой компьютер сохраните JSON-копию.';
+  hint.textContent='Имя берётся из авторизации gifts.ru. При подключённом сервере варианты сохраняются на сервере; без него доступны только явно помеченные локальные копии с экспортом JSON.';
   panel.append(heading,articleLabel,controls,count,entries,hint,notice);
   host.append(panel);
-  const update=()=>setTimeout(()=>{if(displayArticle!==article())void render()},160);
+  const update=()=>setTimeout(()=>{
+    if(displayArticle!==article()||displayIdentity!==user()){
+      if(displayIdentity!==user()){serverIdentity=null;serverCheckedFor='';void checkServer()}
+      void render();
+    }
+  },160);
   $('orderTemplates')?.addEventListener('change',update);
   $('orderTemplateList')?.addEventListener('click',update);
   window.addEventListener('gwb-editor-readiness-changed',update);
   const picker=$('orderFieldChoiceBox');
   if(picker)new MutationObserver(update).observe(picker,{attributes:true,attributeFilter:['hidden']});
+  try{
+    const site=window.parent!==window?window.parent:window;
+    if(site.location.origin==='https://gifts.ru'){
+      const target=site.document.querySelector('header')||site.document.body;
+      if(target)new MutationObserver(update).observe(target,{childList:true,subtree:true,characterData:true});
+    }
+  }catch{}
+  // The gifts.ru authorization can change in the parent without mutating
+  // any Maketnaya DOM node.
+  window.addEventListener('focus',update);
   void render();
+  void checkServer();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
