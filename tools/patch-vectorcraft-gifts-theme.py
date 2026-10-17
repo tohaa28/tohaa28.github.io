@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in gifts.ru visual skin for the pinned Rust/egui VectorCraft UI.
+"""Embedded gifts.ru skin and apply-action in the pinned Rust/egui VectorCraft UI.
 
 This is applied ONLY to Maketnaya's embedded VectorCraft build and activated
 per-session by a verified bridge message. Native VectorCraft colors and state
@@ -113,6 +113,22 @@ patch('apps/vectorcraft-web/src/web.rs', [
      '            bridge_native_style: Rc::default(),\n'),
     ('        app.logic(ctx);\n',
      '''        app.logic(ctx);
+        if gwb_is_embedded() && app.session.active().is_some() {
+            // In-engine egui action, not a duplicate browser art exporter:
+            // the parent validates session and invokes the existing Apply path.
+            egui::Area::new(egui::Id::new("gwb_apply_logo_to_maketnaya"))
+                .order(egui::Order::Foreground)
+                .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-18.0, 62.0))
+                .show(ctx, |ui| {
+                    let label=egui::RichText::new("Применить в Макетной")
+                        .strong().color(egui::Color32::WHITE);
+                    let button=egui::Button::new(label)
+                        .fill(egui::Color32::from_rgb(95, 145, 15));
+                    if ui.add(button).clicked() {
+                        gwb_send("gwb-vectorcraft-apply-request",None,None);
+                    }
+                });
+        }
         if gwb_is_embedded() && self.host.bridge_gifts_pending.replace(false) {
             let gifts=self.host.bridge_gifts_style.get();
             if gifts {
