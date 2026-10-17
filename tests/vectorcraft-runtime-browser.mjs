@@ -11,7 +11,7 @@ try{
  await page.route(url,async route=>{
    const script=[
     "const token='12345678901234567890123412345678';",
-    "window.__vcStatus='opening';window.__vcEvents=[];window.__vcBlocked=[];",
+    "window.__vcStatus='opening';window.__vcEvents=[];window.__vcBlocked=[];window.__vcThemeAcks=[];",
     "const f=document.getElementById('vc');",
     "window.addEventListener('message',e=>{",
     " if(e.source!==f.contentWindow||e.origin!==location.origin||e.data?.token!==token)return;",
@@ -22,6 +22,7 @@ try{
     " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
     " window.__vcStatus='editing';",
+    " }else if(e.data.type==='gwb-vectorcraft-theme-applied'){window.__vcThemeAcks.push(e.data.message);}",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
     " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcStatus='ok';",
     " }else if(e.data.type==='gwb-vectorcraft-error'){if(window.__vcExpectRejection){window.__vcBlocked.push(String(e.data.message));window.__vcExpectRejection=false;}else window.__vcStatus='error: '+e.data.message;}",
@@ -34,6 +35,20 @@ try{
  await page.goto(url,{waitUntil:'load'});
  await page.waitForFunction(()=>window.__vcStatus==='editing'||window.__vcStatus.startsWith('error:'),{timeout:120000});
  assert.equal(await page.evaluate(()=>window.__vcStatus),'editing','Embedded VectorCraft must open exactly one artwork document');
+ // This message is handled inside the real Rust/egui UI; neither the iframe
+ // nor the document can be recreated during gifts -> native transitions.
+ const changeTheme=mode=>page.evaluate(mode=>{
+    const token='12345678901234567890123412345678';
+    document.getElementById('vc').contentWindow.postMessage({
+      type:'gwb-vectorcraft-theme',token,mode
+    },location.origin);
+ },mode);
+ await changeTheme('gifts');
+ await page.waitForFunction(()=>window.__vcThemeAcks.includes('gifts'),null,{timeout:12000});
+ await changeTheme('native');
+ await page.waitForFunction(()=>window.__vcThemeAcks.includes('native'),null,{timeout:12000});
+ assert.deepEqual(await page.evaluate(()=>window.__vcThemeAcks),['gifts','native'],
+    'egui skin switches twice without leaving the current VectorCraft document');
  // Attempt to create/open a second document via native keyboard shortcuts.
  // These must be blocked inside VectorCraft even if the menu is hidden.
  await page.frameLocator('#vc').locator('#vectorcraft_canvas').click({position:{x:250,y:210}});
@@ -62,6 +77,7 @@ try{
  assert.equal(data.blocked.length,1,'Only the original document can be opened in embedded VectorCraft');
  assert.ok(data.events.includes('gwb-vectorcraft-ready'));
  assert.ok(data.events.includes('gwb-vectorcraft-opened'));
+ assert.equal(data.events.filter(e=>e==='gwb-vectorcraft-opened').length,1,'Theme switching does not re-import artwork');
  assert.ok(data.events.includes('gwb-vectorcraft-svg'));
  assert.match(data.svg,/<svg\b/);
  const documentSvg=await page.evaluate(svg=>new DOMParser().parseFromString(svg,'image/svg+xml').documentElement.localName,data.svg);
