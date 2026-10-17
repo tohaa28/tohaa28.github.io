@@ -6,7 +6,7 @@
 if(window.gwbPersonalLayoutLibraryInstalled)return;
 window.gwbPersonalLayoutLibraryInstalled=true;
 const DB='gwb-personal-layouts-v1',TABLE='layouts',VERSION=1;
-const LIMIT=60*1024*1024;
+const LIMIT=60*1024*1024, PDF_LIMIT=45*1024*1024;
 const $=id=>document.getElementById(id);
 let panel,entries,notice,accountLabel,cloudBadge,saveButton,displayArticle='',displayIdentity='',renderSerial=0,dbPromise;
 let serverIdentity=null,serverCheckedFor='';
@@ -40,7 +40,11 @@ async function checkServer(){
   if(saveButton)saveButton.textContent=serverIdentity?'Сохранить на сервер':'Сохранить локальную копию';
   void render();
 }
-const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:1px solid #d5e0cd;background:#fbfdf8;border-radius:8px;display:grid;gap:8px;font:12px/1.4 system-ui,sans-serif;color:#455449}
+const styles=String.raw`#gwbPersonalLibrary{margin:18px 0 0;padding:16px;border:1px solid #cbd9bd;background:#fbfdf8;border-radius:10px;display:grid;gap:10px;font:12px/1.4 system-ui,sans-serif;color:#455449;clear:both;width:100%;box-sizing:border-box}
+  #orderEditor>#gwbPersonalLibrary{grid-column:1/-1}
+  #gwbPersonalLibrary .gwb-lib-section-title{font-size:15px;font-weight:700;color:#334b29}
+  #gwbPersonalLibrary .gwb-lib-subtitle{font-size:11px;color:#728269}
+  #gwbPersonalLibrary .gwb-lib-divider{height:1px;background:#e1e8da}`
   #gwbPersonalLibrary .gwb-lib-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #gwbPersonalLibrary .gwb-lib-head strong{font-size:13px}
   #gwbPersonalLibrary .gwb-lib-badge{font-size:10px;color:#6c754f}
@@ -54,7 +58,6 @@ const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:
   #gwbPersonalLibrary .gwb-lib-preview{width:92px;height:63px;object-fit:contain;flex:none;border-radius:4px;background:#f4f6f2;border:1px solid #dbe4d3}
   #gwbPersonalLibrary .gwb-lib-status{min-height:16px;font-size:11px;color:#667766}
   #gwbPersonalLibrary .gwb-lib-list{display:grid;gap:6px;max-height:280px;overflow-y:auto}
-  #gwbPersonalLibrary .gwb-lib-file input{display:none}
   #gwbPersonalLibrary[hidden]{display:none!important}`;
 function openDb(){
   if(!('indexedDB' in window))return Promise.reject(Error('Этот браузер не поддерживает локальное хранилище'));
@@ -169,15 +172,24 @@ async function doSave(){
     if(name===null)return;
     const title=clean(name);
     if(!title)throw Error('Введите название варианта');
+    const recordUser=user();
+    // Persist a REAL vector PDF of the full article template with placements,
+    // keeping the original editable source separately for explicit restoration.
+    status('Формирую PDF макета артикула…');
+    const pdf=await makePdf(state.article);
+    if(article()!==state.article||user()!==recordUser)
+      throw Error('Артикул или пользователь сменился во время формирования PDF');
     const record={id:crypto.randomUUID(),scope:scope(),profile:user(),article:article(),title,
-      savedAt:new Date().toISOString(),personal:true,orderId:null,status:'personal-draft',preview:capturePreview(),data:state};
+      savedAt:new Date().toISOString(),personal:true,orderId:null,status:'personal-draft',
+      preview:capturePreview(),pdf,data:state};
     if(serverIdentity){
       await cloudRequest('/layouts?article='+encodeURIComponent(record.article),'POST',{
-        article:record.article,title:record.title,preview:record.preview,layout:encodeState(record.data)});
-      status('Личный вариант сохранён на сервере. В заказ он не передавался.');
+        article:record.article,title:record.title,preview:record.preview,
+        pdf:b64(record.pdf.bytes),pdfName:record.pdf.name,layout:encodeState(record.data)});
+      status('PDF макета сохранён на сервере, исходники доступны для восстановления. В заказ не отправлялся.');
     }else{
       await operate('readwrite',store=>store.put(record));
-      status('СЕРВЕР НЕДОСТУПЕН: сохранена только локальная копия.',true);
+      status('СЕРВЕР НЕДОСТУПЕН: PDF и исходники сохранены только на этом устройстве.',true);
     }
     await render();
   }catch(e){status(e.message||String(e),true)}
@@ -208,48 +220,44 @@ async function doDelete(id){
     await render();
   }catch(e){status(e.message||String(e),true)}
 }
-async function exportRecord(r){
-  if(serverIdentity){
-    const saved=await cloudRequest('/layouts/'+encodeURIComponent(r.id)+'?article='+encodeURIComponent(article()));
-    r={...saved,data:decodeState(saved.layout)};
-  }
-  const data={...r.data,items:r.data.items.map(p=>({
-    ...p,artwork:{...p.artwork,bytes:b64(p.artwork.bytes)}
-  }))};
-  const output={kind:'gwb-personal-layout-backup/v1',article:r.article,
-    title:r.title,savedAt:r.savedAt,preview:r.preview||'',layout:data};
-  const blob=new Blob([JSON.stringify(output)],{type:'application/json'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='maketnaya-'+r.article+'-'+r.id+'.json';document.body.append(a);a.click();a.remove();
+async function makePdf(articleId){
+  if(typeof window.gwbCreateReadyLayoutPdf!=='function')
+    throw Error('Экспорт PDF ещё не загружен — повторите после открытия конструктора');
+  const ready=await window.gwbCreateReadyLayoutPdf();
+  if(!(ready?.blob instanceof Blob)||ready.blob.type!=='application/pdf')
+    throw Error('Редактор не создал PDF');
+  if(ready.blob.size<8||ready.blob.size>PDF_LIMIT)throw Error('Недопустимый размер PDF');
+  const bytes=new Uint8Array(await ready.blob.arrayBuffer());
+  if(new TextDecoder().decode(bytes.subarray(0,5))!=='%PDF-')
+    throw Error('Экспортированный файл не является PDF');
+  return {name:'art_'+articleId+'_layout.pdf',mime:'application/pdf',bytes};
+}
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=filename;
+  document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
-async function importBackup(file){
+async function downloadPdf(r){
   try{
-    ensure();
-    if(!file||file.size>LIMIT*1.5)throw Error('Слишком большой файл');
-    const raw=JSON.parse(await file.text());
-    if(raw.kind!=='gwb-personal-layout-backup/v1'||raw.article!==article()||
-       raw.layout?.schema!=='gwb-personal-layout/v1'||!Array.isArray(raw.layout.items))
-       throw Error('Этот файл не является вариантом текущего артикула');
-    if(raw.layout.items.length<1||raw.layout.items.length>100)throw Error('Недопустимое количество полей');
-    const items=raw.layout.items.map(p=>({...p,artwork:{...p.artwork,bytes:fromB64(p.artwork.bytes)}}));
-    const total=items.reduce((n,p)=>n+p.artwork.bytes.byteLength,0);
-    if(total>LIMIT)throw Error('Макет слишком большой');
-    const data={...raw.layout,items};
-    const rec={id:crypto.randomUUID(),scope:scope(),profile:user(),article:article(),
-      title:clean(raw.title)||'Импортированный вариант',savedAt:new Date().toISOString(),
-      orderId:null,personal:true,status:'personal-draft',
-      preview:/^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(raw.preview||'')&&raw.preview.length<130000?raw.preview:'',data};
-    if(serverIdentity){
-      await cloudRequest('/layouts?article='+encodeURIComponent(rec.article),'POST',{
-        article:rec.article,title:rec.title,preview:rec.preview,layout:encodeState(rec.data)});
-      status('JSON-копия сохранена на сервере и не является макетом заказа.');
-    }else{
-      await operate('readwrite',store=>store.put(rec));
-      status('СЕРВЕР НЕДОСТУПЕН: JSON-копия сохранена только локально.',true);
-    }
-    await render();
+    const item=serverIdentity?
+      await cloudPdf(r.id,r.article):await one(r.id).then(row=>row?.pdf);
+    if(!item)throw Error('В этом старом варианте PDF не сохранён. Восстановите его и сохраните заново.');
+    const blob=item instanceof Blob?item:new Blob([item.bytes],{type:'application/pdf'});
+    if(blob.size<8||blob.size>PDF_LIMIT)throw Error('Недопустимый PDF');
+    const magic=new TextDecoder().decode(new Uint8Array(await blob.slice(0,5).arrayBuffer()));
+    if(magic!=='%PDF-')throw Error('Сохранённый файл повреждён — это не PDF');
+    downloadBlob(blob,'art_'+r.article+'_'+r.id+'.pdf');
   }catch(e){status(e.message||String(e),true)}
+}
+async function cloudPdf(id,articleId){
+  const response=await fetch(serverBase+'/layouts/'+encodeURIComponent(id)+
+    '/pdf?article='+encodeURIComponent(articleId),{
+    method:'GET',credentials:'include',cache:'no-store',redirect:'error'});
+  if(!response.ok)throw Error('Сервер не вернул PDF ('+response.status+')');
+  if(!response.headers.get('content-type')?.includes('application/pdf'))
+    throw Error('Сервер вернул не PDF');
+  return response.blob();
 }
 async function render(){
   if(!panel)return;
@@ -282,23 +290,31 @@ async function render(){
       const label=document.createElement('div');label.style.flex='1';
       const title=document.createElement('strong');title.textContent=r.title;
       const meta=document.createElement('div');meta.className='gwb-lib-meta';
-      meta.textContent=new Date(r.savedAt).toLocaleString('ru-RU')+' · '+(r.itemCount||r.data?.items?.length||0)+' полей · '+(serverIdentity?'на сервере':'локально');
+      meta.textContent=new Date(r.savedAt).toLocaleString('ru-RU')+' · '+
+        (r.itemCount||r.data?.items?.length||0)+' полей · '+
+        (r.hasPdf||r.pdf?'PDF':'старый вариант без PDF')+' · '+
+        (serverIdentity?'на сервере':'локально');
       label.append(title,meta);
       const actions=document.createElement('div');actions.className='gwb-lib-actions';
-      actions.append(button('Восстановить',()=>doRestore(r.id)),
-        button('Копия JSON',()=>void exportRecord(r).catch(e=>status(e.message,true))),button('Удалить',()=>doDelete(r.id)));
+      const pdfButton=button('Скачать PDF',()=>void downloadPdf(r));
+      pdfButton.disabled=!(r.hasPdf||r.pdf);
+      actions.append(button('Восстановить',()=>doRestore(r.id)),pdfButton,
+        button('Удалить',()=>doDelete(r.id)));
       item.append(label,actions);entries.append(item);
     }
     if(!notice.textContent||notice.textContent.startsWith('Укажите'))status('Варианты не подставляются автоматически в заказы.');
   }catch(e){status(e.message||String(e),true)}
 }
 function install(){
-  const host=$('orderFieldChoiceBox')||$('orderEditor');
+  // Dedicated sibling section; NEVER nest saved variants in Step 2 field picker.
+  const host=$('orderEditor');
   if(!host)return;
   const sheet=document.createElement('style');sheet.textContent=styles;document.head.append(sheet);
-  panel=document.createElement('section');panel.id='gwbPersonalLibrary';panel.hidden=true;
+  panel=document.createElement('section');panel.id='gwbPersonalLibrary';
+  panel.className='gwb-library-section';panel.hidden=true;
   const heading=document.createElement('div');heading.className='gwb-lib-head';
-  const title=document.createElement('strong');title.textContent='Мои сохранённые макеты';
+  const title=document.createElement('strong');title.className='gwb-lib-section-title';
+  title.textContent='Мои сохранённые макеты';
   const badge=document.createElement('span');badge.className='gwb-lib-badge';badge.textContent='Лично · не прикреплено к заказу';
   heading.append(title,badge);
   const articleLabel=document.createElement('div');articleLabel.id='gwbLibArticle';
@@ -309,17 +325,14 @@ function install(){
   const save=button('Сохранить локальную копию',doSave);save.className='gwb-lib-save';saveButton=save;
   cloudBadge=document.createElement('span');cloudBadge.className='gwb-lib-badge';
   cloudBadge.textContent='Сервер недоступен';
-  const fileLabel=document.createElement('label');fileLabel.className='gwb-lib-file';fileLabel.textContent='Импортировать копию';
-  const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
-  input.onchange=()=>{const f=input.files?.[0];input.value='';if(f)void importBackup(f)};
-  fileLabel.append(input);
-  controls.append(accountLabel,cloudBadge,save,fileLabel);
+  controls.append(accountLabel,cloudBadge,save);
   const count=document.createElement('small');count.id='gwbLibCount';
   entries=document.createElement('div');entries.className='gwb-lib-list';
   notice=document.createElement('div');notice.className='gwb-lib-status';notice.setAttribute('role','status');
   const hint=document.createElement('small');
-  hint.textContent='Имя берётся из авторизации gifts.ru. При подключённом сервере варианты сохраняются на сервере; без него доступны только явно помеченные локальные копии с экспортом JSON.';
-  panel.append(heading,articleLabel,controls,count,entries,hint,notice);
+  hint.textContent='Каждый вариант хранится в PDF вместе с исходниками для восстановления. Это личные черновики, не макеты заказа. Когда сервер недоступен, PDF хранится только в этом браузере.';
+  const divider=document.createElement('div');divider.className='gwb-lib-divider';
+  panel.append(heading,divider,articleLabel,controls,count,entries,hint,notice);
   host.append(panel);
   const update=()=>setTimeout(()=>{
     if(displayArticle!==article()||displayIdentity!==user()){
