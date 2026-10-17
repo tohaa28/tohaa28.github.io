@@ -33,8 +33,7 @@ test('laptop has correct aspect ratio, flight cards use real basket data when av
  assert.ok(html.includes('root.dataset.productSource="basket"'));
  assert.match(html,/url\.protocol==="https:"/);
  assert.ok(html.includes('gifts\\.ru$/i.test(url.hostname)'),"Only approved gifts.ru images");
- assert.match(html,/data-motion="play"/);
- assert.match(html,/gwb-orders-motion\[data-motion="pause"\]/);
+ assert.doesNotMatch(html,/gwbMotionToggle|gwb-om-motion-toggle/);
  assert.match(html,/if\(!article\|\|!\/\\d\{3,\}\/\.test\(article\)\)/);
 });
 test('approved WebP poses crossfade smoothly without changing sprite or 18s loop',()=>{
@@ -51,8 +50,7 @@ test('approved WebP poses crossfade smoothly without changing sprite or 18s loop
  assert.match(html,/@keyframes gwbOmFrame4\{0%,73%\{opacity:0\}77%,96%\{opacity:1\}100%\{opacity:0\}\}/);
  assert.doesNotMatch(html,/gwbOmPersonaFrames|steps\(1,end\)/);
  assert.match(html,/\.gwb-om-persona\{[^}]*transition:opacity \.38s ease-in-out/);
- assert.match(html,/data-motion="play"/);
- assert.match(html,/gwb-orders-motion\[data-motion="pause"\]/);
+ assert.doesNotMatch(html,/gwbMotionToggle|gwb-om-motion-toggle/);
  assert.match(html,/\.gwb-om-frame-1\{opacity:1\}/);
 });
 test('four spoken story stages and small SVG motions are synchronized with portrait frames',()=>{
