@@ -172,6 +172,9 @@ window.gwbCapturePersonalLayout=function(){
         !y.template.fieldOptions?.[p.fieldIndex]))
     throw Error("Сохранение требует поля из конструктора; ручное поле нужно привязать к шаблону");
   const fields=y.template.fieldOptions||[];
+  const indices=placed.map(p=>p.fieldIndex);
+  if(new Set(indices).size!==indices.length)
+    throw Error("Одно поле нанесения встречается несколько раз. Удалите дубли перед сохранением");
   return {schema:"gwb-personal-layout/v1",article,createdAt:new Date().toISOString(),
     fields:fields.map(f=>({page:f.page,w:f.w,h:f.h,x:f.x,y:f.y})),
     items:placed.map(p=>({
