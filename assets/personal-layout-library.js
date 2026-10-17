@@ -69,7 +69,7 @@ async function one(id){
     r.onerror=()=>reject(r.error);
   });
 }
-const clean=v=>String(v||'').replace(/\\s+/g,' ').trim().slice(0,96);
+const clean=v=>String(v||'').replace(/\s+/g,' ').trim().slice(0,96);
 // This is display identity from the REAL authenticated gifts.ru header,
 // never a manually entered profile. It is not a server-validated credential.
 function giftsIdentity(){
