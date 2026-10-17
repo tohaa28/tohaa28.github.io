@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {readFileSync} from 'node:fs';
+import {samplePdf} from './personal-layout-pdf-fixture.mjs';
+const pdfFixture=samplePdf();
 const browser=await chromium.launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});
@@ -27,9 +29,20 @@ try{
    window.prompt=()=> 'Вариант для артикула';
    window.confirm=()=>true;
  });
+ await page.evaluate(base64=>{
+   window.gwbCreateReadyLayoutPdf=async()=>({
+      filename:'layout.pdf',
+      blob:new Blob([Uint8Array.from(atob(base64),c=>c.charCodeAt(0))],{type:'application/pdf'})
+   });
+ },pdfFixture.toString('base64'));
  await page.addScriptTag({path:'assets/personal-layout-library.js'});
  const lib=page.locator('#gwbPersonalLibrary');await lib.waitFor();
  assert.equal(await lib.isVisible(),true);
+ assert.equal(await page.locator('#orderEditor > #gwbPersonalLibrary').count(),1,
+   'Saved layouts must be a separate sibling block of editor');
+ assert.equal(await page.locator('#orderFieldChoiceBox #gwbPersonalLibrary').count(),0);
+ assert.equal(await lib.getByText('Импортировать копию').count(),0);
+ assert.equal(await lib.locator('input[type=file]').count(),0);
  const ident=await page.evaluate(()=>({
    origin:location.origin,cabinet:[...document.querySelectorAll('g-droper a[href]')].map(a=>a.pathname),
    accountText:document.querySelector('#gwbLibAuthenticatedUser')?.textContent,
@@ -62,18 +75,14 @@ try{
  assert.equal(await row.locator('img.gwb-lib-preview').count(),1,
    'Saved artwork should display a visual thumbnail without exposing it to the server');
  const pending=page.waitForEvent('download');
- await row.getByRole('button',{name:'Копия JSON'}).click();
+ await row.getByRole('button',{name:'Скачать PDF'}).click();
  const downloaded=await pending;
- assert.match(downloaded.suggestedFilename(),/maketnaya-15637-/);
- const backup=readFileSync(await downloaded.path());
- const parsed=JSON.parse(backup.toString());
- assert.equal(parsed.layout.items[0].artwork.bytes.length>20,true);
- await lib.locator('input[type=file]').setInputFiles({
-   name:'restored-layout.json',mimeType:'application/json',buffer:backup
- });
- await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 2');
+ assert.match(downloaded.suggestedFilename(),/art_15637_.*\.pdf$/);
+ const pdf=readFileSync(await downloaded.path());
+ assert.equal(pdf.subarray(0,5).toString(),'%PDF-');
+ assert.deepEqual(pdf,pdfFixture,'Download matches saved PDF bytes');
  assert.equal(await page.evaluate(()=>window.__restored.length),1,
-   'Import must add a draft but never apply it to an open order');
+   'Downloading PDF never applies to the active order');
 
  // Verify persistence after a full browser reload of the SAME gifts.ru origin.
  await page.reload();
@@ -87,11 +96,11 @@ try{
  });
  await page.addScriptTag({path:'assets/personal-layout-library.js'});
  const reopened=page.locator('#gwbPersonalLibrary');
- await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 2');
+ await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 1');
  assert.equal(await page.evaluate(()=>window.__restored.length),0,
     'Reload never automatically restores drafts into a new order');
  await reopened.getByRole('button',{name:'Восстановить'}).first().click();
  await page.waitForFunction(()=>window.__restored.length===1);
  assert.equal(await page.evaluate(()=>window.__restored[0].article),'15637');
- console.log('Personal IndexedDB: thumbnails, profiles, articles, backup round-trip, reload persistence and explicit restore passed');
+ console.log('Local PDF: separate block, valid PDF download, isolated user/article, reload persistence, manual restore');
 }finally{await browser.close()}
