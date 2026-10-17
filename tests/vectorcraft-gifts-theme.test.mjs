@@ -44,7 +44,8 @@ test('Embedded egui Apply and immersive controls never replace existing handoff'
   const js=read('assets/vectorcraft-integration.js');
   const launcher=read('tools/build-launcher.mjs');
   assert.match(patch,/gwb_native_toolbar_apply/);
-  assert.match(patch,/ui.add_sized/);
+  assert.match(patch,/ui.put\(raised, button\)/);
+  assert.match(patch,/egui::vec2\(0\.0, -3\.0\)/,'Toolbar button raised by 3 px without changing layout slot');
   assert.match(patch,/gwb-vectorcraft-apply-request/);
   assert.match(js,/gwb-vectorcraft-apply-request/);
   assert.match(js,/s\.apply\.click\(\)/,'In-engine Apply must reuse original export validation');
@@ -54,6 +55,12 @@ test('Embedded egui Apply and immersive controls never replace existing handoff'
   assert.match(js,/document\.exitFullscreen\(\)/);
   assert.match(js,/reportEditorVisibility\(true\)/);
   assert.match(js,/reportEditorVisibility\(false\)/);
+  assert.match(js,/window\.parent\.location\.origin/);
+  assert.match(js,/window\.parent\.document\.getElementById/);
+  assert.match(js,/gwbReportLogoEditorVisibility=reportEditorVisibility/);
+  const legacy=read('assets/logo-editor.js');
+  assert.match(legacy,/gwbReportLogoEditorVisibility\?\.\(true\)/);
+  assert.match(legacy,/gwbReportLogoEditorVisibility\?\.\(false\)/);
   assert.match(launcher,/event\.source !== frame\.contentWindow/);
   assert.match(launcher,/gwb-maketnaya-vectorcraft-visibility/);
   assert.match(launcher,/close\.style\.display = event\.data\.visible \? "none" : ""/);
