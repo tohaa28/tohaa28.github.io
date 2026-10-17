@@ -101,6 +101,80 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     return {name:file.name,fieldIndex:target.fieldIndex};
   }finally{y.busy=false;X()}
 };
+// Personal variants are separate from order submissions. Capturing or restoring
+// them happens ONLY after an explicit user action; never on basket refresh.
+window.gwbCapturePersonalLayout=function(){
+  Ft();
+  if(y.busy||!y.template||!y.selectedEntry?.article)
+    throw Error("Откройте шаблон артикула из заказа");
+  const article=String(y.selectedEntry.article).trim();
+  const placed=y.placements.filter(p=>p.art?.bytes?.length&&p.placement&&p.field);
+  if(!placed.length)throw Error("Нет размещённых логотипов для сохранения");
+  const fields=y.template.fieldOptions||[];
+  return {schema:"gwb-personal-layout/v1",article,createdAt:new Date().toISOString(),
+    fields:fields.map(f=>({page:f.page,w:f.w,h:f.h,x:f.x,y:f.y})),
+    items:placed.map(p=>({
+      fieldIndex:p.fieldIndex,page:p.page,
+      placement:{x:p.placement.x-p.field.x,y:p.placement.y-p.field.y,
+        w:p.placement.w,h:p.placement.h,rotation:p.placement.rotation||0,
+        clipToField:!!p.placement.clipToField},
+      artwork:{name:p.art.name,mime:p.art.mime||"application/octet-stream",
+        bytes:new Uint8Array(p.art.bytes)}
+    }))};
+};
+window.gwbRestorePersonalLayout=async function(saved){
+  if(!saved||saved.schema!=="gwb-personal-layout/v1"||!Array.isArray(saved.items))
+    throw Error("Формат сохранённого макета не поддерживается");
+  if(y.busy||!y.selectedEntry?.article||!y.template)
+    throw Error("Сначала откройте шаблон артикула");
+  const article=String(y.selectedEntry.article).trim(),template=y.template;
+  if(saved.article!==article)throw Error("Этот вариант сохранён для другого артикула");
+  const fields=template.fieldOptions||[];
+  if(saved.fields?.length!==fields.length)throw Error("Количество полей конструктора изменилось");
+  const near=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<0.25;
+  for(let i=0;i<fields.length;i++){
+    const a=saved.fields[i],b=fields[i];
+    if(!a||a.page!==b.page||!near(a.w,b.w)||!near(a.h,b.h)||
+       !near(a.x,b.x)||!near(a.y,b.y))
+      throw Error("Поля текущего конструктора не совпадают с сохранённым вариантом");
+  }
+  if(!saved.items.length||saved.items.length>100)throw Error("Пустая или слишком большая запись");
+  const seen=new Set();
+  for(const p of saved.items){
+    const idx=p.fieldIndex,field=fields[idx],pl=p.placement;
+    if(!Number.isInteger(idx)||!field||seen.has(idx)||p.page!==field.page||
+       !pl||!["x","y","w","h","rotation"].every(k=>Number.isFinite(pl[k]))||
+       pl.w<=0||pl.h<=0||pl.w>2000||pl.h>2000||
+       !(p.artwork?.bytes instanceof Uint8Array)||!p.artwork.bytes.length||
+       p.artwork.bytes.length>40*1024*1024)
+      throw Error("Сохранённый вариант содержит неверное поле или логотип");
+    seen.add(idx);
+  }
+  y.busy=true;X();
+  try{
+    const prepared=[];
+    for(const p of saved.items){
+      const field={...fields[p.fieldIndex]};
+      const file=new File([p.artwork.bytes],String(p.artwork.name||"logo.svg").slice(0,180),{
+        type:String(p.artwork.mime||"application/octet-stream").slice(0,80)});
+      const art=await Qe(file,"art");
+      const pl=p.placement;
+      prepared.push({field,fieldIndex:p.fieldIndex,page:field.page,art,
+        placement:{x:field.x+pl.x,y:field.y+pl.y,w:pl.w,h:pl.h,
+          rotation:pl.rotation,clipToField:!!pl.clipToField}});
+    }
+    if(y.template!==template||String(y.selectedEntry?.article||"").trim()!==article)
+      throw Error("Артикул сменился при восстановлении — текущий макет не затронут");
+    y.placements=prepared;
+    y.active=-1;y.field=null;y.art=null;y.placement=null;
+    _t();X();
+  }finally{y.busy=false;X();}
+  if(y.placements.length)await zn(0);
+  Q("Личный вариант восстановлен. Он не отправлен в заказ.");
+  window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
+  return {article,count:y.placements.length};
+};
+
 `;
 export function applyLogoEditorBridge(){
   const source=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
