@@ -104,7 +104,7 @@ fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Res
     // document mode. Preserve incoming object colours as editable objects;
     // changing the working space is not a destructive RGB->CMYK rasterization.
     let Some(doc)=app.session.active_mut() else{return Err("Логотип ещё не открыт".into());};
-    doc.doc.color_mode=vectorcraft_doc::ColorMode::Cmyk;
+    std::sync::Arc::make_mut(&mut doc.doc).color_mode=vectorcraft_doc::ColorMode::Cmyk;
     let (w,h,was_prepared)=*field;
     let (target_w,target_h)=(w*72.0/25.4,h*72.0/25.4);
     let Some(state)=app.session.active() else{return Err("Логотип ещё не открыт".into());};
