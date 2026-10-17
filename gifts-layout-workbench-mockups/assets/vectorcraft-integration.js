@@ -9,6 +9,29 @@ const ORIGIN='https://tohaa28.github.io';
 const URL_BASE=ORIGIN+'/gifts-layout-workbench-mockups/vectorcraft/index.html';
 let active=null;
 const el=(tag,opts={})=>Object.assign(document.createElement(tag),opts);
+function reportEditorVisibility(visible){
+  // The launcher owns the "Закрыть Макетную" control in the parent gifts.ru page.
+  // Never allow that control to close the workbench while VectorCraft is active.
+  try{if(window.parent!==window)window.parent.postMessage({type:'gwb-maketnaya-vectorcraft-visibility',visible:!!visible},location.origin)}catch{}
+}
+function syncFullscreen(s){
+  if(active!==s)return;
+  const immersive=document.fullscreenElement===s.overlay;
+  s.bar.style.display=immersive?'none':'flex';
+  s.footer.style.display=immersive?'none':'flex';
+  s.overlay.classList.toggle('gwb-vectorcraft-immersive',immersive);
+  s.fullscreenBtn.textContent=immersive?'Выйти из полного экрана':'На весь экран';
+  s.fullscreenBtn.setAttribute('aria-pressed',String(immersive));
+}
+async function toggleFullscreen(s){
+  if(!s||active!==s)return;
+  try{
+    if(document.fullscreenElement===s.overlay)await document.exitFullscreen();
+    else if(document.fullscreenElement)throw Error('Другое окно уже использует полноэкранный режим');
+    else if(!s.overlay.requestFullscreen)throw Error('Браузер не поддерживает полноэкранный режим');
+    else await s.overlay.requestFullscreen();
+  }catch(error){notice(s,'Полный экран недоступен: '+error.message,true)}
+}
 function secret(){
   const data=new Uint8Array(24);crypto.getRandomValues(data);
   return Array.from(data,b=>b.toString(16).padStart(2,'0')).join('');
@@ -17,6 +40,9 @@ function close(force=false){
   const s=active;if(!s)return;
   if(!force&&s.opened&&!confirm('Закрыть VectorCraft? Несохранённые изменения не попадут в шаблон.'))return;
   active=null;window.removeEventListener('message',receive);
+  document.removeEventListener('fullscreenchange',s.onFullscreenChange);
+  if(document.fullscreenElement===s.overlay)void document.exitFullscreen().catch(()=>{});
+  reportEditorVisibility(false);
   s.overlay.remove();
   document.body.style.overflow=s.oldOverflow;
 }
@@ -98,6 +124,10 @@ async function receive(event){
   }else if(d.type==='gwb-vectorcraft-error'){
     s.applying=false;s.apply.disabled=false;
     notice(s,'VectorCraft: '+String(d.message||'Ошибка обработки').slice(0,360),true);
+  }else if(d.type==='gwb-vectorcraft-apply-request'){
+    // Same trusted frame, origin and session guard as the upper Apply button.
+    // Reuse the only export pipeline; never bypass placement/geometry checks.
+    if(s.opened&&!s.applying&&!s.apply.disabled)s.apply.click();
   }else if(d.type==='gwb-vectorcraft-svg'){
     if(!s.applying)return;
     s.applying=false;
@@ -156,8 +186,11 @@ async function open(){
   Object.assign(apply.style,{border:0,borderRadius:'6px',background:'#81b315',color:'#172900',fontWeight:'700',padding:'10px 16px',cursor:'pointer'});
   const cancel=el('button',{textContent:'Закрыть без изменений',type:'button'});
   Object.assign(cancel.style,{border:'1px solid #708287',borderRadius:'6px',background:'transparent',color:'#fff',padding:'10px 14px',cursor:'pointer'});
-  bar.append(heading,field,space,apply,cancel);
+  const fullscreenBtn=el('button',{type:'button',textContent:'На весь экран'});
+  Object.assign(fullscreenBtn.style,{border:'1px solid #c8d9c0',background:'#f7faf3',color:'#35513a',borderRadius:'6px',padding:'10px 14px',cursor:'pointer'});
+  bar.append(heading,field,space,fullscreenBtn,apply,cancel);
   const iframe=el('iframe',{title:'VectorCraft — векторный редактор',allow:'webgpu; clipboard-read; clipboard-write; fullscreen'});
+  iframe.setAttribute('allowfullscreen','');
   Object.assign(iframe.style,{flex:'1',width:'100%',border:0,minHeight:'0',background:'#262626'});
   const footer=el('div');
   Object.assign(footer.style,{background:'#334047',minHeight:'29px',display:'flex',alignItems:'center',gap:'9px',flexWrap:'wrap',padding:'6px 16px'});
@@ -165,7 +198,10 @@ async function open(){
   status.style.flex='1';
   footer.append(status);overlay.append(bar,iframe,footer);
   const oldOverflow=document.body.style.overflow;
-  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:true,themePending:false};
+  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,fullscreenBtn,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:true,themePending:false};
+  active.onFullscreenChange=()=>syncFullscreen(active);
+  document.addEventListener('fullscreenchange',active.onFullscreenChange);
+  fullscreenBtn.onclick=()=>{void toggleFullscreen(active)};
   window.addEventListener('message',receive);
   apply.onclick=()=>{
     const s=active;if(!s||s.applying)return;
@@ -180,11 +216,16 @@ async function open(){
   s.themeBtn=themeBtn;s.fallback=fallback;
   fallback.onclick=()=>{close(true);window.gwbLogoEditor?.open()};
   themeBtn.onclick=()=>changeTheme(active,!active.giftsMode);
+  // Keep the legacy/simple editor and native-theme mechanisms available in code,
+  // but remove both switches from the user-facing interface.
+  fallback.hidden=true;fallback.style.display='none';
+  themeBtn.hidden=true;themeBtn.style.display='none';
   footer.append(fallback,themeBtn);
   decorateHost(s);
   iframe.onerror=()=>notice(active||{status},'Ошибка загрузки VectorCraft. Можно открыть прежний редактор.',true);
   document.body.style.overflow='hidden';
   document.body.append(overlay);
+  reportEditorVisibility(true);
   iframe.src=URL_BASE+'#gwb='+encodeURIComponent(token);
 }
 function install(){
