@@ -27,7 +27,13 @@ try{
  await page.addScriptTag({path:'assets/personal-layout-library.js'});
  const lib=page.locator('#gwbPersonalLibrary');await lib.waitFor();
  assert.equal(await lib.isVisible(),true);
- await page.waitForFunction(()=>document.querySelector('#gwbLibAuthenticatedUser')?.textContent==='Пользователь gifts.ru: Пользователь A');
+ const ident=await page.evaluate(()=>({
+   origin:location.origin,cabinet:[...document.querySelectorAll('g-droper a[href]')].map(a=>a.pathname),
+   accountText:document.querySelector('#gwbLibAuthenticatedUser')?.textContent,
+   status:document.querySelector('#gwbPersonalLibrary [role=status]')?.textContent
+ }));
+ assert.equal(ident.accountText,'Пользователь gifts.ru: Пользователь A',
+   'Identity must be resolved from real gifts.ru header: '+JSON.stringify(ident));
  await lib.getByRole('button',{name:'Сохранить вариант'}).click();
  await lib.getByRole('button',{name:'Восстановить'}).waitFor();
  assert.equal(await page.evaluate(()=>window.__restored.length),0,'Saved drafts must not automatically appear in current order');
