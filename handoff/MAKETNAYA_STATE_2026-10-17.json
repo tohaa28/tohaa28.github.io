@@ -1,0 +1,179 @@
+{
+  "schema": "maketnaya-project-handoff/v1",
+  "capturedDate": "2026-10-17",
+  "scope": [
+    "Макетная",
+    "VectorCraft integration",
+    "Редактор мокапов",
+    "PrintCheck"
+  ],
+  "repository": "tohaa28/tohaa28.github.io",
+  "urls": {
+    "application": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
+    "source": "https://github.com/tohaa28/tohaa28.github.io/tree/gifts-layout-workbench-mockups-source",
+    "production": "https://github.com/tohaa28/tohaa28.github.io/tree/main",
+    "upstreamVectorCraft": "https://github.com/storytold/vectorcraft",
+    "handoff": "https://github.com/tohaa28/tohaa28.github.io/blob/gifts-layout-workbench-mockups-source/handoff/START_HERE_2026-10-17.md"
+  },
+  "frozenCheckpoint": {
+    "source": {
+      "branch": "checkpoint-maketnaya-gifts-theme-default-20261017-source",
+      "sha": "56e4d0815fe806f2a8669f06fa37110b1d688174"
+    },
+    "production": {
+      "branch": "checkpoint-maketnaya-gifts-theme-default-20261017-production",
+      "sha": "2ed2dfaaa3e8ac020c48942c90fa64a19c83eb01"
+    }
+  },
+  "workingBranches": {
+    "source": "gifts-layout-workbench-mockups-source",
+    "production": "main",
+    "sourceFunctionalCommit": "56e4d0815fe806f2a8669f06fa37110b1d688174",
+    "productionFunctionalCommit": "2ed2dfaaa3e8ac020c48942c90fa64a19c83eb01",
+    "note": "Documentation commits on source after freeze do not change this verified code baseline."
+  },
+  "verified": {
+    "maketnayaPublish": {
+      "runId": 39050357382,
+      "result": "success",
+      "stages": [
+        "precheck",
+        "publish",
+        "browser_verify / browser-test"
+      ]
+    },
+    "pages": {
+      "runId": 39050426031,
+      "result": "success"
+    },
+    "vectorcraftNativeThemeSmoke": {
+      "runId": 39021992518,
+      "result": "success",
+      "covers": [
+        "true Rust/WASM with egui",
+        "gifts/native toggle",
+        "real canvas pixel changes",
+        "one-document safety",
+        "40x18mm art-only SVG at 12,8mm offset"
+      ]
+    },
+    "vectorcraftWasmBuild": {
+      "runId": 39021081065,
+      "result": "success"
+    },
+    "earlierAttempt": {
+      "runId": 39050214178,
+      "result": "failure",
+      "resolvedBy": 39050357382,
+      "reason": "Cylinder browser precheck failure in the preceding attempt; latest publish passed"
+    }
+  },
+  "vectorcraft": {
+    "upstreamPinnedCommit": "8bc65329286dc1b84aa392997bb205613c3e96cb",
+    "wasmRelativePath": "gifts-layout-workbench-mockups/vectorcraft/vectorcraft-web-387ea92584a5506a_bg.wasm",
+    "wasmGitBlobSha": "14cd24ee18a3be5d62bde0083dfbdfa41e720556",
+    "mode": "native Rust egui editor embedded via same-origin GitHub Pages iframe, launched from gifts.ru Maketnaya",
+    "styling": {
+      "default": "gifts",
+      "otherOption": "native",
+      "switchLocation": "Footer beside 'Открыть прежний редактор'",
+      "implementation": "Rust egui theme patch plus JS host chrome; one-click reversible without reloading active logo",
+      "persistence": "per editor opening; initial gifts style sent after VectorCraft ready; does not save browser preference"
+    },
+    "singleDocument": true,
+    "transfer": {
+      "selectedArtwork": "gwbGetActiveLogoForEditor() -> original File and field dimensions mm",
+      "importProtocol": "gwb-vectorcraft-open + session token + File bytes + fieldSizeMm + fieldCanvas",
+      "exportProtocol": "gwb-vectorcraft-svg + actual art-only SVG bytes + logoBoundsMm",
+      "saveAPI": "gwbApplyEditedLogoToActiveField(file,placementToken,{artworkBoundsMm,fieldSizeMm})",
+      "guard": [
+        "verified source window origin",
+        "current session token",
+        "current selected field and placement",
+        "one document",
+        "physical sizes in mm",
+        "invalid SVG or bounds do not replace original file"
+      ]
+    },
+    "retainedFallback": "gwbLogoEditor (simple logo editor)",
+    "sizeBytes": 64756916
+  },
+  "dataRegistries": {
+    "mockupProfiles": {
+      "sourcePath": "mockup-profiles.json",
+      "productionPath": "gifts-layout-workbench-mockups/mockup-profiles.json",
+      "verifiedSameBlobSha": "ddb84fdc0d656341770a2399f5a10f0e21f5d72c"
+    },
+    "methodSettings": {
+      "sourcePath": "method-settings.json",
+      "productionPath": "gifts-layout-workbench-mockups/method-settings.json",
+      "verifiedSameBlobSha": "cbf6c8204e4fb3892d806342d37debefb8d9038e"
+    },
+    "rule": "Fetch fresh blobs before ANY rollback/release; keep newest registries even when reverting code; no token in git."
+  },
+  "keyFiles": {
+    "source": [
+      "editor.html",
+      "assets/vectorcraft-integration.js",
+      "assets/vectorcraft-field.js",
+      "assets/logo-editor.js",
+      "tools/patch-logo-editor-bridge.mjs",
+      "tools/vectorcraft-bridge.rs",
+      "tools/patch-vectorcraft-upstream.py",
+      "tools/patch-vectorcraft-single-field.py",
+      "tools/patch-vectorcraft-gifts-theme.py",
+      "tools/build-launcher.mjs",
+      "mockup.html",
+      "mockup-profiles.json",
+      "method-settings.json"
+    ],
+    "ci": [
+      ".github/workflows/build-vectorcraft-web.yml",
+      ".github/workflows/publish-maketnaya-mockups.yml",
+      ".github/workflows/test-vectorcraft-runtime.yml"
+    ],
+    "tests": [
+      "tests/vectorcraft-gifts-theme.test.mjs",
+      "tests/vectorcraft-handoff-browser.mjs",
+      "tests/vectorcraft-runtime-browser.mjs",
+      "tests/vectorcraft-single-field.test.mjs",
+      "tests/logo-editor-browser.mjs",
+      "tests/mockup-cylinder-browser-runner.mjs"
+    ]
+  },
+  "previousCheckpoint": {
+    "sourceBranch": "checkpoint-maketnaya-vectorcraft-art-only-20261016-source",
+    "productionBranch": "checkpoint-maketnaya-vectorcraft-art-only-20261016-production"
+  },
+  "nextChat": {
+    "latestUserRequirementsStatus": "gifts.ru style selected by default already implemented; native style remains selectable",
+    "workflow": [
+      "Read START_HERE handoff",
+      "Resolve current source/main heads freshly",
+      "Create pre-change backup source/main",
+      "Change only scoped subsystem",
+      "Add unit and Playwright regression tests",
+      "Publish through correct CI",
+      "Check real WASM after Pages deployment if Rust changed",
+      "Compare registries and write update handoff"
+    ],
+    "knownLimitations": [
+      "Do not claim full fidelity of every PDF/AI/CDR/EPS source; VectorCraft supports the formats it truly imports",
+      "Only one active document in embedded mode",
+      "VectorCraft WASM large; initial download can be slow",
+      "Complex print tech small-element detection may require user acceptance testing with true artwork"
+    ]
+  },
+  "historicalReferenceIndex": [
+    "handoff/MAKETNAYA_VECTORCRAFT_GIFTS_THEME_2026-10-17.md",
+    "handoff/MAKETNAYA_VECTORCRAFT_SINGLE_FIELD_2026-10-16.md",
+    "handoff/MAKETNAYA_VECTORCRAFT_ART_BOUNDS_2026-10-16.md",
+    "handoff/MAKETNAYA_VECTORCRAFT_FIELD_MM_2026-10-16.md",
+    "handoff/MAKETNAYA_VECTORCRAFT_WASM_2026-10-16.md",
+    "handoff/MAKETNAYA_SHARED_SERVER_METHOD_SETTINGS_2026-10-15.md",
+    "handoff/MOCKUP_CYLINDER_DEVELOPMENT_2026-10-14.md",
+    "handoff/MAKETNAYA_PRINCIPLES_2026-10-13.md",
+    "PRINTCHECK_HANDOFF_2026-10-08-v25.md",
+    "handoff/CHECKPOINT_MAKETNAYA_VECTORCRAFT_ART_ONLY_2026-10-16.md"
+  ]
+}
