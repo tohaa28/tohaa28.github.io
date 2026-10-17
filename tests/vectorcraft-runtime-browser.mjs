@@ -90,12 +90,12 @@ try{
  const attempted=await page.evaluate(()=>({blocked:window.__vcBlocked,status:window.__vcStatus,events:window.__vcEvents}));
  assert.equal(attempted.blocked.length,1,'Second imported document rejected by native WASM bridge: '+JSON.stringify(attempted));
  assert.match(attempted.blocked[0],/других документов|второй документ|один документ/i);
- // Click the actual egui Area inside compiled WASM. This must post the
+ // Click the genuine native VectorCraft app-bar button inside compiled WASM. This must post the
  // in-engine apply request; the parent forwards it through the existing bridge.
  const canvas=page.frameLocator('#vc').locator('#vectorcraft_canvas');
  const rect=await canvas.boundingBox();
  assert.ok(rect&&rect.width>500,'Expected genuine VectorCraft canvas dimensions');
- await canvas.click({position:{x:rect.width-100,y:77}});
+ await canvas.click({position:{x:rect.width-255,y:16}});
  await page.waitForFunction(()=>window.__vcEvents.includes('gwb-vectorcraft-apply-request'),null,{timeout:12000});
  await page.waitForFunction(()=>window.__vcStatus==='ok'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:30000});
  const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds,blocked:window.__vcBlocked}));
