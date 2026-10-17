@@ -119,12 +119,12 @@ patch('apps/vectorcraft-web/src/web.rs', [
                 // Keep the original precise visuals (including user-selected
                 // options), restoring them when switching to native design.
                 *self.host.bridge_native_style.borrow_mut()=Some((
-                    ctx.style().as_ref().clone(),
+                    ctx.global_style().as_ref().clone(),
                     vectorcraft_ui_egui::theme::Tokens::get(ctx)
                 ));
                 vectorcraft_ui_egui::theme::apply_gifts(ctx);
             } else if let Some((style,tokens))=self.host.bridge_native_style.borrow_mut().take() {
-                ctx.set_style(style);
+                ctx.set_global_style(style);
                 ctx.data_mut(|data|data.insert_temp(egui::Id::NULL,tokens));
             }
             ctx.request_repaint();
