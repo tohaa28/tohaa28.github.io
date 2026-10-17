@@ -103,6 +103,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
 };
 // Personal variants are separate from order submissions. Capturing or restoring
 // them happens ONLY after an explicit user action; never on basket refresh.
+window.gwbCurrentLibraryArticle=function(){return String(y.selectedEntry?.article||"").trim();};
 window.gwbCapturePersonalLayout=function(){
   Ft();
   if(y.busy||!y.template||!y.selectedEntry?.article)
