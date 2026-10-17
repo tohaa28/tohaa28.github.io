@@ -20,6 +20,7 @@ const styles=String.raw`#gwbPersonalLibrary{margin:12px 0 0;padding:12px;border:
   #gwbPersonalLibrary button:disabled{opacity:.45;cursor:default}
   #gwbPersonalLibrary .gwb-lib-item{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;padding:8px;background:#fff;border:1px solid #e1e8dd;border-radius:5px}
   #gwbPersonalLibrary .gwb-lib-item .gwb-lib-meta{font-size:10px;color:#73816c}
+  #gwbPersonalLibrary .gwb-lib-preview{width:92px;height:63px;object-fit:contain;flex:none;border-radius:4px;background:#f4f6f2;border:1px solid #dbe4d3}
   #gwbPersonalLibrary .gwb-lib-status{min-height:16px;font-size:11px;color:#667766}
   #gwbPersonalLibrary .gwb-lib-list{display:grid;gap:6px;max-height:280px;overflow-y:auto}
   #gwbPersonalLibrary .gwb-lib-file input{display:none}
@@ -73,6 +74,24 @@ const article=()=>String(window.gwbCurrentLibraryArticle?.()||'').trim();
 const user=()=>clean(profile?.value);
 const scope=()=>user().toLocaleLowerCase('ru-RU')+'|'+article();
 function status(text,bad=false){if(!notice)return;notice.textContent=text;notice.style.color=bad?'#ae3434':'#667766'}
+function capturePreview(){
+  // A small client-side thumbnail of the CURRENT view (template + logo).
+  // Failing or tainted canvas never blocks saving the original artwork.
+  try{
+    const template=$('templateCanvas'),overlay=$('overlay');
+    if(!template||!overlay||!template.width||!template.height)return '';
+    const dst=document.createElement('canvas');dst.width=184;dst.height=126;
+    const ctx=dst.getContext('2d');if(!ctx)return '';
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,dst.width,dst.height);
+    const w=template.width,h=template.height;
+    const scale=Math.min(dst.width/w,dst.height/h);
+    const x=(dst.width-w*scale)/2,y=(dst.height-h*scale)/2;
+    ctx.drawImage(template,x,y,w*scale,h*scale);
+    ctx.drawImage(overlay,x,y,w*scale,h*scale);
+    const data=dst.toDataURL('image/jpeg',.72);
+    return data.length<130000?data:'';
+  }catch{return ''}
+}
 function ensure(){
   if(!user())throw Error('Введите имя профиля пользователя на этом устройстве');
   if(!article())throw Error('Сначала выберите артикул и откройте его конструктор');
@@ -99,7 +118,7 @@ async function doSave(){
     const title=clean(name);
     if(!title)throw Error('Введите название варианта');
     const record={id:crypto.randomUUID(),scope:scope(),profile:user(),article:article(),title,
-      savedAt:new Date().toISOString(),personal:true,orderId:null,status:'personal-draft',data:state};
+      savedAt:new Date().toISOString(),personal:true,orderId:null,status:'personal-draft',preview:capturePreview(),data:state};
     await operate('readwrite',store=>store.put(record));
     status('Личный вариант сохранён в браузере. В заказ он не передавался.');
     await render();
@@ -131,7 +150,7 @@ function exportRecord(r){
     ...p,artwork:{...p.artwork,bytes:b64(p.artwork.bytes)}
   }))};
   const output={kind:'gwb-personal-layout-backup/v1',article:r.article,
-    title:r.title,savedAt:r.savedAt,layout:data};
+    title:r.title,savedAt:r.savedAt,preview:r.preview||'',layout:data};
   const blob=new Blob([JSON.stringify(output)],{type:'application/json'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='maketnaya-'+r.article+'-'+r.id+'.json';document.body.append(a);a.click();a.remove();
@@ -152,7 +171,8 @@ async function importBackup(file){
     const data={...raw.layout,items};
     const rec={id:crypto.randomUUID(),scope:scope(),profile:user(),article:article(),
       title:clean(raw.title)||'Импортированный вариант',savedAt:new Date().toISOString(),
-      orderId:null,personal:true,status:'personal-draft',data};
+      orderId:null,personal:true,status:'personal-draft',
+      preview:/^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(raw.preview||'')&&raw.preview.length<130000?raw.preview:'',data};
     await operate('readwrite',store=>store.put(rec));
     status('Резервная копия импортирована в личную библиотеку, но не помещена в заказ.');
     await render();
@@ -176,6 +196,10 @@ async function render(){
     if(!list.length){const empty=document.createElement('small');empty.textContent='Для этого артикула ещё нет сохранённых вариантов.';entries.append(empty)}
     for(const r of list){
       const item=document.createElement('div');item.className='gwb-lib-item';
+      if(typeof r.preview==='string'&&r.preview.startsWith('data:image/jpeg;base64,')&&r.preview.length<130000){
+        const image=document.createElement('img');image.className='gwb-lib-preview';
+        image.src=r.preview;image.alt='Миниатюра сохранённого варианта';item.append(image);
+      }
       const label=document.createElement('div');label.style.flex='1';
       const title=document.createElement('strong');title.textContent=r.title;
       const meta=document.createElement('div');meta.className='gwb-lib-meta';
@@ -200,7 +224,7 @@ function install(){
   heading.append(title,badge);
   const articleLabel=document.createElement('div');articleLabel.id='gwbLibArticle';
   const controls=document.createElement('div');controls.className='gwb-lib-actions';
-  profile=document.createElement('input');profile.type='text';profile.maxLength=64;profile.placeholder='Профиль пользователя на этом устройстве';
+  profile=document.createElement('input');profile.type='text';profile.maxLength=64;profile.placeholder='Локальный профиль (не логин gifts.ru)';
   profile.autocomplete='off';profile.setAttribute('aria-label','Имя профиля личной библиотеки');
   try{profile.value=localStorage.getItem(PROFILE)||''}catch{}
   profile.addEventListener('change',()=>{try{localStorage.setItem(PROFILE,user())}catch{};void render()});
@@ -214,7 +238,7 @@ function install(){
   entries=document.createElement('div');entries.className='gwb-lib-list';
   notice=document.createElement('div');notice.className='gwb-lib-status';notice.setAttribute('role','status');
   const hint=document.createElement('small');
-  hint.textContent='Хранится на этом устройстве, отдельно от заказов. Для другого устройства сохраните копию JSON.';
+  hint.textContent='Данные хранятся только в этом браузере. Имя профиля не обеспечивает защиту от других пользователей этого браузера. Для переноса на другой компьютер сохраните JSON-копию.';
   panel.append(heading,articleLabel,controls,count,entries,hint,notice);
   host.append(panel);
   const update=()=>setTimeout(()=>{if(displayArticle!==article())void render()},160);
