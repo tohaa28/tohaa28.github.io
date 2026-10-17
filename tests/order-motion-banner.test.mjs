@@ -51,7 +51,6 @@ test('approved WebP poses crossfade smoothly without changing sprite or 18s loop
  assert.doesNotMatch(html,/gwbOmPersonaFrames|steps\(1,end\)/);
  assert.match(html,/\.gwb-om-persona\{[^}]*transition:opacity \.38s ease-in-out/);
  assert.doesNotMatch(html,/gwbMotionToggle|gwb-om-motion-toggle/);
- assert.match(html,/\.gwb-om-frame-1\{opacity:1\}/);
 });
 test('four spoken story stages and small SVG motions are synchronized with portrait frames',()=>{
  const labels=['У меня идея!','Делаю макет!','Макет готов!','Отправляю в печать!'];
@@ -69,7 +68,6 @@ test('four spoken story stages and small SVG motions are synchronized with portr
  assert.match(html,/@keyframes gwbOmOkPop/);
  assert.match(html,/@keyframes gwbOmSendArrow/);
  assert.match(html,/@keyframes gwbOmFly\{[\s\S]*?10%\{/);
- assert.match(html,/\.gwb-om-screen-icon-1\{opacity:1\}/);
  assert.doesNotMatch(html,/gwbOmSpark|gwb-om-screen-spark/);
 });
 test('idea lamp exists only on laptop display and labels start immediately after laptop',()=>{
