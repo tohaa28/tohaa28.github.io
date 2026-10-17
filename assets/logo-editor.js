@@ -652,10 +652,12 @@
     if(gesture?.type==='pen')finishPen();
     if(dirty&&!confirm('Закрыть редактор? Несохранённые изменения не попадут в шаблон.'))return;
     active=false;shell.hidden=true;status='';dirty=false;openedToken=null;
+    window.gwbReportLogoEditorVisibility?.(false);
   }
   async function open(){
     if(opening)return;opening=true;
     setup();artInput=$('artwork');active=true;shell.hidden=false;
+    window.gwbReportLogoEditorVisibility?.(true);
     initBlank();setTool('select');status='Новый логотип. Можно рисовать и добавлять текст.';
     openedToken=null;
     const bridge=typeof window.gwbGetActiveLogoForEditor==='function'?window.gwbGetActiveLogoForEditor():null;
@@ -705,6 +707,7 @@
         try{
           await window.gwbApplyEditedLogoToActiveField(file,openedToken);
           dirty=false;active=false;shell.hidden=true;
+          window.gwbReportLogoEditorVisibility?.(false);
         }finally{$('gwbVeApply').disabled=false}
         return;
       }
@@ -712,6 +715,7 @@
       input.dispatchEvent(new Event('input',{bubbles:true}));
       input.dispatchEvent(new Event('change',{bubbles:true}));
       dirty=false;active=false;shell.hidden=true;
+      window.gwbReportLogoEditorVisibility?.(false);
       const s=$('status');if(s)s.textContent='Логотип передан в шаблон. Проверка PrintCheck выполняется штатно.';
     }catch(error){status='Не удалось передать SVG в Макетную: '+error.message;refresh()}
   }
