@@ -44,7 +44,7 @@ const styles=String.raw`#gwbPersonalLibrary{margin:18px 0 0;padding:16px;border:
   #orderEditor>#gwbPersonalLibrary{grid-column:1/-1}
   #gwbPersonalLibrary .gwb-lib-section-title{font-size:15px;font-weight:700;color:#334b29}
   #gwbPersonalLibrary .gwb-lib-subtitle{font-size:11px;color:#728269}
-  #gwbPersonalLibrary .gwb-lib-divider{height:1px;background:#e1e8da}`
+  #gwbPersonalLibrary .gwb-lib-divider{height:1px;background:#e1e8da}
   #gwbPersonalLibrary .gwb-lib-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #gwbPersonalLibrary .gwb-lib-head strong{font-size:13px}
   #gwbPersonalLibrary .gwb-lib-badge{font-size:10px;color:#6c754f}
