@@ -142,8 +142,8 @@ async function receive(event){
     s.applying=false;s.apply.disabled=false;
     notice(s,'VectorCraft: '+String(d.message||'Ошибка обработки').slice(0,360),true);
   }else if(d.type==='gwb-vectorcraft-apply-request'){
-    // Same trusted frame, origin and session guard as the upper Apply button.
-    // Reuse the only export pipeline; never bypass placement/geometry checks.
+    // Trusted native VectorCraft action goes through the same detached transfer
+    // trigger and export validation; no duplicate Maketnaya button is rendered.
     if(s.opened&&!s.applying&&!s.apply.disabled)s.apply.click();
   }else if(d.type==='gwb-vectorcraft-svg'){
     if(!s.applying)return;
@@ -199,13 +199,13 @@ async function open(){
   const field=el('span',{textContent:(Number.isInteger(selected.fieldIndex)?'Поле '+(selected.fieldIndex+1):'Выбранное поле')+' · '+fieldSizeMm.w.toFixed(2)+' × '+fieldSizeMm.h.toFixed(2)+' мм'});
   field.style.opacity='.75';
   const space=el('div');space.style.flex='1';
-  const apply=el('button',{textContent:'Применить в Макетной',disabled:true,type:'button'});
-  Object.assign(apply.style,{border:0,borderRadius:'6px',background:'#81b315',color:'#172900',fontWeight:'700',padding:'10px 16px',cursor:'pointer'});
+  // Internal, detached transfer trigger: only native VectorCraft exposes an Apply button.
+  const apply=el('button',{type:'button',disabled:true});
   const cancel=el('button',{textContent:'Закрыть без изменений',type:'button'});
   Object.assign(cancel.style,{border:'1px solid #708287',borderRadius:'6px',background:'transparent',color:'#fff',padding:'10px 14px',cursor:'pointer'});
   const fullscreenBtn=el('button',{type:'button',textContent:'На весь экран'});
   Object.assign(fullscreenBtn.style,{border:'1px solid #c8d9c0',background:'#f7faf3',color:'#35513a',borderRadius:'6px',padding:'10px 14px',cursor:'pointer'});
-  bar.append(heading,field,space,fullscreenBtn,apply,cancel);
+  bar.append(heading,field,space,fullscreenBtn,cancel);
   const iframe=el('iframe',{title:'VectorCraft — векторный редактор',allow:'webgpu; clipboard-read; clipboard-write; fullscreen'});
   iframe.setAttribute('allowfullscreen','');
   Object.assign(iframe.style,{flex:'1',width:'100%',border:0,minHeight:'0',background:'#262626'});
