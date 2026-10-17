@@ -40,6 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           node --test tests/*.test.mjs
+          node --check assets/personal-layout-library.js
           node tools/build-launcher.mjs
           grep -Eq 'id="maketnayaVersion">Макетная r[0-9a-f]{8}<' editor.html
           grep -Eq 'id="printcheckVersion">PrintCheck v25 r[0-9a-f]{8}<' editor.html
@@ -276,6 +277,7 @@ jobs:
           node tests/logo-editor-browser.mjs
           node tests/vectorcraft-handoff-browser.mjs
           node tests/vectorcraft-parent-close-browser.mjs
+          node tests/personal-layout-library-browser.mjs
 
   publish:
     needs: precheck
