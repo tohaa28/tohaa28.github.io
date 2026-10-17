@@ -20,7 +20,50 @@ function close(force=false){
   s.overlay.remove();
   document.body.style.overflow=s.oldOverflow;
 }
-function notice(s,message,bad=false){s.status.textContent=message;s.status.style.color=bad?'#df5d51':'#dbe5ea'}
+function notice(s,message,bad=false){
+  s.status.textContent=message;
+  s.status.style.color=bad?'#d4483f':(s.giftsMode?'#5d705f':'#dbe5ea');
+}
+function decorateHost(s){
+  const gifts=!!s.giftsMode;
+  Object.assign(s.overlay.style,{
+    background:gifts?'#e9efe6':'#20282c',color:gifts?'#26352b':'#fff'
+  });
+  Object.assign(s.bar.style,{
+    background:gifts?'#fff':'#435159',
+    borderBottom:gifts?'1px solid #dae6d0':'0'
+  });
+  Object.assign(s.footer.style,{
+    background:gifts?'#f7faf3':'#334047',
+    borderTop:gifts?'1px solid #dce8d5':'0'
+  });
+  Object.assign(s.cancel.style,{
+    border:gifts?'1px solid #c8d9c0':'1px solid #708287',
+    color:gifts?'#35513a':'#fff',
+    background:gifts?'#fff':'transparent'
+  });
+  Object.assign(s.fallback.style,{color:gifts?'#527d16':'#bddb7a'});
+  Object.assign(s.themeBtn.style,{
+    border:gifts?'1px solid #80b82b':'1px solid #708287',
+    color:gifts?'#345710':'#dbe8d3',
+    background:gifts?'#e3f2cd':'transparent',
+    borderRadius:'7px',padding:'5px 11px',cursor:'pointer',font:'inherit',
+    fontWeight:gifts?'700':'500'
+  });
+  s.themeBtn.textContent=gifts?'Стиль gifts.ru ✓':'Стиль gifts.ru';
+  s.themeBtn.setAttribute('aria-pressed',String(gifts));
+  s.themeBtn.title=gifts?'Вернуться к стандартному оформлению VectorCraft':'Включить оформление gifts.ru';
+  s.status.style.color=gifts?'#5d705f':'#dbe5ea';
+}
+function changeTheme(s,gifts){
+  if(!s?.opened||s.applying||s.themePending)return;
+  s.themePending=true;s.themeBtn.disabled=true;
+  s.themeBtn.textContent='Меняем оформление…';
+  s.iframe.contentWindow.postMessage({
+    type:'gwb-vectorcraft-theme',token:s.session,mode:gifts?'gifts':'native'
+  },ORIGIN);
+}
+
 async function receive(event){
   const s=active;
   if(!s||event.source!==s.iframe.contentWindow||event.origin!==ORIGIN)return;
@@ -38,6 +81,12 @@ async function receive(event){
   }else if(d.type==='gwb-vectorcraft-opened'){
     s.opened=true;notice(s,'Поле '+s.fieldSizeMm.w.toFixed(2)+' × '+s.fieldSizeMm.h.toFixed(2)+' мм. VectorCraft открыл документ — редактируйте логотип.');
     s.apply.disabled=false;
+    s.themeBtn.disabled=false;
+  }else if(d.type==='gwb-vectorcraft-theme-applied'){
+    s.themePending=false;
+    s.themeBtn.disabled=false;
+    s.giftsMode=d.message==='gifts';
+    decorateHost(s);
   }else if(d.type==='gwb-vectorcraft-error'){
     s.applying=false;s.apply.disabled=false;
     notice(s,'VectorCraft: '+String(d.message||'Ошибка обработки').slice(0,360),true);
@@ -105,9 +154,10 @@ async function open(){
   const footer=el('div');
   Object.assign(footer.style,{background:'#334047',minHeight:'29px',display:'flex',alignItems:'center',padding:'4px 16px'});
   const status=el('span',{textContent:'Запускаем VectorCraft WebAssembly…'});
+  status.style.flex='1';
   footer.append(status);overlay.append(bar,iframe,footer);
   const oldOverflow=document.body.style.overflow;
-  active={session:token,iframe,overlay,status,apply,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false};
+  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:false,themePending:false};
   window.addEventListener('message',receive);
   apply.onclick=()=>{
     const s=active;if(!s||s.applying)return;
@@ -117,8 +167,13 @@ async function open(){
   cancel.onclick=()=>close();
   const fallback=el('button',{type:'button',textContent:'Открыть прежний редактор'});
   Object.assign(fallback.style,{background:'none',border:0,color:'#bddb7a',cursor:'pointer',font:'inherit'});
+  const themeBtn=el('button',{type:'button',textContent:'Стиль gifts.ru',disabled:true});
+  const s=active;
+  s.themeBtn=themeBtn;s.fallback=fallback;
   fallback.onclick=()=>{close(true);window.gwbLogoEditor?.open()};
-  footer.append(el('span',{textContent:' · '}),fallback);
+  themeBtn.onclick=()=>changeTheme(active,!active.giftsMode);
+  footer.append(fallback,themeBtn);
+  decorateHost(s);
   iframe.onerror=()=>notice(active||{status},'Ошибка загрузки VectorCraft. Можно открыть прежний редактор.',true);
   document.body.style.overflow='hidden';
   document.body.append(overlay);
