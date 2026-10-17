@@ -278,6 +278,7 @@ jobs:
           node tests/vectorcraft-handoff-browser.mjs
           node tests/vectorcraft-parent-close-browser.mjs
           node tests/personal-layout-library-browser.mjs
+          node tests/order-motion-runtime-browser.mjs
 
   publish:
     needs: precheck
