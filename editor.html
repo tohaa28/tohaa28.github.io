@@ -177,12 +177,25 @@
 .gwb-om-portrait:hover{background:#d8eec22a}.gwb-om-portrait:focus-visible{outline:2px solid #81b315;outline-offset:-2px;border-radius:8px}
 .navrow:has(>.gwb-orders-motion)>.navlinks{position:absolute;right:12px;top:50%;z-index:10;transform:translateY(-50%);display:flex;align-items:center;gap:7px;padding:4px 9px;border:1px solid #e2e9df;border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 1px 6px #44525a12}
 .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:11px;line-height:17px;white-space:nowrap;color:#5c6e6c}
+/* Keep finished layouts moving during all four animation stages. Previously
+   they were invisible for 69% (~12.4 s) of each cycle, which looked frozen. */
 @keyframes gwbOmFly{
-  0%,69%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
-  74%{opacity:.95}
-  88%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(3deg) scale(1)}
-  93%{left:calc(100% - 86px);opacity:1;transform:translateY(0) rotate(0) scale(1)}
-  99%,100%{left:calc(100% - 86px);opacity:0;transform:translateY(-3px) scale(.9)}
+  0%,6%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  10%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  21%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  24%,25%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+  25.01%,31%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  35%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  46%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  49%,50%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+  50.01%,56%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  60%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  71%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  74%,75%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+  75.01%,81%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  85%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  96%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  99%,100%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
 }
 @keyframes gwbOmSuccess{0%,49%{opacity:0}55%,69%{opacity:1}76%,100%{opacity:0}}
 @keyframes gwbOmBulbLight{0%,2%{filter:none;transform:scale(.82)}7%,12%{filter:drop-shadow(0 0 3px #d3e95b);transform:scale(1.04)}17%,100%{filter:none;transform:scale(.95)}}
@@ -1032,4 +1045,4 @@
   });
   queueRefresh();
 })();</script>
-<script src="./assets/logo-path.js?v=20261016-2"></script><script src="./assets/logo-pdf-import.js?v=20261016-vector-1"></script><script src="./assets/logo-editor.js?v=20261017-close-1"></script><script src="./assets/vectorcraft-field.js?v=20261016-art-1"></script><script src="./assets/vectorcraft-integration.js?v=20261017-transfer-only-1"></script></body></html>
+<script src="./assets/logo-path.js?v=20261016-2"></script><script src="./assets/logo-pdf-import.js?v=20261016-vector-1"></script><script src="./assets/logo-editor.js?v=20261017-close-1"></script><script src="./assets/vectorcraft-field.js?v=20261016-art-1"></script><script src="./assets/vectorcraft-integration.js?v=20261017-transfer-only-1"></script><script src="./assets/personal-layout-library.js?v=20261017-1"></script></body></html>
