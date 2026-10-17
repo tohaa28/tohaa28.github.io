@@ -32,7 +32,11 @@ test('Personal layout library is opt-in, per profile and article, not order regi
   assert.match(lib,/const scope=\(\)=>user\(\)/);
   assert.match(lib,/status:'personal-draft'/);
   assert.match(lib,/orderId:null/);
-  assert.match(lib,/gwbRestorePersonalLayout\(r\.data\)/);
+  assert.match(lib,/gwbRestorePersonalLayout\(serverIdentity\?decodeState\(r\.layout\):r\.data\)/);
+  assert.match(lib,/serverBase='\/private\/maketnaya-layouts\/v1'/);
+  assert.match(lib,/cloudRequest\('\/me'\)/);
+  assert.match(lib,/giftsIdentity\(\)/);
+  assert.doesNotMatch(lib,/Имя профиля личной библиотеки/);
   assert.match(lib,/confirm\('Восстановить/);
   assert.match(lib,/gwb-personal-layout-backup\/v1/);
   assert.doesNotMatch(lib,/api\.github\.com|mockup-profiles\.json|method-settings\.json/);
