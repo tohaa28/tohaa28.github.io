@@ -22,6 +22,9 @@ try{
     " f.contentWindow.postMessage({type:'gwb-vectorcraft-open',token,name:'bridge-fixture.svg',bytes,fieldSizeMm:{w:120,h:80},fieldCanvas:true},location.origin,[bytes]);",
     " }else if(e.data.type==='gwb-vectorcraft-opened'){",
     " window.__vcStatus='editing';",
+    " }else if(e.data.type==='gwb-vectorcraft-apply-request'){",
+    " window.__vcInlineApplyCount=(window.__vcInlineApplyCount||0)+1;",
+    " f.contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);",
     " }else if(e.data.type==='gwb-vectorcraft-theme-applied'){",
     " window.__vcThemeAcks.push(e.data.message);",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
@@ -87,10 +90,13 @@ try{
  const attempted=await page.evaluate(()=>({blocked:window.__vcBlocked,status:window.__vcStatus,events:window.__vcEvents}));
  assert.equal(attempted.blocked.length,1,'Second imported document rejected by native WASM bridge: '+JSON.stringify(attempted));
  assert.match(attempted.blocked[0],/других документов|второй документ|один документ/i);
- await page.evaluate(()=>{
-   const token='12345678901234567890123412345678';
-   document.getElementById('vc').contentWindow.postMessage({type:'gwb-vectorcraft-apply',token},location.origin);
- });
+ // Click the actual egui Area inside compiled WASM. This must post the
+ // in-engine apply request; the parent forwards it through the existing bridge.
+ const canvas=page.frameLocator('#vc').locator('#vectorcraft_canvas');
+ const rect=await canvas.boundingBox();
+ assert.ok(rect&&rect.width>500,'Expected genuine VectorCraft canvas dimensions');
+ await canvas.click({position:{x:rect.width-100,y:77}});
+ await page.waitForFunction(()=>window.__vcEvents.includes('gwb-vectorcraft-apply-request'),null,{timeout:12000});
  await page.waitForFunction(()=>window.__vcStatus==='ok'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:30000});
  const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds,blocked:window.__vcBlocked}));
  assert.equal(data.status,'ok',JSON.stringify({status:data.status,browserErrors}));
@@ -99,6 +105,8 @@ try{
  assert.ok(data.events.includes('gwb-vectorcraft-opened'));
  assert.equal(data.events.filter(e=>e==='gwb-vectorcraft-opened').length,1,'Theme switching does not re-import artwork');
  assert.ok(data.events.includes('gwb-vectorcraft-svg'));
+ assert.equal(await page.evaluate(()=>window.__vcInlineApplyCount),1,
+   'Native egui Apply must invoke exactly one existing art-only export');
  assert.match(data.svg,/<svg\b/);
  const documentSvg=await page.evaluate(svg=>new DOMParser().parseFromString(svg,'image/svg+xml').documentElement.localName,data.svg);
  assert.equal(documentSvg,'svg');
