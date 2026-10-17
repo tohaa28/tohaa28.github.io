@@ -86,14 +86,13 @@ try{
  // same iframe, not create a second VectorCraft document.
  await page.getByRole('button',{name:'На весь экран'}).click();
  await page.waitForFunction(()=>document.fullscreenElement?.id==='gwbVectorcraftHost',{timeout:12000});
- assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).isVisible(),false,
-   'Outer Apply remains present but the Maketnaya chrome is hidden in fullscreen');
+ assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).count(),0,
+   'No duplicate Maketnaya Apply is rendered in fullscreen');
  assert.equal(await iframe.locator('body').evaluate(()=>window.__seen.length),1);
  await page.evaluate(()=>document.exitFullscreen());
  await page.waitForFunction(()=>!document.fullscreenElement);
- await page.getByRole('button',{name:'Применить в Макетной'}).waitFor({state:'visible',timeout:12000});
- assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).isVisible(),true,
-   'Original outer Apply reappears after leaving fullscreen');
+ assert.equal(await page.getByRole('button',{name:'Применить в Макетной'}).count(),0,
+   'No outer Apply reappears after leaving fullscreen');
  const seen=await iframe.locator('body').evaluate(()=>window.__seen);
  assert.equal(seen.length,1,'Original artwork sent as bytes exactly once');
  assert.match(seen[0].name,/art-поле\.svg/);
@@ -121,8 +120,8 @@ try{
  assert.equal(await page.locator('#gwbVectorcraftHost').isVisible(),true);
  await page.evaluate(()=>window.postMessage({type:'gwb-vectorcraft-svg',token:location.hash,bytes:new TextEncoder().encode('<svg/>')},'*'));
  assert.deepEqual(await page.evaluate(()=>window.__applied),[],'Untrusted sender did not overwrite the artwork');
- // Simulate the trusted message emitted by the genuine in-engine egui Apply
- // action. It must use exactly the same export/validation pipeline as the header.
+ // Simulate the trusted message emitted by the only visible native egui action.
+ // It must still use the exact same validated export/placement pipeline.
  await iframe.locator('body').evaluate(()=>parent.postMessage({
    type:'gwb-vectorcraft-apply-request',token:decodeURIComponent(location.hash.slice('#gwb='.length))
  },'*'));
@@ -161,7 +160,11 @@ try{
  assert.equal(native[0].fieldCanvas,false,'Native vector format must go to the real VectorCraft import engine');
  assert.deepEqual(native[0].fieldSize,{w:80,h:80});
  assert.equal(new TextDecoder().decode(new Uint8Array(native[0].bytes.slice(0,8))),'%PDF-1.4');
- await page.getByRole('button',{name:'Применить в Макетной'}).click();
+ await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>
+   parent.postMessage({
+     type:'gwb-vectorcraft-apply-request',
+     token:decodeURIComponent(location.hash.slice('#gwb='.length))
+   },'*'));
  await page.locator('#gwbVectorcraftHost').waitFor({state:'detached'});
  const afterPdf=await page.evaluate(async()=>({xml:await window.__placed[1].file.text(),placement:window.__placed[1].placement,applied:window.__applied}));
  assert.match(afterPdf.xml,/width="22mm"/);
