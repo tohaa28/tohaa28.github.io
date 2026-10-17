@@ -11,9 +11,14 @@ try{
    const body=[
      '<!DOCTYPE html><html><body><h1>Mock VectorCraft WASM I/O</h1><script>',
      "const token=decodeURIComponent(location.hash.slice('#gwb='.length));",
-     "window.__seen=[];window.__fieldSize=null;",
+     "window.__seen=[];window.__fieldSize=null;window.__nativeTheme='native';window.__themeChanges=[];",
      "window.addEventListener('message',e=>{",
      "if(e.data?.token!==token)return;",
+     "if(e.data?.type==='gwb-vectorcraft-theme'){",
+     " window.__nativeTheme=e.data.mode;",
+     " window.__themeChanges.push(e.data.mode);",
+     " parent.postMessage({type:'gwb-vectorcraft-theme-applied',token,message:e.data.mode},'*');",
+     "}",
      "if(e.data?.type==='gwb-vectorcraft-open'){",
      "window.__fieldSize=e.data.fieldSizeMm;",
      "window.__seen.push({name:e.data.name,bytes:Array.from(new Uint8Array(e.data.bytes)),fieldSize:e.data.fieldSizeMm,fieldCanvas:e.data.fieldCanvas});",
@@ -66,6 +71,24 @@ try{
  await page.locator('#editorOpenLogoEditor').click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const iframe=page.frameLocator('#gwbVectorcraftHost iframe');
+ const skin=page.getByRole('button',{name:'Стиль gifts.ru',exact:true});
+ const simple=page.getByRole('button',{name:'Открыть прежний редактор'});
+ assert.equal(await skin.isEnabled(),true,'Theme switch available after original document opens');
+ assert.equal(await simple.isVisible(),true,'Simple editor link preserved');
+ const defaultColor=await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor);
+ assert.equal(await skin.getAttribute('aria-pressed'),'false','Native styling is the default');
+ await skin.click();
+ await page.getByRole('button',{name:'Стиль gifts.ru ✓'}).waitFor({timeout:10000});
+ assert.equal(await page.getByRole('button',{name:'Стиль gifts.ru ✓'}).getAttribute('aria-pressed'),'true');
+ const greenColor=await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor);
+ assert.notEqual(greenColor,defaultColor,'The gifts.ru skin changes the chrome');
+ assert.deepEqual(await iframe.locator('body').evaluate(()=>window.__themeChanges),['gifts']);
+ await page.getByRole('button',{name:'Стиль gifts.ru ✓'}).click();
+ await skin.waitFor({timeout:10000});
+ assert.equal(await skin.getAttribute('aria-pressed'),'false','Original VectorCraft theme restored');
+ assert.equal(await page.locator('#gwbVectorcraftHost').evaluate(e=>getComputedStyle(e).backgroundColor),defaultColor);
+ assert.deepEqual(await iframe.locator('body').evaluate(()=>window.__themeChanges),['gifts','native']);
+ assert.equal(await iframe.locator('body').evaluate(()=>window.__seen.length),1,'Switching visual styles does not re-import or replace the artwork');
  const seen=await iframe.locator('body').evaluate(()=>window.__seen);
  assert.equal(seen.length,1,'Original artwork sent as bytes exactly once');
  assert.match(seen[0].name,/art-поле\.svg/);
