@@ -43,8 +43,8 @@ test('Embedded egui Apply and immersive controls never replace existing handoff'
   const patch=read('tools/patch-vectorcraft-gifts-theme.py');
   const js=read('assets/vectorcraft-integration.js');
   const launcher=read('tools/build-launcher.mjs');
-  assert.match(patch,/gwb_apply_logo_to_maketnaya/);
-  assert.match(patch,/egui::Area::new/);
+  assert.match(patch,/gwb_native_toolbar_apply/);
+  assert.match(patch,/ui.add_sized/);
   assert.match(patch,/gwb-vectorcraft-apply-request/);
   assert.match(js,/gwb-vectorcraft-apply-request/);
   assert.match(js,/s\.apply\.click\(\)/,'In-engine Apply must reuse original export validation');
