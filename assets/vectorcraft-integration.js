@@ -72,6 +72,14 @@ async function receive(event){
   if(d.type==='gwb-vectorcraft-ready'){
     if(s.sent)return;
     s.sent=true;
+    // Each embedded VectorCraft session starts in gifts.ru styling. Use the
+    // existing native theme API, not a new editor or persistent user setting.
+    // The original appearance remains available via the adjacent toggle.
+    s.themePending=true;
+    s.themeBtn.disabled=true;
+    s.iframe.contentWindow.postMessage({
+      type:'gwb-vectorcraft-theme',token:s.session,mode:'gifts'
+    },ORIGIN);
     try{
       const bytes=await s.file.arrayBuffer();
       if(active!==s)return;
@@ -81,7 +89,7 @@ async function receive(event){
   }else if(d.type==='gwb-vectorcraft-opened'){
     s.opened=true;notice(s,'Поле '+s.fieldSizeMm.w.toFixed(2)+' × '+s.fieldSizeMm.h.toFixed(2)+' мм. VectorCraft открыл документ — редактируйте логотип.');
     s.apply.disabled=false;
-    s.themeBtn.disabled=false;
+    s.themeBtn.disabled=s.themePending;
   }else if(d.type==='gwb-vectorcraft-theme-applied'){
     s.themePending=false;
     s.themeBtn.disabled=false;
@@ -157,7 +165,7 @@ async function open(){
   status.style.flex='1';
   footer.append(status);overlay.append(bar,iframe,footer);
   const oldOverflow=document.body.style.overflow;
-  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:false,themePending:false};
+  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:true,themePending:false};
   window.addEventListener('message',receive);
   apply.onclick=()=>{
     const s=active;if(!s||s.applying)return;
