@@ -18,9 +18,10 @@ test('Private server authenticates each gifts principal and never mixes article 
   const base='http://127.0.0.1:'+port;
   const headers=(id,name,method='GET')=>{
     const t=String(Date.now());
-    return {'X-Gifts-User-Id':id,'X-Gifts-User-Name':name,
+    const encodedName=Buffer.from(name,'utf8').toString('base64url');
+    return {'X-Gifts-User-Id':id,'X-Gifts-User-Name-B64':encodedName,
       'X-Gifts-Identity-Time':t,
-      'X-Gifts-Identity-Signature':createHmac('sha256',key).update(id+'\n'+name+'\n'+t).digest('hex'),
+      'X-Gifts-Identity-Signature':createHmac('sha256',key).update(id+'\n'+encodedName+'\n'+t).digest('hex'),
       ...(method!=='GET'?{'Origin':'https://gifts.ru','Content-Type':'application/json'}:{})};
   };
   const read=async(path,method='GET',id='id-a',name='User A',data)=>{
@@ -48,12 +49,15 @@ test('Private server authenticates each gifts principal and never mixes article 
     const loaded=await read('/v1/layouts/'+id+'?article=15637');
     assert.equal(loaded.status,200);assert.equal(loaded.data.layout.items.length,1);
     const forged=await fetch(base+'/v1/me',{headers:{'X-Gifts-User-Id':'id-a',
-      'X-Gifts-User-Name':'User A','X-Gifts-Identity-Time':String(Date.now()),
+      'X-Gifts-User-Name-B64':Buffer.from('User A').toString('base64url'),
+      'X-Gifts-Identity-Time':String(Date.now()),
       'X-Gifts-Identity-Signature':'0'.repeat(64)}});
     assert.equal(forged.status,401);
     const csrf=await fetch(base+'/v1/layouts/'+id+'?article=15637',{
       method:'DELETE',headers:{...headers('id-a','User A','DELETE'),'Origin':'https://evil.example'}});
     assert.equal(csrf.status,403);
+    const unicode=await read('/v1/me','GET','id-c','Иван Иванов');
+    assert.equal(unicode.data.name,'Иван Иванов');
     const deleted=await read('/v1/layouts/'+id+'?article=15637','DELETE');
     assert.equal(deleted.status,200);
     assert.equal((await read('/v1/layouts?article=15637')).data.items.length,0);
