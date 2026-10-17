@@ -10,7 +10,7 @@ test('VectorCraft gains native egui gifts skin without modifying logo geometry',
   assert.match(p,/ctx\.set_visuals\(v\)/);
   assert.match(p,/ctx\.global_style_mut/);
   assert.match(p,/bridge_native_style/);
-  assert.match(p,/ctx\.set_style\(style\)/);
+  assert.match(p,/ctx\.set_global_style\(style\)/);
   assert.match(p,/app\.logic\(ctx\)/,'Native editor remains the source of interactions');
   assert.doesNotMatch(p,/fileio::encode_with_warnings|doc\.art_bounds\(\)/,
     'Theme code must not interfere with VectorCraft document export');
