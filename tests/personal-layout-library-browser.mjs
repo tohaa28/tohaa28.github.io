@@ -6,7 +6,7 @@ try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});
  const url='https://gifts.ru/__personal_layout_library_test';
  await page.route(url,route=>route.fulfill({status:200,contentType:'text/html',
-   body:'<!doctype html><html lang="ru"><body><div id="orderEditor"><div id="orderFieldChoiceBox"><select id="orderTemplates"><option value="0">Артикул 15637</option></select><div id="orderTemplateList"></div></div><canvas id="templateCanvas" width="100" height="100"></canvas><canvas id="overlay" width="100" height="100"></canvas></div></body></html>'}));
+   body:'<!doctype html><html lang="ru"><body><header><g-droper><a href="/private/cabinet">Личный кабинет</a><g-drop><div class="drop--padding"><span class="opacity-half">Пользователь A</span></div></g-drop></g-droper></header><div id="orderEditor"><div id="orderFieldChoiceBox"><select id="orderTemplates"><option value="0">Артикул 15637</option></select><div id="orderTemplateList"></div></div><canvas id="templateCanvas" width="100" height="100"></canvas><canvas id="overlay" width="100" height="100"></canvas></div></body></html>'}));
  await page.goto(url);
  await page.evaluate(()=>{
    window.__article='15637';window.__restored=[];window.__captured=0;
@@ -27,8 +27,7 @@ try{
  await page.addScriptTag({path:'assets/personal-layout-library.js'});
  const lib=page.locator('#gwbPersonalLibrary');await lib.waitFor();
  assert.equal(await lib.isVisible(),true);
- await lib.locator('input[aria-label="Имя профиля личной библиотеки"]').fill('Пользователь A');
- await lib.locator('input[aria-label="Имя профиля личной библиотеки"]').dispatchEvent('change');
+ await page.waitForFunction(()=>document.querySelector('#gwbLibAuthenticatedUser')?.textContent==='Пользователь gifts.ru: Пользователь A');
  await lib.getByRole('button',{name:'Сохранить вариант'}).click();
  await lib.getByRole('button',{name:'Восстановить'}).waitFor();
  assert.equal(await page.evaluate(()=>window.__restored.length),0,'Saved drafts must not automatically appear in current order');
@@ -38,11 +37,10 @@ try{
  assert.equal(await page.evaluate(()=>new TextDecoder().decode(window.__restored[0].items[0].artwork.bytes).includes('<svg')),true);
 
  // Same article, other profile: no cross-user leakage in listing.
- const input=lib.locator('input[aria-label="Имя профиля личной библиотеки"]');
- await input.fill('Пользователь B');await input.dispatchEvent('change');
+ await page.evaluate(()=>document.querySelector('header g-drop .opacity-half').textContent='Пользователь B');
  await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 0');
  assert.equal(await row.count(),0);
- await input.fill('Пользователь A');await input.dispatchEvent('change');
+ await page.evaluate(()=>document.querySelector('header g-drop .opacity-half').textContent='Пользователь A');
  await page.waitForFunction(()=>document.querySelector('#gwbLibCount')?.textContent==='Сохранено: 1');
 
  // Different article, same profile: saved variants remain isolated.
