@@ -275,6 +275,7 @@ jobs:
           node tests/mockup-cylinder-browser-runner.mjs
           node tests/logo-editor-browser.mjs
           node tests/vectorcraft-handoff-browser.mjs
+          node tests/vectorcraft-parent-close-browser.mjs
 
   publish:
     needs: precheck
