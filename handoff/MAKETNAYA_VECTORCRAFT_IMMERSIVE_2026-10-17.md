@@ -30,3 +30,14 @@ Production база `main`: `2ed2dfaaa3e8ac020c48942c90fa64a19c83eb01`.
 
 ## Инварианты и возобновление
 Не менять верный art-only SVG export, `logoBoundsMm`, field mm и guard выбранного поля; не менять PrintCheck, mockup cylinder, заказ/constructor mapping и реестры при UI rollback. Скрытые переключатели НЕ удалены — их можно вернуть по будущему требованию. Восстанавливать UI из backup SOURCE и runtime из backup PRODUCTION с учётом актуальных JSON (не затирать новые записи).
+
+## Окончательное подтверждение и заморозка
+- Rust/WASM build `39053257592` — **success**, новая скомпилированная версия `vectorcraft-web-cecc7b2ddbc94ebb_bg.wasm` опубликована в `main`.
+- Pages `39053939083` — **success** после WASM; окончательный Pages `39054084859` — **success**.
+- Реальный Chromium + новый WASM `39054009562` — **success**. Тест **нажал настоящий egui Apply** через canvas, получил `gwb-vectorcraft-apply-request`, вернул SVG по видимой геометрии и сохранил x/y/w/h. Это не mocked JS.
+- Финальный обычный CI `39054009557` — **success** (precheck / publish / browser_verify).
+- Зафиксированная **функциональная source версия** `b58a7a024bc5c45ce586494d279b33cf34d97e48`, опубликованная `main` **`7a54ade50995414ef41c04e450cd13a0509ab182`**.
+- **Замороженная checkpoint source**: `checkpoint-maketnaya-vectorcraft-immersive-20261017-source`, SHA `b58a7a024bc5c45ce586494d279b33cf34d97e48`.
+- **Замороженная checkpoint production**: `checkpoint-maketnaya-vectorcraft-immersive-20261017-production`, SHA `7a54ade50995414ef41c04e450cd13a0509ab182`.
+- Json SHA unchanged, source/main identical: mockup profiles `ddb84fdc0d656341770a2399f5a10f0e21f5d72c`, method settings `cbf6c8204e4fb3892d806342d37debefb8d9038e`.
+Документационные коммиты после контрольной точки не заменяют вышеуказанный проверенный рабочий код.
