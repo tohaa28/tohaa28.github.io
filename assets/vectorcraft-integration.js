@@ -10,9 +10,26 @@ const URL_BASE=ORIGIN+'/gifts-layout-workbench-mockups/vectorcraft/index.html';
 let active=null;
 const el=(tag,opts={})=>Object.assign(document.createElement(tag),opts);
 function reportEditorVisibility(visible){
-  // The launcher owns the "Закрыть Макетную" control in the parent gifts.ru page.
-  // Never allow that control to close the workbench while VectorCraft is active.
-  try{if(window.parent!==window)window.parent.postMessage({type:'gwb-maketnaya-vectorcraft-visibility',visible:!!visible},location.origin)}catch{}
+  // VectorCraft and the retained simple logo editor both suppress the gifts.ru
+  // launcher's close X. The editor uses srcdoc: location.origin may be "null"
+  // even though the frame can access its same-origin gifts.ru parent.
+  const hide=!!(visible || active || window.gwbLogoEditor?.active);
+  if(window.parent===window)return;
+  try{
+    const outer=window.parent.document.getElementById('gifts-layout-workbench-host');
+    const closeButton=outer?.querySelector('.gwb-close');
+    if(closeButton){
+      closeButton.hidden=hide;
+      closeButton.disabled=hide;
+      closeButton.style.display=hide?'none':'';
+    }
+  }catch{}
+  try{
+    const targetOrigin=window.parent.location.origin;
+    if(targetOrigin&&targetOrigin!=='null')window.parent.postMessage({
+      type:'gwb-maketnaya-vectorcraft-visibility',visible:hide
+    },targetOrigin);
+  }catch{}
 }
 function syncFullscreen(s){
   if(active!==s)return;
@@ -233,6 +250,7 @@ function install(){
   if(!button)return;
   button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();void open()},true);
   window.gwbVectorcraftHost={open,close:()=>close()};
+  window.gwbReportLogoEditorVisibility=reportEditorVisibility;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
