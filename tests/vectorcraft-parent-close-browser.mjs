@@ -5,7 +5,7 @@ import {chromium} from 'playwright';
 // workbench iframe under a parent with the outer "Закрыть Макетную" control.
 const browser=await chromium.launch({headless:true});
 try {
-  const page=await browser.newPage();
+  const page=await browser.newPage({viewport:{width:1600,height:1000}});
   await page.route('https://gifts.ru/__gwb_vectorcraft_close_test',async route=>
     route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
   await page.route('https://tohaa28.github.io/gifts-layout-workbench-mockups/vectorcraft/index.html*',
@@ -20,6 +20,7 @@ try {
     close.setAttribute('aria-label','Закрыть Макетную');
     const frame=document.createElement('iframe');
     frame.id='gwb-frame';
+    frame.style.cssText='display:block;width:1450px;height:890px;border:0';
     frame.name='workbench';
     frame.srcdoc='<!doctype html><html><body><button id="editorOpenLogoEditor">Редактор логотипа</button></body></html>';
     host.append(frame,close);
