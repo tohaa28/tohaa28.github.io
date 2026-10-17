@@ -168,6 +168,9 @@ window.gwbCapturePersonalLayout=function(){
   const article=String(y.selectedEntry.article).trim();
   const placed=y.placements.filter(p=>p.art?.bytes?.length&&p.placement&&p.field);
   if(!placed.length)throw Error("Нет размещённых логотипов для сохранения");
+  if(placed.some(p=>!Number.isInteger(p.fieldIndex)||
+        !y.template.fieldOptions?.[p.fieldIndex]))
+    throw Error("Сохранение требует поля из конструктора; ручное поле нужно привязать к шаблону");
   const fields=y.template.fieldOptions||[];
   return {schema:"gwb-personal-layout/v1",article,createdAt:new Date().toISOString(),
     fields:fields.map(f=>({page:f.page,w:f.w,h:f.h,x:f.x,y:f.y})),
