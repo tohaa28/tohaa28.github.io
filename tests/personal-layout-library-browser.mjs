@@ -5,7 +5,7 @@ const browser=await chromium.launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});
  const url='https://gifts.ru/__personal_layout_library_test';
- await page.route(url,route=>route.fulfill({status:200,contentType:'text/html',
+ await page.route(url,route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',
    body:'<!doctype html><html lang="ru"><body><header><g-droper><a href="/private/cabinet">Личный кабинет</a><g-drop><div class="drop--padding"><span class="opacity-half">Пользователь A</span></div></g-drop></g-droper></header><div id="orderEditor"><div id="orderFieldChoiceBox"><select id="orderTemplates"><option value="0">Артикул 15637</option></select><div id="orderTemplateList"></div></div><canvas id="templateCanvas" width="100" height="100"></canvas><canvas id="overlay" width="100" height="100"></canvas></div></body></html>'}));
  await page.goto(url);
  await page.evaluate(()=>{
