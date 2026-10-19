@@ -12,7 +12,7 @@ def once(old,new):
     if src.count(old)!=1:
         raise RuntimeError(f"TraceDraw upstream drift: expected one {old!r}, got {src.count(old)}")
     src=src.replace(old,new)
-once('mod web;\n','mod web;\n#[cfg(target_arch = "wasm32")]\nmod gwb_bridge;\n')
+once('mod web;\n','mod web;\n')
 once('        files::run_finished(app);\n',
      '        files::run_finished(app);\n        #[cfg(target_arch = "wasm32")]\n        gwb_bridge::poll(app, ui.ctx());\n')
 
@@ -82,3 +82,145 @@ page=page.replace('await init({ module_or_path: bytes });',
                   '        }')
 index.write_text(page,encoding="utf-8")
 print("Applied pinned TraceDraw WASM embedding, native transfer and single-field bridge")
+
+
+# The embedded editor is not a free document manager. Protect all native
+# code paths (menus, toolbar, tabs, shortcuts, recent/template dialogs).
+# Import is intentionally left enabled: it inserts editable objects into
+# the one imprint page instead of replacing the document.
+def patch_source(relative, replacements):
+    p=root/relative
+    body=p.read_text(encoding="utf-8")
+    for old,new in replacements:
+        n=body.count(old)
+        if n!=1: raise RuntimeError(f"{relative}: expected one {old[:110]!r}; got {n}")
+        body=body.replace(old,new,1)
+    p.write_text(body,encoding="utf-8")
+
+def protected(signature):
+    return (signature, signature +
+        '\n        if crate::gwb_embedded() { self.status = "Редактируйте только текущее поле нанесения Макетной".into(); return; }')
+
+patch_source("apps/tracedraw/src/main.rs", [
+  ('mod web;\n', '''mod web;
+#[cfg(target_arch = "wasm32")]
+mod gwb_bridge;
+fn gwb_embedded() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    { gwb_bridge::locked() }
+    #[cfg(not(target_arch = "wasm32"))]
+    { false }
+}
+fn gwb_field_loaded() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    { gwb_bridge::field_loaded() }
+    #[cfg(not(target_arch = "wasm32"))]
+    { false }
+}
+''')
+])
+# Because the initial script already inserts "mod gwb_bridge", remove
+# the duplicate insertion in the older patch stage.
+# NOTE: the original "once('mod web;')" above is the only point to edit
+# if the upstream layout changes.
+
+patch_source("apps/tracedraw/src/app.rs", [
+  ('        app.apply_runtime_settings();\n', '''        app.apply_runtime_settings();
+        if crate::gwb_embedded() {
+            // No recent document, saved workspace or welcome screen in a field.
+            app.settings.startup = crate::settings::Startup::NewDocument;
+            app.settings.recent_files.clear();
+            app.settings.show_new_document_dialog = false;
+            app.units = Units::Millimeters;
+            app.color_model = 1; // Color docker: CMYK, not RGB.
+            app.mixer_color = app.mixer_color.convert_to("CMYK");
+            crate::theme::set_theme(crate::theme::Theme::Light);
+        }
+'''),
+  ('        if crate::files::WEB {\n            app.show_web_notice();\n', '        if crate::files::WEB && !crate::gwb_embedded() {\n            app.show_web_notice();\n'),
+  protected('    pub fn request_new_document(&mut self) {'),
+  protected('    pub fn open_dialog(&mut self) {'),
+  protected('    pub fn open_template_dialog(&mut self) {'),
+  protected('    pub fn open_path_with_password(&mut self, path: PathBuf, password: &str) {'),
+  protected('    pub fn close_document(&mut self) {'),
+  protected('    pub fn close_all_documents(&mut self) {'),
+  protected('    pub fn request_exit(&mut self) {'),
+  ('    pub fn new_document(&mut self) {\n',
+   '    pub fn new_document(&mut self) {\n        if crate::gwb_embedded() && self.has_document() { return; }\n'),
+  ('    pub fn run(&mut self, cmd: Command) {\n',
+   '''    pub fn run(&mut self, cmd: Command) {
+        if crate::gwb_embedded() && crate::gwb_field_loaded()
+            && matches!(&cmd, Command::AddPage { .. } | Command::DeletePage { .. }
+                | Command::ResizePage { .. }) {
+            self.status = "Размер и количество страниц заданы полем нанесения Макетной".into();
+            return;
+        }
+'''),
+])
+patch_source("apps/tracedraw/src/documents.rs", [
+  ('    pub fn open_document(&mut self, doc: Document, file: Option<PathBuf>) {\n',
+   '    pub fn open_document(&mut self, doc: Document, file: Option<PathBuf>) {\n        if crate::gwb_embedded() && self.has_document() { return; }\n'),
+  protected('    pub fn close_active_document(&mut self) {'),
+  protected('    pub fn new_window(&mut self) {'),
+])
+patch_source("apps/tracedraw/src/ui/menus.rs", [
+  ('fn file_menu(app: &mut App, ui: &mut Ui) {\n',
+   '''fn file_menu(app: &mut App, ui: &mut Ui) {
+    if crate::gwb_embedded() {
+        let doc = app.has_document();
+        if item(ui, "menu.file.import", "Ctrl+I", doc) { app.import(); }
+        if item(ui, "menu.file.export", "Ctrl+E", doc) { app.export(); }
+        return;
+    }
+'''),
+  ('fn window_menu(app: &mut App, ui: &mut Ui) {\n',
+   'fn window_menu(app: &mut App, ui: &mut Ui) {\n    if crate::gwb_embedded() { return; }\n'),
+])
+patch_source("apps/tracedraw/src/ui/toolbar.rs", [
+  ('std_button(ui, icons::Action::New, &tip("toolbar.new"), true, false)',
+   'std_button(ui, icons::Action::New, &tip("toolbar.new"), !crate::gwb_embedded(), false)'),
+  ('std_button(ui, icons::Action::Open, &tip("toolbar.open"), true, false)',
+   'std_button(ui, icons::Action::Open, &tip("toolbar.open"), !crate::gwb_embedded(), false)'),
+  ('std_arrow(ui, "open_recent", !recent.is_empty())',
+   'std_arrow(ui, "open_recent", !crate::gwb_embedded() && !recent.is_empty())')
+])
+patch_source("apps/tracedraw/src/ui/tabs.rs", [
+  ('pub fn document_tabs(app: &mut App, ui: &mut Ui) {\n',
+   '''pub fn document_tabs(app: &mut App, ui: &mut Ui) {
+    if crate::gwb_embedded() {
+        ui.horizontal(|ui| {
+            ui.strong("МАКЕТНАЯ · ПОЛЕ НАНЕСЕНИЯ");
+            ui.separator();
+            let s = app.page_size();
+            ui.label(format!("{:.2} × {:.2} мм · CMYK", s.width, s.height));
+        });
+        return;
+    }
+''')
+])
+patch_source("apps/tracedraw/src/theme.rs", [
+  ('    v.window_corner_radius = 2.0.into();\n    v.menu_corner_radius = 2.0.into();\n    v\n',
+   '''    v.window_corner_radius = 2.0.into();
+    v.menu_corner_radius = 2.0.into();
+    if crate::gwb_embedded() {
+        use egui::Color32;
+        let green = Color32::from_rgb(0x62, 0x91, 0x25);
+        let pale = Color32::from_rgb(0xF3, 0xF7, 0xEF);
+        v.panel_fill = pale;
+        v.window_fill = Color32::WHITE;
+        v.faint_bg_color = Color32::from_rgb(0xE6, 0xEF, 0xDE);
+        v.widgets.inactive.bg_stroke.color = Color32::from_rgb(0xBB, 0xD1, 0xB2);
+        v.widgets.hovered.bg_fill = Color32::from_rgb(0xE0, 0xEF, 0xD2);
+        v.widgets.active.bg_fill = Color32::from_rgb(0xCB, 0xE3, 0xB8);
+        v.widgets.hovered.bg_stroke.color = green;
+        v.widgets.active.bg_stroke.color = green;
+        v.selection.bg_fill = Color32::from_rgb(0xDF, 0xEE, 0xCF);
+        v.selection.stroke.color = green;
+        v.hyperlink_color = green;
+        v.window_corner_radius = 7.0.into();
+        v.menu_corner_radius = 7.0.into();
+    }
+    v
+''')
+])
+print("Patched single-field TraceDraw (native entrypoints, CMYK docker, gifts visuals)")
