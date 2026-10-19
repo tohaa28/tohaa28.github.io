@@ -25,10 +25,10 @@ function setup(){
  const y={template:{id:'templateA'},page:0,view:field,selectedEntry:{article:'111',itemId:'a'},
    placements:[placed],active:0,field,art,placement:placed.placement,busy:false,drag:null};
  const win={dispatchEvent(){}};
- const ctor=new Function('y','v','document','window','CustomEvent','Q','_t','X','queueMicrotask',
+ const ctor=new Function('y','v','document','window','CustomEvent','Q','_t','X','queueMicrotask','Qt','gs','zt',
    body+'\nreturn {observe:gwbHistoryObserve,history:window.gwbPlacementHistory};');
  const api=ctor(y,v,document,win,function CustomEvent(){},
-   s=>notices.push(s),()=>{},()=>{},fn=>fn());
+   s=>notices.push(s),()=>{},()=>{},fn=>fn(),()=>{},()=>{},()=>{});
  return {api,y,v,document,events,notices,art};
 }
 
