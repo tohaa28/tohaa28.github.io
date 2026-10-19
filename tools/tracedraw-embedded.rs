@@ -118,14 +118,19 @@ pub fn poll(app:&mut crate::app::App,ctx:&egui::Context){
 }
 pub fn transfer_button(app:&crate::app::App,ctx:&egui::Context){
   if !gwbIsEmbedded(){return}
-  egui::Area::new(egui::Id::new("gwb_tracedraw_native_transfer"))
-    .anchor(egui::Align2::RIGHT_TOP,egui::vec2(-18.0,38.0))
-    .order(egui::Order::Foreground).show(ctx,|ui|{
-      let button=egui::Button::new(egui::RichText::new("Перенести на шаблон артикула")
-        .strong().color(egui::Color32::WHITE))
-        .fill(egui::Color32::from_rgb(94,148,28));
-      if ui.add_sized([224.0,30.0],button).clicked(){
-        if let Err(e)=export(app){gwbReport("gwb-tracedraw-error",&e)}
-      }
+  // Reserve a real top panel before TraceDraw's own menu/canvas panels
+  // are laid out. A foreground Area could be obscured by other egui windows,
+  // so clicking its approximate coordinates never invoked the action.
+  egui::TopBottomPanel::top("gwb_tracedraw_transfer_panel")
+    .exact_height(40.0)
+    .show(ctx,|ui|{
+      ui.with_layout(egui::Layout::right_to_left(egui::Align::Center),|ui|{
+        let button=egui::Button::new(egui::RichText::new("Перенести на шаблон артикула")
+          .strong().color(egui::Color32::WHITE))
+          .fill(egui::Color32::from_rgb(94,148,28));
+        if ui.add_sized([224.0,30.0],button).clicked(){
+          if let Err(e)=export(app){gwbReport("gwb-tracedraw-error",&e)}
+        }
+      });
     });
 }
