@@ -6,7 +6,7 @@ try{
  const page=await browser.newPage({viewport:{width:1200,height:760}});
  await page.route('https://gifts.ru/__editor_choice_test',route=>route.fulfill({
    status:200,contentType:'text/html; charset=utf-8',
-   body:'<!doctype html><html><body><button id="editorOpenLogoEditor" type="button">Редактор логотипа</button></body></html>'
+   body:'<!doctype html><html><body><button id="editorOpenLogoEditor" type="button">Редактор логотипа</button><div id="status"></div></body></html>'
  }));
  await page.goto('https://gifts.ru/__editor_choice_test');
  await page.evaluate(()=>{
@@ -20,7 +20,18 @@ try{
  assert.equal(await menu.isVisible(),true);
  assert.equal(await menu.getByRole('button',{name:/VectorCraft/}).count(),1);
  assert.equal(await menu.getByRole('button',{name:/TraceDraw/}).count(),1);
- assert.match(await menu.textContent(),/SVG\/PDF/,'Only genuinely supported embedded TraceDraw formats are advertised');
+ assert.match(await menu.textContent(),/ЧЁРТИК/,'Devil is identified');
+ assert.match(await menu.textContent(),/АНГЕЛ/,'Angel is identified');
+ assert.match(await menu.textContent(),/Аналог Adobe Illustrator/);
+ assert.match(await menu.textContent(),/Аналог CorelDRAW/);
+ assert.equal(await menu.getAttribute('role'),'dialog');
+ assert.equal(await menu.locator('svg[aria-hidden="true"]').count()>1,true,'Both characters have real vector illustrations');
+ assert.equal(await menu.evaluate(el=>el.classList.contains('is-active')),true,'Entrance animation starts on opening');
+ await page.locator('#status').evaluate(el=>el.textContent='Из VectorCraft возвращён только нарисованный логотип с его габаритами и положением.');
+ await page.waitForFunction(()=>document.getElementById('status').textContent==='');
+ await page.locator('#status').evaluate(el=>el.textContent='Остальные проверки остаются видимыми.');
+ await page.waitForTimeout(20);
+ assert.equal(await page.locator('#status').textContent(),'Остальные проверки остаются видимыми.');
  await menu.getByRole('button',{name:/TraceDraw/}).click();
  assert.deepEqual(await page.evaluate(()=>window.__opened),['tracedraw']);
  assert.equal(await menu.isVisible(),false);
@@ -30,5 +41,11 @@ try{
  await page.getByRole('button',{name:'Редактор логотипа'}).click();
  await page.keyboard.press('Escape');
  assert.equal(await menu.isVisible(),false);
- console.log('Two real editor entrypoints selectable, one at a time; previous VectorCraft kept.');
+ // Reopening must replay the character entrance, not reuse stale CSS state.
+ await page.getByRole('button',{name:'Редактор логотипа'}).click();
+ assert.equal(await menu.isVisible(),true);
+ assert.equal(await menu.evaluate(el=>el.classList.contains('is-active')),true);
+ await menu.getByRole('button',{name:'Закрыть выбор редактора'}).click();
+ assert.equal(await menu.isVisible(),false);
+ console.log('Animated devil/angel chooser, both real entrypoints, keyboard dismissal and obsolete status suppression passed.');
 }finally{await browser.close()}
