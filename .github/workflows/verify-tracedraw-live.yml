@@ -1,0 +1,27 @@
+name: Verify live TraceDraw WASM
+on:
+  push:
+    branches: [gifts-layout-workbench-mockups-source]
+    paths:
+      - tests/tracedraw-runtime-browser.mjs
+      - .github/workflows/verify-tracedraw-live.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live_trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Verify real Rust/WASM editing and return to Maketnaya
+        run: node tests/tracedraw-runtime-browser.mjs
