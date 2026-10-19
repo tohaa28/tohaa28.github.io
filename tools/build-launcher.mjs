@@ -1,9 +1,11 @@
 import {applyLogoPreflight} from './patch-artwork-preflight.mjs';
 import {stampComponentVersions} from './stamp-component-versions.mjs';
 import {applyLogoEditorBridge} from './patch-logo-editor-bridge.mjs';
+import {applyPlacementHistory} from './patch-placement-history.mjs';
 import {launcherCss,motionMarkup,MOTION_DURATION_MS} from './launcher-motion.mjs';
 applyLogoPreflight();
 applyLogoEditorBridge();
+applyPlacementHistory();
 stampComponentVersions();
 import fs from "node:fs";
 
