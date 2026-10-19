@@ -72,5 +72,30 @@ async function verifyPdf(bytes,bounds){
   throw Error('В PDF не подтверждены исходные CMYK или плашечные краски — перенос остановлен.');
  return {...colors,cmykImage,rgbImage,spot,model:models.CMYK,widthMm:w,heightMm:h};
 }
-root.gwbCmykRoundtrip={verifyPdf,scans};
+// TraceDraw's PDF covers the fixed field, while the SVG sends the true art
+// bounds. Change only PDF page boxes; original streams and CMYK values remain
+// byte-for-byte within the saved PDF. Do not rasterize or recolor anything.
+async function cropFieldPdf(bytes,field,bounds){
+ const lib=root.PDFLib;
+ if(!lib?.PDFDocument)throw Error('Нет модуля сохранения PDF');
+ if(!field||!bounds||!['w','h'].every(k=>Number.isFinite(field[k])&&field[k]>0)||
+    !['x','y','w','h'].every(k=>Number.isFinite(bounds[k]))||
+    bounds.w<=0||bounds.h<=0)throw Error('Поле или границы рисунка не определены');
+ const pdf=await lib.PDFDocument.load(bytes,{ignoreEncryption:false,updateMetadata:false});
+ if(pdf.getPageCount()!==1)throw Error('Должна быть одна страница CMYK PDF');
+ const page=pdf.getPage(0),box=page.getMediaBox();
+ if(Math.abs(box.width*PT_MM-field.w)>0.15||Math.abs(box.height*PT_MM-field.h)>0.15)
+   throw Error('TraceDraw вернул PDF неправильного размера поля');
+ const x=box.x+bounds.x/PT_MM;
+ const y=box.y+(field.h-bounds.y-bounds.h)/PT_MM;
+ const width=bounds.w/PT_MM,height=bounds.h/PT_MM;
+ // Bounding rectangle can extend beyond the field. The media box must then
+ // grow with the artwork so PDF viewers do not silently clip the imprint.
+ page.setMediaBox(x,y,width,height);
+ page.setCropBox(x,y,width,height);
+ const out=await pdf.save({useObjectStreams:false});
+ await verifyPdf(out,bounds);
+ return out;
+}
+root.gwbCmykRoundtrip={verifyPdf,cropFieldPdf,scans};
 })(window);
