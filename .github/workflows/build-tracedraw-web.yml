@@ -1,0 +1,99 @@
+name: Build TraceDraw WebAssembly
+
+on:
+  push:
+    branches:
+      - gifts-layout-workbench-mockups-source
+    paths:
+      - "tools/tracedraw-embedded.rs"
+      - "tools/patch-tracedraw-upstream.py"
+      - ".github/workflows/build-tracedraw-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: maketnaya-tracedraw-wasm-build
+  cancel-in-progress: true
+
+jobs:
+  compile_tracedraw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout Maketnaya source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: maketnaya
+      - name: Checkout exact TraceDraw source
+        uses: actions/checkout@v4
+        with:
+          repository: igtoth/tracedraw
+          ref: 0f206489770adcacc6cc130a9e31a5610faad68a
+          path: tracedraw
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tracedraw -> target
+          cache-on-failure: true
+      - name: Install wasm-bindgen CLI matched to TraceDraw lockfile
+        run: |
+          set -euo pipefail
+          cd tracedraw
+          python3 - <<'PY'
+          import pathlib,re,subprocess
+          s=pathlib.Path("Cargo.lock").read_text()
+          m=re.search(r'\[\[package\]\]\s*name = "wasm-bindgen"\s*version = "([^"]+)"',s)
+          if not m: raise SystemExit("wasm-bindgen version not found")
+          version=m.group(1)
+          subprocess.run(["cargo","install","wasm-bindgen-cli","--version",version,"--locked"],check=True)
+          PY
+      - name: Install browser dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libgl1-mesa-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev
+      - name: Install pinned Maketnaya TraceDraw bridge
+        run: |
+          set -euo pipefail
+          cp maketnaya/tools/tracedraw-embedded.rs tracedraw/apps/tracedraw/src/gwb_bridge.rs
+          python3 maketnaya/tools/patch-tracedraw-upstream.py tracedraw
+      - name: Compile genuine TraceDraw Rust engine to WebAssembly
+        run: |
+          set -euo pipefail
+          cd tracedraw
+          cargo build --target wasm32-unknown-unknown --profile web -p tracedraw
+          mkdir -p site
+          wasm-bindgen --target web --no-typescript --out-dir site target/wasm32-unknown-unknown/web/tracedraw.wasm
+          test -s site/tracedraw_bg.wasm
+          test -s site/tracedraw.js
+          wasm_size=$(wc -c < site/tracedraw_bg.wasm | tr -d ' ')
+          sed -e "s/data-wasm-size=\"0\"/data-wasm-size=\"$wasm_size\"/" \
+              -e 's/@VERSION@/0.9.4-gifts/' web/index.html > site/index.html
+          cp assets/icon/tracedraw-256.png site/icon-256.png
+          cp LICENSE-MIT LICENSE-APACHE site/
+          echo 0f206489770adcacc6cc130a9e31a5610faad68a > site/UPSTREAM_COMMIT
+          du -sh site
+      - name: Checkout live GitHub Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site-main
+          fetch-depth: 0
+      - name: Publish TraceDraw WASM without changing source or customer registry
+        run: |
+          set -euo pipefail
+          rm -rf site-main/gifts-layout-workbench-mockups/tracedraw
+          mkdir -p site-main/gifts-layout-workbench-mockups/tracedraw
+          cp -a tracedraw/site/. site-main/gifts-layout-workbench-mockups/tracedraw/
+          cd site-main
+          git config user.name maketnaya-tracedraw-builder
+          git config user.email actions@users.noreply.github.com
+          git add -A gifts-layout-workbench-mockups/tracedraw
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish TraceDraw 0.9.4 pinned WASM with Maketnaya art-only bridge"
+            git push origin main
+          fi
