@@ -128,7 +128,7 @@ fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Res
 // The actual printed artwork is NOT the VectorCraft artboard. Export with the
 // source engine's visual art bounds and send the bounding box relative to the
 // original field separately so Maketnaya restores geometry exactly once.
-fn gwb_send_cropped_logo(bytes: &[u8], note: &str, bounds: [f64;4]) {
+fn gwb_send_cropped_logo(bytes: &[u8], pdf: &[u8], note: &str, bounds: [f64;4]) {
     use js_sys::{Object,Reflect,Uint8Array};
     use wasm_bindgen::{JsCast,JsValue};
     let Some(window)=web_sys::window() else {return};
@@ -139,6 +139,9 @@ fn gwb_send_cropped_logo(bytes: &[u8], note: &str, bounds: [f64;4]) {
     set("token",&JsValue::from_str(&gwb_token()));
     set("message",&JsValue::from_str(note));
     set("bytes",&Uint8Array::from(bytes).into());
+    set("pdfBytes",&Uint8Array::from(pdf).into());
+    set("colorSpace",&JsValue::from_str("CMYK"));
+    set("nativePdf",&JsValue::TRUE);
     let rectangle=Object::new();
     for (key,value) in ["x","y","w","h"].into_iter().zip(bounds) {
         let _=Reflect::set(&rectangle,&JsValue::from_str(key),&JsValue::from_f64(value));
@@ -193,14 +196,32 @@ fn gwb_export_editor(app: &mut VectorcraftApp, requested_field: Option<(f64,f64,
     // SVG export uses the same visual art bounds, shifting their origin to
     // (0,0). No page-sized empty margins and no rasterization of vector paths.
     let opts=serde_json::json!({"images":"embed","useArtboards":false});
+    if st.doc.color_mode!=vectorcraft_doc::ColorMode::Cmyk {
+        gwb_send("gwb-vectorcraft-error",None,Some("Исходный документ должен оставаться CMYK; перенос остановлен"));
+        return;
+    }
     match fileio::encode_with_warnings(&st.doc,"svg",&opts) {
         Ok((bytes,warnings))=>{
             if bytes.is_empty()||bytes.len()>40*1024*1024{
                 gwb_send("gwb-vectorcraft-error",None,Some("SVG больше 40 МБ или пустой"));
                 return;
             }
-            let notes=warnings.join("\n");
-            gwb_send_cropped_logo(&bytes,&notes,bounds);
+            // Preserve the engine's press-ready CMYK PDF; SVG remains screen preview.
+            // Both exporters use the real visible artwork bounds, not the artboard.
+            let pdf_opts=serde_json::json!({"useArtboards":false});
+            let (pdf_bytes,pdf_warnings)=match fileio::encode_with_warnings(&st.doc,"pdf",&pdf_opts){
+                Ok(done)=>done,
+                Err(err)=>{
+                    gwb_send("gwb-vectorcraft-error",None,Some(&format!("Не удалось сохранить исходные CMYK в PDF: {err}")));
+                    return;
+                }
+            };
+            if !pdf_bytes.starts_with(b"%PDF-")||pdf_bytes.len()>40*1024*1024 {
+                gwb_send("gwb-vectorcraft-error",None,Some("Недопустимый PDF при переносе CMYK (до 40 МБ)"));
+                return;
+            }
+            let notes=warnings.into_iter().chain(pdf_warnings).collect::<Vec<_>>().join("\n");
+            gwb_send_cropped_logo(&bytes,&pdf_bytes,&notes,bounds);
         }
         Err(err)=>gwb_send("gwb-vectorcraft-error",None,Some(&err.to_string())),
     };
