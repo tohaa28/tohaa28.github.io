@@ -143,7 +143,7 @@ function install(){
  });
  stage.append(duo);
  const footnote=document.createElement('div');footnote.className='gwb-choice-footnote';
- footnote.textContent='Нарисованный логотип вернётся в исходное поле выбранного артикула.';
+ footnote.textContent='Нарисованный логотип вернётся в исходное поле выбранного артикула. TraceDraw поддерживает SVG/PDF.';
  stage.append(footnote);menu.append(stage);document.body.append(menu);
  let returnFocus=null;
  function hide(){
