@@ -92,9 +92,8 @@ async function open(){
    prepared=await fields.prepare(initial,selected);
    if(!/\.(svg|pdf)$/i.test(prepared.file.name))
      throw Error('Для TraceDraw этот исходный формат пока не поддерживается; используйте PDF или SVG');
-   // Never send customer data to an upstream demonstration site.
-   const check=await fetch(INDEX,{method:'HEAD',cache:'no-store',redirect:'error'});
-   if(!check.ok)throw Error('Локальная сборка TraceDraw пока не опубликована ('+check.status+')');
+   // Only a self-hosted TraceDraw binary is ever opened. Its availability
+   // is confirmed by WASM-ready handshake, not an unreliable cross-origin HEAD.
  }catch(e){alert('TraceDraw: '+e.message+'\nVectorCraft остаётся доступен.');return}
  if(active)return;
  const overlay=document.createElement('div');overlay.id='gwbTraceDrawHost';
