@@ -141,6 +141,7 @@ try{
  assert.match(state.first,/height="18mm"/,'SVG height is only drawn logo');
  assert.deepEqual(state.applied,[0],'Exactly one original field replaced');
  await page.locator('#editorOpenLogoEditor').click();
+await page.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const reopened=await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>window.__seen);
  const reopenedSvg=new TextDecoder().decode(new Uint8Array(reopened[0].bytes));
@@ -156,6 +157,7 @@ try{
    window.__placed[1].file=new File([new TextEncoder().encode('%PDF-1.4')],'original.pdf',{type:'application/pdf'});
  });
  await page.locator('#editorOpenLogoEditor').click();
+await page.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const native=await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>window.__seen);
  assert.equal(native[0].name,'original.pdf');
