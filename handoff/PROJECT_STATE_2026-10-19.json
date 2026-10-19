@@ -1,0 +1,157 @@
+{
+  "schema": "maketnaya-handoff/v1",
+  "as_of": "2026-10-19",
+  "project": "Макетная / Gifts Layout Workbench",
+  "repo": "tohaa28/tohaa28.github.io",
+  "links": {
+    "production": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
+    "source": "https://github.com/tohaa28/tohaa28.github.io/tree/gifts-layout-workbench-mockups-source",
+    "production_branch": "https://github.com/tohaa28/tohaa28.github.io/tree/main/gifts-layout-workbench-mockups",
+    "main_handoff": "handoff/START_HERE_2026-10-19.md",
+    "full_history": "HANDOFF_FOR_NEXT_CHAT.md",
+    "tracedraw_handoff": "handoff/MAKETNAYA_TWO_EDITORS_TRACEDRAW_2026-10-19.md",
+    "next_steps": "handoff/NEXT_STEPS_2026-10-19.md"
+  },
+  "branches": {
+    "work": "gifts-layout-workbench-mockups-source",
+    "production": "main",
+    "functional_release_source": "checkpoint-maketnaya-tracedraw-two-editors-20261019-source",
+    "functional_release_source_sha": "73e7d178a632a95c368b9ab1b72d3ab84e1d5cfe",
+    "functional_release_production": "checkpoint-maketnaya-tracedraw-two-editors-20261019-production",
+    "functional_release_production_sha": "eafb2c85d563b619165c79f858426b97256126ca",
+    "previous_backup_source": "backup-before-tracedraw-editor-integration-20261019-source",
+    "previous_backup_source_sha": "00cc426279c584116db5214a03de3e5b734f676a",
+    "previous_backup_production": "backup-before-tracedraw-editor-integration-20261019-production",
+    "previous_backup_production_sha": "58907913d1f71484c5b3a77f82f4070b6e09b1e2",
+    "next_chat_source": "checkpoint-maketnaya-next-chat-20261019-source",
+    "next_chat_source_sha": "af6f756ad347feadf349fb28f91908928717339d",
+    "next_chat_production": "checkpoint-maketnaya-next-chat-20261019-production",
+    "next_chat_production_sha": "eafb2c85d563b619165c79f858426b97256126ca"
+  },
+  "ci": [
+    {
+      "name": "full_maketnaya",
+      "run_id": 39231640321,
+      "result": "success"
+    },
+    {
+      "name": "tracedraw_rust_wasm_build",
+      "run_id": 39231601793,
+      "result": "success"
+    },
+    {
+      "name": "tracedraw_rust_live_browser",
+      "run_id": 39231640175,
+      "result": "success",
+      "note": "attempt 2 on deployed WASM"
+    },
+    {
+      "name": "github_pages",
+      "run_id": 39232177088,
+      "result": "success"
+    }
+  ],
+  "upstream": {
+    "tracedraw": {
+      "repository": "igtoth/tracedraw",
+      "version": "0.9.4",
+      "pinned_sha": "0f206489770adcacc6cc130a9e31a5610faad68a",
+      "license": "MIT OR Apache-2.0"
+    },
+    "vectorcraft": {
+      "repository": "storytold/vectorcraft",
+      "pinned_sha": "8bc65329286dc1b84aa392997bb205613c3e96cb"
+    }
+  },
+  "components": [
+    {
+      "name": "editor_choice_dropdown",
+      "status": "implemented_and_tested",
+      "entry": "#editorOpenLogoEditor",
+      "path": "assets/logo-editor-choice.js"
+    },
+    {
+      "name": "vectorcraft",
+      "status": "implemented_and_tested",
+      "wasm_path": "gifts-layout-workbench-mockups/vectorcraft/",
+      "host": "assets/vectorcraft-integration.js",
+      "import": "existing physical-size bridge",
+      "export": "art-only SVG"
+    },
+    {
+      "name": "tracedraw",
+      "status": "implemented_and_tested",
+      "wasm_path": "gifts-layout-workbench-mockups/tracedraw/",
+      "host": "assets/tracedraw-integration.js",
+      "native_bridge": "tools/tracedraw-embedded.rs",
+      "patch": "tools/patch-tracedraw-upstream.py",
+      "import_formats": [
+        "SVG",
+        "PDF"
+      ],
+      "export": "cropped art-only SVG with logoBoundsMm, fieldSizeMm, selected-placement token",
+      "apply_button": "DOM button in TraceDraw iframe invoking genuine Rust WASM exporter"
+    },
+    {
+      "name": "printcheck",
+      "status": "existing_preserve",
+      "note": "prepress checks and short status integrated; separate ongoing improvement"
+    },
+    {
+      "name": "mockups",
+      "status": "existing_preserve",
+      "note": "photo mappings and cylindrical perspective module"
+    },
+    {
+      "name": "personal_pdf_library",
+      "status": "local_persistence_verified",
+      "path": "assets/personal-layout-library.js",
+      "current_storage": "browser IndexedDB",
+      "server_adapter": "implemented_not_deployed",
+      "server_files": [
+        "server/personal-layouts/index.mjs",
+        "server/personal-layouts/README.md"
+      ],
+      "must_not_autoload_to_order": true
+    },
+    {
+      "name": "top_header_motion",
+      "status": "existing_preserve",
+      "stop_animation_button_removed": true
+    },
+    {
+      "name": "order_authorization_name",
+      "status": "ui_extraction_only",
+      "server_verified_identity": false
+    }
+  ],
+  "limitations": [
+    "Direct CDR import into embedded TraceDraw is NOT implemented despite upstream's CDR support",
+    "TraceDraw upstream other-document/new-document actions are not completely blocked when embedded",
+    "Not all TraceDraw tools, complex importers, or print color fidelity have been exhaustively tested",
+    "Private gifts.ru authenticated server endpoint for personal PDF storage is NOT deployed",
+    "User display name from gifts UI is not sufficient for secure server authorization",
+    "The TraceDraw Transfer button is HTML inside iframe; it calls real Rust WASM, not an egui toolbar button"
+  ],
+  "protected_files": {
+    "mockup-profiles.json": "ddb84fdc0d656341770a2399f5a10f0e21f5d72c",
+    "method-settings.json": "cbf6c8204e4fb3892d806342d37debefb8d9038e"
+  },
+  "workflows": {
+    "publisher": ".github/workflows/publish-maketnaya-mockups.yml",
+    "tracedraw_builder": ".github/workflows/build-tracedraw-web.yml",
+    "tracedraw_live": ".github/workflows/verify-tracedraw-live.yml",
+    "vectorcraft_builder": ".github/workflows/build-vectorcraft-web.yml"
+  },
+  "test_files": [
+    "tests/logo-editor-choice-browser.mjs",
+    "tests/tracedraw-integration-browser.mjs",
+    "tests/tracedraw-runtime-browser.mjs",
+    "tests/vectorcraft-handoff-browser.mjs",
+    "tests/vectorcraft-parent-close-browser.mjs",
+    "tests/personal-layout-library-browser.mjs",
+    "tests/personal-layout-server-browser.mjs",
+    "tests/order-motion-runtime-browser.mjs"
+  ],
+  "next_decision": "Wait for user's next instruction; if told continue TraceDraw, prioritize strict single-field operation and valid direct CDR workflow, then real editing regression. Do not claim server persistence completed."
+}
