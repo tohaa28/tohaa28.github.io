@@ -1,3 +1,5 @@
+> **Замороженное состояние 19.10.2026:** [итоговая самостоятельная инструкция](handoff/START_HERE_2026-10-19_FINAL.md) / [machine-readable manifest](handoff/PROJECT_STATE_2026-10-19_FINAL.json) / [новый чат — готовый запрос](handoff/NEW_CHAT_PROMPT_2026-10-19_FINAL.md). Checkpoint source **52743e6b27cd4d644f0465ed07999035af7e1a98**, production **eafb2c85d563b619165c79f858426b97256126ca**. Ранние документы сохранены.
+
 # Продолжение «Макетной» в новом чате — 19.10.2026
 
 **Начать с [handoff/START_HERE_2026-10-19.md](handoff/START_HERE_2026-10-19.md).** Это самостоятельный, проверенный handoff: две системы редактирования (VectorCraft + настоящий TraceDraw WASM), состояние всех связанных модулей, контрольные точки, ссылки CI, честные ограничения и правила безопасного отката.

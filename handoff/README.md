@@ -1,3 +1,5 @@
+> **КАНОНИЧЕСКАЯ ДОПОЛНИТЕЛЬНАЯ ФИКСАЦИЯ 19.10.2026:** [START_HERE_2026-10-19_FINAL.md](START_HERE_2026-10-19_FINAL.md), [PROJECT_STATE_2026-10-19_FINAL.json](PROJECT_STATE_2026-10-19_FINAL.json), [SAFE_RECOVERY_2026-10-19_FINAL.md](SAFE_RECOVERY_2026-10-19_FINAL.md), [NEW_CHAT_PROMPT_2026-10-19_FINAL.md](NEW_CHAT_PROMPT_2026-10-19_FINAL.md). Замороженные source/production ветки созданы отдельно. Содержимое ниже не удалять.
+
 # Навигация по документации Макетной
 
 ## Актуальный пакет для нового чата — 19 октября 2026 года

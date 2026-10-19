@@ -1,0 +1,154 @@
+{
+  "schema": "maketnaya-handoff/v2",
+  "captured_on": "2026-10-19",
+  "capture_type": "frozen-source-and-production-no-code-changes",
+  "project": "Макетная / Gifts Layout Workbench / PrintCheck / Mockups Editor",
+  "repository": "tohaa28/tohaa28.github.io",
+  "urls": {
+    "live": "https://tohaa28.github.io/gifts-layout-workbench-mockups/",
+    "repo": "https://github.com/tohaa28/tohaa28.github.io",
+    "vectorcraft": "https://tohaa28.github.io/gifts-layout-workbench-mockups/vectorcraft/index.html",
+    "tracedraw": "https://tohaa28.github.io/gifts-layout-workbench-mockups/tracedraw/index.html"
+  },
+  "branches": {
+    "source": "gifts-layout-workbench-mockups-source",
+    "production": "main",
+    "frozen_source": "checkpoint-maketnaya-20261019-newchat-final-source",
+    "frozen_source_sha": "52743e6b27cd4d644f0465ed07999035af7e1a98",
+    "frozen_production": "checkpoint-maketnaya-20261019-newchat-final-production",
+    "frozen_production_sha": "eafb2c85d563b619165c79f858426b97256126ca",
+    "verified_functional_source_sha": "73e7d178a632a95c368b9ab1b72d3ab84e1d5cfe",
+    "source_changes_since_verified_release": "6 documentation-only commits before frozen source"
+  },
+  "ci": [
+    {
+      "workflow": "Publish Maketnaya with Mockups",
+      "run_id": 39231640321,
+      "result": "success",
+      "jobs": [
+        "precheck",
+        "publish",
+        "browser_verify / browser-test"
+      ]
+    },
+    {
+      "workflow": "Build TraceDraw WebAssembly",
+      "run_id": 39231601793,
+      "result": "success"
+    },
+    {
+      "workflow": "Verify live TraceDraw WASM",
+      "run_id": 39231640175,
+      "attempt": 2,
+      "result": "success"
+    },
+    {
+      "workflow": "pages build and deployment",
+      "run_id": 39232177088,
+      "result": "success"
+    }
+  ],
+  "protected_registries": {
+    "mockup-profiles.json": {
+      "source_blob": "ddb84fdc0d656341770a2399f5a10f0e21f5d72c",
+      "production_blob": "ddb84fdc0d656341770a2399f5a10f0e21f5d72c",
+      "preserve_latest": true
+    },
+    "method-settings.json": {
+      "source_blob": "cbf6c8204e4fb3892d806342d37debefb8d9038e",
+      "production_blob": "cbf6c8204e4fb3892d806342d37debefb8d9038e",
+      "preserve_latest": true
+    }
+  },
+  "engines": {
+    "vectorcraft": {
+      "upstream": "storytold/vectorcraft",
+      "pinned_sha": "8bc65329286dc1b84aa392997bb205613c3e96cb",
+      "production_path": "gifts-layout-workbench-mockups/vectorcraft/",
+      "wasm": "vectorcraft-web-4382340da2246adb_bg.wasm",
+      "wasm_size_bytes": 64770986,
+      "wasm_blob": "4bf39a3d31e50bfcce7584b2aaf772d8c500231d",
+      "default_theme": "gifts.ru",
+      "native_theme_and_simple_editor_code_retained": true,
+      "old_ui_toggle_hidden": true,
+      "one_document_current_field": true,
+      "imprint_field_mm": true,
+      "export": "SVG cropped to visual art bounds with logoBoundsMm",
+      "files": [
+        "assets/vectorcraft-integration.js",
+        "assets/vectorcraft-field.js",
+        "tools/vectorcraft-bridge.rs",
+        "tools/patch-vectorcraft-gifts-theme.py",
+        "tools/patch-vectorcraft-single-field.py",
+        "tools/patch-vectorcraft-upstream.py"
+      ]
+    },
+    "tracedraw": {
+      "upstream": "igtoth/tracedraw",
+      "upstream_version": "0.9.4",
+      "pinned_sha": "0f206489770adcacc6cc130a9e31a5610faad68a",
+      "production_path": "gifts-layout-workbench-mockups/tracedraw/",
+      "wasm": "tracedraw_bg.wasm",
+      "wasm_size_bytes": 32335760,
+      "wasm_blob": "2747000b28ba1118874ffcf89198df3a9813310f",
+      "input_formats_embedded": [
+        "SVG",
+        "PDF"
+      ],
+      "cdr_embedded_implemented": false,
+      "apply_button": "HTML invoking real Rust WASM exporter",
+      "export": "cropped SVG with logoBoundsMm",
+      "files": [
+        "assets/tracedraw-integration.js",
+        "tools/tracedraw-embedded.rs",
+        "tools/patch-tracedraw-upstream.py"
+      ]
+    }
+  },
+  "modules": {
+    "logo_editor_choice": {
+      "path": "assets/logo-editor-choice.js",
+      "options": [
+        "VectorCraft",
+        "TraceDraw"
+      ]
+    },
+    "printcheck": {
+      "status": "preserve existing technical layout checks"
+    },
+    "mockups": {
+      "status": "preserve field-to-photo mapping and cylindrical projection"
+    },
+    "personal_pdf_library": {
+      "status": "local IndexedDB verified",
+      "server_adapter": "implemented not deployed",
+      "manual_restore_only": true
+    },
+    "identity": {
+      "display_name_from_gifts_ui": true,
+      "server_verified": false
+    }
+  },
+  "workflows": {
+    "maketnaya": ".github/workflows/publish-maketnaya-mockups.yml",
+    "vectorcraft": ".github/workflows/build-vectorcraft-web.yml",
+    "tracedraw": ".github/workflows/build-tracedraw-web.yml",
+    "tracedraw_live": ".github/workflows/verify-tracedraw-live.yml"
+  },
+  "limitations": [
+    "No protected authenticated gifts.ru private storage endpoint deployed",
+    "No direct CDR input to embedded TraceDraw",
+    "No verified universal tool or complex SVG/PDF/CMYK parity",
+    "Do not treat display name as server authentication",
+    "Never overwrite protected registries or delete production WASM on rollback"
+  ],
+  "entry_documents": [
+    "handoff/START_HERE_2026-10-19_FINAL.md",
+    "handoff/PROJECT_STATE_2026-10-19_FINAL.json",
+    "handoff/SAFE_RECOVERY_2026-10-19_FINAL.md",
+    "handoff/NEW_CHAT_PROMPT_2026-10-19_FINAL.md",
+    "handoff/NEXT_STEPS_2026-10-19.md",
+    "HANDOFF_FOR_NEXT_CHAT.md"
+  ],
+  "next_action": "Wait for next user instruction; preserve functionality and verify all changes with GitHub Actions and live browser tests"
+}
