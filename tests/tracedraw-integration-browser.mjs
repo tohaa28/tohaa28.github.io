@@ -7,11 +7,15 @@ try{
  await page.route(url,r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',
    body:'<!doctype html><html><body><div id="app">Макетная</div></body></html>'}));
  await page.route('https://tohaa28.github.io/gifts-layout-workbench-mockups/tracedraw/index.html?**',r=>r.fulfill({
-   status:200,contentType:'text/html; charset=utf-8',body:"<html><body><button id=\"transfer\">Перенести на шаблон артикула</button><script>\nconst token=new URLSearchParams(location.hash.slice(1)).get('gwb');let opened=false;\nwindow.addEventListener('message',event=>{\n if(event.source!==window.parent||event.data?.token!==token)return;\n if(event.data.type==='gwb-tracedraw-open'){opened=true;parent.postMessage({type:'gwb-tracedraw-opened',token},'*')}\n});\ndocument.getElementById('transfer').onclick=()=>{\n if(!opened)return;\n parent.postMessage({type:'gwb-tracedraw-svg',token,\n svg:'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16mm\" height=\"8mm\" viewBox=\"3 4 16 8\"><path d=\"M3 4h16v8H3z\"/></svg>',\n logoBoundsMm:{x:3,y:4,w:16,h:8}},'*');\n};\nparent.postMessage({type:'gwb-tracedraw-ready',token},'*');\n</script></body></html>"
+   status:200,contentType:'text/html; charset=utf-8',body:"<html><body><button id=\"transfer\">Перенести на шаблон артикула</button><script>\nconst token=new URLSearchParams(location.hash.slice(1)).get('gwb');let opened=false;\nwindow.addEventListener('message',event=>{\n if(event.source!==window.parent||event.data?.token!==token)return;\n if(event.data.type==='gwb-tracedraw-open'){opened=true;parent.postMessage({type:'gwb-tracedraw-opened',token},'*')}\n});\ndocument.getElementById('transfer').onclick=()=>{\n if(!opened)return;\n parent.postMessage({type:'gwb-tracedraw-svg',token,\n svg:'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16mm\" height=\"8mm\" viewBox=\"3 4 16 8\"><path d=\"M3 4h16v8H3z\"/></svg>',\n logoBoundsMm:{x:3,y:4,w:16,h:8},pdfBytes:new TextEncoder().encode('%PDF-1.7 CMYK fixture'),colorSpace:'CMYK',nativePdf:true},'*');\n};\nparent.postMessage({type:'gwb-tracedraw-ready',token},'*');\n</script></body></html>"
  }));
  await page.goto(url);
  await page.evaluate(()=>{
    window.__result=null;window.__visibility=[];
+   window.gwbCmykRoundtrip={cropFieldPdf:async(bytes,field,bounds)=>{
+     if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-'||field.w!==60||bounds.w!==16)throw Error('Invalid CMYK PDF bounds');
+     return new Uint8Array(bytes);
+   }};
    window.gwbReportLogoEditorVisibility=visible=>window.__visibility.push(visible);
    window.gwbGetActiveLogoForEditor=()=>({
      fieldSizeMm:{w:60,h:35},placementMm:{x:3,y:4,w:16,h:8,rotation:0},
@@ -24,7 +28,7 @@ try{
      prepare:async file=>({file,fieldSizeMm:{w:60,h:35},fieldCanvas:true})
    };
    window.gwbApplyEditedLogoToActiveField=async(file,token,options)=>{
-     window.__result={name:file.name,token,options,svg:await file.text()};
+     window.__result={name:file.name,token,options,pdf:await file.text()};
      return {fieldIndex:0};
    };
  });
@@ -50,7 +54,10 @@ try{
  assert.equal(result.token,'0|0|0|logo.svg');
  assert.deepEqual(result.options.artworkBoundsMm,{x:3,y:4,w:16,h:8});
  assert.deepEqual(result.options.fieldSizeMm,{w:60,h:35});
- assert.match(result.svg,/<path /);
+ assert.match(result.pdf,/^%PDF-1\.7/);
+ assert.equal(result.options.nativePdfCmyk,true);
+ assert.equal(result.options.colorSpace,'CMYK');
+ assert.match(result.name,/tracedraw-cmyk\.pdf$/);
  await page.waitForFunction(()=>document.getElementById('gwbTraceDrawHost')===null);
  assert.deepEqual(await page.evaluate(()=>window.__visibility),[true,false]);
  console.log('TraceDraw iframe handoff: exact field and source, real art bounds, application guard and closing');
