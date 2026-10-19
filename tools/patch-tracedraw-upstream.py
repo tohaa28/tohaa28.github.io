@@ -129,6 +129,8 @@ patch_source("apps/tracedraw/src/app.rs", [
         if crate::gwb_embedded() {
             // No recent document, saved workspace or welcome screen in a field.
             app.settings.startup = crate::settings::Startup::NewDocument;
+            app.settings.new_document.pages = 1;
+            app.settings.new_document.values.rgb = false; // document metadata: CMYK
             app.settings.recent_files.clear();
             app.settings.show_new_document_dialog = false;
             app.units = Units::Millimeters;
