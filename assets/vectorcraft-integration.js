@@ -248,7 +248,8 @@ async function open(){
 function install(){
   const button=document.getElementById('editorOpenLogoEditor');
   if(!button)return;
-  button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();void open()},true);
+  // Editor selection is handled by editor-choice.js; the existing bridge
+  // remains available without changing the established VectorCraft workflow.
   window.gwbVectorcraftHost={open,close:()=>close()};
   window.gwbReportLogoEditorVisibility=reportEditorVisibility;
 }
