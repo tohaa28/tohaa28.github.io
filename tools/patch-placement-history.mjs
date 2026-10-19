@@ -76,6 +76,8 @@ function gwbHistoryObserve(force=false){
 function gwbHistoryRestore(frame){
  gwbHistoryRestoring=true;
  try{
+   const previous=y.placements[y.active];
+   const previousFieldKey=previous?[previous.fieldIndex,previous.page].join(':'):'none';
    y.placements=frame.placements.map(p=>({
      ...p,field:p.field?{...p.field}:p.field,
      placement:p.placement?{...p.placement}:p.placement
@@ -88,8 +90,13 @@ function gwbHistoryRestore(frame){
    y.art=selected?.art||null;
    y.placement=selected?.placement||null;
    y.drag=null;
+   const selectedFieldKey=selected?[selected.fieldIndex,selected.page].join(':'):'none';
+   const fieldChanged=selectedFieldKey!==previousFieldKey;
+   if(fieldChanged&&y.field)gs(false);
+   Qt();
    v("artworkName").textContent=y.art?.name||"Выбрать файл";
    _t();X();
+   if(fieldChanged&&y.field)void zt();
    window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
  }finally{gwbHistoryRestoring=false;}
  gwbHistoryControls();
