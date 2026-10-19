@@ -8,10 +8,10 @@ export function gwbReport(type,message) {
   if(!window.__gwbTraceToken)return;
   window.parent.postMessage({type,token:window.__gwbTraceToken,message},'*');
 }
-export function gwbReturnSvg(svg,x,y,w,h) {
+export function gwbReturnSvg(svg,x,y,w,h,pdfBytes) {
   if(!window.__gwbTraceToken)return;
   window.parent.postMessage({type:'gwb-tracedraw-svg',
-    token:window.__gwbTraceToken,svg,logoBoundsMm:{x,y,w,h}},'*');
+    token:window.__gwbTraceToken,svg,pdfBytes,colorSpace:'CMYK',nativePdf:true,logoBoundsMm:{x,y,w,h}},'*');
 }
 export function gwbTakeApply() {
   const requested=window.__gwbTraceApply===true;
