@@ -4,7 +4,7 @@
 if(window.gwbLogoEditorChooserInstalled)return;
 window.gwbLogoEditorChooserInstalled=true;
 
-const css=String.raw\`
+const css=String.raw`
 #gwbEditorChoice[hidden]{display:none!important}
 #gwbEditorChoice{position:fixed;inset:0;z-index:2147483200;display:grid;place-items:center;padding:22px;box-sizing:border-box;background:rgba(20,30,25,.66);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#293b35}
 #gwbEditorChoice *,#gwbEditorChoice *::before,#gwbEditorChoice *::after{box-sizing:border-box}
@@ -47,9 +47,9 @@ const css=String.raw\`
 @keyframes gwbSparkIn{0%,100%{opacity:0;transform:translateY(8px) scale(.65) rotate(0)}45%{opacity:.85;transform:translateY(-6px) scale(1.13) rotate(15deg)}}
 @media(max-width:580px){#gwbEditorChoice{padding:11px}#gwbEditorChoice .gwb-choice-stage{padding:19px 12px 16px;border-radius:19px;max-height:calc(100vh - 22px)}#gwbEditorChoice .gwb-choice-duo{gap:10px}#gwbEditorChoice .gwb-choice-card{min-height:253px;padding:10px 6px 12px;border-radius:16px}#gwbEditorChoice .gwb-choice-art{height:155px}#gwbEditorChoice .gwb-choice-name{font-size:16px}#gwbEditorChoice .gwb-choice-description{font-size:10px}#gwbEditorChoice .gwb-choice-role{font-size:9px;top:10px;left:10px}#gwbEditorChoice .gwb-choice-hint{font-size:9px;margin-top:5px}#gwbEditorChoice .gwb-choice-or{width:27px;height:27px;font-size:8px}#gwbEditorChoice .gwb-choice-title{margin:9px 34px 0;font-size:20px}}
 @media(prefers-reduced-motion:reduce){#gwbEditorChoice .gwb-choice-stage{transition:none}#gwbEditorChoice.is-active .gwb-choice-art,#gwbEditorChoice.is-active .gwb-spark{animation:none;opacity:1}#gwbEditorChoice .gwb-choice-card{transition:none}}
-\`;
+`;
 
-const devilSvg=String.raw\`
+const devilSvg=String.raw`
 <svg viewBox="0 0 240 210" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
 <ellipse cx="119" cy="201" rx="65" ry="7" fill="#552522" opacity=".08"/>
 <path d="M160 153c35-5 49 13 29 26-10 7-22 0-18-10" stroke="#b74440" stroke-width="8" fill="none" stroke-linecap="round"/>
@@ -76,8 +76,8 @@ const devilSvg=String.raw\`
 <path d="M57 150 43 105" stroke="#7f564f" stroke-width="6" stroke-linecap="round"/>
 <path d="m42 105-6-16 8 3 7-13 3 17-7 3" fill="#e6ad6b" stroke="#a97843" stroke-width="2.5" stroke-linejoin="round"/>
 <path d="M55 146q7-4 13 7" stroke="#df8172" stroke-width="11" stroke-linecap="round"/>
-</svg>\`;
-const angelSvg=String.raw\`
+</svg>`;
+const angelSvg=String.raw`
 <svg viewBox="0 0 240 210" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
 <ellipse cx="120" cy="203" rx="69" ry="7" fill="#345d40" opacity=".08"/>
 <path d="M84 109Q37 79 29 110q-4 24 26 32-38-3-28 24 12 23 65-8M155 109q47-30 55 1 4 24-26 32 38-3 28 24-12 23-65-8" fill="#edf6f7" stroke="#c6dfdb" stroke-width="4" stroke-linejoin="round"/>
@@ -100,7 +100,7 @@ const angelSvg=String.raw\`
 <path d="M108 148q12 6 25 0" stroke="#f2d39b" stroke-width="3" fill="none"/>
 <path d="M178 140 185 96" stroke="#d5b46a" stroke-width="5" stroke-linecap="round"/>
 <path d="m185 88 4 7 9 2-8 5 0 9-6-5-8 4 2-9-7-6 9-1z" fill="#f4c65e" stroke="#daa94c" stroke-width="1.7"/>
-</svg>\`;
+</svg>`;
 
 function arrow(){
   return '<svg aria-hidden="true" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
