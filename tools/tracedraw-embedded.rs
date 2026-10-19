@@ -48,8 +48,8 @@ fn import(app:&mut crate::app::App,ctx:&egui::Context,v:JsValue)->Result<(),Stri
   }
   let name=member(&v,"name").as_string().unwrap_or_else(||"logo.svg".into());
   let ext=name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
-  if !["svg","pdf","png","jpg","jpeg","webp"].contains(&ext.as_str()){
-    return Err("TraceDraw принимает SVG, PDF, PNG и JPG".into());
+  if !["svg","pdf"].contains(&ext.as_str()){
+    return Err("Макетная передаёт в TraceDraw SVG (включая растр) или PDF".into());
   }
   let bytes=js_sys::Uint8Array::new(&member(&v,"bytes")).to_vec();
   if bytes.is_empty()||bytes.len()>40*1024*1024{
@@ -58,17 +58,9 @@ fn import(app:&mut crate::app::App,ctx:&egui::Context,v:JsValue)->Result<(),Stri
   // Only the current imprint field: a new fixed-size page, not a user document.
   // Embedded opens from its own fresh WebAssembly frame with one empty page.
   app.run(Command::ResizePage{page:app.page,size:Size::new(w,h)});
-  let path=Path::new(match ext.as_str(){
-    "pdf"=>"/upload/gwb-logo.pdf","png"=>"/upload/gwb-logo.png",
-    "jpg"|"jpeg"=>"/upload/gwb-logo.jpg","webp"=>"/upload/gwb-logo.webp",
-    _=>"/upload/gwb-logo.svg"
-  });
+  let path=Path::new(if ext=="pdf"{"/upload/gwb-logo.pdf"}else{"/upload/gwb-logo.svg"});
   crate::files::store(path,bytes);
-  match ext.as_str(){
-    "pdf"=>app.import_pdf(path),
-    "svg"=>app.import_svg(path),
-    _=>app.import_bitmap(path),
-  }
+  if ext=="pdf"{app.import_pdf(path)}else{app.import_svg(path)}
   crate::files::forget(path);
   if app.page_layers().iter().all(|l|l.shapes.is_empty()) {
     return Err(format!("TraceDraw не смог импортировать {ext}: {}",app.status));
@@ -79,7 +71,6 @@ fn import(app:&mut crate::app::App,ctx:&egui::Context,v:JsValue)->Result<(),Stri
 }
 
 fn export(app:&crate::app::App)->Result<(),String>{
-  let page=app.doc().page(app.page).map_err(|e|e.to_string())?;
   let f=app.page_size();
   let mut bounds:Option<tracedraw_core::geometry::Rect>=None;
   for layer in app.page_layers(){
