@@ -125,7 +125,7 @@ fn gwb_field_loaded() -> bool {
 # if the upstream layout changes.
 
 patch_source("apps/tracedraw/src/app.rs", [
-  ('        app.apply_runtime_settings();\n', '''        app.apply_runtime_settings();
+  ('        app.load_settings();\n        app.apply_runtime_settings();\n', '''        app.load_settings();\n        app.apply_runtime_settings();
         if crate::gwb_embedded() {
             // No recent document, saved workspace or welcome screen in a field.
             app.settings.startup = crate::settings::Startup::NewDocument;
