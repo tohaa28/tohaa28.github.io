@@ -141,8 +141,8 @@ export function applyPlacementHistory(){
    throw Error('Unknown Maketnaya compiled editor version. Refusing history injection.');
  if(!source.includes('window.gwbGetActiveLogoForEditor=function()'))
    throw Error('Placement history needs the verified logo editor bridge.');
- source=source.replace(anchor,hooked);
+ source=source.replace(anchor,body+'\n'+hooked);
  source=source.replace(exitAnchor,'yi();gwbHistoryControls()}function co(');
- source=source.replace(eventAnchor,body+'\n'+eventAnchor);
+ // Native event handlers are installed before the first placement UI redraw.
  fs.writeFileSync(file,source);
 }
