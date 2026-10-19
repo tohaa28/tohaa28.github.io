@@ -238,7 +238,12 @@ window.gwbGetPdfLogoVectorOps=async function(token){
   };
 };
 window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
-  if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||!(/\.svg$/i.test(file.name)))throw new Error("Редактор должен передать SVG до 40 МБ");
+  const nativePdfCmyk=options?.nativePdfCmyk===true;
+  if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||
+     !(nativePdfCmyk?/\.pdf$/i.test(file.name):/\.svg$/i.test(file.name)))
+    throw new Error("Редактор должен передать корректный SVG или проверенный CMYK PDF до 40 МБ");
+  if(nativePdfCmyk&&options?.colorSpace!=="CMYK")
+    throw new Error("Исходная цветовая модель CMYK не подтверждена");
   if(y.busy)throw new Error("Макетная сейчас занята; повторите сохранение");
   Ft();
   const target=y.placements?.[y.active],art=target?.art||null;
@@ -247,6 +252,13 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
   y.busy=true;X();
   try{
     const next=await Qe(file,"art");
+    if(nativePdfCmyk){
+      if(!next.pdfCompatible||next.ext!=="pdf"||next.pages!==1)
+        throw new Error("Векторный PDF CMYK потерян при импорте");
+      const bounds=options?.artworkBoundsMm;
+      if(!bounds||Math.abs(next.w-bounds.w)>0.15||Math.abs(next.h-bounds.h)>0.15)
+        throw new Error("Физический размер CMYK PDF не совпадает с рисунком");
+    }
     Ft();
     const still=y.placements?.[y.active];
     if(still!==target||[y.active,still.fieldIndex,still.page,still.art?.name||""].join("|")!==token)
@@ -285,7 +297,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     y.art=next;y.placement=keep;
     v("artworkName").textContent=file.name;
     _t();X();
-    Q(options?.artworkBoundsMm?"Из VectorCraft возвращён только нарисованный логотип с его габаритами и положением.":"Изменённый логотип применён к выбранному полю.");
+    Q(nativePdfCmyk?"Логотип перенесён в формате PDF с сохранением CMYK.":"Изменённый логотип применён к выбранному полю.");
     window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
     return {name:file.name,fieldIndex:target.fieldIndex};
   }finally{y.busy=false;X()}
