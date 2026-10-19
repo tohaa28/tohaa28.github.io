@@ -143,8 +143,6 @@ patch_source("apps/tracedraw/src/app.rs", [
   protected('    pub fn open_template_dialog(&mut self) {'),
   protected('    pub fn open_path_with_password(&mut self, path: PathBuf, password: &str) {'),
   protected('    pub fn close_document(&mut self) {'),
-  protected('    pub fn close_all_documents(&mut self) {'),
-  protected('    pub fn request_exit(&mut self) {'),
   ('    pub fn new_document(&mut self) {\n',
    '    pub fn new_document(&mut self) {\n        if crate::gwb_embedded() && self.has_document() { return; }\n'),
   ('    pub fn run(&mut self, cmd: Command) {\n',
@@ -161,6 +159,8 @@ patch_source("apps/tracedraw/src/documents.rs", [
   ('    pub fn open_document(&mut self, doc: Document, file: Option<PathBuf>) {\n',
    '    pub fn open_document(&mut self, doc: Document, file: Option<PathBuf>) {\n        if crate::gwb_embedded() && self.has_document() { return; }\n'),
   protected('    pub fn close_active_document(&mut self) {'),
+  protected('    pub fn close_all_documents(&mut self) {'),
+  protected('    pub fn request_exit(&mut self) {'),
   protected('    pub fn new_window(&mut self) {'),
 ])
 patch_source("apps/tracedraw/src/ui/menus.rs", [
