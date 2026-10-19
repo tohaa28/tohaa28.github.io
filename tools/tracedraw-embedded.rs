@@ -116,14 +116,14 @@ pub fn poll(app:&mut crate::app::App,ctx:&egui::Context){
     if let Err(e)=export(app){gwbReport("gwb-tracedraw-error",&e)}
   }
 }
-pub fn transfer_button(app:&crate::app::App,ctx:&egui::Context){
+pub fn transfer_button(app:&crate::app::App,ui:&mut egui::Ui){
   if !gwbIsEmbedded(){return}
   // Reserve a real top panel before TraceDraw's own menu/canvas panels
   // are laid out. A foreground Area could be obscured by other egui windows,
   // so clicking its approximate coordinates never invoked the action.
-  egui::TopBottomPanel::top("gwb_tracedraw_transfer_panel")
+  egui::Panel::top("gwb_tracedraw_transfer_panel")
     .exact_height(40.0)
-    .show(ctx,|ui|{
+    .show(ui,|ui|{
       ui.with_layout(egui::Layout::right_to_left(egui::Align::Center),|ui|{
         let button=egui::Button::new(egui::RichText::new("Перенести на шаблон артикула")
           .strong().color(egui::Color32::WHITE))
