@@ -33,6 +33,7 @@ try{
  const overlay=page.locator('#gwbTraceDrawHost');
  await overlay.waitFor();
  const iframe=page.frameLocator('#gwbTraceDrawHost iframe');
+ await page.getByText('Редактируется поле',{exact:false}).waitFor({timeout:15000});
  await iframe.locator('#transfer').click();
  await page.waitForFunction(()=>window.__result!==null);
  const result=await page.evaluate(()=>window.__result);
