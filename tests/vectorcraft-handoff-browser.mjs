@@ -28,7 +28,8 @@ try{
      "const b=window.__fieldSize.w===120?{x:12,y:8,w:40,h:18}:{x:5,y:4,w:22,h:12};",
      "const fw=b.w*72/25.4,fh=b.h*72/25.4;",
      "const svg='<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"'+fw+'\" height=\"'+fh+'\" viewBox=\"0 0 '+fw+' '+fh+'\"><path d=\"M0 0 L'+fw+' '+fh+' Z\" fill=\"#129932\"/></svg>';",
-     "parent.postMessage({type:'gwb-vectorcraft-svg',token,bytes:new TextEncoder().encode(svg),logoBoundsMm:b},'*');",
+     "const pdf=new Uint8Array(180).fill(32);pdf.set(new TextEncoder().encode('%PDF-1.7'));",
+     "parent.postMessage({type:'gwb-vectorcraft-svg',token,bytes:new TextEncoder().encode(svg),pdfBytes:pdf,colorSpace:'CMYK',nativePdf:true,logoBoundsMm:b},'*');",
 
 
      "}",
@@ -58,14 +59,19 @@ try{
      if(options.fieldSizeMm.w!==current.field.w||options.fieldSizeMm.h!==current.field.h)throw Error('Wrong field dimensions');
      const b=options.artworkBoundsMm;
      if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))throw Error('Missing visible art bounds');
-     const parsed=new DOMParser().parseFromString(await file.text(),'image/svg+xml').documentElement;
-     if(parsed.getAttribute('width')!==b.w+'mm')throw Error('Artwork SVG not cropped');
+     if(!file.name.endsWith('.pdf')||!options.nativePdfCmyk||options.colorSpace!=='CMYK')
+       throw Error('VectorCraft returned RGB instead of CMYK PDF');
+     if(!(await file.text()).startsWith('%PDF-1.7'))throw Error('Native PDF bytes missing');
      current.file=file;
      current.placement={x:current.field.x+b.x,y:current.field.y+b.y,w:b.w,h:b.h,
        rotation:0,clipToField:current.placement.clipToField};
      window.__applied.push(i);
    };
  });
+ await page.evaluate(()=>{window.gwbCmykRoundtrip={verifyPdf:async(bytes,bounds)=>{
+   if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-'||!(bounds.w>0))throw Error('Invalid PDF');
+   return {model:'CMYK'};
+ }}});
  await page.addScriptTag({path:'assets/vectorcraft-field.js'});
  await page.addScriptTag({path:'assets/vectorcraft-integration.js'});
  await page.addScriptTag({path:'assets/logo-editor-choice.js'});
@@ -134,19 +140,18 @@ try{
   geometry:window.__placed.map(x=>x.placement),
   applied:window.__applied
  }));
- assert.match(state.first,/<path\b/,'Returned SVG is the actual contents of the mock editor');
+ assert.match(state.first,/^%PDF-1\.7/,'Returned artwork remains the native PDF, not an RGB SVG');
  assert.match(state.second,/<circle/,'Other placement is unchanged, even with identical filename');
  assert.deepEqual(state.geometry[0],{x:32,y:38,w:40,h:18,rotation:0,clipToField:true},'Artwork returns in its own 40 × 18 mm bounding box at +12,+8 mm');
- assert.match(state.first,/width="40mm"/,'SVG width is only drawn logo, not original 120 mm artboard');
- assert.match(state.first,/height="18mm"/,'SVG height is only drawn logo');
+ assert.ok(state.first.startsWith('%PDF-1.7'),'Print artwork retains the PDF header and CMYK transfer');
  assert.deepEqual(state.applied,[0],'Exactly one original field replaced');
  await page.locator('#editorOpenLogoEditor').click();
 await page.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const reopened=await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>window.__seen);
- const reopenedSvg=new TextDecoder().decode(new Uint8Array(reopened[0].bytes));
- assert.match(reopenedSvg,/width="120mm"/,'Editor still has original field-sized workspace on reopen');
- assert.match(reopenedSvg,/translate\(32 17\) rotate\(0\) translate\(-20 -9\)/,'Returned cropped logo reopens with the same net 12 × 8 mm displacement inside its field');
+ assert.match(reopened[0].name,/vectorcraft-cmyk\.pdf$/,'Reopening starts from the real CMYK PDF');
+ assert.equal(reopened[0].fieldCanvas,false,'CMYK PDF is never wrapped in RGB SVG');
+ assert.deepEqual(reopened[0].fieldSize,{w:120,h:80});
  await page.getByRole('button',{name:'Закрыть без изменений'}).click();
  assert.equal(await page.locator('#gwbVectorcraftHost').count(),0);
  assert.deepEqual(await page.evaluate(()=>window.__applied),[0],'Cancel did not replace the field');
@@ -171,7 +176,7 @@ await page.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).
    },'*'));
  await page.locator('#gwbVectorcraftHost').waitFor({state:'detached'});
  const afterPdf=await page.evaluate(async()=>({xml:await window.__placed[1].file.text(),placement:window.__placed[1].placement,applied:window.__applied}));
- assert.match(afterPdf.xml,/width="22mm"/);
+ assert.match(afterPdf.xml,/^%PDF-1\.7/);
  assert.deepEqual(afterPdf.placement,{x:6,y:6,w:22,h:12,rotation:0,clipToField:false},'Native PDF/AI returns only 22×12 mm artwork at the correct field offset');
  assert.deepEqual(afterPdf.applied,[0,1]);
  assert.deepEqual(errors,[],'No browser errors');
