@@ -16,7 +16,7 @@ once('mod web;\n','mod web;\n#[cfg(target_arch = "wasm32")]\nmod gwb_bridge;\n')
 once('        files::run_finished(app);\n',
      '        files::run_finished(app);\n        #[cfg(target_arch = "wasm32")]\n        gwb_bridge::poll(app, ui.ctx());\n')
 once('        ui::root(app, ui);\n',
-     '        ui::root(app, ui);\n        #[cfg(target_arch = "wasm32")]\n        gwb_bridge::transfer_button(app, ui.ctx());\n')
+     '        #[cfg(target_arch = "wasm32")]\n        gwb_bridge::transfer_button(app, ui.ctx());\n        ui::root(app, ui);\n')
 main.write_text(src,encoding="utf-8")
 
 index=root/"web/index.html"
