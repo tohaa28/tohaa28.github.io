@@ -132,7 +132,7 @@ document.addEventListener("keydown",event=>{
 },true);
 `;
 export function applyPlacementHistory(){
- let source=fs.readFileSync(file,'utf8').replace(/\\r\\n/g,'\\n');
+ let source=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
  if(source.includes(marker)){
    if(source.split(hooked).length!==2)throw Error('Placement history exists but render hook is absent/duplicated');
    return;
@@ -143,6 +143,6 @@ export function applyPlacementHistory(){
    throw Error('Placement history needs the verified logo editor bridge.');
  source=source.replace(anchor,hooked);
  source=source.replace(exitAnchor,'yi();gwbHistoryControls()}function co(');
- source=source.replace(eventAnchor,body+'\\n'+eventAnchor);
+ source=source.replace(eventAnchor,body+'\n'+eventAnchor);
  fs.writeFileSync(file,source);
 }
