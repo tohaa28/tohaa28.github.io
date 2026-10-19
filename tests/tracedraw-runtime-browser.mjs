@@ -13,7 +13,7 @@ try{
  const parentScript=[
    'const token='+JSON.stringify(TOKEN)+';',
    'const svg='+JSON.stringify(svg)+';',
-   "window.__traceState='boot';window.__traceEvents=[];window.__traceBounds=null;window.__traceSvg=null;",
+   "window.__traceState='boot';window.__traceEvents=[];window.__traceBounds=null;window.__traceSvg=null;window.__tracePdf=null;window.__traceColorSpace=null;",
    "const frame=document.getElementById('tr');",
    "window.addEventListener('message',e=>{",
    " if(e.source!==frame.contentWindow||e.origin!==location.origin||e.data?.token!==token)return;",
@@ -23,7 +23,7 @@ try{
    " frame.contentWindow.postMessage({type:'gwb-tracedraw-open',token,name:'logo.svg',bytes,w:60,h:35},location.origin,[bytes]);",
    " }else if(d.type==='gwb-tracedraw-opened'){window.__traceState='editing';}",
    " else if(d.type==='gwb-tracedraw-error'){window.__traceState='error:'+d.message;}",
-   " else if(d.type==='gwb-tracedraw-svg'){window.__traceState='ok';window.__traceSvg=d.svg;window.__traceBounds=d.logoBoundsMm;}",
+   " else if(d.type==='gwb-tracedraw-svg'){window.__traceState='ok';window.__traceSvg=d.svg;window.__traceBounds=d.logoBoundsMm;window.__tracePdf=d.pdfBytes instanceof Uint8Array?new TextDecoder().decode(d.pdfBytes.slice(0,5)):'missing';window.__traceColorSpace=d.colorSpace;}",
    "});",
    "frame.src="+JSON.stringify(BASE+'tracedraw/index.html')+"+'#gwb='+token;"
  ].join('\n');
@@ -47,11 +47,13 @@ try{
  await apply.waitFor({state:'visible',timeout:25000});
  await apply.click();
  await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:20000});
- const out=await page.evaluate(()=>({state:window.__traceState,events:window.__traceEvents,bounds:window.__traceBounds,svg:window.__traceSvg}));
+ const out=await page.evaluate(()=>({state:window.__traceState,events:window.__traceEvents,bounds:window.__traceBounds,svg:window.__traceSvg,pdfHeader:window.__tracePdf,colorSpace:window.__traceColorSpace}));
  assert.equal(out.state,'ok','Native egui SVG export failed '+JSON.stringify({out,errors}));
  assert.ok(out.events.includes('gwb-tracedraw-opened'));
  assert.ok(out.events.includes('gwb-tracedraw-svg'));
  assert.match(out.svg,/<rect|<path/);
+ assert.equal(out.pdfHeader,'%PDF-','Native TraceDraw must return printable PDF');
+ assert.equal(out.colorSpace,'CMYK');
  assert.ok(out.bounds,'Shape bounds must come from actual Rust drawing engine');
  for(const [k,v] of Object.entries({x:3,y:4,w:16,h:8})){
    assert.ok(Math.abs(out.bounds[k]-v)<0.75,'Incorrect physical '+k+': '+JSON.stringify(out.bounds));
