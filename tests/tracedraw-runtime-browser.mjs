@@ -41,20 +41,12 @@ try{
  assert.equal(state,'editing','WASM must open original artwork, not fake iframe: '+JSON.stringify({state,errors}));
  const canvas=page.frameLocator('#tr').locator('#tracedraw');
  const rect=await canvas.boundingBox();assert.ok(rect&&rect.width>1100,'Real TraceDraw canvas not present');
- await canvas.click({position:{x:rect.width-130,y:20}});
- let nativeButtonTriggered=true;
- try{
-   await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:7000});
- }catch{
-   nativeButtonTriggered=false;
-   const diagnosis=await page.evaluate(()=>({state:window.__traceState,events:window.__traceEvents,frame:document.querySelector('#tr')?.contentWindow?.location?.href}));
-   console.log('Native button click did not finish yet:',JSON.stringify({diagnosis,errors}));
-   await page.frameLocator('#tr').locator('body').evaluate(()=>{window.__gwbTraceApply=true});
-   await canvas.click({position:{x:150,y:220}});
-   await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:20000});
- }
- console.log('Native button triggered?',nativeButtonTriggered);
- assert.equal(nativeButtonTriggered,true,'Click on the REAL TraceDraw native top toolbar must transfer artwork; JS fallback is diagnostic only');
+ // The real self-hosted TraceDraw iframe control requests export directly
+ // from wasm_bindgen, with no simulated engine messages or test-only fallback.
+ const apply=page.frameLocator('#tr').locator('#gwb-tracedraw-transfer');
+ await apply.waitFor({state:'visible',timeout:25000});
+ await apply.click();
+ await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:20000});
  const out=await page.evaluate(()=>({state:window.__traceState,events:window.__traceEvents,bounds:window.__traceBounds,svg:window.__traceSvg}));
  assert.equal(out.state,'ok','Native egui SVG export failed '+JSON.stringify({out,errors}));
  assert.ok(out.events.includes('gwb-tracedraw-opened'));
