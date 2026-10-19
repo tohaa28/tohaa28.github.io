@@ -25,6 +25,9 @@ export function gwbTakeApply() {
   window.__gwbTraceApply=false;
   return requested;
 }
+export function gwbQueueApply(){
+  window.__gwbTraceApply=true;
+}
 export function gwbIsEmbedded() {return typeof window.__gwbTraceToken==='string'&&window.__gwbTraceToken.length>20;}
 "#)]
 extern "C" {
@@ -32,6 +35,7 @@ extern "C" {
   fn gwbReport(kind:&str,message:&str);
   fn gwbReturnSvg(svg:&str,x:f64,y:f64,w:f64,h:f64);
   fn gwbTakeApply() -> bool;
+  fn gwbQueueApply();
   fn gwbIsEmbedded() -> bool;
 }
 
@@ -116,21 +120,10 @@ pub fn poll(app:&mut crate::app::App,ctx:&egui::Context){
     if let Err(e)=export(app){gwbReport("gwb-tracedraw-error",&e)}
   }
 }
-pub fn transfer_button(app:&crate::app::App,ui:&mut egui::Ui){
+/// Called only by the self-hosted TraceDraw iframe's embedded transfer control.
+#[wasm_bindgen]
+pub fn gwb_tracedraw_request_apply() {
   if !gwbIsEmbedded(){return}
-  // Reserve a real top panel before TraceDraw's own menu/canvas panels
-  // are laid out. A foreground Area could be obscured by other egui windows,
-  // so clicking its approximate coordinates never invoked the action.
-  egui::Panel::top("gwb_tracedraw_transfer_panel")
-    .exact_size(40.0)
-    .show(ui,|ui|{
-      ui.with_layout(egui::Layout::right_to_left(egui::Align::Center),|ui|{
-        let button=egui::Button::new(egui::RichText::new("Перенести на шаблон артикула")
-          .strong().color(egui::Color32::WHITE))
-          .fill(egui::Color32::from_rgb(94,148,28));
-        if ui.add_sized([224.0,30.0],button).clicked(){
-          if let Err(e)=export(app){gwbReport("gwb-tracedraw-error",&e)}
-        }
-      });
-    });
+  gwbQueueApply();
+  crate::web::request_repaint();
 }
