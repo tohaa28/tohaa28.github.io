@@ -67,10 +67,21 @@ async function receive(event){
        }
      }
      if(active!==s)return;
-     const file=new File([d.svg],s.name.replace(/\.[^.]*$/,'')+'-tracedraw.svg',{type:'image/svg+xml'});
-     notify(s,'Переносим отредактированную геометрию на поле артикула…');
+     // Real CMYK and spot values must remain in the PDF color streams.
+     // The SVG above is a geometry sanity-check, NOT the print artwork.
+     if(d.colorSpace!=='CMYK'||d.nativePdf!==true)
+       throw Error('TraceDraw не подтвердил исходную цветовую модель CMYK');
+     const pdf=d.pdfBytes instanceof Uint8Array?d.pdfBytes:null;
+     if(!pdf||pdf.byteLength<100||pdf.byteLength>40*1024*1024)
+       throw Error('TraceDraw не вернул исходный PDF CMYK');
+     const verifier=window.gwbCmykRoundtrip;
+     if(!verifier?.cropFieldPdf)throw Error('Контроль цветности CMYK недоступен');
+     const croppedPdf=await verifier.cropFieldPdf(pdf,s.field,bounds);
+     const file=new File([croppedPdf],s.name.replace(/\.[^.]*$/,'')+'-tracedraw-cmyk.pdf',{type:'application/pdf'});
+     notify(s,'Проверяем палитру CMYK и переносим печатный PDF на поле артикула…');
      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{
-       artworkBoundsMm:bounds,fieldSizeMm:s.field
+       artworkBoundsMm:bounds,fieldSizeMm:s.field,
+       colorSpace:'CMYK',nativePdfCmyk:true
      });
      if(active===s)close(true);
    }catch(e){s.applying=false;notify(s,'Не удалось применить макет: '+e.message,true)}
