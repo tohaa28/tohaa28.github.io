@@ -172,6 +172,10 @@ async function receive(event){
   }
 }
 async function open(){
+  if(document.getElementById('gwbTraceDrawHost')){
+    alert('Сначала закройте TraceDraw. Два редактора одного поля одновременно не открываются.');
+    return;
+  }
   if(active)return;
   const selected=window.gwbGetActiveLogoForEditor?.();
   if(!selected){

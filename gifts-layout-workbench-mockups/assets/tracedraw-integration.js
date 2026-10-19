@@ -79,6 +79,10 @@ async function receive(event){
 function session(){const x=new Uint8Array(24);crypto.getRandomValues(x);return [...x].map(v=>v.toString(16).padStart(2,'0')).join('')}
 async function open(){
  if(active)return;
+ if(document.getElementById('gwbVectorcraftHost')){
+   alert('Сначала закройте VectorCraft. Два редактора одного поля одновременно не открываются.');
+   return;
+ }
  const selected=window.gwbGetActiveLogoForEditor?.();
  if(!selected){alert('Сначала откройте шаблон и выберите конкретное поле нанесения.');return}
  let prepared;

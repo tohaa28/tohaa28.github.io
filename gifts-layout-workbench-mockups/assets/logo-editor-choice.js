@@ -21,7 +21,7 @@ function install(){
    if(typeof window.gwbVectorcraftHost?.open==='function')void window.gwbVectorcraftHost.open();
    else alert('VectorCraft ещё не загружен. Обновите редактор.');
  });
- const trace=option('TraceDraw','Инструменты в стиле CorelDRAW · SVG/CDR',()=>{
+ const trace=option('TraceDraw','Инструменты в стиле CorelDRAW · SVG/PDF',()=>{
    if(typeof window.gwbTraceDrawHost?.open==='function')void window.gwbTraceDrawHost.open();
    else alert('Модуль TraceDraw не загрузился. VectorCraft доступен отдельно.');
  });
