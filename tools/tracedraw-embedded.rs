@@ -3,6 +3,8 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use std::path::Path;
+use std::cell::RefCell;
+
 use tracedraw_core::{Command,geometry::Size};
 
 #[wasm_bindgen(inline_js = r#"
@@ -39,6 +41,13 @@ extern "C" {
   fn gwbIsEmbedded() -> bool;
 }
 
+thread_local! {
+    // A browser iframe edits exactly one imprint, never a user-managed page.
+    static FIELD: RefCell<Option<(f64, f64)>> = const { RefCell::new(None) };
+}
+pub fn locked()->bool{gwbIsEmbedded()}
+pub fn field_loaded()->bool{FIELD.with(|s|s.borrow().is_some())}
+
 fn member(v:&JsValue,k:&str)->JsValue {
   js_sys::Reflect::get(v,&JsValue::from_str(k)).unwrap_or(JsValue::NULL)
 }
@@ -66,6 +75,7 @@ fn import(app:&mut crate::app::App,ctx:&egui::Context,v:JsValue)->Result<(),Stri
   crate::files::store(path,bytes);
   if ext=="pdf"{app.import_pdf(path)}else{app.import_svg(path)}
   crate::files::forget(path);
+  FIELD.with(|s| *s.borrow_mut()=Some((w,h)));
   // An empty SVG is a valid new design: the user draws the first object
   // inside this already-sized imprint field. Nonempty imports remain editable.
   app.fit_pending=true;
@@ -74,7 +84,14 @@ fn import(app:&mut crate::app::App,ctx:&egui::Context,v:JsValue)->Result<(),Stri
 }
 
 fn export(app:&crate::app::App)->Result<(),String>{
+  let (fw,fh)=FIELD.with(|s|*s.borrow()).ok_or("Поле нанесения не было загружено")?;
+  if app.doc().pages.len()!=1 {
+    return Err("TraceDraw должен содержать ровно одно поле нанесения".into());
+  }
   let f=app.page_size();
+  if (f.width-fw).abs()>0.001||(f.height-fh).abs()>0.001 {
+    return Err("Размер поля изменён; перенос остановлен для защиты шаблона".into());
+  }
   let mut bounds:Option<tracedraw_core::geometry::Rect>=None;
   for layer in app.page_layers(){
     if !layer.visible {continue}
