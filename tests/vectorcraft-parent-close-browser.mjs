@@ -51,8 +51,10 @@ try {
     };
   });
   await frame.addScriptTag({path:'assets/vectorcraft-integration.js'});
+  await frame.addScriptTag({path:'assets/logo-editor-choice.js'});
   assert.equal(await page.locator('.gwb-close').isVisible(),true,'Outer close visible without editor');
   await frame.locator('#editorOpenLogoEditor').click();
+  await frame.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
   await page.waitForFunction(()=>document.querySelector('.gwb-close')?.disabled===true);
   assert.equal(await page.locator('.gwb-close').isHidden(),true,
     'VectorCraft reliably hides parent gifts.ru close button');
