@@ -68,7 +68,9 @@ try{
  });
  await page.addScriptTag({path:'assets/vectorcraft-field.js'});
  await page.addScriptTag({path:'assets/vectorcraft-integration.js'});
+ await page.addScriptTag({path:'assets/logo-editor-choice.js'});
  await page.locator('#editorOpenLogoEditor').click();
+ await page.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const iframe=page.frameLocator('#gwbVectorcraftHost iframe');
  const skin=page.locator('#gwbVectorcraftHost button').filter({hasText:'Стиль gifts.ru'});
