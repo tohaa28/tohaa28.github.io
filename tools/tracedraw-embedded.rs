@@ -62,9 +62,8 @@ fn import(app:&mut crate::app::App,ctx:&egui::Context,v:JsValue)->Result<(),Stri
   crate::files::store(path,bytes);
   if ext=="pdf"{app.import_pdf(path)}else{app.import_svg(path)}
   crate::files::forget(path);
-  if app.page_layers().iter().all(|l|l.shapes.is_empty()) {
-    return Err(format!("TraceDraw не смог импортировать {ext}: {}",app.status));
-  }
+  // An empty SVG is a valid new design: the user draws the first object
+  // inside this already-sized imprint field. Nonempty imports remain editable.
   app.fit_pending=true;
   ctx.request_repaint();
   Ok(())
