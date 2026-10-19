@@ -1,9 +1,9 @@
 // Isolated, fail-closed compiled Maketnaya Undo/Redo patch.
 import fs from 'node:fs';
 const file=new URL('../assets/index-BpU9kvz8.js',import.meta.url);
-const anchor='function X(){const c=y.template;';
-const hooked='function X(){gwbHistoryObserve();const c=y.template;';
-const exitAnchor='yi()}function co(';
+const anchor='function X(){gwbSyncLogoUploadHint();const c=y.template;';
+const hooked='function X(){gwbHistoryObserve();gwbSyncLogoUploadHint();const c=y.template;';
+const exitAnchor='gwbArtworkView?.refresh()}function co(';
 const eventAnchor='v("artwork").onchange=c=>Ai(c,"art");';
 const marker='window.gwbPlacementHistory={undo:gwbHistoryUndo,redo:gwbHistoryRedo';
 const body=String.raw`
@@ -149,7 +149,7 @@ export function applyPlacementHistory(){
  if(!source.includes('window.gwbGetActiveLogoForEditor=function()'))
    throw Error('Placement history needs the verified logo editor bridge.');
  source=source.replace(anchor,body+'\n'+hooked);
- source=source.replace(exitAnchor,'yi();gwbHistoryControls()}function co(');
+ source=source.replace(exitAnchor,'gwbArtworkView?.refresh();gwbHistoryControls()}function co(');
  // Native event handlers are installed before the first placement UI redraw.
  fs.writeFileSync(file,source);
 }
