@@ -277,6 +277,7 @@ jobs:
           node tests/mockup-cylinder-browser-runner.mjs
           node tests/logo-editor-browser.mjs
           node tests/vectorcraft-handoff-browser.mjs
+          node tests/cmyk-roundtrip-browser.mjs
           node tests/logo-editor-choice-browser.mjs
           node tests/tracedraw-integration-browser.mjs
           node tests/vectorcraft-parent-close-browser.mjs
