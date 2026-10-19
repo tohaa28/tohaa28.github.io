@@ -25,7 +25,13 @@ try{
  assert.match(await menu.textContent(),/Аналог Adobe Illustrator/);
  assert.match(await menu.textContent(),/Аналог CorelDRAW/);
  assert.equal(await menu.getAttribute('role'),'dialog');
- assert.equal(await menu.locator('svg[aria-hidden="true"]').count()>1,true,'Both characters have real vector illustrations');
+ const characterImages=menu.locator('.gwb-choice-art img[aria-hidden="true"]');
+ assert.equal(await characterImages.count(),2,'Both approved characters use PNG illustrations');
+ await page.waitForFunction(()=>[...document.querySelectorAll('.gwb-choice-art img')].every(img=>img.complete&&img.naturalWidth>0));
+ assert.equal(await menu.locator('.gwb-choice-role').first().isVisible(),false,'Angel and devil text labels are hidden');
+ assert.match(await characterImages.first().getAttribute('src'),/^data:image\/png;base64,iVBORw0KGgo/);
+ assert.equal(await menu.locator('.gwb-choice-art--devil').evaluate(el=>getComputedStyle(el).animationName.includes('gwbDevil')),true);
+ assert.equal(await menu.locator('.gwb-choice-art--angel').evaluate(el=>getComputedStyle(el).animationName.includes('gwbAngel')),true);
  assert.equal(await menu.evaluate(el=>el.classList.contains('is-active')),true,'Entrance animation starts on opening');
  await page.locator('#status').evaluate(el=>el.textContent='Из VectorCraft возвращён только нарисованный логотип с его габаритами и положением.');
  await page.waitForFunction(()=>document.getElementById('status').textContent==='');
