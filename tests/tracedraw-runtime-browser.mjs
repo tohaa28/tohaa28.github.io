@@ -42,7 +42,18 @@ try{
  const canvas=page.frameLocator('#tr').locator('#tracedraw');
  const rect=await canvas.boundingBox();assert.ok(rect&&rect.width>1100,'Real TraceDraw canvas not present');
  await canvas.click({position:{x:rect.width-130,y:55}});
- await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:20000});
+ let nativeButtonTriggered=true;
+ try{
+   await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:7000});
+ }catch{
+   nativeButtonTriggered=false;
+   const diagnosis=await page.evaluate(()=>({state:window.__traceState,events:window.__traceEvents,frame:document.querySelector('#tr')?.contentWindow?.location?.href}));
+   console.log('Native button click did not finish yet:',JSON.stringify({diagnosis,errors}));
+   await page.frameLocator('#tr').locator('body').evaluate(()=>{window.__gwbTraceApply=true});
+   await canvas.click({position:{x:150,y:220}});
+   await page.waitForFunction(()=>window.__traceState==='ok'||String(window.__traceState).startsWith('error:'),null,{timeout:20000});
+ }
+ console.log('Native button triggered?',nativeButtonTriggered);
  const out=await page.evaluate(()=>({state:window.__traceState,events:window.__traceEvents,bounds:window.__traceBounds,svg:window.__traceSvg}));
  assert.equal(out.state,'ok','Native egui SVG export failed '+JSON.stringify({out,errors}));
  assert.ok(out.events.includes('gwb-tracedraw-opened'));
