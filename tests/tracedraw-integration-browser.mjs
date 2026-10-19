@@ -29,6 +29,16 @@ try{
    };
  });
  await page.addScriptTag({path:'assets/tracedraw-integration.js'});
+ // A field already being edited in VectorCraft must not open in TraceDraw.
+ await page.evaluate(()=>{
+   const blocker=document.createElement('div');
+   blocker.id='gwbVectorcraftHost';
+   document.body.append(blocker);
+ });
+ await page.evaluate(()=>window.gwbTraceDrawHost.open());
+ assert.equal(await page.locator('#gwbTraceDrawHost').count(),0,
+  'Existing VectorCraft session prevents conflicting TraceDraw overlay');
+ await page.evaluate(()=>document.getElementById('gwbVectorcraftHost').remove());
  await page.evaluate(()=>window.gwbTraceDrawHost.open());
  const overlay=page.locator('#gwbTraceDrawHost');
  await overlay.waitFor();
