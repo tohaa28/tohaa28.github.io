@@ -31,7 +31,7 @@
 </head>
 <!-- data-wasm-size: the module's size in bytes and 0.9.4-gifts the version,
      both filled in by the build (scripts/web/build.sh, CI). -->
-<body data-wasm-size="32337097">
+<body data-wasm-size="32335760">
   <canvas id="tracedraw" tabindex="0"></canvas>
   <div id="loading">
     <!-- The splash screen of the desktop app (src/splash.rs, ui/brand.rs). -->
@@ -116,8 +116,16 @@
     });
   })();
   </script>
+
+  <style>
+    #gwb-tracedraw-transfer{position:fixed;z-index:9999;top:7px;right:12px;
+      background:#639b1a;color:#fff;border:1px solid #477b0c;border-radius:6px;
+      box-shadow:0 2px 7px #0003;padding:7px 14px;font:700 12px system-ui;
+      cursor:pointer;min-height:30px}
+    #gwb-tracedraw-transfer:hover{background:#528810}
+  </style>
   <script type="module">
-    import init from "./tracedraw.js";
+    import init, {gwb_tracedraw_request_apply} from "./tracedraw.js";
 
     const status = document.getElementById("loading-status");
     const bar = document.getElementById("loading-bar");
@@ -179,6 +187,14 @@
         fill(0.95);
         await init({ module_or_path: bytes });
         window.dispatchEvent(new Event("gwb-tracedraw-started"));
+        if (window.__gwbTraceToken) {
+          const apply = document.createElement("button");
+          apply.id = "gwb-tracedraw-transfer";
+          apply.textContent = "Перенести на шаблон артикула";
+          apply.type = "button";
+          apply.addEventListener("click", () => gwb_tracedraw_request_apply());
+          document.body.append(apply);
+        }
       } catch (e) {
         say("TraceDraw could not start");
         bar.setAttribute("fill", "#e0533d");

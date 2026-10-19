@@ -18,4 +18,7 @@ export function gwbTakeApply() {
   window.__gwbTraceApply=false;
   return requested;
 }
+export function gwbQueueApply(){
+  window.__gwbTraceApply=true;
+}
 export function gwbIsEmbedded() {return typeof window.__gwbTraceToken==='string'&&window.__gwbTraceToken.length>20;}

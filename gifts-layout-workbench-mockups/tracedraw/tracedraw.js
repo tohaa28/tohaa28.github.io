@@ -2,7 +2,15 @@ import { gwbReport, gwbReturnSvg } from './snippets/tracedraw-ecceba2694d13514/i
 import * as import1 from "./snippets/tracedraw-ecceba2694d13514/inline0.js"
 import * as import2 from "./snippets/tracedraw-ecceba2694d13514/inline0.js"
 import * as import3 from "./snippets/tracedraw-ecceba2694d13514/inline0.js"
+import * as import4 from "./snippets/tracedraw-ecceba2694d13514/inline0.js"
 
+
+/**
+ * Called only by the self-hosted TraceDraw iframe's embedded transfer control.
+ */
+export function gwb_tracedraw_request_apply() {
+    wasm.gwb_tracedraw_request_apply();
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -1508,12 +1516,12 @@ function __wbg_get_imports() {
         },
         __wbindgen_generic_0000000000000003: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("Event")], shim_idx: 74, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__3);
+            const ret = makeMutClosure(arg0, arg1, wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__4);
             return ret;
         },
         __wbindgen_generic_0000000000000004: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("KeyboardEvent")], shim_idx: 74, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__4);
+            const ret = makeMutClosure(arg0, arg1, wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__5);
             return ret;
         },
         __wbindgen_generic_0000000000000005: function(arg0, arg1) {
@@ -1557,6 +1565,7 @@ function __wbg_get_imports() {
         "./snippets/tracedraw-ecceba2694d13514/inline0.js": import1,
         "./snippets/tracedraw-ecceba2694d13514/inline0.js": import2,
         "./snippets/tracedraw-ecceba2694d13514/inline0.js": import3,
+        "./snippets/tracedraw-ecceba2694d13514/inline0.js": import4,
     };
 }
 
@@ -1575,12 +1584,12 @@ function wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d
     wasm.wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true_(arg0, arg1, arg2);
 }
 
-function wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__3(arg0, arg1, arg2) {
-    wasm.wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__3(arg0, arg1, arg2);
-}
-
 function wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__4(arg0, arg1, arg2) {
     wasm.wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__4(arg0, arg1, arg2);
+}
+
+function wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__5(arg0, arg1, arg2) {
+    wasm.wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___js_sys_d7abc5d227e6940b___Array______true__5(arg0, arg1, arg2);
 }
 
 function wasm_bindgen_af84282b3b5b408f___convert__closures_____invoke___wasm_bindgen_af84282b3b5b408f___JsValue__core_7d5f0a2ba6a62c33___result__Result_____wasm_bindgen_af84282b3b5b408f___JsError___true_(arg0, arg1, arg2) {
