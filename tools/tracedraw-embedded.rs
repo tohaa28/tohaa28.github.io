@@ -88,6 +88,9 @@ fn export(app:&crate::app::App)->Result<(),String>{
   if app.doc().pages.len()!=1 {
     return Err("TraceDraw должен содержать ровно одно поле нанесения".into());
   }
+  if app.doc().metadata.primary_color_mode != tracedraw_core::document::PrimaryColorMode::Cmyk {
+    return Err("Документ сменил цветовую модель CMYK; перенос остановлен".into());
+  }
   let f=app.page_size();
   if (f.width-fw).abs()>0.001||(f.height-fh).abs()>0.001 {
     return Err("Размер поля изменён; перенос остановлен для защиты шаблона".into());
@@ -129,7 +132,13 @@ pub fn poll(app:&mut crate::app::App,ctx:&egui::Context){
   let request=gwbTakeOpen();
   if !request.is_null()&&!request.is_undefined(){
     match import(app,ctx,request){
-      Ok(())=>gwbReport("gwb-tracedraw-opened",""),
+      Ok(())=>{
+        let sz=app.page_size();
+        gwbReport("gwb-tracedraw-opened",&format!(
+          "pages={};primary_mode={:?};field={:.2}x{:.2}mm",
+          app.doc().pages.len(),app.doc().metadata.primary_color_mode,
+          sz.width,sz.height));
+      },
       Err(e)=>gwbReport("gwb-tracedraw-error",&e),
     }
   }
