@@ -20,6 +20,7 @@ try{
  assert.equal(await menu.isVisible(),true);
  assert.equal(await menu.getByRole('button',{name:/VectorCraft/}).count(),1);
  assert.equal(await menu.getByRole('button',{name:/TraceDraw/}).count(),1);
+ assert.match(await menu.textContent(),/SVG\/PDF/,'Only genuinely supported embedded TraceDraw formats are advertised');
  await menu.getByRole('button',{name:/TraceDraw/}).click();
  assert.deepEqual(await page.evaluate(()=>window.__opened),['tracedraw']);
  assert.equal(await menu.isVisible(),false);
