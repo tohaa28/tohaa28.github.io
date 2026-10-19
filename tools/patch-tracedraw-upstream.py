@@ -137,6 +137,7 @@ patch_source("apps/tracedraw/src/app.rs", [
             app.color_model = 1; // Color docker: CMYK, not RGB.
             app.mixer_color = app.mixer_color.convert_to("CMYK");
             crate::theme::set_theme(crate::theme::Theme::Light);
+            crate::i18n::set_language("ru");
         }
 '''),
   ('        if crate::files::WEB {\n            app.show_web_notice();\n', '        if crate::files::WEB && !crate::gwb_embedded() {\n            app.show_web_notice();\n'),
@@ -201,6 +202,8 @@ patch_source("apps/tracedraw/src/ui/tabs.rs", [
 ''')
 ])
 patch_source("apps/tracedraw/src/theme.rs", [
+  ('pub fn set_theme(theme: Theme) {\n',
+   'pub fn set_theme(theme: Theme) {\n    let theme = if crate::gwb_embedded() { Theme::Light } else { theme };\n'),
   ('    v.window_corner_radius = 2.0.into();\n    v.menu_corner_radius = 2.0.into();\n    v\n',
    '''    v.window_corner_radius = 2.0.into();
     v.menu_corner_radius = 2.0.into();
