@@ -1461,7 +1461,14 @@
         method:"GET",credentials:"include",redirect:"follow",cache:"no-store",
         headers:{accept:"application/pdf,application/octet-stream"}
       });
-      if (!response.ok || isAuthPage("",response.url))
+      // Gift files can be returned directly or redirected to its official
+      // download host. Refuse unrelated redirect targets even if they serve PDF.
+      let safeOrigin = false;
+      try {
+        const origin = new URL(response.url).origin;
+        safeOrigin = origin === GIFTS_ORIGIN || origin === "https://files.gifts.ru";
+      } catch {}
+      if (!response.ok || !safeOrigin || isAuthPage("",response.url))
         return json({error:"gifts.ru не предоставил файл макета."},502);
       const bytes = await response.arrayBuffer();
       if (bytes.byteLength < 5 || bytes.byteLength > 40*1024*1024 ||
