@@ -43,7 +43,7 @@ test('Drop extension is wired only after native place/import and history modules
  const drop=build.indexOf('applyLogoDrop();');
  assert.ok(history>=0&&drop>history);
  assert.match(ui,/preventDefault\(\)/);
- assert.match(ui,/\\.gwbFileDropHighlight/);
+ assert.match(ui,/#gwbFileDropHighlight/);
  assert.match(ui,/accept\(file,e\.clientX,e\.clientY\)/);
  assert.match(bridge,/await Ai\(\{target:\{files:\[file\],value:''\}\},"art"\)/);
 });
