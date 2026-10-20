@@ -24,7 +24,7 @@ const orderHtml='<!doctype html><html><body>'+
  '</body></html>';
 const ajaxHtml='<div><label>Загрузка макетов</label>'+uploaded+malicious+
  '<label>Шаблоны макетов</label></div>';
-const pageHtml='<!doctype html><html><body><div id="basketOrders">'+
+const pageHtml='<!doctype html><html><head><meta charset="utf-8"></head><body><div id="basketOrders">'+
  '<div class="basket-order"><div class="basket-order-title">Заказ №8006776</div></div></div>'+
  '<div id="orderEditor"><details id="orderTemplatePicker"></details>'+
  '<div id="stage"></div><div id="fieldLogoTools"></div></div>'+
@@ -39,16 +39,16 @@ try {
    const u=new URL(route.request().url());
    routed.push(u.pathname+u.search);
    if(u.pathname==='/private/orders/basket'){
-     return route.fulfill({status:200,contentType:'text/html',body:pageHtml});
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:pageHtml});
    }
    if(u.pathname==='/private/order/'+ORDER)
-     return route.fulfill({status:200,contentType:'text/html',body:orderHtml});
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml});
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='makets_popup')
      return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml})});
    if(u.pathname==='/cart/act/mda')
      return route.fulfill({status:200,contentType:'application/pdf',
        body:'%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF'});
-   return route.fulfill({status:404,contentType:'text/html',body:'Not found'});
+   return route.fulfill({status:404,contentType:'text/html; charset=utf-8',body:'Not found'});
  });
  await page.goto('https://gifts.ru/private/orders/basket',{waitUntil:'domcontentloaded'});
  await page.addScriptTag({path:'direct-mode.js'});
