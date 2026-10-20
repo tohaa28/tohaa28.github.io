@@ -25,6 +25,10 @@ function start(){
  '.gwb-order-maket-item button{flex:none;border-radius:6px;padding:7px 11px;background:#eff6e6;border:1px solid #b8d19a;color:#416b19;cursor:pointer;font:650 12px system-ui,sans-serif}',
  '.gwb-order-maket-item button:hover{background:#e3f0d1}',
  '.gwb-order-maket-item button:disabled{cursor:wait;opacity:.65}',
+ '.gwb-order-maket-actions{display:flex;flex:none;align-items:center;gap:6px;flex-wrap:wrap}',
+ '.gwb-order-maket-download{background:#fff!important;color:#435159!important;border-color:#d5ded6!important}',
+ '.gwb-ready-upload{margin-top:7px;width:100%;font-weight:700;min-height:36px}',
+ '.gwb-ready-upload[hidden]{display:none!important}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
  '.gwb-order-maket-badge{display:inline-flex;align-items:center;margin:5px 0 0;padding:3px 7px;background:#edf5e6;color:#507329;border:1px solid #d9e6cc;border-radius:6px;font:700 11px system-ui,sans-serif}',
  '@media(max-width:580px){.gwb-order-maket-item{align-items:flex-start;flex-direction:column}.gwb-order-maket-item button{width:100%}}'
@@ -37,10 +41,93 @@ function start(){
  head.append(title);
  const items=document.createElement('div');items.className='gwb-order-makets-list';
  const help=document.createElement('p');help.className='gwb-order-makets-help';
- help.textContent='Файлы принадлежат заказу в целом. Выберите артикул и поле нанесения, затем укажите, какой PDF открыть. Уже загруженные файлы на gifts.ru не изменяются.';
+ help.textContent='Файлы принадлежат заказу целиком. Скачать PDF можно сразу; открыть для редактирования — только после входа в режим выбранного поля. Исходники на gifts.ru не изменяются.';
  section.append(head,items,help);
  editor.querySelector('#orderTemplatePicker')?.insertAdjacentElement('afterend',section);
  if(!section.isConnected)editor.insertBefore(section,editor.firstChild);
+ // Two explicit finished-layout destinations reuse the same native preflight.
+ // No hidden automatic uploads: a server mutation begins only on this click.
+ const readyButtons=[];
+ function addReadyButton(anchorId,buttonId){
+   const anchor=document.getElementById(anchorId);
+   if(!anchor)return;
+   const button=document.createElement('button');
+   button.id=buttonId;button.type='button';
+   button.className='primary gwb-ready-upload';
+   button.textContent='Загрузить готовый PDF в заказ';
+   button.title='Добавить PDF в «Макеты для заказа» gifts.ru, не удаляя прежние файлы';
+   button.addEventListener('click',()=>{void uploadFinishedPdf(button)});
+   anchor.insertAdjacentElement('afterend',button);
+   readyButtons.push({button,anchor});
+   new MutationObserver(syncReadyButtons).observe(anchor,{attributes:true,attributeFilter:['disabled','hidden']});
+ }
+ addReadyButton('simpleExport','gwbUploadReadySimple');
+ addReadyButton('prepareOrderPdf','gwbUploadReadyAdvanced');
+ let activeUpload=false;
+ function readySnapshot(){
+   try{return window.gwbReadyPdfNative?.snapshot?.()||null}catch{return null}
+ }
+ function syncReadyButtons(){
+   const snapshot=readySnapshot();
+   for(const {button,anchor} of readyButtons){
+     button.hidden=!!anchor.hidden;
+     button.disabled=activeUpload||anchor.disabled||!snapshot||snapshot.order!==orderInput.value.trim();
+   }
+ }
+ async function uploadFinishedPdf(button){
+   if(activeUpload)return;
+   const api=window.gwbReadyPdfNative,selected=readySnapshot();
+   const order=orderInput.value.trim();
+   if(!selected||!valid(order)||selected.order!==order||button.disabled)return;
+   if(!window.confirm('Добавить готовый PDF к заказу №'+order+' на gifts.ru? Существующие файлы останутся без изменений.'))return;
+   activeUpload=true;syncReadyButtons();
+   try{
+     if(status)status.textContent='Собираю готовый PDF для заказа №'+order+'…';
+     const pdf=await api.make(selected);
+     const after=readySnapshot();
+     if(!after||after.order!==selected.order||after.entry!==selected.entry||after.template!==selected.template)
+       throw Error('Заказ или артикул изменились. Отправка отменена.');
+     if(!/\.pdf$/i.test(pdf?.name||'')||pdf.size<5||pdf.size>40*1024*1024)
+       throw Error('Для отправки доступен PDF размером до 40 МБ.');
+     if(status)status.textContent='Загружаю PDF в раздел «Макеты для заказа»…';
+     const payload=new FormData();
+     payload.append('media_file[]',pdf,pdf.name);
+     const response=await fetch('/api/orders/'+order+'/uploaded-makets',{
+       method:'POST',body:payload,credentials:'same-origin',cache:'no-store'
+     });
+     let result;
+     try{result=await response.json()}catch{throw Error('Не удалось прочитать ответ gifts.ru. Проверьте список макетов в заказе.')}
+     if(!response.ok||result?.ok!==true)
+       throw Error(result?.error||'gifts.ru не подтвердил загрузку.');
+     state.delete(order);
+     await refreshCards();
+     if(status)status.textContent='Готовый PDF «'+pdf.name+'» добавлен к заказу №'+order+'. Ранее загруженные макеты сохранены.';
+   }catch(error){
+     if(status)status.textContent='Отправка не подтверждена: '+String(error?.message||error);
+   }finally{
+     activeUpload=false;syncReadyButtons();
+   }
+ }
+ async function downloadUploadedMaket(order,file,button){
+   if(button.disabled)return;
+   button.disabled=true;
+   try{
+     const response=await fetch('/api/orders/'+order+'/uploaded-makets/'+file.id+'.pdf',{
+       credentials:'same-origin',cache:'no-store'
+     });
+     if(!response.ok)throw Error('Не удалось скачать PDF.');
+     const bytes=await response.arrayBuffer();
+     if(bytes.byteLength<5||bytes.byteLength>40*1024*1024||
+       new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Некорректный PDF.');
+     const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+     const link=document.createElement('a');
+     link.href=url;link.download=file.original;link.style.display='none';
+     document.body.append(link);link.click();link.remove();
+     setTimeout(()=>URL.revokeObjectURL(url),60000);
+   }catch(error){
+     if(status)status.textContent='Не удалось скачать файл: '+String(error?.message||error);
+   }finally{button.disabled=false}
+ }
  const state=new Map();
  let refreshGeneration=0;
  let activeLoad=null;
@@ -107,6 +194,7 @@ function start(){
      section.hidden=!files.length;items.replaceChildren();
      if(!files.length)return;
      title.textContent='Макеты, загруженные в gifts.ru ('+files.length+')';
+     const fieldMode=!!nativeScope()&&!tools.hidden&&!document.getElementById('zoomPage')?.hidden;
      files.forEach(file=>{
        const item=document.createElement('div');item.className='gwb-order-maket-item';
        const data=document.createElement('div');
@@ -115,11 +203,19 @@ function start(){
        const meta=document.createElement('div');meta.className='gwb-order-maket-meta';
        meta.textContent=file.original!==file.name?'В заказе: '+file.name:'PDF из заказа';
        data.append(filename,meta);
-       const open=document.createElement('button');open.type='button';
-       open.textContent='Открыть для редактирования';
-       open.title='Загрузить этот PDF в выбранное поле, не изменяя оригинал в gifts.ru';
-       open.addEventListener('click',()=>{void importMaket(order,file,open)});
-       item.append(data,open);items.append(item);
+       const actions=document.createElement('div');actions.className='gwb-order-maket-actions';
+       const download=document.createElement('button');download.type='button';
+       download.className='gwb-order-maket-download';download.textContent='Скачать PDF';
+       download.addEventListener('click',()=>{void downloadUploadedMaket(order,file,download)});
+       actions.append(download);
+       if(fieldMode){
+         const open=document.createElement('button');open.type='button';
+         open.textContent='Открыть для редактирования';
+         open.title='Загрузить этот PDF в выбранное поле, не изменяя оригинал в gifts.ru';
+         open.addEventListener('click',()=>{void importMaket(order,file,open)});
+         actions.append(open);
+       }
+       item.append(data,actions);items.append(item);
      });
    }).catch(()=>{});
  }
@@ -127,7 +223,7 @@ function start(){
    if(activeLoad)return;
    const native=window.gwbUploadedMaketNative;
    const scope=nativeScope();
-   if(orderInput.value.trim()!==order||!scope){
+   if(orderInput.value.trim()!==order||!scope||tools.hidden||document.getElementById('zoomPage')?.hidden){
      if(status)status.textContent='Сначала выберите артикул и откройте нужное поле нанесения в шаблоне.';
      return;
    }
@@ -169,7 +265,11 @@ function start(){
  observer.observe(basket,{childList:true});
  const editorObserver=new MutationObserver(render);
  editorObserver.observe(editor,{attributes:true,attributeFilter:['hidden']});
- orderInput.addEventListener('change',render);
+ const modeObserver=new MutationObserver(()=>{render();syncReadyButtons()});
+ modeObserver.observe(tools,{attributes:true,attributeFilter:['hidden']});
+ const zoomPage=document.getElementById('zoomPage');
+ if(zoomPage)modeObserver.observe(zoomPage,{attributes:true,attributeFilter:['hidden']});
+ orderInput.addEventListener('change',()=>{render();syncReadyButtons()});
  document.getElementById('loadOrder')?.addEventListener('click',()=>{
    const order=orderInput.value.trim();
    if(valid(order)&&!state.has(order))
@@ -177,6 +277,7 @@ function start(){
    queueMicrotask(render);
  });
  window.gwbUploadedMaketsUi={refresh:()=>{state.clear();return refreshCards()},getOrder:readOrder};
+ syncReadyButtons();
  void refreshCards();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
