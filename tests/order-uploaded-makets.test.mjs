@@ -9,7 +9,7 @@ const source=JSON.parse(match[1]);
 function setup(){
  const item={article:'77700.60',itemId:'49428451'};
  const field={x:10,y:20,w:40,h:30};
- const y={busy:false,template:{id:'A'},field,selectedEntry:item,draw:false,
+ const y={busy:false,template:{id:'A'},field,view:{x:0,y:0,w:40,h:30},selectedEntry:item,draw:false,
    page:0,active:0,placements:[{field,page:0,fieldIndex:0,art:null}]};
  const orderControl={value:'8006776'};
  const v=id=>id==='order'?orderControl:id==='orderEditor'?{hidden:false}:{};
@@ -61,4 +61,6 @@ test('No implicit placement on templates without active field',()=>{
  assert.equal(s.api.getScope(),null);
  s.y.field=s.field;s.y.active=-1;
  assert.equal(s.api.getScope(),null);
+ s.y.active=0;s.y.view=null;
+ assert.equal(s.api.getScope(),null,'Entire template view cannot import a customer PDF');
 });
