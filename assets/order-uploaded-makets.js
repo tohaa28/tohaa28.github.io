@@ -94,8 +94,8 @@ function start(){
    }
    render();
  }
- function selectedField(){
-   return !editor.hidden&&!tools.hidden&&!!document.getElementById('stage');
+ function nativeScope(){
+   try{return window.gwbUploadedMaketNative?.getScope?.()||null}catch{return null}
  }
  function render(){
    const order=orderInput.value.trim(),inEditor=!editor.hidden;
@@ -125,7 +125,9 @@ function start(){
  }
  async function importMaket(order,file,button){
    if(activeLoad)return;
-   if(orderInput.value.trim()!==order||!selectedField()){
+   const native=window.gwbUploadedMaketNative;
+   const scope=nativeScope();
+   if(orderInput.value.trim()!==order||!scope){
      if(status)status.textContent='Сначала выберите артикул и откройте нужное поле нанесения в шаблоне.';
      return;
    }
@@ -143,19 +145,21 @@ function start(){
      const bytes=new Uint8Array(await response.arrayBuffer());
      if(bytes.length<5||bytes.length>40*1024*1024||
         new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Некорректный PDF из заказа');
-     if(orderInput.value.trim()!==before||editor.hidden||!selectedField())
+     if(orderInput.value.trim()!==before||editor.hidden||!nativeScope())
        throw Error('Заказ или выбранное поле изменились во время загрузки. Повторите импорт.');
      const pdf=new File([bytes],file.name,{type:'application/pdf'});
-     // Same route as native input change, including PrintCheck, placement history
-     // and all PDF/CMYK handling. Do NOT save to gifts.ru or upload elsewhere.
-     const dt=new DataTransfer();dt.items.add(pdf);artwork.files=dt.files;
-     artwork.dispatchEvent(new Event('change',{bubbles:true}));
-     if(status)status.textContent='Открываю загруженный макет '+file.original+' в выбранном поле…';
+     // Keep the artwork editable and its original PDF/CMYK bytes: native Ai().
+     // The scope object protects the correct order/article/field during fetch.
+     if(!native?.apply)throw Error('Модуль редактора ещё загружается.');
+     await native.apply(pdf,scope);
    }catch(error){
      if(status)status.textContent='Не удалось открыть загруженный макет: '+String(error?.message||error);
    }finally{button.disabled=false;activeLoad=null}
  }
  basket.addEventListener('click',()=>{queueMicrotask(render)});
+ document.getElementById('refreshBasket')?.addEventListener('click',()=>{
+   ++refreshGeneration;state.clear();section.hidden=true;
+ });
  const observer=new MutationObserver(mutations=>{
    if(mutations.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&
       (n.matches?.('.basket-order')||n.querySelector?.('.basket-order'))))){
@@ -166,7 +170,12 @@ function start(){
  const editorObserver=new MutationObserver(render);
  editorObserver.observe(editor,{attributes:true,attributeFilter:['hidden']});
  orderInput.addEventListener('change',render);
- document.getElementById('loadOrder')?.addEventListener('click',()=>{queueMicrotask(render)});
+ document.getElementById('loadOrder')?.addEventListener('click',()=>{
+   const order=orderInput.value.trim();
+   if(valid(order)&&!state.has(order))
+     void readOrder(order).then(render).catch(()=>{});
+   queueMicrotask(render);
+ });
  window.gwbUploadedMaketsUi={refresh:()=>{state.clear();return refreshCards()},getOrder:readOrder};
  void refreshCards();
 }
