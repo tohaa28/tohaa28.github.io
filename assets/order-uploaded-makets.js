@@ -95,8 +95,7 @@ function start(){
    render();
  }
  function selectedField(){
-   return !editor.hidden&&!tools.hidden&&!!document.getElementById('stage')&&
-     !document.getElementById('orderTemplatePicker')?.open;
+   return !editor.hidden&&!tools.hidden&&!!document.getElementById('stage');
  }
  function render(){
    const order=orderInput.value.trim(),inEditor=!editor.hidden;
