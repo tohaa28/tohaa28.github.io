@@ -11,7 +11,8 @@ function setup(){
  const field={x:10,y:20,w:40,h:30};
  const y={busy:false,template:{id:'A'},field,selectedEntry:item,draw:false,
    page:0,active:0,placements:[{field,page:0,fieldIndex:0,art:null}]};
- const v=id=>id==='order'?{value:'8006776'}:id==='orderEditor'?{hidden:false}:{};
+ const orderControl={value:'8006776'};
+ const v=id=>id==='order'?orderControl:id==='orderEditor'?{hidden:false}:{};
  const calls=[];
  const Ai=async(evt,type)=>{
    calls.push({filename:evt.target.files[0]?.name,type,active:y.active});
