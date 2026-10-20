@@ -14,9 +14,9 @@ test('animated editor selector parses and is correctly versioned',()=>{
   assert.match(js,/prefers-reduced-motion:reduce/);
   assert.match(js,/const devilSvg='<img alt="" aria-hidden="true"/);
   assert.match(js,/const angelSvg='<img alt="" aria-hidden="true"/);
-  assert.equal((js.match(/data:image\\/png;base64,/g)||[]).length,2,'The two approved transparent PNGs are embedded');
-  assert.match(js,/gwb-choice-art img\\{object-fit:contain\\}/);
-  assert.match(js,/gwb-choice-role\\{display:none!important\\}/,'Character names are not shown');
+  assert.equal((js.match(/data:image\/png;base64,/g)||[]).length,2,'The two approved transparent PNGs are embedded');
+  assert.match(js,/gwb-choice-art img\{object-fit:contain\}/);
+  assert.match(js,/gwb-choice-role\{display:none!important\}/,'Character names are not shown');
 });
 
 test('editor selector routes cartoon characters to existing unmodified engines',()=>{
