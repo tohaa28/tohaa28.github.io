@@ -777,7 +777,38 @@
     }) || null;
   }
 
-  async function getPopupTemplateRelations(orderId) {
+
+  // Uploaded CUSTOMER layouts from "Макеты для заказа" → "Загрузка макетов".
+  // Deliberately ignores drawing templates and the designer-approval tab.
+  function extractUploadedMakets(html, order, internalOrderId) {
+    if (!/^\d{5,12}$/.test(String(order)) || !/^\d{1,20}$/.test(String(internalOrderId))) return [];
+    const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+    const files = new Map();
+    for (const node of doc.querySelectorAll('a[data-maket="true"][href]')) {
+      let url;
+      try { url = new URL(node.getAttribute("href"), GIFTS_ORIGIN); } catch { continue; }
+      if (url.origin !== GIFTS_ORIGIN || url.pathname !== "/cart/act/mda") continue;
+      const id = url.searchParams.get("id") || "";
+      const oid = url.searchParams.get("oid") || "";
+      if (!/^\d{1,20}$/.test(id) || oid !== String(internalOrderId)) continue;
+      const filename = clean(node.textContent);
+      if (!/^[^\\/:*?"<>|]{1,200}\.(?:pdf|ai|svg|png|jpe?g)$/i.test(filename)) continue;
+      const row = node.closest(".flex-item.flex-main,li,tr,.maket-row") || node.parentElement;
+      const originalName = clean(row?.querySelector('[title="Исходное имя закачанного файла"]')?.textContent || "") || filename;
+      // The original name is metadata, never an output path or a download URL.
+      files.set(id, {
+        id, order: String(order), filename,
+        originalName: originalName.slice(0, 200),
+        mime: /\.pdf$/i.test(filename) ? "application/pdf" : "",
+        source: "gifts-order-uploaded-layout",
+        attachmentScope: "order", // NO implicit article/field mapping
+        boundItemId: null, boundFieldIndex: null
+      });
+    }
+    return [...files.values()];
+  }
+
+  async function getPopupTemplateRelations(orderId, orderNumber) {
     if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
 
     const res = await nativeFetch(
@@ -809,6 +840,7 @@
     } catch {}
 
     const doc = new DOMParser().parseFromString(html, "text/html");
+    const uploadedMakets = extractUploadedMakets(html, orderNumber, orderId);
     const relations = [];
     const seen = new Set();
     const templateHeading = popupTemplateSection(doc);
@@ -858,6 +890,7 @@
       });
     }
 
+    relations.uploadedMakets = uploadedMakets;
     return relations;
   }
 
@@ -942,6 +975,7 @@
     if (!fresh && orderCache.has(order)) return orderCache.get(order);
     const { html } = await getHtml("/private/order/" + order);
     const parsed = parseOrder(html, order);
+    parsed.uploadedMakets = extractUploadedMakets(html, order, parsed.orderInternalId);
 
     // Preserve the complete order composition separately from the subset that has
     // an application-template. Basket/order UI needs every real item; the editor
@@ -951,7 +985,12 @@
 
     if (parsed.orderInternalId) {
       try {
-        const relations = await getPopupTemplateRelations(parsed.orderInternalId);
+        const relations = await getPopupTemplateRelations(parsed.orderInternalId, order);
+        if (Array.isArray(relations.uploadedMakets)) {
+          const union = new Map(parsed.uploadedMakets.map(file => [file.id, file]));
+          for (const file of relations.uploadedMakets) union.set(file.id, file);
+          parsed.uploadedMakets = [...union.values()];
+        }
         parsed.maketsPopupLoaded = true;
         parsed.popupTemplateRelations = relations;
         parsed.popupOrderItemIds = relations.map(relation => relation.pdfItemId);
@@ -1394,6 +1433,38 @@
     }
   }
 
+  async function apiUploadedMaket(order, maketId) {
+    if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
+      return json({error:"Некорректный номер макета."},400);
+    try {
+      // Always re-read the gifts order for an attachment download. Never fetch
+      // an arbitrary URL supplied by the client, and never reuse stale permissions.
+      const orderData = await getOrder(order, true);
+      if (!orderData.uploadedMakets?.some(file => file.id === maketId))
+        return json({error:"Этот загруженный макет не найден в заказе."},404);
+      const internalId = orderData.orderInternalId;
+      if (!/^\d{1,20}$/.test(String(internalId)))
+        return json({error:"Внутренний идентификатор заказа недоступен."},404);
+      const path = "/cart/act/mda?oid=" + encodeURIComponent(internalId) + "&id=" + encodeURIComponent(maketId);
+      const response = await nativeFetch(giftsUrl(path), {
+        method:"GET",credentials:"include",redirect:"follow",cache:"no-store",
+        headers:{accept:"application/pdf,application/octet-stream"}
+      });
+      if (!response.ok || isAuthPage("",response.url))
+        return json({error:"gifts.ru не предоставил файл макета."},502);
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength < 5 || bytes.byteLength > 40*1024*1024 ||
+          new TextDecoder().decode(bytes.slice(0,5)) !== "%PDF-")
+        return json({error:"Получен неподдерживаемый файл. Редактирование доступно для PDF до 40 МБ."},415);
+      return new Response(bytes,{status:200,headers:{
+        "content-type":"application/pdf","cache-control":"no-store",
+        "x-content-type-options":"nosniff"
+      }});
+    } catch (error) {
+      return json({error:error?.message||String(error)},error?.code==="AUTH"?401:502);
+    }
+  }
+
   async function apiProductPhotos(order, itemId) {
     try {
       const parsed = await getOrder(order);
@@ -1512,6 +1583,9 @@
 
         let m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\.pdf$/);
         if (m && method === "GET") return apiPdf(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})\.pdf$/);
+        if (m && method === "GET") return apiUploadedMaket(m[1], m[2]);
 
         m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/photos$/);
         if (m && method === "GET") return apiProductPhotos(m[1], m[2]);
