@@ -102,7 +102,7 @@ try {
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/2/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
- assert.equal(await page.getByText('Открыть для редактирования').count(),0,'No field view = no edit buttons');
+ assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0,'No field view = no edit buttons');
  await page.evaluate(()=>{
    window.__imported=[];
    const scope={order:'8006776',article:'77700.60',itemId:'49428451',
@@ -134,7 +134,7 @@ try {
  // Leaving field view removes the editing buttons, but always leaves downloads.
  await page.evaluate(()=>{document.getElementById('zoomPage').hidden=true;document.getElementById('fieldLogoTools').hidden=true});
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===2);
- assert.equal(await page.getByText('Открыть для редактирования').count(),0);
+ assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0);
  // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
  await page.evaluate(()=>{window.confirm=()=>true});
  await page.locator('#gwbUploadReadySimple').click();
