@@ -56,6 +56,8 @@ try {
   await frame.locator('#editorOpenLogoEditor').click();
   await frame.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
   await page.waitForFunction(()=>document.querySelector('.gwb-close')?.disabled===true);
+  // The direct DOM hide is synchronous; postMessage arrives in a later task.
+  await page.waitForFunction(()=>window.__editorSignals.length===1);
   assert.equal(await page.locator('.gwb-close').isHidden(),true,
     'VectorCraft reliably hides parent gifts.ru close button');
   assert.deepEqual(await page.evaluate(()=>window.__editorSignals),[true],
