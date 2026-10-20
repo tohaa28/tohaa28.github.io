@@ -784,7 +784,18 @@
     if (!/^\d{5,12}$/.test(String(order)) || !/^\d{1,20}$/.test(String(internalOrderId))) return [];
     const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
     const files = new Map();
-    for (const node of doc.querySelectorAll('a[data-maket="true"][href]')) {
+    const links = [];
+    // Saved order pages put the modal in declarative shadow DOM templates.
+    // Popup AJAX fragments use ordinary DOM. Handle both without touching
+    // the "Согласование макетов" tab or unrelated download templates.
+    function collect(root) {
+      links.push(...root.querySelectorAll('a[data-maket="true"][href]'));
+      for (const template of root.querySelectorAll("template")) {
+        if (template.content) collect(template.content);
+      }
+    }
+    collect(doc);
+    for (const node of links) {
       let url;
       try { url = new URL(node.getAttribute("href"), GIFTS_ORIGIN); } catch { continue; }
       if (url.origin !== GIFTS_ORIGIN || url.pathname !== "/cart/act/mda") continue;
