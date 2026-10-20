@@ -1,9 +1,74 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-14T13:27:28.681Z",
+  "updatedAt": "2026-10-20T09:10:06.919Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15846.40",
+      "variant": "",
+      "place": "лоб [белый(White); черный(Black)]",
+      "method": "D2: Шелкография с трансфером,1",
+      "photo": {
+        "id": "15846.40-3",
+        "name": "Фото 3 · арт. 15846.40",
+        "url": "https://files.gifts.ru/reviewer/webp/61/15846.40_39_500.webp?v=2",
+        "width": 375,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лоб [белый(White); черный(Black)]",
+        "sizeCm": [
+          11.0001,
+          4.9999
+        ]
+      },
+      "constructor": {
+        "name": "8044997_15846.40_49674087.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 775
+      },
+      "fieldRect": {
+        "x": 0.24087118524088366,
+        "y": 0.19505381993432316,
+        "w": 0.08578022928218952,
+        "h": 0.09056030544881515
+      },
+      "targetQuad": [
+        {
+          "x": 0.3501666666666667,
+          "y": 0.257
+        },
+        {
+          "x": 0.6115,
+          "y": 0.261
+        },
+        {
+          "x": 0.6301666666666667,
+          "y": 0.353
+        },
+        {
+          "x": 0.3421666666666667,
+          "y": 0.353
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-20T09:10:06.919Z",
+      "confirmedAt": "2026-10-20T09:10:06.919Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "7224.14",
