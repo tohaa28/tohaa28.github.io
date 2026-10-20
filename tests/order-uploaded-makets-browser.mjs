@@ -12,6 +12,10 @@ const uploaded=filenames.map(file=>
  '<a data-maket="true" href="https://gifts.ru/cart/act/mda?oid='+OID+'&amp;id='+file.id+'">'+file.filename+'</a>'+
  '</span><br><span class="size--sm"><span title="Исходное имя закачанного файла">'+file.original+'</span></span></div>'
 ).join('');
+let uploadedExtra='';
+const uploadForm='<form id="j_upload_area"><input type="hidden" name="oid" value="'+OID+'">'+
+ '<input type="hidden" name="type" value="10"><input type="hidden" name="order" value="'+ORDER+'">'+
+ '<input type="hidden" name="folder" value="S1"><input type="file" name="media_file[]" multiple></form>';
 const malicious='<a data-maket="true" href="https://gifts.ru/cart/act/mda?oid=99999&amp;id=1234567">not-ours.pdf</a>'+
  '<a href="https://gifts.ru/drawing?action=getOrderItemPdf&amp;orderitemid=49428451">Шаблон конструктора</a>';
 const orderHtml='<!doctype html><html><body>'+
@@ -20,14 +24,16 @@ const orderHtml='<!doctype html><html><body>'+
  '<a class="cart-tbl-name">77700.60</a><div class="cart-tbl-lbl">Кружка</div></div>'+
  '<span class="cart-qty">5</span><div class="cart-tbl-imp"><g-droper>'+
  '<span>SB1: Сублимация/посуда,1</span></g-droper></div></li></div>'+
- '<template shadowrootmode="open"><div name="Макеты для заказа 8006776">'+uploaded+malicious+'</div></template>'+
+ '<template shadowrootmode="open"><div name="Макеты для заказа 8006776">'+uploadForm+uploaded+malicious+'</div></template>'+
  '</body></html>';
-const ajaxHtml='<div><label>Загрузка макетов</label>'+uploaded+malicious+
+const ajaxHtml='<div><label>Загрузка макетов</label>'+uploadForm+uploaded+malicious+
  '<label>Шаблоны макетов</label></div>';
 const pageHtml='<!doctype html><html><head><meta charset="utf-8"></head><body><div id="basketOrders">'+
  '<div class="basket-order"><div class="basket-order-title">Заказ №8006776</div></div></div>'+
  '<div id="orderEditor"><details id="orderTemplatePicker"></details>'+
- '<div id="stage"></div><div id="fieldLogoTools"></div></div>'+
+ '<div id="stage"></div><div id="fieldLogoTools" hidden></div>'+ 
+ '<button id="zoomPage" hidden></button><button id="simpleExport">Скачать PDF</button>'+ 
+ '<button id="prepareOrderPdf">Скачать для заказа</button></div>'+
  '<input id="order" value="8006776"><input id="artwork" type="file">'+
  '<button id="loadOrder"></button><div id="status"></div></body></html>';
 
@@ -35,6 +41,7 @@ try {
  const page=await browser.newPage();
  const errors=[];page.on('pageerror',err=>errors.push(err.message));
  const routed=[];
+ let postedPdf='';
  await page.route('https://gifts.ru/**',async route=>{
    const u=new URL(route.request().url());
    routed.push(u.pathname+u.search);
@@ -42,9 +49,18 @@ try {
      return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:pageHtml});
    }
    if(u.pathname==='/private/order/'+ORDER)
-     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml});
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml.replace(uploaded+malicious,uploaded+uploadedExtra+malicious)});
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='makets_popup')
-     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml})});
+     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml.replace(uploaded+malicious,uploaded+uploadedExtra+malicious)})});
+   if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='upload_makets'){
+     assert.equal(route.request().method(),'POST');
+     const body=route.request().postDataBuffer()?.toString('utf8')||'';
+     for(const expected of ['name="oid"','name="type"','name="order"','name="folder"','name="media_file[]"','%PDF-'])
+       assert.ok(body.includes(expected),'Missing verified form field: '+expected);
+     postedPdf=body.includes('готовый_макет.pdf')?'готовый_макет.pdf':'8006776_77700.60_макет.pdf';
+     uploadedExtra='<div class="flex-item flex-main"><a data-maket="true" href="https://gifts.ru/cart/act/mda?oid='+OID+'&amp;id=18311645">8006776_maket_3.pdf</a><span title="Исходное имя закачанного файла">'+postedPdf+'</span></div>';
+     return route.fulfill({status:200,contentType:'application/json',body:'{"success":true}'});
+   }
    if(u.pathname==='/cart/act/mda')
      return route.fulfill({status:200,contentType:'application/pdf',
        body:'%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF'});
@@ -86,6 +102,7 @@ try {
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/2/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
+ assert.equal(await page.getByText('Открыть для редактирования').count(),0,'No field view = no edit buttons');
  await page.evaluate(()=>{
    window.__imported=[];
    const scope={order:'8006776',article:'77700.60',itemId:'49428451',
@@ -97,8 +114,16 @@ try {
        window.__imported.push({name:file.name,head:(await file.text()).slice(0,5)});
      }
    };
+   const entry={id:'current'},template={id:'template'};
+   window.gwbReadyPdfNative={
+     snapshot(){return {order:'8006776',article:'77700.60',itemId:'49428451',entry,template};},
+     async make(){return new File(['%PDF-1.7\\nready PDF'],'8006776_77700.60_макет.pdf',{type:'application/pdf'});}
+   };
+   document.getElementById('fieldLogoTools').hidden=false;
+   document.getElementById('zoomPage').hidden=false;
  });
- await page.locator('#gwbOrderMakets .gwb-order-maket-item button').first().click();
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===4);
+ await page.locator('#gwbOrderMakets .gwb-order-maket-item button').nth(1).click();
  await page.waitForFunction(()=>window.__imported?.length===1);
  const imported=await page.evaluate(()=>window.__imported);
  assert.equal(imported[0].head,'%PDF-');
@@ -106,6 +131,17 @@ try {
  assert.match(imported[0].name,/\.pdf$/i);
  assert.ok(routed.some(path=>path.includes('/cart/act/mda?')),
    'Authorized download was routed via gifts.ru with its internal order ID');
- assert.deepEqual(errors,[],'No browser runtime errors');
+ // Leaving field view removes the editing buttons, but always leaves downloads.
+ await page.evaluate(()=>{document.getElementById('zoomPage').hidden=true;document.getElementById('fieldLogoTools').hidden=true});
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===2);
+ assert.equal(await page.getByText('Открыть для редактирования').count(),0);
+ // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
+ await page.evaluate(()=>{window.confirm=()=>true});
+ await page.locator('#gwbUploadReadySimple').click();
+ await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('добавлен к заказу'),null,{timeout:15000});
+ assert.ok(postedPdf,'Ready PDF uploaded to the original order');
+ assert.equal((await page.locator('.gwb-order-maket-item').count()),3);
+ assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/3/);
+  assert.deepEqual(errors,[],'No browser runtime errors');
  console.log('Uploaded order layouts: 2 files, visible in basket and editor, explicit editable PDF import, foreign attachment rejected — PASS');
 } finally { await browser.close(); }
