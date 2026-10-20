@@ -819,6 +819,28 @@
     return [...files.values()];
   }
 
+  // Extract only the official customer-upload form, never designer approval.
+  // The order page stores its dialog in declarative shadow DOM; the AJAX
+  // fragment contains the same form without a shadow-root wrapper.
+  function uploadedMaketForm(html, order, oid) {
+    const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+    const forms = [];
+    function visit(root) {
+      forms.push(...root.querySelectorAll("form#j_upload_area"));
+      for (const tmpl of root.querySelectorAll("template")) if (tmpl.content) visit(tmpl.content);
+    }
+    visit(doc);
+    for (const form of forms) {
+      const value = name => form.querySelector('input[name="' + name + '"]')?.value || "";
+      const candidate = {oid:value("oid"),type:value("type"),order:value("order"),folder:value("folder")};
+      if (candidate.oid !== String(oid) || candidate.order !== String(order) ||
+          candidate.type !== "10" || !/^[a-zA-Z0-9_-]{1,32}$/.test(candidate.folder) ||
+          !form.querySelector('input[type="file"][name="media_file[]"]')) continue;
+      return candidate;
+    }
+    return null;
+  }
+
   async function getPopupTemplateRelations(orderId, orderNumber) {
     if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
 
@@ -853,6 +875,7 @@
     const doc = new DOMParser().parseFromString(html, "text/html");
     const uploadedMakets = extractUploadedMakets(html, orderNumber, orderId);
     const relations = [];
+    relations.uploadForm = uploadedMaketForm(html, orderNumber, orderId);
     const seen = new Set();
     const templateHeading = popupTemplateSection(doc);
     let candidateNodes = [...doc.querySelectorAll("a[href*=\'getOrderItemPdf\'],[data-orderitemid],[data-oiid]")];
@@ -987,6 +1010,7 @@
     const { html } = await getHtml("/private/order/" + order);
     const parsed = parseOrder(html, order);
     parsed.uploadedMakets = extractUploadedMakets(html, order, parsed.orderInternalId);
+    parsed.uploadForm = uploadedMaketForm(html, order, parsed.orderInternalId);
 
     // Preserve the complete order composition separately from the subset that has
     // an application-template. Basket/order UI needs every real item; the editor
@@ -997,6 +1021,7 @@
     if (parsed.orderInternalId) {
       try {
         const relations = await getPopupTemplateRelations(parsed.orderInternalId, order);
+        if (relations.uploadForm) parsed.uploadForm = relations.uploadForm;
         if (Array.isArray(relations.uploadedMakets)) {
           const union = new Map(parsed.uploadedMakets.map(file => [file.id, file]));
           for (const file of relations.uploadedMakets) union.set(file.id, file);
@@ -1444,6 +1469,64 @@
     }
   }
 
+  async function apiUploadReadyMaket(order, init) {
+    if (!/^\d{5,12}$/.test(order)) return json({error:"Некорректный номер заказа."},400);
+    try {
+      if (!(init?.body instanceof FormData)) return json({error:"Ожидался PDF-макет."},400);
+      const file = init.body.get("media_file[]");
+      if (!(file instanceof Blob) || !/^[^\\/:*?"<>|]{1,180}\.pdf$/i.test(file.name||"") ||
+          file.size<5 || file.size>40*1024*1024)
+        return json({error:"Разрешён PDF до 40 МБ с корректным именем."},415);
+      const bytes = await file.arrayBuffer();
+      if (new TextDecoder().decode(bytes.slice(0,5)) !== "%PDF-")
+        return json({error:"Файл не является PDF."},415);
+
+      // Authoritative permissions and form fields are read afresh from gifts.ru.
+      const original = await getOrder(order,true);
+      if (!original.orderItems?.length || !original.uploadForm)
+        return json({error:"У заказа нет доступной формы «Загрузка макетов»."},403);
+      const upload = original.uploadForm;
+      if (upload.order!==order || upload.oid!==String(original.orderInternalId) || upload.type!=="10")
+        return json({error:"Загрузка в этот заказ недоступна."},403);
+      const known = new Set((original.uploadedMakets||[]).map(f=>String(f.id)));
+      const payload = new FormData();
+      payload.set("oid",upload.oid);
+      payload.set("type","10");
+      payload.set("order",order);
+      payload.set("folder",upload.folder);
+      payload.append("media_file[]",new File([bytes],file.name,{type:"application/pdf"}),file.name);
+      const response = await nativeFetch(giftsUrl("/ajax/gifts/order?action=upload_makets"),{
+        method:"POST",credentials:"include",redirect:"follow",cache:"no-store",
+        body:payload,headers:{"accept":"application/json,text/html;q=0.9,*/*;q=0.8",
+                              "x-requested-with":"XMLHttpRequest"}
+      });
+      const answer = (await response.text()).slice(0,10000);
+      if (isAuthPage(answer,response.url))
+        return json({error:"Авторизация gifts.ru истекла."},401);
+      if (!response.ok) return json({error:"gifts.ru отклонил загрузку PDF ("+response.status+")."},502);
+      try {
+        const state = JSON.parse(answer);
+        if (state?.success===false || state?.result===false || state?.error)
+          return json({error:String(state.error||state.message||"gifts.ru не принял PDF.")},502);
+      } catch {}
+      // Do not claim success from HTTP 200: verify a NEW attachment with the
+      // same original file name, preserving all older order attachments.
+      orderCache.delete(order);
+      let matched = null;
+      for (let attempt=0;attempt<3&&!matched;attempt++){
+        if (attempt) await new Promise(resolve=>setTimeout(resolve,500));
+        const latest=await getOrder(order,true);
+        matched=(latest.uploadedMakets||[]).find(f=>
+          !known.has(String(f.id)) && f.originalName===file.name);
+      }
+      if (!matched) return json({error:"Сервер ответил, но новый PDF пока не обнаружен в заказе. Проверьте список вложений перед повторной отправкой."},502);
+      orderCache.delete(order);
+      return json({ok:true,order,uploadedId:matched.id,filename:matched.originalName});
+    } catch(error) {
+      return json({error:error?.message||String(error)},error?.code==="AUTH"?401:502);
+    }
+  }
+
   async function apiUploadedMaket(order, maketId) {
     if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
       return json({error:"Некорректный номер макета."},400);
@@ -1598,6 +1681,9 @@
         if (url.pathname === "/api/session" && method === "GET") return apiSession();
         if (url.pathname === "/api/login") return apiLogin({ ...init, method });
         if (url.pathname === "/api/basket" && method === "GET") return apiBasket();
+
+        let uploadMatch = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets$/);
+        if (uploadMatch && method === "POST") return apiUploadReadyMaket(uploadMatch[1],init);
 
         let m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\.pdf$/);
         if (m && method === "GET") return apiPdf(m[1], m[2]);
