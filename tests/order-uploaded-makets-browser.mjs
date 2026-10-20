@@ -69,7 +69,20 @@ try {
  const forbidden=await page.evaluate(async()=>{const r=await fetch('/api/orders/8006776/uploaded-makets/1234567.pdf');return r.status});
  assert.equal(forbidden,404,'A file outside the current order must not download');
  await page.addScriptTag({path:'assets/order-uploaded-makets.js'});
- await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===2);
+ try {
+   await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===2,null,{timeout:8000});
+ } catch (error) {
+   const details=await page.evaluate(()=>({
+     installed:window.gwbUploadedMaketsUiInstalled,
+     ui:!!window.gwbUploadedMaketsUi,
+     basket:document.getElementById('basketOrders')?.outerHTML.slice(0,1000),
+     order:document.getElementById('order')?.value,
+     editorHidden:document.getElementById('orderEditor')?.hidden,
+     section:document.getElementById('gwbOrderMakets')?.outerHTML.slice(0,1400)
+   }));
+   console.error('Uploaded PDF UI diagnostics',JSON.stringify({details,errors,routed:routed.slice(-10)}));
+   throw error;
+ }
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/2/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
