@@ -75,14 +75,21 @@ try {
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
  await page.evaluate(()=>{
    window.__imported=[];
-   document.getElementById('artwork').addEventListener('change',e=>{
-     window.__imported.push({name:e.target.files[0]?.name,count:e.target.files.length});
-   });
+   const scope={order:'8006776',article:'77700.60',itemId:'49428451',
+     page:0,active:0,fieldIndex:0,template:{id:'t'},entry:{id:'e'},field:{id:'f'}};
+   window.gwbUploadedMaketNative={
+     getScope(){return scope;},
+     async apply(file,expected){
+       if(expected!==scope)throw Error('Stale selected field');
+       window.__imported.push({name:file.name,head:(await file.text()).slice(0,5)});
+     }
+   };
  });
  await page.locator('#gwbOrderMakets .gwb-order-maket-item button').first().click();
  await page.waitForFunction(()=>window.__imported?.length===1);
  const imported=await page.evaluate(()=>window.__imported);
- assert.equal(imported[0].count,1);
+ assert.equal(imported[0].head,'%PDF-');
+ assert.deepEqual(imported.map(x=>x.name),['8006776_maket_2_201026_143328.pdf']);
  assert.match(imported[0].name,/\.pdf$/i);
  assert.ok(routed.some(path=>path.includes('/cart/act/mda?')),
    'Authorized download was routed via gifts.ru with its internal order ID');
