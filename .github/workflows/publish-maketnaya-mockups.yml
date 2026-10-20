@@ -280,6 +280,7 @@ jobs:
           node tests/cmyk-roundtrip-browser.mjs
           node tests/logo-editor-choice-browser.mjs
           node tests/logo-drop-browser.mjs
+          node tests/order-uploaded-makets-browser.mjs
           node tests/tracedraw-integration-browser.mjs
           node tests/vectorcraft-parent-close-browser.mjs
           node tests/personal-layout-library-browser.mjs
