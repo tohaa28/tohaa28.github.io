@@ -52,10 +52,10 @@ try {
  });
  await page.goto('https://gifts.ru/private/orders/basket',{waitUntil:'domcontentloaded'});
  await page.addScriptTag({path:'direct-mode.js'});
- const order=await page.evaluate(async()=>{
-   const r=await fetch('/api/orders/'+ORDER,{cache:'no-store'});
+ const order=await page.evaluate(async orderNumber=>{
+   const r=await fetch('/api/orders/'+orderNumber,{cache:'no-store'});
    return {ok:r.ok,data:await r.json()};
- });
+ },ORDER);
  assert.equal(order.ok,true,'Real order parser accepts mocked order');
  const files=order.data.uploadedMakets||[];
  assert.equal(files.length,2,'Two uploaded files extracted from Gifts popup and shadow DOM');
