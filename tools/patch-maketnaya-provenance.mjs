@@ -6,8 +6,8 @@ const anchor='R.type==="page"?b.drawPage(R.data,U):b.drawImage(R.data,U),b.pushO
 const output='R.type==="page"?b.drawPage(R.data,U):b.drawImage(R.data,U),b.pushOperators(n.popGraphicsState())}if(!window.gwbMaketnayaPdfProvenance?.stamp)throw Error("Не доступна запись служебного блока PDF");await window.gwbMaketnayaPdfProvenance.stamp(h,o,n,r,{order:document.getElementById("order")?.value,article:document.getElementById("article")?.value,itemId:window.gwbReadyPdfNative?.snapshot?.()?.itemId||""});return await h.save()}function sr(c){';
 // Native state is the authority for artwork-control enablement after
 // the template -> field transition; never restore stale disabled snapshots.
-const refreshAnchor='let ln="";function X(){';
-const refreshPatched='let ln="";window.gwbRefreshEditorState=()=>X();function X(){';
+const refreshAnchor='function X(){';
+const refreshPatched='window.gwbRefreshEditorState=()=>X();function X(){';
 export function applyMaketnayaProvenance(){
  let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
  if(!source.includes(output)){
