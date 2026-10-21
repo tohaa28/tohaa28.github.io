@@ -24,7 +24,7 @@ async function fixture(){
 }
 test('stamps a producer and separate source attachment, without modifying constructor contents',async()=>{
  const {saved}=await fixture();
- const doc=await PDFLib.PDFDocument.load(saved);
+ const doc=await PDFLib.PDFDocument.load(saved,{updateMetadata:false});
  assert.match(doc.getProducer(),/gwb-maketnaya-layout-v1/);
  assert.equal(doc.getPageCount(),1);
  assert.ok(doc.catalog.lookup(PDFLib.PDFName.of('Names')),'PDF Names dictionary has source attachments');
