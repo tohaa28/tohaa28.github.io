@@ -206,30 +206,88 @@ export function pdfColorOperators(source) {
   const re=new RegExp(`(?:^|\\s)((?:${number}\\s+){1,4})(rg|RG|k|K|g|G)(?=\\s|$)`,'g');
   return [...cleaned.matchAll(re)].map(m=>({model:/k/i.test(m[2])?'CMYK':/rg/i.test(m[2])?'RGB':'Gray',values:m[1].trim().split(/\s+/).map(Number)})).filter(c=>c.values.length===({CMYK:4,RGB:3,Gray:1}[c.model])&&c.values.every(v=>v>=0&&v<=1));
 }
+// Report the colors which were actually used for fill/stroke/text, NOT just
+// color-state changes such as "1 0 0 rg" with no subsequent painting. This
+// distinction matters for converted editor PDFs that retain unused operators.
+// The old pdfColorOperators remains available for raw diagnostics/tests.
+export function pdfAppliedPaintOperators(source) {
+  let cleaned='',depth=0;
+  for(let i=0;i<source.length;i++) {
+    const c=source[i];
+    if(depth){if(c==='\\'){i++;continue}if(c==='(')depth++;if(c===')')depth--;continue}
+    if(c==='('){depth=1;cleaned+=' ';continue}
+    if(c==='%'){while(i<source.length&&!/[\r\n]/.test(source[i]))i++;cleaned+=' ';continue}
+    if(c==='<'&&source[i+1]!=='<'){while(i<source.length&&source[i]!=='>')i++;cleaned+=' ';continue}
+    cleaned+=c;
+  }
+  cleaned=cleaned.replace(/\bBI\b[\s\S]*?\bEI\b/g,' ');
+  const n='[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
+  const re=new RegExp('(?:^|\\s)(?:('+n+'(?:\\s+'+n+'){0,3})\\s+(rg|RG|k|K|g|G)|(q|Q|f\\*?|F|S|s|B\\*?|b\\*?|Tj|TJ|\\x22|\\x27))(?=\\s|$)','g');
+  const found=[],gray={model:'Gray',values:[0]},copy=c=>({...c,values:c.values.slice()});
+  let fill=gray,stroke=gray,stack=[],painted=0;
+  for(const m of cleaned.matchAll(re)){
+    if(m[2]){
+      const tag=m[2],values=m[1].trim().split(/\s+/).map(Number);
+      const count=/^[kK]$/.test(tag)?4:/^rg$/i.test(tag)?3:1;
+      if(values.length!==count||!values.every(v=>Number.isFinite(v)&&v>=0&&v<=1))continue;
+      const col={model:count===4?'CMYK':count===3?'RGB':'Gray',values};
+      if(tag===tag.toUpperCase())stroke=col;else fill=col;
+    }else{
+      const op=m[3];if(op==='q'){stack.push([copy(fill),copy(stroke)]);continue}
+      if(op==='Q'){const previous=stack.pop();if(previous){[fill,stroke]=previous}continue}
+      const add=c=>{found.push(copy(c));painted++};
+      if(/^(?:f|f\*|F|B|B\*|b|b\*|Tj|TJ|\"|')$/.test(op))add(fill);
+      if(/^(?:S|s|B|B\*|b|b\*)$/.test(op))add(stroke);
+    }
+  }
+  return {colors:found,painted};
+}
 async function inspectPdfColors(art,facts) {
   const lib=globalThis.PDFLib;
   if(!art.bytes||!lib?.decodePDFRawStream)return;
   const pdf=await lib.PDFDocument.load(art.bytes.slice(),{updateMetadata:false});
   const seen=new Set(),colors=[],models=new Set();let unsupported=false;
-  const visit=(value)=>{
-    const object=pdf.context.lookup(value);if(!object||seen.has(object))return;seen.add(object);
-    if(object instanceof lib.PDFArray){object.asArray().forEach(visit);return;}
+  const get=(obj,key)=>pdf.context.lookup(obj?.get?.(lib.PDFName.of(key)));
+  const visit=(value,resources)=>{
+    const object=pdf.context.lookup(value);if(!object||seen.has(object))return;
+    seen.add(object);
+    if(object instanceof lib.PDFArray){object.asArray().forEach(o=>visit(o,resources));return}
     if(!(object instanceof lib.PDFRawStream))return;
     const subtype=String(object.dict.get(lib.PDFName.of('Subtype'))||'');
-    if(subtype==='/Image') {
-      const cs=String(pdf.context.lookup(object.dict.get(lib.PDFName.of('ColorSpace')))||'');
-      if(cs==='/DeviceRGB')models.add('RGB');else if(cs==='/DeviceCMYK')models.add('CMYK');else if(cs==='/DeviceGray')models.add('Gray');else unsupported=true;
+    if(subtype==='/Image'){
+      const cs=String(get(object.dict,'ColorSpace')||'');
+      if(cs==='/DeviceRGB'||cs==='/CalRGB')models.add('RGB');
+      else if(cs==='/DeviceCMYK')models.add('CMYK');
+      else if(cs==='/DeviceGray')models.add('Gray');
+      else unsupported=true;
       return;
     }
-    try {const text=new TextDecoder('latin1').decode(lib.decodePDFRawStream(object).decode());const found=pdfColorOperators(text);colors.push(...found);found.forEach(c=>models.add(c.model));if(/\b(?:cs|CS|scn|SCN|BI)\b/.test(text))unsupported=true;}catch{unsupported=true;}
-    const resources=pdf.context.lookup(object.dict.get(lib.PDFName.of('Resources')));
-    const xobjects=resources?.lookup?.(lib.PDFName.of('XObject'));
-    if(xobjects instanceof lib.PDFDict)for(const [,x]of xobjects.entries())visit(x);
+    const own=get(object.dict,'Resources')||resources;
+    try{
+      const bytes=lib.decodePDFRawStream(object).decode();
+      const source=new TextDecoder('latin1').decode(bytes);
+      const painted=pdfAppliedPaintOperators(source);
+      colors.push(...painted.colors);
+      painted.colors.forEach(c=>models.add(c.model));
+      if(/\b(?:cs|CS|scn|SCN|BI)\b/.test(source))unsupported=true;
+      // Only traverse XObjects that were actually painted with /Name Do.
+      // PDF exporters may leave RGB images/forms in /Resources even after a
+      // user converts the visible objects to CMYK.
+      const xobjects=own?.lookup?.(lib.PDFName.of('XObject'));
+      for(const m of source.matchAll(/(?:^|\s)\/([^\s/<>()[\]{}%]+)\s+Do(?=\s|$)/g)){
+        if(xobjects instanceof lib.PDFDict){
+          const item=xobjects.get(lib.PDFName.of(m[1]));
+          if(item)visit(item,own);else unsupported=true;
+        }else unsupported=true;
+      }
+    }catch{unsupported=true}
   };
-  const page=pdf.getPages()[0];visit(page.node.Contents());
-  const xobjects=page.node.Resources()?.lookup(lib.PDFName.of('XObject'));
-  if(xobjects instanceof lib.PDFDict)for(const [,x]of xobjects.entries())visit(x);
-  facts.originalColors=colors;facts.originalColorModels=[...models];facts.colorModel=[...models].join(', ')||'unknown';
+  const page=pdf.getPages()[0];
+  if(!page){facts.limitations.push('Не удалось прочитать страницу PDF для цветоделения.');return}
+  visit(page.node.Contents(),page.node.Resources());
+  facts.originalColors=colors;
+  facts.originalColorModels=[...models];
+  facts.colorModel=[...models].join(', ')||'unknown';
   if(unsupported)facts.limitations.push('ICC, плашечные краски, паттерны или inline-растр: цветоделения проверяются отдельно.');
 }
 
