@@ -81,26 +81,26 @@ function install(){
      '<strong class="gwb-choice-name">'+name+'</strong>'+
      '<span class="gwb-choice-description">'+summary+'</span>'+
      '<span class="gwb-choice-hint">Выбрать редактор '+arrow()+'</span>';
-   b.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();hide();action();});
+   b.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const file=pendingFile;hide();action(file);});
    duo.append(b);return b;
  }
- const vector=option('VectorCraft','ЧЁРТИК','Аналог Adobe Illustrator','devil',devilSvg,()=>{
-   if(typeof window.gwbVectorcraftHost?.open==='function')void window.gwbVectorcraftHost.open();
+ const vector=option('VectorCraft','ЧЁРТИК','Аналог Adobe Illustrator','devil',devilSvg,file=>{
+   if(typeof window.gwbVectorcraftHost?.open==='function')void window.gwbVectorcraftHost.open(file);
    else alert('VectorCraft ещё не загружен. Обновите редактор.');
  });
  const or=document.createElement('div');or.className='gwb-choice-or';or.textContent='ИЛИ';or.setAttribute('aria-hidden','true');duo.append(or);
- const trace=option('TraceDraw','АНГЕЛ','Аналог CorelDRAW','angel',angelSvg,()=>{
-   if(typeof window.gwbTraceDrawHost?.open==='function')void window.gwbTraceDrawHost.open();
+ const trace=option('TraceDraw','АНГЕЛ','Аналог CorelDRAW','angel',angelSvg,file=>{
+   if(typeof window.gwbTraceDrawHost?.open==='function')void window.gwbTraceDrawHost.open(file);
    else alert('Модуль TraceDraw не загрузился. VectorCraft доступен отдельно.');
  });
  stage.append(duo);
  const footnote=document.createElement('div');footnote.className='gwb-choice-footnote';
  footnote.textContent='Нарисованный логотип вернётся в исходное поле выбранного артикула. TraceDraw поддерживает SVG/PDF.';
  stage.append(footnote);menu.append(stage);document.body.append(menu);
- let returnFocus=null;
+ let returnFocus=null,pendingFile=null;
  function hide(){
    if(menu.hidden)return;
-   menu.classList.remove('is-active');menu.hidden=true;
+   menu.classList.remove('is-active');menu.hidden=true;pendingFile=null;
    trigger.setAttribute('aria-expanded','false');
    if(returnFocus?.isConnected)try{returnFocus.focus({preventScroll:true})}catch{}
  }
@@ -128,7 +128,13 @@ function install(){
      else if(!event.shiftKey&&i===controls.length-1){event.preventDefault();controls[0].focus()}
    }
  },true);
- window.gwbEditorChooser={show,hide,vectorcraft:()=>vector.click(),tracedraw:()=>trace.click()};
+ window.gwbEditorChooser={show,hide,vectorcraft:()=>vector.click(),tracedraw:()=>trace.click(),
+   showWithFile(file){
+     if(!(file instanceof File)||!file.name.toLowerCase().endsWith('.pdf')||file.size>40*1024*1024)
+       throw Error('Внешний файл должен быть PDF до 40 МБ');
+     pendingFile=file;show();
+   }
+ };
 
  // Suppress only the obsolete success sentence. Other readiness messages,
  // errors and technical PrintCheck statuses remain untouched.
