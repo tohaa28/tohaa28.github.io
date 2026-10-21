@@ -37,7 +37,12 @@ function start(){
  '.gwb-order-maket-item button.gwb-order-maket-delete:focus-visible{outline:2px solid #629d31;outline-offset:2px}',
  '.gwb-order-maket-delete g-icon{display:block;width:18px;height:18px;flex:none}',
  '.gwb-order-maket-delete svg{display:block;width:100%;height:100%;fill:currentColor}',
- '.gwb-ready-upload{margin-top:7px;width:100%;font-weight:700;min-height:36px}',
+ '.gwb-save-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:7px}',
+ '.gwb-save-actions[hidden]{display:none!important}',
+ '.gwb-save-actions button{min-width:0;min-height:36px;border-radius:6px;padding:7px 5px;font:700 12px/1.3 system-ui;white-space:normal}',
+ '.gwb-save-actions .gwb-ready-save-as{background:white;border:1px solid #b9caae;color:#48663c}',
+ '.gwb-save-target{grid-column:1/-1;min-width:0;overflow-wrap:anywhere;font:11px/1.4 system-ui;color:#728072}',
+ '.gwb-order-maket-current{outline:2px solid #9cc06f;outline-offset:0}'
  '.gwb-ready-upload[hidden]{display:none!important}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
  '.gwb-order-maket-badge{display:inline-flex;align-items:center;margin:5px 0 0;padding:3px 7px;background:#edf5e6;color:#507329;border:1px solid #d9e6cc;border-radius:6px;font:700 11px system-ui,sans-serif}',
@@ -55,79 +60,126 @@ function start(){
  section.append(head,items,help);
  editor.querySelector('#orderTemplatePicker')?.insertAdjacentElement('afterend',section);
  if(!section.isConnected)editor.insertBefore(section,editor.firstChild);
- // Two explicit finished-layout destinations reuse the same native preflight.
- // No hidden automatic uploads: a server mutation begins only on this click.
+ // Two explicit destinations: Save selected original or Save As a new PDF.
  const readyButtons=[];
- function addReadyButton(anchorId,buttonId){
-   const anchor=document.getElementById(anchorId);
-   if(!anchor)return;
-   const button=document.createElement('button');
-   button.id=buttonId;button.type='button';
-   button.className='primary gwb-ready-upload';
-   button.textContent='Загрузить готовый PDF в заказ';
-   button.title='Добавить PDF в «Макеты для заказа» gifts.ru, не удаляя прежние файлы';
-   button.addEventListener('click',()=>{void uploadFinishedPdf(button)});
-   anchor.insertAdjacentElement('afterend',button);
-   readyButtons.push({button,anchor});
-   new MutationObserver(syncReadyButtons).observe(anchor,{attributes:true,attributeFilter:['disabled','hidden']});
- }
- addReadyButton('simpleExport','gwbUploadReadySimple');
- addReadyButton('prepareOrderPdf','gwbUploadReadyAdvanced');
- let activeUpload=false;
+ let activeUpload=false,activeTarget=null;
  function readySnapshot(){
    try{return window.gwbReadyPdfNative?.snapshot?.()||null}catch{return null}
  }
+ function matchingTarget(snapshot=readySnapshot()){
+   const t=activeTarget;
+   return t&&snapshot&&t.order===snapshot.order&&t.article===snapshot.article&&
+     t.itemId===snapshot.itemId&&t.template===snapshot.template&&t.entry===snapshot.entry?t:null;
+ }
+ function addReadyButtons(anchorId,suffix){
+   const anchor=document.getElementById(anchorId);if(!anchor)return;
+   const wrap=document.createElement('div');wrap.className='gwb-save-actions';
+   const save=document.createElement('button');
+   save.id='gwbSaveReady'+suffix;save.type='button';save.className='primary gwb-ready-save';
+   save.textContent='Сохранить';
+   const saveAs=document.createElement('button');
+   saveAs.id='gwbSaveAsReady'+suffix;saveAs.type='button';saveAs.className='ghost gwb-ready-save-as';
+   saveAs.textContent='Сохранить как…';
+   const hint=document.createElement('div');hint.className='gwb-save-target';
+   save.addEventListener('click',()=>{void saveFinishedPdf('save',save)});
+   saveAs.addEventListener('click',()=>{void saveFinishedPdf('as',saveAs)});
+   wrap.append(save,saveAs,hint);anchor.insertAdjacentElement('afterend',wrap);
+   readyButtons.push({save,saveAs,wrap,anchor,hint});
+   new MutationObserver(syncReadyButtons).observe(anchor,{attributes:true,attributeFilter:['disabled','hidden']});
+ }
+ addReadyButtons('simpleExport','Simple');
+ addReadyButtons('prepareOrderPdf','Advanced');
  function syncReadyButtons(){
-   const snapshot=readySnapshot();
-   for(const {button,anchor} of readyButtons){
-     button.hidden=!!anchor.hidden;
-     button.disabled=activeUpload||anchor.disabled||!snapshot||snapshot.order!==orderInput.value.trim();
+   const snapshot=readySnapshot(),target=matchingTarget(snapshot);
+   for(const {save,saveAs,wrap,anchor,hint} of readyButtons){
+     wrap.hidden=!!anchor.hidden;
+     const disabled=activeUpload||activeDelete||anchor.disabled||!snapshot||
+       snapshot.order!==orderInput.value.trim();
+     save.disabled=disabled;saveAs.disabled=disabled;
+     save.title=target?'Заменить открытый PDF «'+target.name+'» после подтверждения':
+       'У нового макета «Сохранить» работает как «Сохранить как…»';
+     saveAs.title='Добавить новый PDF в заказ, сохранив существующие макеты';
+     hint.textContent=target?'Редактируется: '+target.name:
+       'Новый макет · будет создан отдельный PDF в заказе';
    }
  }
- async function uploadFinishedPdf(button){
-   if(activeUpload)return;
+ function safePdfName(name){
+   const value=String(name||'').trim();
+   if(!/^[^\\/:*?"<>|\x00-\x1F]{1,180}\.pdf$/i.test(value))
+     throw Error('Введите корректное название PDF до 180 символов.');
+   return value;
+ }
+ async function saveFinishedPdf(mode,button){
+   if(activeUpload||activeDelete||activeLoad||button.disabled)return;
    const api=window.gwbReadyPdfNative,selected=readySnapshot();
    const order=orderInput.value.trim();
-   if(!selected||!valid(order)||selected.order!==order||button.disabled)return;
-   if(!window.confirm('Добавить готовый PDF к заказу №'+order+' на gifts.ru? Существующие файлы останутся без изменений.'))return;
+   if(!selected||!valid(order)||selected.order!==order)return;
+   const target=mode==='save'?matchingTarget(selected):null;
+   let newName=null;
+   if(!target){
+     const suggestion=matchingTarget(selected)?.name||
+       order+'_'+selected.article+'_макет.pdf';
+     const answer=window.prompt('Имя нового PDF в заказе №'+order+':',suggestion);
+     if(answer===null)return;
+     try{newName=safePdfName(answer)}catch(error){if(status)status.textContent=error.message;return}
+     const existing=await readOrder(order).catch(()=>[]);
+     if(existing.some(f=>f.original.toLowerCase()===newName.toLowerCase())){
+       if(status)status.textContent='Файл с таким именем уже существует. Для «Сохранить как…» выберите другое.';
+       return;
+     }
+     if(!window.confirm('Добавить новый макет «'+newName+'» в заказ №'+order+
+       '? Ранее сохранённые файлы останутся без изменений.'))return;
+   }else{
+     if(!window.confirm('Перезаписать макет «'+target.name+'» в заказе №'+order+
+       '?\nСначала будет подтверждена загрузка новой версии, затем удалена старая.'))return;
+   }
    activeUpload=true;syncReadyButtons();
    try{
-     if(status)status.textContent='Собираю готовый PDF для заказа №'+order+'…';
+     if(status)status.textContent='Готовлю PDF для сохранения в заказ…';
      const pdf=await api.make(selected);
      const after=readySnapshot();
-     if(!after||after.order!==selected.order||after.entry!==selected.entry||after.template!==selected.template)
-       throw Error('Заказ или артикул изменились. Отправка отменена.');
+     if(!after||after.order!==selected.order||after.entry!==selected.entry||
+        after.template!==selected.template)throw Error('Заказ или артикул изменились.');
      if(!/\.pdf$/i.test(pdf?.name||'')||pdf.size<5||pdf.size>40*1024*1024)
-       throw Error('Для отправки доступен PDF размером до 40 МБ.');
-     if(status)status.textContent='Загружаю PDF в раздел «Макеты для заказа»…';
-     const payload=new FormData();
-     payload.append('media_file[]',pdf,pdf.name);
-     const response=await fetch('/api/orders/'+order+'/uploaded-makets',{
-       method:'POST',body:payload,credentials:'same-origin',cache:'no-store'
-     });
-     let result;
-     try{result=await response.json()}catch{throw Error('Не удалось прочитать ответ gifts.ru. Проверьте список макетов в заказе.')}
-     if(!response.ok||result?.ok!==true)
-       throw Error(result?.error||'gifts.ru не подтвердил загрузку.');
-     let recognized=false;
+       throw Error('Для сохранения доступен PDF до 40 МБ.');
+     const upload=newName?new File([pdf],newName,{type:'application/pdf'}):pdf;
+     const form=new FormData();form.append('media_file[]',upload,upload.name);
+     if(target)form.append('expected_original_name',target.name);
+     if(status)status.textContent=target?'Загружаю замену, исходный файл пока сохранён…':
+       'Добавляю новый PDF в заказ…';
+     const url='/api/orders/'+order+'/uploaded-makets'+(target?'/'+target.id:'');
+     const response=await fetch(url,{method:target?'PUT':'POST',body:form,
+       credentials:'same-origin',cache:'no-store'});
+     let result;try{result=await response.json()}catch{
+       throw Error('Неизвестный ответ gifts.ru. Проверьте список до повторной отправки.');
+     }
+     if(!response.ok||result?.ok!==true){
+       if(result?.partial){
+         activeTarget=null;state.delete(order);originScans.clear();
+         await refreshCards();
+         throw Error('Новый PDF сохранён (ID '+result.newId+'), но исходный мог остаться: '+
+           (result.error||'завершите замену вручную'));
+       }
+       throw Error(result?.error||'gifts.ru не подтвердил сохранение.');
+     }
+     if(target&&String(result.oldId)!==target.id)
+       throw Error('Несовпадение заменяемого файла. Проверьте список вложений.');
      try{
-       const completedBytes=new Uint8Array(await pdf.arrayBuffer());
-       const internal=await window.gwbUploadedMaketNative?.identify?.(completedBytes);
-       recognized=internal?.kind==='maketnaya';
-       if(!recognized)recognized=await window.gwbMaketnayaSidecar?.bindUploaded(
-         order,String(result.uploadedId),completedBytes)===true;
-     }catch(error){console.warn('Макетная: проверка происхождения PDF недоступна',error)}
+       const bytes=new Uint8Array(await upload.arrayBuffer());
+       if((await window.gwbUploadedMaketNative?.identify?.(bytes))?.kind!=='maketnaya')
+         await window.gwbMaketnayaSidecar?.bindUploaded(order,String(result.uploadedId),bytes);
+     }catch(error){console.warn('Не удалось проверить происхождение нового PDF',error)}
+     activeTarget={order,id:String(result.uploadedId),name:upload.name,
+       article:selected.article,itemId:selected.itemId,template:selected.template,entry:selected.entry};
      state.delete(order);
      for(const key of [...originScans.keys()])if(key.startsWith(order+':'))originScans.delete(key);
      await refreshCards();
-     if(status)status.textContent='Готовый PDF «'+pdf.name+'» добавлен к заказу №'+order+
-       (recognized?'. Исходники распознаны внутри PDF; макет помечен пиктограммой.':
-         '. Происхождение PDF пока не подтверждено, файл сохранён.');
+     if(status)status.textContent=target?
+       'Макет «'+target.name+'» перезаписан. ID новой версии: '+result.uploadedId+'.':
+       'Сохранён новый макет «'+upload.name+'» в заказе №'+order+'.';
    }catch(error){
-     if(status)status.textContent='Отправка не подтверждена: '+String(error?.message||error);
-   }finally{
-     activeUpload=false;syncReadyButtons();
-   }
+     if(status)status.textContent='Сохранение: '+String(error?.message||error);
+   }finally{activeUpload=false;syncReadyButtons()}
  }
  let activeDelete=false;
  async function deleteUploadedMaket(order,file,button){
@@ -291,6 +343,10 @@ function start(){
        const meta=document.createElement('div');meta.className='gwb-order-maket-meta';
        meta.textContent=file.original!==file.name?'В заказе: '+file.name:'PDF из заказа';
        const nameRow=document.createElement('div');nameRow.className='gwb-order-maket-name-row';
+       if(activeTarget?.order===order&&activeTarget?.id===file.id){
+         item.classList.add('gwb-order-maket-current');
+         meta.textContent+=' · редактируется';
+       }
        if(file.origin==='maketnaya'){
          const mark=document.createElement('span');
          mark.className='gwb-order-maket-origin';mark.textContent='М';
@@ -347,6 +403,7 @@ function start(){
      if(status)status.textContent='Сначала выберите артикул и откройте нужное поле нанесения в шаблоне.';
      return;
    }
+   activeTarget=null;syncReadyButtons();
    activeLoad={order,id:file.id};button.disabled=true;
    const before=orderInput.value.trim();
    try{
@@ -378,6 +435,12 @@ function start(){
        // Only the separately stored artwork enters the chosen application field:
        // no constructor, title-block, page frame or metadata.
        await native.apply(logo,scope,{sourceField:origin.sourceField,placement:origin.placement});
+       const snap=readySnapshot();
+       if(snap?.order===order&&snap.article===scope.article&&snap.itemId===scope.itemId){
+         activeTarget={order,id:file.id,name:file.original,article:snap.article,
+           itemId:snap.itemId,template:snap.template,entry:snap.entry};
+         syncReadyButtons();render();
+       }
        if(status)status.textContent='Обнаружен макет Макетной. В поле перенесён только логотип, конструктор исключён.';
      }else{
        // Unknown/legacy PDF: never guess which graphics belong to the logo.
@@ -413,7 +476,7 @@ function start(){
  if(editorStep3)modeObserver.observe(editorStep3,{attributes:true,attributeFilter:['hidden']});
  const zoomPage=document.getElementById('zoomPage');
  if(zoomPage)modeObserver.observe(zoomPage,{attributes:true,attributeFilter:['hidden']});
- orderInput.addEventListener('change',()=>{render();syncReadyButtons()});
+ orderInput.addEventListener('change',()=>{activeTarget=null;render();syncReadyButtons()});
  document.getElementById('loadOrder')?.addEventListener('click',()=>{
    const order=orderInput.value.trim();
    if(valid(order)&&!state.has(order))
