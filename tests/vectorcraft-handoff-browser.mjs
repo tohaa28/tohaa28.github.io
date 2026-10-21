@@ -60,7 +60,7 @@ try{
      if(options.fieldSizeMm.w!==current.field.w||options.fieldSizeMm.h!==current.field.h)throw Error('Wrong field dimensions');
      const b=options.artworkBoundsMm;
      if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))throw Error('Missing visible art bounds');
-     if(!file.name.endsWith('.pdf')||!options.nativePdfCmyk||options.colorSpace!=='CMYK')
+     if(!file.name.endsWith('.pdf')||!options.nativePdfColors||options.colorSpace!=='CMYK')
        throw Error('VectorCraft returned RGB instead of CMYK PDF');
      if(!(await file.text()).startsWith('%PDF-1.7'))throw Error('Native PDF bytes missing');
      options.onProgress?.(79,'Макетная разбирает PDF с большим числом контуров…');
@@ -167,7 +167,7 @@ try{
 await page.locator('#gwbEditorChoice').getByRole('button',{name:/VectorCraft/}).click();
  await page.getByText('VectorCraft открыл документ',{exact:false}).waitFor({timeout:15000});
  const reopened=await page.frameLocator('#gwbVectorcraftHost iframe').locator('body').evaluate(()=>window.__seen);
- assert.match(reopened[0].name,/vectorcraft-cmyk\.pdf$/,'Reopening starts from the real CMYK PDF');
+ assert.match(reopened[0].name,/vectorcraft\.pdf$/,'Reopening starts from the real CMYK PDF');
  assert.equal(reopened[0].fieldCanvas,false,'CMYK PDF is never wrapped in RGB SVG');
  assert.deepEqual(reopened[0].fieldSize,{w:120,h:80});
  await page.getByRole('button',{name:'Закрыть без изменений'}).click();
