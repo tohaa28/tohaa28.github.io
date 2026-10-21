@@ -155,29 +155,29 @@ async function receive(event){
       const raw=new TextDecoder().decode(bytes);
       const cropped=window.gwbVectorcraftField.normalizeExport(raw,s.fieldSizeMm,d.logoBoundsMm);
       s.progress?.set(37,'Проверены размеры и геометрия нарисованного логотипа.');
-      // Preserve production color as the engine-generated PDF. The SVG is only
-      // a geometry/preview sanity check; transferring it would convert CMYK to RGB.
-      if(d.colorSpace!=='CMYK'||d.nativePdf!==true)
-        throw Error('Редактор не подтвердил CMYK и PDF: перенос остановлен');
+      // Export the original PDF, not the SVG preview. RGB/CMYK images and
+      // vectors keep their native color streams: no implicit conversion.
+      if(!['CMYK','RGB'].includes(d.colorSpace)||d.nativePdf!==true)
+        throw Error('Редактор не подтвердил исходный PDF: перенос остановлен');
       const rawPdf=d.pdfBytes instanceof Uint8Array?d.pdfBytes:null;
       if(!rawPdf||rawPdf.byteLength<100||rawPdf.byteLength>40*1024*1024)
-        throw Error('Исходные CMYK не были переданы в PDF');
+        throw Error('Не удалось получить исходный PDF редактора');
       const check=window.gwbCmykRoundtrip;
-      if(!check)throw Error('Модуль контроля CMYK ещё не загрузился');
-      s.progress?.set(51,'Проверяем исходные цвета CMYK в печатном PDF…');
-      await check.verifyPdf(rawPdf,cropped.boundsMm);
-      s.progress?.set(63,'CMYK проверен. Передаём в выбранное поле Макетной…');
-      const file=new File([rawPdf],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft-cmyk.pdf',{type:'application/pdf'});
+      if(!check)throw Error('Модуль проверки PDF ещё не загрузился');
+      s.progress?.set(51,'Проверяем исходные цветовые объекты PDF…');
+      const paint=await check.verifyPdf(rawPdf,cropped.boundsMm);
+      s.progress?.set(63,'PDF проверен ('+paint.model+'). Переносим в выбранное поле…');
+      const file=new File([rawPdf],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft.pdf',{type:'application/pdf'});
       const xml=new DOMParser().parseFromString(cropped.svg,'image/svg+xml');
       if(xml.querySelector('script,foreignObject'))throw Error('SVG содержит неподдерживаемые исполняемые элементы');
       const warnings=String(d.message||'').trim();
       if(warnings&&!confirm('VectorCraft сообщает об особенностях экспорта:\n'+warnings.slice(0,900)+'\nПрименить результат?')){s.applying=false;s.progress?.error();s.apply.disabled=false;notice(s,'Экспорт отменён. Исходный макет сохранён.');return}
       if(active!==s)return;
       if(typeof window.gwbApplyEditedLogoToActiveField!=='function')throw Error('Мост к выбранному полю Макетной недоступен');
-      notice(s,'Проверяем CMYK и сохраняем исходный векторный PDF в поле…');
+      notice(s,'Передаём оригинальный PDF: RGB/CMYK, вектор и растр сохранены…');
       await window.gwbApplyEditedLogoToActiveField(file,s.placement,{
         artworkBoundsMm:cropped.boundsMm,fieldSizeMm:s.fieldSizeMm,
-        colorSpace:'CMYK',nativePdfCmyk:true,
+        colorSpace:d.colorSpace,nativePdfColors:true,
         onProgress:(percent,stage)=>s.progress?.set(percent,stage)
       });
       if(active===s){s.applying=false;s.progress?.complete();close(true)}
