@@ -120,7 +120,12 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     // every current placement. A new art object invalidates the old scan
     // key, so defects found before editing cannot remain attached to it.
     printCheckApplied=true;
-    Q(nativePdfColors?"Логотип перенесён в PDF. PrintCheck повторно проверяет нанесение и мелкие элементы.":"PrintCheck повторно проверяет изменённый логотип.");
+    const originalInk=next.preflight.originalColorModels?.length?
+      next.preflight.originalColorModels.join(" + "):
+      next.preflight.colorModel||"не определена";
+    Q(nativePdfColors?
+      "Логотип перенесён. Цвета в PDF: "+originalInk+". PrintCheck повторно проверяет нанесение и мелкие элементы.":
+      "PrintCheck повторно проверяет изменённый логотип.");
     window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
     options?.onProgress?.(99,"Новый логотип установлен. PrintCheck повторно запущен…");
     return {name:file.name,fieldIndex:target.fieldIndex};
@@ -134,6 +139,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
       window.gwbPrintCheckLastEditorReturn={
         name:file.name,fieldIndex:target.fieldIndex,page:target.page,
         checked:!!report,findings:report?.findings?.length??0,
+        originalColorModels:next.preflight.originalColorModels||[],
         detailState:detail?.state||"unavailable",time:Date.now()
       };
       window.dispatchEvent(new CustomEvent("gwb-printcheck-editor-return",{
