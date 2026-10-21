@@ -308,11 +308,30 @@ function start(){
         new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Некорректный PDF из заказа');
      if(orderInput.value.trim()!==before||editor.hidden||!nativeScope())
        throw Error('Заказ или выбранное поле изменились во время загрузки. Повторите импорт.');
-     const pdf=new File([bytes],file.name,{type:'application/pdf'});
-     // Keep the artwork editable and its original PDF/CMYK bytes: native Ai().
-     // The scope object protects the correct order/article/field during fetch.
-     if(!native?.apply)throw Error('Модуль редактора ещё загружается.');
-     await native.apply(pdf,scope);
+     const pdf=new File([bytes],file.original||file.name,{type:'application/pdf'});
+     if(!native?.inspect||!native?.apply)
+       throw Error('Модуль анализа PDF ещё не загрузился.');
+     const origin=await native.inspect(pdf,scope);
+     if(orderInput.value.trim()!==before||!nativeScope()||editor.hidden)
+       throw Error('Заказ или поле изменились во время проверки PDF.');
+     if(origin.kind==='maketnaya'){
+       const logo=new File([origin.bytes],file.original.replace(/\.pdf$/i,'')+'-логотип.pdf',
+         {type:'application/pdf'});
+       // Only the separately stored artwork enters the chosen application field:
+       // no constructor, title-block, page frame or metadata.
+       await native.apply(logo,scope,{sourceField:origin.sourceField,placement:origin.placement});
+       if(status)status.textContent='Обнаружен макет Макетной. В поле перенесён только логотип, конструктор исключён.';
+     }else{
+       // Unknown/legacy PDF: never guess which graphics belong to the logo.
+       // Both editors receive the ORIGINAL PDF, without modifying the field
+       // until the user explicitly applies the edited result.
+       const chooser=window.gwbEditorChooser;
+       if(!chooser?.showWithFile)throw Error('Редакторы VectorCraft/TraceDraw ещё загружаются.');
+       chooser.showWithFile(pdf);
+       if(status)status.textContent=origin.kind==='invalid'
+         ? 'Нельзя надёжно отделить исходник Макетной: '+origin.error+'. Оригинал открыт для выбора редактора.'
+         : 'Сторонний PDF: выберите VectorCraft или TraceDraw. Содержимое поля не менялось.';
+     }
    }catch(error){
      if(status)status.textContent='Не удалось открыть загруженный макет: '+String(error?.message||error);
    }finally{button.disabled=false;activeLoad=null}
