@@ -42,6 +42,7 @@ jobs:
         uses: dtolnay/rust-toolchain@1.97.0
         with:
           targets: wasm32-unknown-unknown
+          components: clippy
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
