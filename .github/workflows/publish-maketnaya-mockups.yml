@@ -282,6 +282,7 @@ jobs:
           node tests/logo-drop-browser.mjs
           node tests/order-uploaded-makets-browser.mjs
           node tests/tracedraw-integration-browser.mjs
+          node tests/tracedraw-raster-browser.mjs
           node tests/vectorcraft-parent-close-browser.mjs
           node tests/personal-layout-library-browser.mjs
           node tests/personal-layout-server-browser.mjs
