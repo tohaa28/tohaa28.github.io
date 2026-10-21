@@ -18,7 +18,10 @@ test('Header animation has a continuous four-stage flight without a 12-second de
 test('Real CMYK document working mode set inside VectorCraft embedded field import',()=>{
   const bridge=read('tools/vectorcraft-bridge.rs');
   assert.match(bridge,/fn gwb_apply_field_size/);
-  assert.match(bridge,/Arc::make_mut\(&mut doc\.doc\)\.color_mode=vectorcraft_doc::ColorMode::Cmyk/);
+  assert.match(bridge,/file\.documentColorMode/);
+  assert.match(bridge,/convert":true/);
+  assert.doesNotMatch(bridge,/Arc::make_mut\(&mut doc\.doc\)\.color_mode=/,
+    'Changing only document mode without converting paints is forbidden');
   assert.match(bridge,/fn gwb_export_editor/);
   assert.match(bridge,/gwb_send_cropped_logo/);
   const job=read('.github/workflows/build-vectorcraft-web.yml');
