@@ -24,7 +24,7 @@ async function fixture(){
  const origAttach=base.attach.bind(base);
  base.attach=async(buffer,name,opts)=>{
    attachments[name]={content:new Uint8Array(buffer),opts};
-   return origAttach(buffer,name,opts);
+   return origAttach(new Uint8Array(buffer),name,opts);
  };
  await api.stamp(base,entries,PDFLib,()=>{throw Error('already PDF')},
    {order:'8006776',article:'77700.60',itemId:'49428451'});
