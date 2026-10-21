@@ -182,13 +182,16 @@ async function receive(event){
     }
   }
 }
-async function open(){
+async function open(externalFile=null){
   if(document.getElementById('gwbTraceDrawHost')){
     alert('Сначала закройте TraceDraw. Два редактора одного поля одновременно не открываются.');
     return;
   }
   if(active)return;
   const selected=window.gwbGetActiveLogoForEditor?.();
+  if(externalFile!==null&&(!(externalFile instanceof File)||!/\.pdf$/i.test(externalFile.name)||externalFile.size>40*1024*1024)){
+    alert('Для редактора нужен PDF до 40 МБ');return;
+  }
   if(!selected){
     alert('Сначала выберите конкретное поле нанесения в Макетной.');
     return;
@@ -196,7 +199,7 @@ async function open(){
   let physical;
   try{
     const dimensions=window.gwbVectorcraftField.fieldInfo(selected);
-    const file=selected.file||new File([
+    const file=externalFile||selected.file||new File([
       '<svg xmlns="http://www.w3.org/2000/svg" width="'+dimensions.w+'mm" height="'+dimensions.h+
       'mm" viewBox="0 0 '+dimensions.w+' '+dimensions.h+'"></svg>'
     ],'Новый.svg',{type:'image/svg+xml'});
@@ -230,7 +233,7 @@ async function open(){
   status.style.flex='1';
   footer.append(status);overlay.append(bar,iframe,footer);
   const oldOverflow=document.body.style.overflow;
-  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,fullscreenBtn,file,filename:selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:true,themePending:false};
+  active={session:token,iframe,overlay,bar,footer,cancel,status,apply,fullscreenBtn,file,filename:externalFile?.name||selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:true,themePending:false};
   active.onFullscreenChange=()=>syncFullscreen(active);
   document.addEventListener('fullscreenchange',active.onFullscreenChange);
   fullscreenBtn.onclick=()=>{void toggleFullscreen(active)};
