@@ -129,6 +129,13 @@ fn export(app:&crate::app::App)->Result<(),String>{
   if !pdf.starts_with(b"%PDF-")||pdf.len()>40*1024*1024 {
     return Err("PDF пуст или больше 40 МБ".into());
   }
+  // SVG's own export confirms the live document contains a bitmap.
+  // The PDF exporter may omit unsupported image encodings; never tell
+  // Maketnaya that a mixed design was exported if its raster vanished.
+  if svg.contains("<image ") &&
+     !pdf.windows(b"/Subtype /Image".len()).any(|w|w==b"/Subtype /Image") {
+    return Err("TraceDraw не смог сохранить растр в PDF. Проверьте изображение перед отправкой".into());
+  }
   let model=match app.doc().metadata.primary_color_mode {
     tracedraw_core::document::PrimaryColorMode::Cmyk=>"CMYK",
     tracedraw_core::document::PrimaryColorMode::Rgb=>"RGB",
