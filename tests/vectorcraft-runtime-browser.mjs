@@ -28,7 +28,7 @@ try{
     " }else if(e.data.type==='gwb-vectorcraft-theme-applied'){",
     " window.__vcThemeAcks.push(e.data.message);",
     " }else if(e.data.type==='gwb-vectorcraft-svg'){",
-    " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcStatus='ok';",
+    " window.__vcResult=new TextDecoder().decode(new Uint8Array(e.data.bytes));window.__vcBounds=e.data.logoBoundsMm;window.__vcPdfBytes=new Uint8Array(e.data.pdfBytes);window.__vcReturnColorSpace=e.data.colorSpace;window.__vcStatus='ok';",
     " }else if(e.data.type==='gwb-vectorcraft-error'){if(window.__vcExpectRejection){window.__vcBlocked.push(String(e.data.message));window.__vcExpectRejection=false;}else window.__vcStatus='error: '+e.data.message;}",
     "});",
     "f.src='"+BASE+"vectorcraft/index.html#gwb='+token;"
@@ -102,6 +102,27 @@ try{
  await page.waitForFunction(()=>window.__vcStatus==='ok'||String(window.__vcStatus||'').startsWith('error:'),null,{timeout:30000});
  const data=await page.evaluate(()=>({status:window.__vcStatus,events:window.__vcEvents,svg:window.__vcResult||'',bounds:window.__vcBounds,blocked:window.__vcBlocked}));
  assert.equal(data.status,'ok',JSON.stringify({status:data.status,browserErrors}));
+ assert.equal(await page.evaluate(()=>window.__vcReturnColorSpace),'CMYK',
+   'Real Rust bridge must report actual document mode, not a hard-coded CMYK token');
+ await page.addScriptTag({url:BASE+'vendor/pdf-lib.min.js'});
+ const actualPaint=await page.evaluate(async()=>{
+   const raw=window.__vcPdfBytes;
+   const pdf=await PDFLib.PDFDocument.load(raw.slice(),{updateMetadata:false});
+   const p=pdf.getPages()[0];
+   const contents=pdf.context.lookup(p.node.Contents());
+   const streams=contents instanceof PDFLib.PDFArray?contents.asArray():[contents];
+   const decoded=streams.map(ref=>{
+     const obj=pdf.context.lookup(ref);
+     return new TextDecoder('latin1').decode(PDFLib.decodePDFRawStream(obj).decode());
+   });
+   const mod=await import(BASE+'assets/logo-preflight.mjs?v=20261021-active-paints');
+   const models=[...new Set(decoded.flatMap(s=>mod.pdfAppliedPaintOperators(s).colors.map(c=>c.model)))];
+   return {models,pdfBytes:raw.length,pdfHeader:new TextDecoder().decode(raw.slice(0,5))};
+ });
+ assert.equal(actualPaint.pdfHeader,'%PDF-');
+ assert.ok(actualPaint.pdfBytes>100);
+ assert.deepEqual(actualPaint.models,['CMYK'],
+   'VectorCraft RGB SVG input must be actually converted to CMYK paint on initial CMYK document, not just relabeled');
  assert.equal(data.blocked.length,1,'Only the original document can be opened in embedded VectorCraft');
  assert.ok(data.events.includes('gwb-vectorcraft-ready'));
  assert.ok(data.events.includes('gwb-vectorcraft-opened'));
