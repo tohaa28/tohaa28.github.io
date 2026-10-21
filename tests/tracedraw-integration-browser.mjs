@@ -60,7 +60,7 @@ try{
  assert.equal(await page.locator('#gwbTraceDrawHost .gwb-return-percent').textContent(),'78%');
  assert.equal(await page.locator('#gwbTraceDrawHost iframe').evaluate(el=>el.inert),true,
    'TraceDraw iframe is locked while Maketnaya parses the exported PDF');
- assert.equal(await page.getByRole('button',{name:'Закрыть без изменений'}).isDisabled(),true,
+ assert.equal(await page.locator('#gwbTraceDrawHost button').filter({hasText:'Закрыть без изменений'}).isDisabled(),true,
    'Closing while transfer is running is blocked');
  await page.evaluate(()=>window.gwbTraceDrawHost.close());
  assert.equal(await page.locator('#gwbTraceDrawHost').count(),1,
