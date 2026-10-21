@@ -49,12 +49,12 @@ window.gwbGetPdfLogoVectorOps=async function(token){
   };
 };
 window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
-  const nativePdfCmyk=options?.nativePdfCmyk===true;
+  const nativePdfColors=options?.nativePdfColors===true||options?.nativePdfCmyk===true;
   if(!(file instanceof File)||file.size<1||file.size>40*1024*1024||
-     !(nativePdfCmyk?/\.pdf$/i.test(file.name):/\.svg$/i.test(file.name)))
-    throw new Error("Редактор должен передать корректный SVG или проверенный CMYK PDF до 40 МБ");
-  if(nativePdfCmyk&&options?.colorSpace!=="CMYK")
-    throw new Error("Исходная цветовая модель CMYK не подтверждена");
+     !(nativePdfColors?/\.pdf$/i.test(file.name):/\.svg$/i.test(file.name)))
+    throw new Error("Редактор должен передать корректный SVG или исходный PDF до 40 МБ");
+  if(nativePdfColors&&!["CMYK","RGB"].includes(options?.colorSpace))
+    throw new Error("Цветовая модель исходного PDF не подтверждена");
   if(y.busy)throw new Error("Макетная сейчас занята; повторите сохранение");
   Ft();
   const target=y.placements?.[y.active],art=target?.art||null;
@@ -62,15 +62,15 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
   if(!target||!y.field||token!==actual)throw new Error("Выбранное поле изменилось; сохранение отменено, чтобы не заменить чужой логотип");
   y.busy=true;X();
   try{
-    options?.onProgress?.(70,"Макетная считывает PDF и строит векторное изображение…");
+    options?.onProgress?.(70,"Макетная считывает исходные векторные и растровые объекты PDF…");
     const next=await Qe(file,"art");
-    options?.onProgress?.(87,"Разбор PDF завершён. Проверяем геометрию и CMYK…");
-    if(nativePdfCmyk){
+    options?.onProgress?.(87,"Разбор PDF завершён. Проверяем геометрию и исходные цвета…");
+    if(nativePdfColors){
       if(!next.pdfCompatible||next.ext!=="pdf"||next.pages!==1)
-        throw new Error("Векторный PDF CMYK потерян при импорте");
+        throw new Error("Исходный PDF с вектором/растром потерян при импорте");
       const bounds=options?.artworkBoundsMm;
       if(!bounds||Math.abs(next.w-bounds.w)>0.15||Math.abs(next.h-bounds.h)>0.15)
-        throw new Error("Физический размер CMYK PDF не совпадает с рисунком");
+        throw new Error("Физический размер PDF не совпадает с рисунком");
     }
     Ft();
     const still=y.placements?.[y.active];
@@ -111,7 +111,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     y.art=next;y.placement=keep;
     v("artworkName").textContent=file.name;
     _t();X();
-    Q(nativePdfCmyk?"Логотип перенесён в формате PDF с сохранением CMYK.":"Изменённый логотип применён к выбранному полю.");
+    Q(nativePdfColors?"Логотип перенесён в PDF без преобразования RGB/CMYK и растра.":"Изменённый логотип применён к выбранному полю.");
     window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
     options?.onProgress?.(99,"Логотип установлен. Завершаем обновление шаблона…");
     return {name:file.name,fieldIndex:target.fieldIndex};
