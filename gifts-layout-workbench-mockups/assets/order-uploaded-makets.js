@@ -19,19 +19,20 @@ function start(){
  '.gwb-order-makets-head{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:7px}',
  '.gwb-order-makets-head strong{font-size:14px}',
  '.gwb-order-makets-list{display:flex;flex-direction:column;gap:7px}',
- '.gwb-order-maket-item{display:flex;gap:12px;align-items:center;justify-content:space-between;min-width:0;padding:9px 11px;background:#fff;border:1px solid #e1e9dd;border-radius:7px}',
- '.gwb-order-maket-filename{font-weight:700;overflow-wrap:anywhere;color:#354b37}',
- '.gwb-order-maket-meta{color:#788779;font-size:11px;overflow-wrap:anywhere}',
- '.gwb-order-maket-item button{flex:none;border-radius:6px;padding:7px 11px;background:#eff6e6;border:1px solid #b8d19a;color:#416b19;cursor:pointer;font:650 12px system-ui,sans-serif}',
+ '.gwb-order-maket-item{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;align-items:stretch;min-width:0;max-width:100%;padding:10px;background:#fff;border:1px solid #e1e9dd;border-radius:7px;box-sizing:border-box}',
+ '.gwb-order-maket-data{min-width:0;max-width:100%;width:100%}',
+ '.gwb-order-maket-filename{display:block;min-width:0;max-width:100%;white-space:normal;word-break:normal;overflow-wrap:anywhere;font-weight:700;line-height:1.4;color:#354b37}',
+ '.gwb-order-maket-meta{min-width:0;max-width:100%;color:#788779;font-size:11px;line-height:1.4;overflow-wrap:anywhere;word-break:normal}',
+ '.gwb-order-maket-item button{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:36px;border-radius:6px;padding:8px 10px;background:#eff6e6;border:1px solid #b8d19a;color:#416b19;cursor:pointer;font:650 12px/1.35 system-ui,sans-serif;text-align:center;white-space:normal}',
  '.gwb-order-maket-item button:hover{background:#e3f0d1}',
  '.gwb-order-maket-item button:disabled{cursor:wait;opacity:.65}',
- '.gwb-order-maket-actions{display:flex;flex:none;align-items:center;gap:6px;flex-wrap:wrap}',
+ '.gwb-order-maket-actions{display:block;width:100%;min-width:0;max-width:100%}',
  '.gwb-order-maket-download{background:#fff!important;color:#435159!important;border-color:#d5ded6!important}',
  '.gwb-ready-upload{margin-top:7px;width:100%;font-weight:700;min-height:36px}',
  '.gwb-ready-upload[hidden]{display:none!important}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
  '.gwb-order-maket-badge{display:inline-flex;align-items:center;margin:5px 0 0;padding:3px 7px;background:#edf5e6;color:#507329;border:1px solid #d9e6cc;border-radius:6px;font:700 11px system-ui,sans-serif}',
- '@media(max-width:580px){.gwb-order-maket-item{align-items:flex-start;flex-direction:column}.gwb-order-maket-item button{width:100%}}'
+ '@media(max-width:580px){.gwb-order-maket-item{grid-template-columns:minmax(0,1fr)}.gwb-order-maket-actions{width:100%}}'
  ].join('\n');
  const style=document.createElement('style');style.id='gwbOrderMaketsStyle';style.textContent=css;document.head.append(style);
  const section=document.createElement('section');section.id='gwbOrderMakets';section.className='gwb-order-makets';
@@ -41,7 +42,7 @@ function start(){
  head.append(title);
  const items=document.createElement('div');items.className='gwb-order-makets-list';
  const help=document.createElement('p');help.className='gwb-order-makets-help';
- help.textContent='Файлы принадлежат заказу целиком. Скачать PDF можно сразу; открыть для редактирования — только после входа в режим выбранного поля. Исходники на gifts.ru не изменяются.';
+ help.textContent='В общем виде скачайте PDF; при открытом поле — отредактируйте его в этом поле. Прикреплённые исходники на gifts.ru не изменяются.';
  section.append(head,items,help);
  editor.querySelector('#orderTemplatePicker')?.insertAdjacentElement('afterend',section);
  if(!section.isConnected)editor.insertBefore(section,editor.firstChild);
@@ -197,24 +198,26 @@ function start(){
      const fieldMode=!!nativeScope()&&!tools.hidden&&!document.getElementById('zoomPage')?.hidden;
      files.forEach(file=>{
        const item=document.createElement('div');item.className='gwb-order-maket-item';
-       const data=document.createElement('div');
+       const data=document.createElement('div');data.className='gwb-order-maket-data';
        const filename=document.createElement('div');filename.className='gwb-order-maket-filename';
        filename.textContent=file.original;
        const meta=document.createElement('div');meta.className='gwb-order-maket-meta';
        meta.textContent=file.original!==file.name?'В заказе: '+file.name:'PDF из заказа';
        data.append(filename,meta);
        const actions=document.createElement('div');actions.className='gwb-order-maket-actions';
-       const download=document.createElement('button');download.type='button';
-       download.className='gwb-order-maket-download';download.textContent='Скачать PDF';
-       download.addEventListener('click',()=>{void downloadUploadedMaket(order,file,download)});
-       actions.append(download);
+       const action=document.createElement('button');action.type='button';
        if(fieldMode){
-         const open=document.createElement('button');open.type='button';
-         open.textContent='Открыть для редактирования';
-         open.title='Загрузить этот PDF в выбранное поле, не изменяя оригинал в gifts.ru';
-         open.addEventListener('click',()=>{void importMaket(order,file,open)});
-         actions.append(open);
+         action.className='gwb-order-maket-edit';
+         action.textContent='Открыть для редактирования';
+         action.title='Загрузить этот PDF в выбранное поле, не изменяя оригинал в gifts.ru';
+         action.addEventListener('click',()=>{void importMaket(order,file,action)});
+       }else{
+         action.className='gwb-order-maket-download';
+         action.textContent='Скачать PDF';
+         action.title='Скачать исходный PDF из заказа gifts.ru';
+         action.addEventListener('click',()=>{void downloadUploadedMaket(order,file,action)});
        }
+       actions.append(action);
        item.append(data,actions);items.append(item);
      });
    }).catch(()=>{});
