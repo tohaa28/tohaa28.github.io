@@ -23,6 +23,9 @@ function start(){
  '.gwb-order-maket-data{min-width:0;max-width:100%;width:100%}',
  '.gwb-order-maket-filename{display:block;min-width:0;max-width:100%;white-space:normal;word-break:normal;overflow-wrap:anywhere;font-weight:700;line-height:1.4;color:#354b37}',
  '.gwb-order-maket-meta{min-width:0;max-width:100%;color:#788779;font-size:11px;line-height:1.4;overflow-wrap:anywhere;word-break:normal}',
+ '.gwb-order-maket-name-row{display:flex;align-items:flex-start;gap:6px;min-width:0}',
+ '.gwb-order-maket-name-row .gwb-order-maket-filename{flex:1;min-width:0}',
+ '.gwb-order-maket-origin{display:inline-flex;align-items:center;justify-content:center;flex:none;width:19px;height:19px;border-radius:5px;border:1px solid #b9d998;background:#ecf6e7;color:#568728;font:bold 13px/1 system-ui;cursor:help}',
  '.gwb-order-maket-item button{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:36px;border-radius:6px;padding:8px 10px;background:#eff6e6;border:1px solid #b8d19a;color:#416b19;cursor:pointer;font:650 12px/1.35 system-ui,sans-serif;text-align:center;white-space:normal}',
  '.gwb-order-maket-item button:hover{background:#e3f0d1}',
  '.gwb-order-maket-item button:disabled{cursor:wait;opacity:.65}',
@@ -106,9 +109,16 @@ function start(){
      try{result=await response.json()}catch{throw Error('Не удалось прочитать ответ gifts.ru. Проверьте список макетов в заказе.')}
      if(!response.ok||result?.ok!==true)
        throw Error(result?.error||'gifts.ru не подтвердил загрузку.');
+     let recognized=false;
+     try{
+       recognized=await window.gwbMaketnayaSidecar?.bindUploaded(
+         order,String(result.uploadedId),new Uint8Array(await pdf.arrayBuffer()))===true;
+     }catch(error){console.warn('Макетная: внешняя отметка PDF недоступна',error)}
      state.delete(order);
      await refreshCards();
-     if(status)status.textContent='Готовый PDF «'+pdf.name+'» добавлен к заказу №'+order+'. Ранее загруженные макеты сохранены.';
+     if(status)status.textContent='Готовый PDF «'+pdf.name+'» добавлен к заказу №'+order+
+       (recognized?'. Макет отмечен пиктограммой М.':
+         '. Внешний реестр происхождения недоступен; PDF не изменялся.');
    }catch(error){
      if(status)status.textContent='Отправка не подтверждена: '+String(error?.message||error);
    }finally{
@@ -132,6 +142,7 @@ function start(){
      try{reply=await response.json()}catch{throw Error('Непонятный ответ gifts.ru; проверьте макеты в заказе.')}
      if(!response.ok||reply?.ok!==true||reply.deletedId!==file.id)
        throw Error(reply?.error||'Удаление файла не подтверждено.');
+     try{await window.gwbMaketnayaSidecar?.forget(order,file.id)}catch{}
      state.delete(order);
      await refreshCards();
      if(status)status.textContent='Удалён только макет «'+file.original+'» из заказа №'+order+'.';
@@ -173,7 +184,7 @@ function start(){
      if(!/^\d{1,20}$/.test(id)||!/^.{1,200}\.pdf$/i.test(name)||
         String(file?.order||'')!==order||seen.has(id))continue;
      seen.add(id);
-     out.push({id,name,original:String(file.originalName||name).slice(0,200),canDelete:file.canDelete===true});
+     out.push({id,name,original:String(file.originalName||name).slice(0,200),canDelete:file.canDelete===true,origin:'external'});
    }
    return out;
  }
@@ -184,7 +195,14 @@ function start(){
      const response=await fetch('/api/orders/'+order,{credentials:'same-origin',cache:'no-store'});
      const data=await response.json();
      if(!response.ok)throw Error(data.error||'Не удалось прочитать заказ');
-     return cleanFiles(data,order);
+     const files=cleanFiles(data,order);
+     await Promise.all(files.map(async file=>{
+       try{
+         if(await window.gwbMaketnayaSidecar?.marker(order,file.id))
+           file.origin='maketnaya';
+       }catch{}
+     }));
+     return files;
    })();
    state.set(order,task);
    try{return await task}catch(error){state.delete(order);throw error}
@@ -245,7 +263,15 @@ function start(){
        filename.textContent=file.original;
        const meta=document.createElement('div');meta.className='gwb-order-maket-meta';
        meta.textContent=file.original!==file.name?'В заказе: '+file.name:'PDF из заказа';
-       data.append(filename,meta);
+       const nameRow=document.createElement('div');nameRow.className='gwb-order-maket-name-row';
+       if(file.origin==='maketnaya'){
+         const mark=document.createElement('span');
+         mark.className='gwb-order-maket-origin';mark.textContent='М';
+         mark.title='Создано в Макетной · внешний реестр, PDF без служебной отметки';
+         mark.setAttribute('aria-label','Создано в Макетной');
+         nameRow.append(mark);
+       }
+       nameRow.append(filename);data.append(nameRow,meta);
        const actions=document.createElement('div');
        actions.className='gwb-order-maket-actions'+(fieldMode?' is-field-mode':'');
        const action=document.createElement('button');action.type='button';
@@ -311,7 +337,10 @@ function start(){
      const pdf=new File([bytes],file.original||file.name,{type:'application/pdf'});
      if(!native?.inspect||!native?.apply)
        throw Error('Модуль анализа PDF ещё не загрузился.');
-     const origin=await native.inspect(pdf,scope);
+     let origin={kind:'external'};
+     try{origin=await window.gwbMaketnayaSidecar?.inspect(bytes,scope,order,file.id)||origin}
+     catch(error){console.warn('Макетная: внешний реестр недоступен',error)}
+     if(origin.kind==='external')origin=await native.inspect(pdf,scope);
      if(orderInput.value.trim()!==before||!nativeScope()||editor.hidden)
        throw Error('Заказ или поле изменились во время проверки PDF.');
      if(origin.kind==='maketnaya'){
