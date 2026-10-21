@@ -115,6 +115,7 @@ function start(){
          order,String(result.uploadedId),new Uint8Array(await pdf.arrayBuffer()))===true;
      }catch(error){console.warn('Макетная: внешняя отметка PDF недоступна',error)}
      state.delete(order);
+     for(const key of [...originScans.keys()])if(key.startsWith(order+':'))originScans.delete(key);
      await refreshCards();
      if(status)status.textContent='Готовый PDF «'+pdf.name+'» добавлен к заказу №'+order+
        (recognized?'. Макет отмечен пиктограммой М.':
@@ -144,6 +145,7 @@ function start(){
        throw Error(reply?.error||'Удаление файла не подтверждено.');
      try{await window.gwbMaketnayaSidecar?.forget(order,file.id)}catch{}
      state.delete(order);
+     for(const key of [...originScans.keys()])if(key.startsWith(order+':'))originScans.delete(key);
      await refreshCards();
      if(status)status.textContent='Удалён только макет «'+file.original+'» из заказа №'+order+'.';
    }catch(error){
@@ -207,6 +209,27 @@ function start(){
    state.set(order,task);
    try{return await task}catch(error){state.delete(order);throw error}
  }
+ const originScans=new Map();
+ function scanEmbeddedOrigin(order,file){
+   const identify=window.gwbUploadedMaketNative?.identify;
+   if(typeof identify!=='function')return;
+   const key=order+':'+file.id;
+   if(originScans.has(key))return;
+   originScans.set(key,(async()=>{
+     const response=await fetch('/api/orders/'+order+'/uploaded-makets/'+file.id+'.pdf',{
+       credentials:'same-origin',cache:'no-store'
+     });
+     if(!response.ok)return;
+     const bytes=new Uint8Array(await response.arrayBuffer());
+     if(bytes.length<5||bytes.length>40*1024*1024)return;
+     const origin=await identify(bytes);
+     if(origin.kind==='maketnaya'){
+       file.origin='maketnaya';
+       file.originFormat='embedded';
+       if(orderInput.value.trim()===order&&!editor.hidden)render();
+     }
+   })().catch(error=>console.warn('Макетная: не удалось проверить происхождение PDF',error)));
+ }
  function basketCards(){return [...basket.querySelectorAll('.basket-order')]}
  function cardOrder(card){
    const txt=card.querySelector('.basket-order-title')?.textContent||'';
@@ -257,6 +280,7 @@ function start(){
      title.textContent='Макеты, загруженные в gifts.ru ('+files.length+')';
      const fieldMode=isFieldMode();
      files.forEach(file=>{
+       scanEmbeddedOrigin(order,file);
        const item=document.createElement('div');item.className='gwb-order-maket-item';
        const data=document.createElement('div');data.className='gwb-order-maket-data';
        const filename=document.createElement('div');filename.className='gwb-order-maket-filename';
@@ -267,7 +291,9 @@ function start(){
        if(file.origin==='maketnaya'){
          const mark=document.createElement('span');
          mark.className='gwb-order-maket-origin';mark.textContent='М';
-         mark.title='Создано в Макетной · внешний реестр, PDF без служебной отметки';
+         mark.title=file.originFormat==='embedded'
+           ? 'Создано в Макетной · исходные логотипы и бинарный блок находятся внутри PDF'
+           : 'Создано в Макетной · сохранена локальная привязка прежнего формата';
          mark.setAttribute('aria-label','Создано в Макетной');
          nameRow.append(mark);
        }
@@ -367,7 +393,7 @@ function start(){
  }
  basket.addEventListener('click',()=>{queueMicrotask(render)});
  document.getElementById('refreshBasket')?.addEventListener('click',()=>{
-   ++refreshGeneration;state.clear();section.hidden=true;
+   ++refreshGeneration;state.clear();originScans.clear();section.hidden=true;
  });
  const observer=new MutationObserver(mutations=>{
    if(mutations.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&
@@ -391,7 +417,7 @@ function start(){
      void readOrder(order).then(render).catch(()=>{});
    queueMicrotask(render);
  });
- window.gwbUploadedMaketsUi={refresh:()=>{state.clear();return refreshCards()},getOrder:readOrder};
+ window.gwbUploadedMaketsUi={refresh:()=>{state.clear();originScans.clear();return refreshCards()},getOrder:readOrder};
  syncReadyButtons();
  void refreshCards();
 }
