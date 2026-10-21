@@ -100,11 +100,16 @@ fn gwb_install_bridge(host: &Host) {
     if window.add_event_listener_with_callback("message",listener.as_ref().unchecked_ref()).is_ok(){listener.forget();}
 }
 fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Result<(), String> {
-    // Every artwork opened inside Maketnaya uses genuine VectorCraft CMYK
-    // document mode. Preserve incoming object colours as editable objects;
-    // changing the working space is not a destructive RGB->CMYK rasterization.
-    let Some(doc)=app.session.active_mut() else{return Err("Логотип ещё не открыт".into());};
-    std::sync::Arc::make_mut(&mut doc.doc).color_mode=vectorcraft_doc::ColorMode::Cmyk;
+    // A CMYK document must NOT be created by silently relabeling RGB paint.
+    // Use VectorCraft's own color-management command: when converting the
+    // imported document to the required initial CMYK workspace, convert
+    // eligible object paints via its CMS rather than merely changing a flag.
+    let Some(doc)=app.session.active() else{return Err("Логотип ещё не открыт".into());};
+    if doc.doc.color_mode!=vectorcraft_doc::ColorMode::Cmyk {
+        app.session.execute("file.documentColorMode",
+          &serde_json::json!({"mode":"cmyk","convert":true}))
+          .map_err(|e|format!("Не удалось преобразовать цвета документа в CMYK: {e}"))?;
+    }
     let (w,h,was_prepared)=*field;
     let (target_w,target_h)=(w*72.0/25.4,h*72.0/25.4);
     let Some(state)=app.session.active() else{return Err("Логотип ещё не открыт".into());};
@@ -128,7 +133,7 @@ fn gwb_apply_field_size(app: &mut VectorcraftApp, field: &(f64,f64,bool)) -> Res
 // The actual printed artwork is NOT the VectorCraft artboard. Export with the
 // source engine's visual art bounds and send the bounding box relative to the
 // original field separately so Maketnaya restores geometry exactly once.
-fn gwb_send_cropped_logo(bytes: &[u8], pdf: &[u8], note: &str, bounds: [f64;4]) {
+fn gwb_send_cropped_logo(bytes: &[u8], pdf: &[u8], note: &str, bounds: [f64;4], color_space: &str) {
     use js_sys::{Object,Reflect,Uint8Array};
     use wasm_bindgen::{JsCast,JsValue};
     let Some(window)=web_sys::window() else {return};
@@ -140,7 +145,7 @@ fn gwb_send_cropped_logo(bytes: &[u8], pdf: &[u8], note: &str, bounds: [f64;4]) 
     set("message",&JsValue::from_str(note));
     set("bytes",&Uint8Array::from(bytes).into());
     set("pdfBytes",&Uint8Array::from(pdf).into());
-    set("colorSpace",&JsValue::from_str("CMYK"));
+    set("colorSpace",&JsValue::from_str(color_space));
     set("nativePdf",&JsValue::TRUE);
     let rectangle=Object::new();
     for (key,value) in ["x","y","w","h"].into_iter().zip(bounds) {
@@ -196,10 +201,13 @@ fn gwb_export_editor(app: &mut VectorcraftApp, requested_field: Option<(f64,f64,
     // SVG export uses the same visual art bounds, shifting their origin to
     // (0,0). No page-sized empty margins and no rasterization of vector paths.
     let opts=serde_json::json!({"images":"embed","useArtboards":false});
-    if st.doc.color_mode!=vectorcraft_doc::ColorMode::Cmyk {
-        gwb_send("gwb-vectorcraft-error",None,Some("Исходный документ должен оставаться CMYK; перенос остановлен"));
-        return;
-    }
+    // The user can legitimately convert the document to RGB or CMYK. Read
+    // its REAL current mode; artwork paints can still be mixed even when the
+    // working mode is CMYK. The parent verifies the actual PDF operators.
+    let actual_mode=match st.doc.color_mode {
+        vectorcraft_doc::ColorMode::Cmyk=>"CMYK",
+        vectorcraft_doc::ColorMode::Rgb=>"RGB",
+    };
     match fileio::encode_with_warnings(&st.doc,"svg",&opts) {
         Ok((bytes,warnings))=>{
             if bytes.is_empty()||bytes.len()>40*1024*1024{
@@ -212,16 +220,16 @@ fn gwb_export_editor(app: &mut VectorcraftApp, requested_field: Option<(f64,f64,
             let (pdf_bytes,pdf_warnings)=match fileio::encode_with_warnings(&st.doc,"pdf",&pdf_opts){
                 Ok(done)=>done,
                 Err(err)=>{
-                    gwb_send("gwb-vectorcraft-error",None,Some(&format!("Не удалось сохранить исходные CMYK в PDF: {err}")));
+                    gwb_send("gwb-vectorcraft-error",None,Some(&format!("Не удалось экспортировать PDF с исходными цветами: {err}")));
                     return;
                 }
             };
             if !pdf_bytes.starts_with(b"%PDF-")||pdf_bytes.len()>40*1024*1024 {
-                gwb_send("gwb-vectorcraft-error",None,Some("Недопустимый PDF при переносе CMYK (до 40 МБ)"));
+                gwb_send("gwb-vectorcraft-error",None,Some("Недопустимый PDF при переносе (до 40 МБ)"));
                 return;
             }
             let notes=warnings.into_iter().chain(pdf_warnings).collect::<Vec<_>>().join("\n");
-            gwb_send_cropped_logo(&bytes,&pdf_bytes,&notes,bounds);
+            gwb_send_cropped_logo(&bytes,&pdf_bytes,&notes,bounds,actual_mode);
         }
         Err(err)=>gwb_send("gwb-vectorcraft-error",None,Some(&err.to_string())),
     };
