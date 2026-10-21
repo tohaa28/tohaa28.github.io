@@ -17,10 +17,10 @@ export function gwbReport(type,message) {
   if(!window.__gwbTraceToken)return;
   window.parent.postMessage({type,token:window.__gwbTraceToken,message},'*');
 }
-export function gwbReturnSvg(svg,x,y,w,h,pdfBytes) {
+export function gwbReturnSvg(svg,x,y,w,h,pdfBytes,colorSpace) {
   if(!window.__gwbTraceToken)return;
   window.parent.postMessage({type:'gwb-tracedraw-svg',
-    token:window.__gwbTraceToken,svg,pdfBytes,colorSpace:'CMYK',nativePdf:true,logoBoundsMm:{x,y,w,h}},'*');
+    token:window.__gwbTraceToken,svg,pdfBytes,colorSpace,nativePdf:true,logoBoundsMm:{x,y,w,h}},'*');
 }
 export function gwbTakeApply() {
   const requested=window.__gwbTraceApply===true;
@@ -35,7 +35,7 @@ export function gwbIsEmbedded() {return typeof window.__gwbTraceToken==='string'
 extern "C" {
   fn gwbTakeOpen() -> JsValue;
   fn gwbReport(kind:&str,message:&str);
-  fn gwbReturnSvg(svg:&str,x:f64,y:f64,w:f64,h:f64,pdf:JsValue);
+  fn gwbReturnSvg(svg:&str,x:f64,y:f64,w:f64,h:f64,pdf:JsValue,color_space:&str);
   fn gwbTakeApply() -> bool;
   fn gwbQueueApply();
   fn gwbIsEmbedded() -> bool;
@@ -88,9 +88,8 @@ fn export(app:&crate::app::App)->Result<(),String>{
   if app.doc().pages.len()!=1 {
     return Err("TraceDraw должен содержать ровно одно поле нанесения".into());
   }
-  if app.doc().metadata.primary_color_mode != tracedraw_core::document::PrimaryColorMode::Cmyk {
-    return Err("Документ сменил цветовую модель CMYK; перенос остановлен".into());
-  }
+  // RGB object colors and RGB documents are accepted. Never coerce
+  // their paint operators to CMYK merely to pass the handoff.
   let f=app.page_size();
   if (f.width-fw).abs()>0.001||(f.height-fh).abs()>0.001 {
     return Err("Размер поля изменён; перенос остановлен для защиты шаблона".into());
@@ -124,13 +123,17 @@ fn export(app:&crate::app::App)->Result<(),String>{
     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}mm\" height=\"{h}mm\" viewBox=\"{x} {y} {w} {h}\">{}",
     &full[end+1..]);
   if svg.len()>40*1024*1024 {return Err("Экспорт SVG превышает 40 МБ".into())}
-  // Keep original process colors in a printable PDF. The SVG is a
-  // geometry preview only; never send RGB SVG as final CMYK artwork.
+  // PDF is the printable artwork. The SVG only checks shape geometry.
+  // Original RGB/CMYK bitmap and path colors stay in their source model.
   let pdf=tracedraw_io::pdf::document_to_pdf(app.doc());
   if !pdf.starts_with(b"%PDF-")||pdf.len()>40*1024*1024 {
-    return Err("CMYK PDF пуст или больше 40 МБ".into());
+    return Err("PDF пуст или больше 40 МБ".into());
   }
-  gwbReturnSvg(&svg,x,y,w,h,js_sys::Uint8Array::from(pdf.as_slice()).into());
+  let model=match app.doc().metadata.primary_color_mode {
+    tracedraw_core::document::PrimaryColorMode::Cmyk=>"CMYK",
+    tracedraw_core::document::PrimaryColorMode::Rgb=>"RGB",
+  };
+  gwbReturnSvg(&svg,x,y,w,h,js_sys::Uint8Array::from(pdf.as_slice()).into(),model);
   Ok(())
 }
 pub fn poll(app:&mut crate::app::App,ctx:&egui::Context){
