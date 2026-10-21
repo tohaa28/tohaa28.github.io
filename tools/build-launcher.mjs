@@ -4,12 +4,14 @@ import {applyLogoEditorBridge} from './patch-logo-editor-bridge.mjs';
 import {applyPlacementHistory} from './patch-placement-history.mjs';
 import {applyLogoDrop} from './patch-logo-drop.mjs';
 import {applyUploadedMaketsBridge} from './patch-order-uploaded-makets.mjs';
+import {applyMaketnayaProvenance} from './patch-maketnaya-provenance.mjs';
 import {launcherCss,motionMarkup,MOTION_DURATION_MS} from './launcher-motion.mjs';
 applyLogoPreflight();
 applyLogoEditorBridge();
 applyPlacementHistory();
 applyLogoDrop();
 applyUploadedMaketsBridge();
+applyMaketnayaProvenance();
 stampComponentVersions();
 import fs from "node:fs";
 
