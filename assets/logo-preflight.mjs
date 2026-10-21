@@ -228,7 +228,7 @@ export function pdfAppliedPaintOperators(source) {
   for(const m of cleaned.matchAll(re)){
     if(m[2]){
       const tag=m[2],values=m[1].trim().split(/\s+/).map(Number);
-      const count=/^[kK]$/.test(tag)?4:/^[rR]g$/.test(tag)?3:1;
+      const count=/^[kK]$/.test(tag)?4:/^rg$/i.test(tag)?3:1;
       if(values.length!==count||!values.every(v=>Number.isFinite(v)&&v>=0&&v<=1))continue;
       const col={model:count===4?'CMYK':count===3?'RGB':'Gray',values};
       if(tag===tag.toUpperCase())stroke=col;else fill=col;
