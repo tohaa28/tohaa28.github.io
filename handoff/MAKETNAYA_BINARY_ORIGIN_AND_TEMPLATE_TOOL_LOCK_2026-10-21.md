@@ -55,3 +55,24 @@
 - `checkpoint-maketnaya-pdf-embedded-origin-20261021-production` = `faea872c810fb27c1b2c0517484bb72792910bf1`.
 
 Содержимое `mockup-profiles.json` и `method-settings.json` перед/после на production и source идентично. **Нельзя сбрасывать ветку целиком ради отката, чтобы не потерять пользовательские записи и настройки.**
+
+## Финальная интеграционная проверка и исправление блокировки
+
+После первой публикации полная браузерная проверка обнаружила гонку при выборе поля: native `#editorClip` получал `disabled=false`, но атрибут `aria-disabled="true"` от блокировки шаблона оставался, и Playwright не мог нажать на инструмент. Были добавлены диагностические сообщения в `tests/pdf-labels-browser.mjs`; они подтвердили `fieldActive=true`, `step3Hidden=false`, `clipDisabled=false`, `clipAria="true"`.
+
+В `assets/template-selection-tool-lock.js` атрибут `aria-disabled` теперь безусловно очищается при входе в действительный режим редактирования. Нативный рефреш `gwbRefreshEditorState` применяется после изменения режима; в `tools/patch-maketnaya-provenance.mjs` мост рефреша вставляется после других штатных патчей. Видимые инструменты выбора шаблона не блокируются.
+
+**Финальный полный GitHub Actions run** https://github.com/tohaa28/tohaa28.github.io/actions/runs/39579407371:
+
+- `precheck` — **SUCCESS**, 199 модульных тестов, 0 ошибок;
+- `publish` — **SUCCESS**;
+- `browser_verify / browser-test` — **SUCCESS**, включая реальный запуск в тестовом браузере gifts.ru, выбор поля, работу `#editorClip` и интеграционные сценарии.
+- UI версия: **Макетная rd4486c65**.
+
+Канонический финальный контрольный снимок:
+- source: `checkpoint-maketnaya-binary-pdf-template-tools-qa-20261021-source` → `9c0ede483be01586ea2fecf31d27a8051dc0ff1b`;
+- main/production: `checkpoint-maketnaya-binary-pdf-template-tools-qa-20261021-production` → `2c8cc324e633530f978c31845abd2cf943886dfa`.
+
+Сверены SHA исходников и публикации: `mockup-profiles.json` одинаков `750a78701bbba0ea82ec59fd95f78b01dfd37026`, `method-settings.json` одинаков `cbf6c8204e4fb3892d806342d37debefb8d9038e`. Регистры данных не были изменены.
+
+**Ограничение:** CI не выполнял реальную авторизованную публикацию PDF и не проверял полноту распознавания внешним установленным клиентом. Отметка происхождения формата v2 зависит только от вложенных бинарных данных PDF, но остаётся технически воспроизводимой (не цифровая подпись/шифрование).
