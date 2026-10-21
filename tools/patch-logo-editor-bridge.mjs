@@ -61,10 +61,15 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
   const actual=target?[y.active,target.fieldIndex,target.page,art?.name||""].join("|"):null;
   if(!target||!y.field||token!==actual)throw new Error("Выбранное поле изменилось; сохранение отменено, чтобы не заменить чужой логотип");
   y.busy=true;X();
+  let printCheckApplied=false;
   try{
     options?.onProgress?.(70,"Макетная считывает исходные векторные и растровые объекты PDF…");
+    // Qe(...,"art") runs the ORIGINAL PrintCheck inspectArtwork on the
+    // returned PDF, not on the old logo, its SVG preview or the constructor.
     const next=await Qe(file,"art");
-    options?.onProgress?.(87,"Разбор PDF завершён. Проверяем геометрию и исходные цвета…");
+    if(!next.preflight||typeof next.preflight!=="object")
+      throw new Error("PrintCheck не смог проверить полученный из редактора логотип");
+    options?.onProgress?.(87,"PrintCheck заново проверил PDF. Сопоставляем размеры и цветность…");
     if(nativePdfColors){
       if(!next.pdfCompatible||next.ext!=="pdf"||next.pages!==1)
         throw new Error("Исходный PDF с вектором/растром потерян при импорте");
@@ -111,11 +116,31 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     y.art=next;y.placement=keep;
     v("artworkName").textContent=file.name;
     _t();X();
-    Q(nativePdfColors?"Логотип перенесён в PDF без преобразования RGB/CMYK и растра.":"Изменённый логотип применён к выбранному полю.");
+    // X() invokes pe()/checkLogo and the PrintCheck detail scanner for
+    // every current placement. A new art object invalidates the old scan
+    // key, so defects found before editing cannot remain attached to it.
+    printCheckApplied=true;
+    Q(nativePdfColors?"Логотип перенесён в PDF. PrintCheck повторно проверяет нанесение и мелкие элементы.":"PrintCheck повторно проверяет изменённый логотип.");
     window.dispatchEvent(new CustomEvent("gwb-editor-readiness-changed"));
-    options?.onProgress?.(99,"Логотип установлен. Завершаем обновление шаблона…");
+    options?.onProgress?.(99,"Новый логотип установлен. PrintCheck повторно запущен…");
     return {name:file.name,fieldIndex:target.fieldIndex};
-  }finally{y.busy=false;X()}
+  }finally{
+    y.busy=false;X();
+    if(printCheckApplied){
+      const report=window.gwbLogoPreflight?.find(r=>
+        r.fieldIndex===target.fieldIndex&&r.page===target.page);
+      const detail=window.gwbDetailCheck?.entries?.find(e=>
+        e.key===window.gwbDetailCheck?.selectedKey);
+      window.gwbPrintCheckLastEditorReturn={
+        name:file.name,fieldIndex:target.fieldIndex,page:target.page,
+        checked:!!report,findings:report?.findings?.length??0,
+        detailState:detail?.state||"unavailable",time:Date.now()
+      };
+      window.dispatchEvent(new CustomEvent("gwb-printcheck-editor-return",{
+        detail:window.gwbPrintCheckLastEditorReturn
+      }));
+    }
+  }
 };
 // Personal variants are separate from order submissions. Capturing or restoring
 // them happens ONLY after an explicit user action; never on basket refresh.
