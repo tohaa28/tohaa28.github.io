@@ -7,17 +7,22 @@ const filenames=[
  {id:'18311644',filename:'8006776_maket_2_201026_143328.pdf',original:'gerb2.pdf'},
  {id:'18311643',filename:'8006776_maket_1_201026_143328.pdf',original:'che.pdf'}
 ];
-const uploaded=filenames.map(file=>
- '<div class="flex-item flex-main"><span class="size--md">'+
+const uploadMarkup=file=>
+ '<div class="j_maket_host"><div class="flex"><div class="flex-item flex-main"><span class="size--md">'+
  '<a data-maket="true" href="https://gifts.ru/cart/act/mda?oid='+OID+'&amp;id='+file.id+'">'+file.filename+'</a>'+
- '</span><br><span class="size--sm"><span title="Исходное имя закачанного файла">'+file.original+'</span></span></div>'
-).join('');
+ '</span><br><span class="size--sm"><span title="Исходное имя закачанного файла">'+file.original+'</span></span></div>'+
+ '<div class="flex-item"><a href="https://gifts.ru/private/order/'+ORDER+'#" title="Удалить макет" '+
+ 'class="j_delete_maket" data-id="'+file.id+'" data-orderid="'+OID+'"></a></div></div></div>';
+const uploaded=filenames.map(uploadMarkup).join('');
+const removedIds=new Set();
+const visibleUploads=()=>filenames.filter(file=>!removedIds.has(file.id)).map(uploadMarkup).join('');
 let uploadedExtra='';
 const uploadForm='<form id="j_upload_area"><input type="hidden" name="oid" value="'+OID+'">'+
  '<input type="hidden" name="type" value="10"><input type="hidden" name="order" value="'+ORDER+'">'+
  '<input type="hidden" name="folder" value="S1"><input type="file" name="media_file[]" multiple></form>';
 const malicious='<a data-maket="true" href="https://gifts.ru/cart/act/mda?oid=99999&amp;id=1234567">not-ours.pdf</a>'+
- '<a href="https://gifts.ru/drawing?action=getOrderItemPdf&amp;orderitemid=49428451">Шаблон конструктора</a>';
+ '<a href="https://gifts.ru/drawing?action=getOrderItemPdf&amp;orderitemid=49428451">Шаблон конструктора</a>'+
+ '<a class="j_delete_maket" data-id="-111" data-orderid="'+OID+'" href="https://gifts.ru/private/order/'+ORDER+'#">Удалить все</a>';
 const orderHtml='<!doctype html><html><body>'+
  '<div id="j_cart_host" data-orderid="'+OID+'">'+
  '<li data-itemid="49428451" data-drawtaskids="27237891"><div class="cart-tbl-id">'+
@@ -41,7 +46,7 @@ try {
  const page=await browser.newPage();
  const errors=[];page.on('pageerror',err=>errors.push(err.message));
  const routed=[];
- let postedPdf='';
+ let postedPdf='',deleteCount=0;
  await page.route('https://gifts.ru/**',async route=>{
    const u=new URL(route.request().url());
    routed.push(u.pathname+u.search);
@@ -49,16 +54,27 @@ try {
      return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:pageHtml});
    }
    if(u.pathname==='/private/order/'+ORDER)
-     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml.replace(uploaded+malicious,uploaded+uploadedExtra+malicious)});
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml.replace(uploaded+malicious,visibleUploads()+uploadedExtra+malicious)});
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='makets_popup')
-     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml.replace(uploaded+malicious,uploaded+uploadedExtra+malicious)})});
+     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml.replace(uploaded+malicious,visibleUploads()+uploadedExtra+malicious)})});
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='upload_makets'){
      assert.equal(route.request().method(),'POST');
      const body=route.request().postDataBuffer()?.toString('utf8')||'';
      for(const expected of ['name="oid"','name="type"','name="order"','name="folder"','name="media_file[]"','%PDF-'])
        assert.ok(body.includes(expected),'Missing verified form field: '+expected);
      postedPdf=body.includes('готовый_макет.pdf')?'готовый_макет.pdf':'8006776_77700.60_макет.pdf';
-     uploadedExtra='<div class="flex-item flex-main"><a data-maket="true" href="https://gifts.ru/cart/act/mda?oid='+OID+'&amp;id=18311645">8006776_maket_3.pdf</a><span title="Исходное имя закачанного файла">'+postedPdf+'</span></div>';
+     uploadedExtra=uploadMarkup({id:'18311645',filename:'8006776_maket_3.pdf',original:postedPdf});
+     return route.fulfill({status:200,contentType:'application/json',body:'{"success":true}'});
+   }
+   if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='delete_maket'){
+     assert.equal(route.request().method(),'GET','Only native per-file GET action is supported');
+     assert.equal(u.searchParams.get('type'),'10');
+     assert.equal(u.searchParams.get('orderid'),OID);
+     const id=u.searchParams.get('id');
+     assert.ok(['18311644','18311643','18311645'].includes(id),'Never delete all or foreign IDs');
+     deleteCount++;
+     removedIds.add(id);
+     if(id==='18311645')uploadedExtra='';
      return route.fulfill({status:200,contentType:'application/json',body:'{"success":true}'});
    }
    if(u.pathname==='/cart/act/mda')
@@ -79,6 +95,9 @@ try {
  assert.ok(files.every(f=>f.attachmentScope==='order'&&!f.boundItemId&&!f.boundFieldIndex),
    'Order scoped uploads cannot be incorrectly bound to duplicate article or print');
  assert.ok(!files.some(f=>f.id==='1234567'),'Wrong order and templates excluded');
+ assert.ok(files.every(f=>f.canDelete===true),'Each file needs its own verified gifts.ru delete control');
+ const badDelete=await page.evaluate(async()=>fetch('/api/orders/8006776/uploaded-makets/1234567',{method:'DELETE'}).then(r=>r.status));
+ assert.equal(badDelete,404,'Unknown ID must not invoke destructive gifts.ru action');
  const good=await page.evaluate(async()=>{const r=await fetch('/api/orders/8006776/uploaded-makets/18311644.pdf');return {ok:r.ok,bytes:new Uint8Array(await r.arrayBuffer())}});
  assert.ok(good.ok);
  assert.equal(new TextDecoder().decode(good.bytes.slice(0,5)),'%PDF-');
@@ -105,8 +124,14 @@ try {
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0,'No field view = no edit buttons');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button.gwb-order-maket-download').count(),2,
    'Every attached PDF has a single download action in full-template mode');
- assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),2,
-   'Do not stack competing actions next to each other');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2,
+   'Non-field mode shows a delete action beside every download');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),4,
+   'Exactly download and delete for every attached PDF');
+ // Destructive operation must never begin without explicit confirmation.
+ await page.evaluate(()=>{window.confirm=()=>false});
+ await page.locator('#gwbOrderMakets .gwb-order-maket-delete').first().click();
+ assert.equal(deleteCount,0,'Cancelled dialog never reaches the deletion endpoint');
  await page.evaluate(()=>{
    window.__imported=[];
    const scope={order:'8006776',article:'77700.60',itemId:'49428451',
@@ -129,6 +154,8 @@ try {
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-edit').length===2);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),0,
    'Download is replaced, not displayed beside Edit');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),0,
+   'Delete must disappear in field editor mode');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),2,
    'One action per PDF must be preserved in field editing mode');
  await page.locator('#gwbOrderMakets .gwb-order-maket-item button').first().click();
@@ -139,11 +166,12 @@ try {
  assert.match(imported[0].name,/\.pdf$/i);
  assert.ok(routed.some(path=>path.includes('/cart/act/mda?')),
    'Authorized download was routed via gifts.ru with its internal order ID');
- // Leaving field view restores the single download action for every file.
+ // Leaving field view restores download and delete for every file.
  await page.evaluate(()=>{document.getElementById('zoomPage').hidden=true;document.getElementById('fieldLogoTools').hidden=true});
- await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===2);
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===4);
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),2);
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2);
  // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
  await page.evaluate(()=>{window.confirm=()=>true});
  await page.locator('#gwbUploadReadySimple').click();
@@ -164,7 +192,9 @@ try {
      const row=card.getBoundingClientRect();
      const dr=data.getBoundingClientRect(),fr=filename.getBoundingClientRect();
      const ar=actions.getBoundingClientRect(),br=button.getBoundingClientRect();
-     return {dataWidth:dr.width,filenameWidth:fr.width,filenameHeight:fr.height,
+     const buttons=[...actions.querySelectorAll('button')].map(button=>button.getBoundingClientRect());
+     return {buttonBounds:buttons.map(box=>({left:box.left,right:box.right,top:box.top,bottom:box.bottom})),
+       dataWidth:dr.width,filenameWidth:fr.width,filenameHeight:fr.height,
        fontSize:parseFloat(getComputedStyle(filename).fontSize),wordBreak:getComputedStyle(filename).wordBreak,
        cardLeft:row.left,cardRight:row.right,buttonLeft:br.left,buttonRight:br.right,
        actionsWidth:ar.width,buttonWidth:br.width,buttons:actions.querySelectorAll('button').length};
@@ -176,12 +206,28 @@ try {
    assert.ok(item.filenameHeight<item.fontSize*6,
      'Filename must wrap over a few lines rather than one character per line');
    assert.equal(item.wordBreak,'normal');
-   assert.equal(item.buttons,1);
-   assert.ok(item.buttonLeft>=item.cardLeft-1 && item.buttonRight<=item.cardRight+1,
-     'Only action button must fit inside the card');
-   assert.ok(Math.abs(item.actionsWidth-item.buttonWidth)<3,
-     'Action button should use complete available row width');
+   assert.equal(item.buttons,2,'Two actions fit in non-field view');
+   assert.ok(item.buttonBounds.every(box=>box.left>=item.cardLeft-1&&box.right<=item.cardRight+1),
+     'Both actions must fit inside the card');
+   assert.ok(item.buttonBounds[0].right<item.buttonBounds[1].left,
+     'Download and delete need separate equal-width columns');
+   assert.ok(Math.abs(item.buttonBounds[0].top-item.buttonBounds[1].top)<2,
+     'Both actions must share one row without overlap');
+   assert.ok(Math.abs((item.buttonBounds[0].right-item.buttonBounds[0].left)-
+                      (item.buttonBounds[1].right-item.buttonBounds[1].left))<4,
+     'Both button columns must have equal width');
  }
-  assert.deepEqual(errors,[],'No browser runtime errors');
+ // Explicitly remove one original PDF, never the already uploaded third file.
+ await page.locator('#gwbOrderMakets .gwb-order-maket-item').filter({hasText:'gerb2.pdf'})
+   .locator('button.gwb-order-maket-delete').click();
+ await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Удалён только макет'),null,{timeout:15000});
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===2,null,{timeout:15000});
+ assert.equal(deleteCount,1,'Only one delete request is emitted');
+ assert.deepEqual([...removedIds],['18311644']);
+ assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
+ assert.match(await page.locator('#gwbOrderMakets').textContent(),/8006776_77700\.60_макет\.pdf/);
+ assert.doesNotMatch(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
+ assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/2/);
+ assert.deepEqual(errors,[],'No browser runtime errors');
  console.log('Uploaded order layouts: 2 files, visible in basket and editor, explicit editable PDF import, foreign attachment rejected — PASS');
 } finally { await browser.close(); }
