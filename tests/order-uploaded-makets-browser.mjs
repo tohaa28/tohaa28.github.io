@@ -105,6 +105,17 @@ try {
    'Both native forms must grant per-file deletion: gifts.ru/cart# and private/order/:number#');
  const badDelete=await page.evaluate(async()=>fetch('/api/orders/8006776/uploaded-makets/1234567',{method:'DELETE'}).then(r=>r.status));
  assert.equal(badDelete,404,'Unknown ID must not invoke destructive gifts.ru action');
+ const invalidReplace=await page.evaluate(async()=>{
+   const form=new FormData();
+   form.append('media_file[]',new File(['%PDF-1.7\\nchanged'],'changed.pdf',{type:'application/pdf'}));
+   form.append('expected_original_name','not-the-real-original.pdf');
+   const response=await fetch('/api/orders/8006776/uploaded-makets/18311644',{
+     method:'PUT',body:form
+   });
+   return response.status;
+ });
+ assert.equal(invalidReplace,409,'Replace requires exact original name and verified file ID');
+ assert.equal(uploadedExtra.length,0,'Failed replacement must not upload any file');
  const good=await page.evaluate(async()=>{const r=await fetch('/api/orders/8006776/uploaded-makets/18311644.pdf');return {ok:r.ok,bytes:new Uint8Array(await r.arrayBuffer())}});
  assert.ok(good.ok);
  assert.equal(new TextDecoder().decode(good.bytes.slice(0,5)),'%PDF-');
@@ -296,17 +307,27 @@ try {
    assert.ok(downloadWidth>=130&&downloadWidth>iconWidth*3,
      'Download uses remaining width instead of sharing equal columns');
  }
+ // A failed deletion AFTER confirmed upload must preserve both copies and
+ // report partial success. It cannot be incorrectly announced as overwrite.
+ failDeleteId='18311646';
+ await page.locator('#gwbSaveReadySimple').click();
+ await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Новый PDF сохранён'),null,{timeout:15000});
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===4,null,{timeout:15000});
+ assert.ok(uploadedExtra.some(x=>x.id==='18311646')&&uploadedExtra.some(x=>x.id==='18311647'),
+   'Both original and new copy survive if GIFTS refuses deletion');
+ assert.deepEqual([...removedIds],['18311645'],'Failed delete must leave old attachment intact');
+ failDeleteId=null;
  // Explicitly remove one original PDF, never the already uploaded third file.
  await page.locator('#gwbOrderMakets .gwb-order-maket-item').filter({hasText:'gerb2.pdf'})
    .locator('button.gwb-order-maket-delete').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Удалён только макет'),null,{timeout:15000});
- await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===2,null,{timeout:15000});
- assert.equal(deleteCount,2,'One overwrite deletion and one explicit removal occurred');
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===3,null,{timeout:15000});
+ assert.equal(deleteCount,3,'One overwrite deletion, one unsuccessful replacement delete, one explicit removal');
  assert.deepEqual([...removedIds],['18311645','18311644']);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/8006776_77700\.60_макет\.pdf/);
  assert.doesNotMatch(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
- assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/2/);
+ assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/3/);
  assert.deepEqual(errors,[],'No browser runtime errors');
  console.log('Uploaded order layouts: 2 files, visible in basket and editor, explicit editable PDF import, foreign attachment rejected — PASS');
 } finally { await browser.close(); }
