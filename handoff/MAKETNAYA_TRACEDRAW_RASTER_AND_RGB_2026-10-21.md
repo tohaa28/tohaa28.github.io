@@ -52,3 +52,17 @@
 Реальные пользовательские PDF в gifts.ru **не изменялись**. Результат проверен контролируемыми браузерными PDF и настоящим TraceDraw WebAssembly. Настройки/привязки пользователей не затрагивались.
 
 **Важно:** разрешение возвращать RGB не означает автоматического соответствия техническим требованиям печати. Их проверяет отдельный PrintCheck; редакторы больше не теряют RGB в момент обратной передачи.
+
+---
+
+## Финальная проверка и production (21.10.2026)
+
+- **Сборка нового Rust TraceDraw guard:** https://github.com/tohaa28/tohaa28.github.io/actions/runs/39598763127 — `compile_tracedraw` SUCCESS, реальный WebAssembly бинарник опубликован в `main/gifts-layout-workbench-mockups/tracedraw/`. Пинованный upstream остался `0f206489770adcacc6cc130a9e31a5610faad68a`.
+- **Общая сборка Макетной:** https://github.com/tohaa28/tohaa28.github.io/actions/runs/39598798765 — `precheck`, `publish`, `browser_verify` SUCCESS.
+- **Живой Rust/WASM тест с вектором и растром:** https://github.com/tohaa28/tohaa28.github.io/actions/runs/39598798699 — SUCCESS.
+- **Окончательный опубликованный production SHA**: `ebb6d4b1ab2374f5524cc34c852ecd1c05dee89f`; UI: **Макетная r72ed5a64**.
+- **Контрольная точка production:** `checkpoint-maketnaya-tracedraw-raster-rgb-20261021-production` → `ebb6d4b1ab2374f5524cc34c852ecd1c05dee89f`.
+- **Контрольная точка исходников:** `checkpoint-maketnaya-tracedraw-raster-rgb-20261021-source` → `c88ccf7c30a6098c9497c9dfb0db8f1c72f1d560`.
+- В production и source совпадают пользовательские JSON-профили `mockup-profiles.json` и `method-settings.json`; их данные не изменялись.
+
+**Ограничение проверки:** живой WebAssembly-тест проверяет смешанный SVG и растровый Image XObject, но реальные приватные вложения Gifts в авторизованной сессии пользовательского браузера не изменялись и не загружались.
