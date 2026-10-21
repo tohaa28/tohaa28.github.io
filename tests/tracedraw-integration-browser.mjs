@@ -37,6 +37,7 @@ try{
    };
  });
  await page.addScriptTag({path:'assets/editor-return-progress.js'});
+ await page.addScriptTag({path:'assets/tracedraw-raster-bridge.js'});
  await page.addScriptTag({path:'assets/tracedraw-integration.js'});
  // A field already being edited in VectorCraft must not open in TraceDraw.
  await page.evaluate(()=>{
@@ -73,9 +74,9 @@ try{
  assert.deepEqual(result.options.artworkBoundsMm,{x:3,y:4,w:16,h:8});
  assert.deepEqual(result.options.fieldSizeMm,{w:60,h:35});
  assert.match(result.pdf,/^%PDF-1\.7/);
- assert.equal(result.options.nativePdfCmyk,true);
+ assert.equal(result.options.nativePdfColors,true);
  assert.equal(result.options.colorSpace,'CMYK');
- assert.match(result.name,/tracedraw-cmyk\.pdf$/);
+ assert.match(result.name,/tracedraw\.pdf$/);
  await page.waitForFunction(()=>document.getElementById('gwbTraceDrawHost')===null);
  assert.deepEqual(await page.evaluate(()=>window.__visibility),[true,false]);
  console.log('TraceDraw iframe handoff: exact field and source, real art bounds, application guard and closing');
