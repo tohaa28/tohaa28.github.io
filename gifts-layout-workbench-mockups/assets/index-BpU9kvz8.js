@@ -250,7 +250,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
   const actual=target?[y.active,target.fieldIndex,target.page,art?.name||""].join("|"):null;
   if(!target||!y.field||token!==actual)throw new Error("Выбранное поле изменилось; сохранение отменено, чтобы не заменить чужой логотип");
   y.busy=true;X();
-  let printCheckApplied=false;
+  let printCheckApplied=false,returnedPreflight=null;
   try{
     options?.onProgress?.(70,"Макетная считывает исходные векторные и растровые объекты PDF…");
     // Qe(...,"art") runs the ORIGINAL PrintCheck inspectArtwork on the
@@ -258,6 +258,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
     const next=await Qe(file,"art");
     if(!next.preflight||typeof next.preflight!=="object")
       throw new Error("PrintCheck не смог проверить полученный из редактора логотип");
+    returnedPreflight=next.preflight;
     options?.onProgress?.(87,"PrintCheck заново проверил PDF. Сопоставляем размеры и цветность…");
     if(nativePdfColors){
       if(!next.pdfCompatible||next.ext!=="pdf"||next.pages!==1)
@@ -328,7 +329,7 @@ window.gwbApplyEditedLogoToActiveField=async function(file,token,options={}){
       window.gwbPrintCheckLastEditorReturn={
         name:file.name,fieldIndex:target.fieldIndex,page:target.page,
         checked:!!report,findings:report?.findings?.length??0,
-        originalColorModels:next.preflight.originalColorModels||[],
+        originalColorModels:returnedPreflight?.originalColorModels||[],
         detailState:detail?.state||"unavailable",time:Date.now()
       };
       window.dispatchEvent(new CustomEvent("gwb-printcheck-editor-return",{
