@@ -95,6 +95,59 @@ export async function verifyLogoPreflight(frame) {
   await frame.waitForFunction(()=>!document.getElementById('logoErrorOverlay')?.textContent.includes('поиск мелких элементов...'));
   const completedDetail=await frame.locator('#logoErrorOverlay').textContent();
   assert.match(completedDetail,/PrintCheck · мелкие элементы(?: проверены)?:/,'Transient PrintCheck status must be replaced by the completed detail result');
+  // A returned VectorCraft/TraceDraw PDF must be checked again as new artwork.
+  // The old SVG has live text and a 0.01mm line. The editor's returned PDF
+  // has neither; stale findings and detail-scan results must disappear.
+  const freshReturn=await frame.evaluate(async()=>{
+    const previous=window.gwbLogoPreflight?.[0];
+    const previousKey=window.gwbDetailCheck?.selectedKey;
+    if(!previous?.findings?.some(f=>f.id==='outlined-text'&&f.status==='bad'))
+      throw Error('Precondition: original SVG text warning missing');
+    const selected=window.gwbGetActiveLogoForEditor();
+    if(!selected?.token||!selected.fieldSizeMm)
+      throw Error('Selected PrintCheck field not available for editor');
+    const doc=await PDFLib.PDFDocument.create();
+    const mm=72/25.4;
+    const page=doc.addPage([10*mm,10*mm]);
+    page.drawRectangle({x:2*mm,y:2*mm,width:5*mm,height:5*mm,
+      color:PDFLib.cmyk(0,0,0,1)});
+    const file=new File([await doc.save({useObjectStreams:false})],
+      'fixed-in-vectorcraft.pdf',{type:'application/pdf'});
+    const returned=await window.gwbApplyEditedLogoToActiveField(file,selected.token,{
+      nativePdfColors:true,colorSpace:'CMYK',
+      fieldSizeMm:selected.fieldSizeMm,
+      artworkBoundsMm:{x:1,y:1,w:10,h:10}
+    });
+    const report=window.gwbLogoPreflight?.find(r=>r.fieldIndex===returned.fieldIndex);
+    return {previousKey,newKey:window.gwbDetailCheck?.selectedKey,
+      fileName:window.gwbGetActiveLogoForEditor()?.name,
+      mark:window.gwbPrintCheckLastEditorReturn,
+      reportMethod:report?.method||'',
+      staleText:report?.findings?.some(f=>f.id==='outlined-text'&&f.status==='bad')||false,
+      overlay:document.getElementById('logoErrorOverlay')?.textContent||''};
+  });
+  assert.equal(freshReturn.fileName,'fixed-in-vectorcraft.pdf');
+  assert.equal(freshReturn.mark?.checked,true,'PrintCheck must inspect the returned PDF');
+  assert.equal(freshReturn.mark?.name,'fixed-in-vectorcraft.pdf');
+  assert.equal(freshReturn.reportMethod,'B4','The original printing method still applies');
+  assert.equal(freshReturn.staleText,false,'Old original text warning must be removed');
+  assert.notEqual(freshReturn.newKey,freshReturn.previousKey,
+    'New image invalidates old small-element search');
+  assert.match(freshReturn.overlay,/поиск мелких элементов\.\.\./,
+    'PrintCheck automatically schedules a new detail scan');
+  await frame.waitForFunction(()=>{
+    const key=window.gwbDetailCheck?.selectedKey;
+    return key&&window.gwbDetailCheck.entries.some(e=>e.key===key&&e.state==='done');
+  },null,{timeout:30000});
+  assert.doesNotMatch(await frame.locator('#logoErrorOverlay').textContent(),
+    /поиск мелких элементов\.\.\./,'Returned PDF detail scan must finish');
+  // Restore the prior SVG to leave all subsequent preflight checks unchanged.
+  await frame.locator('#artwork').setInputFiles({
+    name:'preflight-text.svg',mimeType:'image/svg+xml',buffer:upload
+  });
+  await frame.waitForFunction(()=>window.gwbLogoPreflight?.[0]?.findings?.some(
+    f=>f.id==='outlined-text'&&f.status==='bad'));
+
   let state=await frame.evaluate(()=>({reports:window.gwbLogoPreflight,disabled:document.getElementById('simpleExport').disabled,field:document.getElementById('fieldSize').textContent,visibleFieldSize:document.getElementById('selectedFieldSize')?.textContent||'',visibleFieldSizeHidden:document.getElementById('selectedFieldSize')?.hidden,templateSize:document.getElementById('dimensions')?.textContent||''}));
   assert.equal(state.reports[0].method,'B4');assert.equal(state.reports[0].rule.positive,.4);assert.equal(state.disabled,true);
   assert.match(state.field,/200\.00 × 100\.00/);
