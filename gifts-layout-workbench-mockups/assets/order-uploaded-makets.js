@@ -26,12 +26,14 @@ function start(){
  '.gwb-order-maket-item button{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:36px;border-radius:6px;padding:8px 10px;background:#eff6e6;border:1px solid #b8d19a;color:#416b19;cursor:pointer;font:650 12px/1.35 system-ui,sans-serif;text-align:center;white-space:normal}',
  '.gwb-order-maket-item button:hover{background:#e3f0d1}',
  '.gwb-order-maket-item button:disabled{cursor:wait;opacity:.65}',
- '.gwb-order-maket-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;width:100%;min-width:0;max-width:100%}',
+ '.gwb-order-maket-actions{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:7px;width:100%;min-width:0;max-width:100%}',
  '.gwb-order-maket-actions.is-field-mode{grid-template-columns:minmax(0,1fr)}',
  '.gwb-order-maket-download{background:#fff!important;color:#435159!important;border-color:#d5ded6!important}',
- '.gwb-order-maket-delete{background:#fff9f9!important;color:#a94343!important;border-color:#e6c7c7!important}',
- '.gwb-order-maket-delete:hover:not(:disabled){background:#fce9e9!important}',
- '@container (max-width:195px){.gwb-order-maket-actions:not(.is-field-mode){grid-template-columns:minmax(0,1fr)}}',
+ '.gwb-order-maket-item button.gwb-order-maket-delete{width:32px!important;min-width:32px!important;max-width:32px!important;height:34px;min-height:34px!important;padding:0!important;display:flex!important;align-items:center;justify-content:center;background:transparent!important;border:1px solid transparent!important;border-radius:6px;color:#435159!important;cursor:pointer}',
+ '.gwb-order-maket-item button.gwb-order-maket-delete:hover:not(:disabled){color:#c43d3d!important;background:#fff0f0!important}',
+ '.gwb-order-maket-item button.gwb-order-maket-delete:focus-visible{outline:2px solid #629d31;outline-offset:2px}',
+ '.gwb-order-maket-delete g-icon{display:block;width:18px;height:18px;flex:none}',
+ '.gwb-order-maket-delete svg{display:block;width:100%;height:100%;fill:currentColor}',
  '.gwb-ready-upload{margin-top:7px;width:100%;font-weight:700;min-height:36px}',
  '.gwb-ready-upload[hidden]{display:none!important}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
@@ -262,7 +264,15 @@ function start(){
        if(!fieldMode){
          const remove=document.createElement('button');remove.type='button';
          remove.className='gwb-order-maket-delete';
-         remove.textContent='Удалить макет';
+         // Identical gifts.ru basket trash pictogram, from its icon sprite.
+         // The source is fixed and never incorporates an attachment filename.
+         const icon=document.createElement('g-icon');icon.setAttribute('name','trash');
+         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+         svg.setAttribute('width','100%');svg.setAttribute('height','100%');
+         const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+         use.setAttribute('href','/components/images/icons.svg?19#trash');
+         svg.append(use);icon.append(svg);remove.append(icon);
+         remove.setAttribute('aria-label','Удалить макет: '+file.original);
          remove.title=file.canDelete
            ? 'Безвозвратно удалить только этот PDF из заказа gifts.ru'
            : 'gifts.ru не предоставил право удаления этого PDF';
