@@ -40,7 +40,10 @@ try {
   assert.equal(await page.evaluate(()=>window.state),'editing');
   await page.addScriptTag({path:'vendor/pdf-lib.min.js'});
   const canvas=page.frameLocator('#tr').locator('#tracedraw');
-  const select=async()=>{await canvas.click({position:{x:650,y:420}});await page.keyboard.press('Control+a');};
+  const select=async()=>{
+    await canvas.click({position:{x:650,y:420}});await page.keyboard.press('Control+a');
+    await page.waitForTimeout(100); // Let egui consume the selection input before opening its menu.
+  };
   async function returned(){
     await page.evaluate(()=>{window.state='waiting';window.pdf=null;});
     await page.frameLocator('#tr').locator('#gwb-tracedraw-transfer').click({timeout:25000});
@@ -88,8 +91,10 @@ try {
   const rgb=await returned();
   assert.deepEqual(rgb.images,baseline.images,'RGB restores original channels without a lossy round trip');
   await select();await page.keyboard.press('Control+z');
+  await page.waitForTimeout(100);
   assert.ok((await returned()).images.some(i=>i.model==='/DeviceCMYK'),'Undo restores CMYK export');
-  await select();await page.keyboard.press('Control+y');
+  await select();await page.keyboard.press('Control+Shift+z');
+  await page.waitForTimeout(100);
   assert.deepEqual((await returned()).images,baseline.images,'Redo restores RGB export');
   assert.deepEqual(errors,[]);
   console.log('LIVE TraceDraw native menu: RGB -> CMYK -> RGB, 4-channel PDF, alpha, bounds, undo/redo — PASS');
