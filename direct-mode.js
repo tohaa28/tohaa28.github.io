@@ -1563,7 +1563,7 @@
     const expected=String(init.body.get("expected_original_name")||"");
     if(!expected||expected.length>200||!expected.toLowerCase().endsWith(".pdf"))
       return json({error:"Название старого PDF не подтверждено."},400);
-    let source;
+    let confirmedNewId=null;
     try{
       const original=await getOrder(order,true);
       source=(original.uploadedMakets||[]).find(x=>x.id===maketId&&x.order===order);
@@ -1586,6 +1586,7 @@
       if(!uploadResponse.ok||uploaded?.ok!==true||!/^\d{1,20}$/.test(String(uploaded.uploadedId||"")))
         return json({error:uploaded?.error||"Новый PDF не подтверждён. Старый сохранён."},502);
       const newId=String(uploaded.uploadedId);
+      confirmedNewId=newId;
       if(newId===maketId)
         return json({error:"gifts.ru не создал новый идентификатор: старый файл не удалён.",partial:true,newId},409);
       // Never delete an old file if it changed during upload, and never
@@ -1610,7 +1611,7 @@
     }catch(error){
       return json({error:"Замена не завершена: "+(error?.message||String(error))+
         ". Проверьте список: старый файл не удаляется до подтверждённой загрузки.",
-        partial:!!source},502);
+        partial:!!confirmedNewId,newId:confirmedNewId||undefined,oldId:maketId},502);
     }
   }
 
