@@ -88,20 +88,23 @@ async function receive(event){
  }
 }
 function session(){const x=new Uint8Array(24);crypto.getRandomValues(x);return [...x].map(v=>v.toString(16).padStart(2,'0')).join('')}
-async function open(){
+async function open(externalFile=null){
  if(active)return;
  if(document.getElementById('gwbVectorcraftHost')){
    alert('Сначала закройте VectorCraft. Два редактора одного поля одновременно не открываются.');
    return;
  }
  const selected=window.gwbGetActiveLogoForEditor?.();
+ if(externalFile!==null&&(!(externalFile instanceof File)||!/\.pdf$/i.test(externalFile.name)||externalFile.size>40*1024*1024)){
+   alert('TraceDraw принимает PDF до 40 МБ');return;
+ }
  if(!selected){alert('Сначала откройте шаблон и выберите конкретное поле нанесения.');return}
  let prepared;
  try{
    const fields=window.gwbVectorcraftField;
    if(!fields)throw Error('Не загружен модуль физических размеров');
    const size=fields.fieldInfo(selected);
-   const initial=selected.file||new File([
+   const initial=externalFile||selected.file||new File([
      '<svg xmlns="http://www.w3.org/2000/svg" width="'+size.w+'mm" height="'+size.h+'mm" viewBox="0 0 '+size.w+' '+size.h+'"></svg>'
    ],'Новый.svg',{type:'image/svg+xml'});
    prepared=await fields.prepare(initial,selected);
@@ -130,7 +133,7 @@ async function open(){
  footer.append(status);overlay.append(header,iframe,footer);
  const old=document.body.style.overflow;document.body.style.overflow='hidden';
  active={overlay,iframe,status,token:session(),file:prepared.file,field:prepared.fieldSizeMm,
-   name:selected.file?.name||prepared.file.name,placement:selected.token,originalOverflow:old,
+   name:externalFile?.name||selected.file?.name||prepared.file.name,placement:selected.token,originalOverflow:old,
    opened:false,sent:false,applying:false};
  cancel.onclick=()=>close();
  fullscreen.onclick=()=>{
