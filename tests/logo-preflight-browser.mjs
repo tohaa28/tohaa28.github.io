@@ -186,6 +186,37 @@ export async function verifyLogoPreflight(frame) {
   },null,{timeout:30000});
   assert.doesNotMatch(await frame.locator('#logoErrorOverlay').textContent(),
     /поиск мелких элементов\.\.\./,'Returned PDF detail scan must finish');
+  // Repeated returns must analyze the new bytes in both directions. A document
+  // label or a previous CMYK result must never suppress real RGB paint.
+  for(const model of ['RGB','CMYK','RGB']){
+    const evidence=await frame.evaluate(async model=>{
+      const selected=window.gwbGetActiveLogoForEditor(),lib=PDFLib;
+      const pdf=await lib.PDFDocument.create(),p=pdf.addPage([10*72/25.4,10*72/25.4]);
+      p.node.set(lib.PDFName.of('Contents'),pdf.context.obj([
+        pdf.context.register(pdf.context.flateStream(model==='RGB'?'1 0 0 rg':'0 1 0 0 k')),
+        pdf.context.register(pdf.context.flateStream('0 0 10 10 re f'))
+      ]));
+      const bytes=await pdf.save({useObjectStreams:false});
+      const before=window.gwbDetailCheck?.selectedKey;
+      await window.gwbApplyEditedLogoToActiveField(new File([bytes],model+'-return.pdf',{type:'application/pdf'}),selected.token,{
+        nativePdfColors:true,colorSpace:model,fieldSizeMm:selected.fieldSizeMm,
+        artworkBoundsMm:{x:1,y:1,w:10,h:10}
+      });
+      const received=new Uint8Array(await window.gwbGetActiveLogoForEditor().file.arrayBuffer());
+      return {models:window.gwbPrintCheckLastEditorReturn?.originalColorModels,
+        checked:window.gwbPrintCheckLastEditorReturn?.checked,
+        unchanged:received.length===bytes.length&&received.every((v,i)=>v===bytes[i]),
+        before,after:window.gwbDetailCheck?.selectedKey};
+    },model);
+    assert.deepEqual(evidence.models,[model]);
+    assert.equal(evidence.checked,true);
+    assert.equal(evidence.unchanged,true,'Return must preserve the original PDF bytes');
+    assert.notEqual(evidence.before,evidence.after,'Every return must invalidate the previous scan');
+    await frame.waitForFunction(()=>{
+      const key=window.gwbDetailCheck?.selectedKey;
+      return window.gwbDetailCheck.entries.some(e=>e.key===key&&e.state==='done');
+    },null,{timeout:30000});
+  }
   // Restore the prior SVG to leave all subsequent preflight checks unchanged.
   await frame.locator('#artwork').setInputFiles({
     name:'preflight-text.svg',mimeType:'image/svg+xml',buffer:upload
