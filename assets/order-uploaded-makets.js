@@ -111,15 +111,18 @@ function start(){
        throw Error(result?.error||'gifts.ru не подтвердил загрузку.');
      let recognized=false;
      try{
-       recognized=await window.gwbMaketnayaSidecar?.bindUploaded(
-         order,String(result.uploadedId),new Uint8Array(await pdf.arrayBuffer()))===true;
-     }catch(error){console.warn('Макетная: внешняя отметка PDF недоступна',error)}
+       const completedBytes=new Uint8Array(await pdf.arrayBuffer());
+       const internal=await window.gwbUploadedMaketNative?.identify?.(completedBytes);
+       recognized=internal?.kind==='maketnaya';
+       if(!recognized)recognized=await window.gwbMaketnayaSidecar?.bindUploaded(
+         order,String(result.uploadedId),completedBytes)===true;
+     }catch(error){console.warn('Макетная: проверка происхождения PDF недоступна',error)}
      state.delete(order);
      for(const key of [...originScans.keys()])if(key.startsWith(order+':'))originScans.delete(key);
      await refreshCards();
      if(status)status.textContent='Готовый PDF «'+pdf.name+'» добавлен к заказу №'+order+
-       (recognized?'. Макет отмечен пиктограммой М.':
-         '. Внешний реестр происхождения недоступен; PDF не изменялся.');
+       (recognized?'. Исходники распознаны внутри PDF; макет помечен пиктограммой.':
+         '. Происхождение PDF пока не подтверждено, файл сохранён.');
    }catch(error){
      if(status)status.textContent='Отправка не подтверждена: '+String(error?.message||error);
    }finally{
