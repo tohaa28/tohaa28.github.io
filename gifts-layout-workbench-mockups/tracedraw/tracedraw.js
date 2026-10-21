@@ -645,8 +645,8 @@ function __wbg_get_imports() {
         __wbg_gwbReport_73bccba0def93413: function(arg0, arg1, arg2, arg3) {
             gwbReport(getStringFromWasm0(arg0, arg1), getStringFromWasm0(arg2, arg3));
         },
-        __wbg_gwbReturnSvg_d3cd0f0b4acc9d12: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
-            gwbReturnSvg(getStringFromWasm0(arg0, arg1), arg2, arg3, arg4, arg5, arg6);
+        __wbg_gwbReturnSvg_55745e696bd4624c: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+            gwbReturnSvg(getStringFromWasm0(arg0, arg1), arg2, arg3, arg4, arg5, arg6, getStringFromWasm0(arg7, arg8));
         },
         __wbg_hash_c4083658cccb641b: function() { return handleError(function (arg0, arg1) {
             const ret = arg1.hash;
