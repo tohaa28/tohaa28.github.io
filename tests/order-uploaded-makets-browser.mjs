@@ -17,7 +17,7 @@ const uploadMarkup=file=>
 const uploaded=filenames.map(uploadMarkup).join('');
 const removedIds=new Set();
 const visibleUploads=()=>filenames.filter(file=>!removedIds.has(file.id)).map(uploadMarkup).join('');
-let uploadedExtra='';
+let uploadedExtra=[],nextUploadId=18311645,failDeleteId=null;
 const uploadForm='<form id="j_upload_area"><input type="hidden" name="oid" value="'+OID+'">'+
  '<input type="hidden" name="type" value="10"><input type="hidden" name="order" value="'+ORDER+'">'+
  '<input type="hidden" name="folder" value="S1"><input type="file" name="media_file[]" multiple></form>';
@@ -55,16 +55,17 @@ try {
      return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:pageHtml});
    }
    if(u.pathname==='/private/order/'+ORDER)
-     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml.replace(uploaded+malicious,visibleUploads()+uploadedExtra+malicious)});
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:orderHtml.replace(uploaded+malicious,visibleUploads()+uploadedExtra.map(uploadMarkup).join('')+malicious)});
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='makets_popup')
-     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml.replace(uploaded+malicious,visibleUploads()+uploadedExtra+malicious)})});
+     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({html:ajaxHtml.replace(uploaded+malicious,visibleUploads()+uploadedExtra.map(uploadMarkup).join('')+malicious)})});
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='upload_makets'){
      assert.equal(route.request().method(),'POST');
      const body=route.request().postDataBuffer()?.toString('utf8')||'';
      for(const expected of ['name="oid"','name="type"','name="order"','name="folder"','name="media_file[]"','%PDF-'])
        assert.ok(body.includes(expected),'Missing verified form field: '+expected);
      postedPdf=body.includes('готовый_макет.pdf')?'готовый_макет.pdf':'8006776_77700.60_макет.pdf';
-     uploadedExtra=uploadMarkup({id:'18311645',filename:'8006776_maket_3.pdf',original:postedPdf});
+     const id=String(nextUploadId++);
+     uploadedExtra.push({id,filename:'8006776_maket_'+id+'.pdf',original:postedPdf});
      return route.fulfill({status:200,contentType:'application/json',body:'{"success":true}'});
    }
    if(u.pathname==='/ajax/gifts/order'&&u.searchParams.get('action')==='delete_maket'){
@@ -73,10 +74,13 @@ try {
      assert.equal(u.searchParams.get('orderid'),OID);
      assert.equal(u.searchParams.get('oid'),OID,'Delete must use the same validated internal order ID as downloads/uploads');
      const id=u.searchParams.get('id');
-     assert.ok(['18311644','18311643','18311645'].includes(id),'Never delete all or foreign IDs');
+     assert.ok(['18311644','18311643','18311645','18311646','18311647'].includes(id),
+       'Never delete all or foreign IDs');
      deleteCount++;
+     if(id===failDeleteId)
+       return route.fulfill({status:500,contentType:'application/json',body:'{"success":false}'});
      removedIds.add(id);
-     if(id==='18311645')uploadedExtra='';
+     uploadedExtra=uploadedExtra.filter(file=>file.id!==id);
      return route.fulfill({status:200,contentType:'application/json',body:'{"success":true}'});
    }
    if(u.pathname==='/cart/act/mda')
@@ -235,14 +239,24 @@ try {
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),2);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2);
  // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
- await page.evaluate(()=>{window.confirm=()=>true});
- await page.locator('#gwbUploadReadySimple').click();
- await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('добавлен к заказу'),null,{timeout:15000});
+ await page.evaluate(()=>{window.confirm=()=>true;window.prompt=()=> '8006776_77700.60_макет.pdf'});
+ assert.equal(await page.locator('#gwbSaveReadySimple').textContent(),'Сохранить');
+ assert.equal(await page.locator('#gwbSaveAsReadySimple').textContent(),'Сохранить как…');
+ await page.locator('#gwbSaveAsReadySimple').click();
+ await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Сохранён новый макет'),null,{timeout:15000});
  assert.ok(postedPdf,'Ready PDF uploaded to the original order');
  // Basket/card refresh resolves asynchronously after the server confirms upload.
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===3,null,{timeout:15000});
  assert.equal((await page.locator('.gwb-order-maket-item').count()),3);
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/3/);
+ // Save targets the newly saved PDF, never other customer attachments.
+ await page.locator('#gwbSaveReadySimple').click();
+ await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('перезаписан'),null,{timeout:15000});
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===3);
+ assert.equal(deleteCount,1,'Overwrite only deletes the verified previous PDF');
+ assert.deepEqual([...removedIds],['18311645']);
+ assert.equal(uploadedExtra.length,1,'Only the verified replacement remains');
+ assert.equal(uploadedExtra[0].id,'18311646');
  // Regression: 300px sidebar must not squeeze long attachment names into
  // a vertical stack of single glyphs, and the action must stay inside its card.
  const layout=await page.evaluate(()=>{
@@ -287,8 +301,8 @@ try {
    .locator('button.gwb-order-maket-delete').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Удалён только макет'),null,{timeout:15000});
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===2,null,{timeout:15000});
- assert.equal(deleteCount,1,'Only one delete request is emitted');
- assert.deepEqual([...removedIds],['18311644']);
+ assert.equal(deleteCount,2,'One overwrite deletion and one explicit removal occurred');
+ assert.deepEqual([...removedIds],['18311645','18311644']);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/8006776_77700\.60_макет\.pdf/);
  assert.doesNotMatch(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
