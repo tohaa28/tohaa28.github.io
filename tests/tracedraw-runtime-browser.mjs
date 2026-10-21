@@ -67,7 +67,7 @@ try{
  // Real engine regression: same document contains both vector paths and an
  // embedded PNG bitmap. Import and export MUST retain its RGB image XObject,
  // not just the vector geometry. No simulated WASM messages are involved.
- const bitmapPng='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aC8cAAAAASUVORK5CYII=';
+ const bitmapPng='iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAYAAAC09K7GAAAAH0lEQVR4nGN85ij/n4GBgUHPbvFJBgYGBiYGNIAhAAC4WwQjWprXPQAAAABJRU5ErkJggg==';
  const combined='<svg xmlns="http://www.w3.org/2000/svg" width="60mm" height="35mm" viewBox="0 0 60 35">'+
    '<path d="M3 4h16v8H3z" fill="#2371ae"/>'+
    '<image x="26" y="12" width="11" height="9" href="data:image/png;base64,'+bitmapPng+'"/></svg>';
