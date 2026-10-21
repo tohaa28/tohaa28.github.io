@@ -11,7 +11,7 @@ const uploadMarkup=file=>
  '<div class="j_maket_host"><div class="flex"><div class="flex-item flex-main"><span class="size--md">'+
  '<a data-maket="true" href="https://gifts.ru/cart/act/mda?oid='+OID+'&amp;id='+file.id+'">'+file.filename+'</a>'+
  '</span><br><span class="size--sm"><span title="Исходное имя закачанного файла">'+file.original+'</span></span></div>'+
- '<div class="flex-item"><a href="https://gifts.ru/private/order/'+ORDER+'#" title="Удалить макет" '+
+ '<div class="flex-item"><a href="'+(file.id==='18311643'?'#':'https://gifts.ru/private/order/'+ORDER+'#')+'" title="Удалить макет" '+
  'class="j_delete_maket" data-id="'+file.id+'" data-orderid="'+OID+'"></a></div></div></div>';
 const uploaded=filenames.map(uploadMarkup).join('');
 const removedIds=new Set();
