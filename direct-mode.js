@@ -814,7 +814,15 @@
         .find(button => button.getAttribute("data-id") === id &&
           button.getAttribute("data-orderid") === String(internalOrderId) &&
           /^\d{1,20}$/.test(button.getAttribute("data-id")||"") &&
-          (button.getAttribute("href")||"").startsWith(GIFTS_ORIGIN+"/private/order/"+order));
+          (() => {
+            const href=button.getAttribute("href");
+            if(!href)return false;
+            try{
+              const link=new URL(href,giftsUrl("/private/order/"+order));
+              return link.origin===GIFTS_ORIGIN &&
+                link.pathname==="/private/order/"+order;
+            }catch{return false}
+          })());
       // The original name is metadata, never an output path or a download URL.
       files.set(id, {
         id, order: String(order), filename,
