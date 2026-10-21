@@ -210,7 +210,7 @@ export function pdfColorOperators(source) {
 // color-state changes such as "1 0 0 rg" with no subsequent painting. This
 // distinction matters for converted editor PDFs that retain unused operators.
 // The old pdfColorOperators remains available for raw diagnostics/tests.
-export function pdfAppliedPaintOperators(source) {
+export function pdfAppliedPaintOperators(source,{state={},onXObject}={}) {
   let cleaned='',depth=0;
   for(let i=0;i<source.length;i++) {
     const c=source[i];
@@ -222,10 +222,11 @@ export function pdfAppliedPaintOperators(source) {
   }
   cleaned=cleaned.replace(/\bBI\b[\s\S]*?\bEI\b/g,' ');
   const n='[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
-  const re=new RegExp('(?:^|\\s)(?:('+n+'(?:\\s+'+n+'){0,3})\\s+(rg|RG|k|K|g|G)|(q|Q|f\\*?|F|S|s|B\\*?|b\\*?|Tj|TJ|\\x22|\\x27))(?=\\s|$)','g');
+  const re=new RegExp('(?:^|\\s)(?:('+n+'(?:\\s+'+n+'){0,3})\\s+(rg|RG|k|K|g|G)|(q|Q|f\\*?|F|S|s|B\\*?|b\\*?|Tj|TJ|\\x22|\\x27)|/([^\\s/<>()[\\]{}%]+)\\s+Do)(?=\\s|$)','g');
   const found=[],gray={model:'Gray',values:[0]},copy=c=>({...c,values:c.values.slice()});
-  let fill=gray,stroke=gray,stack=[],painted=0;
+  let fill=state.fill||gray,stroke=state.stroke||gray,stack=state.stack||[],painted=0;
   for(const m of cleaned.matchAll(re)){
+    if(m[4]){onXObject?.(m[4],{fill:copy(fill),stroke:copy(stroke),stack:[]});continue}
     if(m[2]){
       const tag=m[2],values=m[1].trim().split(/\s+/).map(Number);
       const count=/^[kK]$/.test(tag)?4:/^rg$/i.test(tag)?3:1;
@@ -240,18 +241,39 @@ export function pdfAppliedPaintOperators(source) {
       if(/^(?:S|s|B|B\*|b|b\*)$/.test(op))add(stroke);
     }
   }
+  Object.assign(state,{fill,stroke,stack});
   return {colors:found,painted};
 }
 async function inspectPdfColors(art,facts) {
   const lib=globalThis.PDFLib;
   if(!art.bytes||!lib?.decodePDFRawStream)return;
   const pdf=await lib.PDFDocument.load(art.bytes.slice(),{updateMetadata:false});
-  const seen=new Set(),colors=[],models=new Set();let unsupported=false;
+  const active=new Set(),colors=[],models=new Set();let unsupported=false;
   const get=(obj,key)=>pdf.context.lookup(obj?.get?.(lib.PDFName.of(key)));
-  const visit=(value,resources)=>{
-    const object=pdf.context.lookup(value);if(!object||seen.has(object))return;
-    seen.add(object);
-    if(object instanceof lib.PDFArray){object.asArray().forEach(o=>visit(o,resources));return}
+  const decode=object=>new TextDecoder('latin1').decode(lib.decodePDFRawStream(object).decode());
+  const scan=(source,resources,state)=>{
+    const painted=pdfAppliedPaintOperators(source,{state,onXObject:(name,inherited)=>{
+      const xobjects=resources?.lookup?.(lib.PDFName.of('XObject'));
+      const item=xobjects instanceof lib.PDFDict?xobjects.get(lib.PDFName.of(name)):null;
+      if(item)visit(item,resources,inherited);else unsupported=true;
+    }});
+    colors.push(...painted.colors);
+    painted.colors.forEach(c=>models.add(c.model));
+    if(/\b(?:cs|CS|scn|SCN|BI)\b/.test(source))unsupported=true;
+  };
+  const visit=(value,resources,state={})=>{
+    const object=pdf.context.lookup(value);if(!object)return;
+    // A Form may be painted repeatedly with different inherited colors. Only
+    // reject an active recursion cycle, not a later valid invocation.
+    if(active.has(object)||active.size>64){unsupported=true;return}
+    if(object instanceof lib.PDFArray){
+      try{
+        // PDF Contents arrays are one logical program, including q/Q and
+        // inherited colors. Do not reset state at a stream boundary.
+        scan(object.asArray().map(o=>decode(pdf.context.lookup(o))).join('\n'),resources,state);
+      }catch{unsupported=true}
+      return;
+    }
     if(!(object instanceof lib.PDFRawStream))return;
     const subtype=String(object.dict.get(lib.PDFName.of('Subtype'))||'');
     if(subtype==='/Image'){
@@ -263,24 +285,9 @@ async function inspectPdfColors(art,facts) {
       return;
     }
     const own=get(object.dict,'Resources')||resources;
-    try{
-      const bytes=lib.decodePDFRawStream(object).decode();
-      const source=new TextDecoder('latin1').decode(bytes);
-      const painted=pdfAppliedPaintOperators(source);
-      colors.push(...painted.colors);
-      painted.colors.forEach(c=>models.add(c.model));
-      if(/\b(?:cs|CS|scn|SCN|BI)\b/.test(source))unsupported=true;
-      // Only traverse XObjects that were actually painted with /Name Do.
-      // PDF exporters may leave RGB images/forms in /Resources even after a
-      // user converts the visible objects to CMYK.
-      const xobjects=own?.lookup?.(lib.PDFName.of('XObject'));
-      for(const m of source.matchAll(/(?:^|\s)\/([^\s/<>()[\]{}%]+)\s+Do(?=\s|$)/g)){
-        if(xobjects instanceof lib.PDFDict){
-          const item=xobjects.get(lib.PDFName.of(m[1]));
-          if(item)visit(item,own);else unsupported=true;
-        }else unsupported=true;
-      }
-    }catch{unsupported=true}
+    active.add(object);
+    try{scan(decode(object),own,state)}catch{unsupported=true}
+    finally{active.delete(object)}
   };
   const page=pdf.getPages()[0];
   if(!page){facts.limitations.push('Не удалось прочитать страницу PDF для цветоделения.');return}
