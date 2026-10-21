@@ -29,9 +29,9 @@
     #loading-error { color: #a1260d; font-weight: 600; }
   </style>
 </head>
-<!-- data-wasm-size: the module's size in bytes and 0.9.4-gifts the version,
+<!-- data-wasm-size: the module's size in bytes and 0.9.4-gifts-raster-cmyk1 the version,
      both filled in by the build (scripts/web/build.sh, CI). -->
-<body data-wasm-size="32341320">
+<body data-wasm-size="32351811">
   <canvas id="tracedraw" tabindex="0"></canvas>
   <div id="loading">
     <!-- The splash screen of the desktop app (src/splash.rs, ui/brand.rs). -->
@@ -78,7 +78,7 @@
         <rect x="44" y="326" width="552" height="3" rx="1.5" fill="#fff" fill-opacity="0.12"/>
         <rect id="loading-bar" x="44" y="326" width="0" height="3" rx="1.5" fill="#5caeff"/>
         <text x="44" y="357" font-size="11.5" fill="#8fa3c0">Copyright &#169; 2026 Ighor Toth and the TraceDraw contributors</text>
-        <text x="596" y="357" font-size="11.5" fill="#8fa3c0" text-anchor="end">v0.9.4-gifts</text>
+        <text x="596" y="357" font-size="11.5" fill="#8fa3c0" text-anchor="end">v0.9.4-gifts-raster-cmyk1</text>
       </g>
       <rect x="0.5" y="0.5" width="639" height="379" fill="none" stroke="#fff" stroke-opacity="0.157"/>
     </svg>
@@ -125,7 +125,7 @@
     #gwb-tracedraw-transfer:hover{background:#528810}
   </style>
   <script type="module">
-    import init, {gwb_tracedraw_request_apply} from "./tracedraw.js";
+    import init, {gwb_tracedraw_request_apply} from "./tracedraw.js?v=f720b26815a2";
 
     const status = document.getElementById("loading-status");
     const bar = document.getElementById("loading-bar");
@@ -143,7 +143,7 @@
     // show how far along it is. The download fills the bar to 90 %; the
     // start fills the rest.
     async function download() {
-      const res = await fetch(new URL("tracedraw_bg.wasm", import.meta.url));
+      const res = await fetch(new URL("tracedraw_bg.wasm?v=f720b26815a2", import.meta.url));
       if (!res.ok) {
         throw new Error("the editor could not be downloaded (HTTP " + res.status + ")");
       }
