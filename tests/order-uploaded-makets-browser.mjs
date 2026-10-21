@@ -128,7 +128,13 @@ try {
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button.gwb-order-maket-download').count(),2,
    'Every attached PDF has a single download action in full-template mode');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2,
-   'Non-field mode shows a delete action beside every download');
+   'Non-field mode shows a compact delete icon beside every download');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete g-icon[name="trash"] use[href="/components/images/icons.svg?19#trash"]').count(),2,
+   'Use the exact same GIFTS basket trash icon and sprite');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').first().getAttribute('aria-label'),
+   'Удалить макет: gerb2.pdf','Icon-only action has an accessible name');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').first().textContent(),'',
+   'Compact trash action must not show a text label');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),4,
    'Exactly download and delete for every attached PDF');
  // Destructive operation must never begin without explicit confirmation.
@@ -225,12 +231,15 @@ try {
    assert.ok(item.buttonBounds.every(box=>box.left>=item.cardLeft-1&&box.right<=item.cardRight+1),
      'Both actions must fit inside the card');
    assert.ok(item.buttonBounds[0].right<item.buttonBounds[1].left,
-     'Download and delete need separate equal-width columns');
-   assert.ok(Math.abs(item.buttonBounds[0].top-item.buttonBounds[1].top)<2,
-     'Both actions must share one row without overlap');
-   assert.ok(Math.abs((item.buttonBounds[0].right-item.buttonBounds[0].left)-
-                      (item.buttonBounds[1].right-item.buttonBounds[1].left))<4,
-     'Both button columns must have equal width');
+     'Full download button and trash pictogram must not overlap');
+   assert.ok(Math.abs(item.buttonBounds[0].top-item.buttonBounds[1].top)<3,
+     'Download and trash icon share one row');
+   const downloadWidth=item.buttonBounds[0].right-item.buttonBounds[0].left;
+   const iconWidth=item.buttonBounds[1].right-item.buttonBounds[1].left;
+   assert.ok(iconWidth>=29&&iconWidth<=35,
+     'Trash icon remains a compact 32px control');
+   assert.ok(downloadWidth>=130&&downloadWidth>iconWidth*3,
+     'Download uses remaining width instead of sharing equal columns');
  }
  // Explicitly remove one original PDF, never the already uploaded third file.
  await page.locator('#gwbOrderMakets .gwb-order-maket-item').filter({hasText:'gerb2.pdf'})
