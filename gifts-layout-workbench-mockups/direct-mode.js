@@ -1552,6 +1552,68 @@
     }
   }
 
+  // Safe, non-atomic replacement: upload and independently confirm new PDF
+  // BEFORE deleting precisely the explicitly selected old attachment.
+  // If deletion fails, BOTH copies remain; report partial success with new ID.
+  async function apiReplaceUploadedMaket(order,maketId,init) {
+    if(!/^\d{5,12}$/.test(order)||!/^\d{1,20}$/.test(maketId))
+      return json({error:"Некорректный заказ или идентификатор макета."},400);
+    if(!(init?.body instanceof FormData))
+      return json({error:"Ожидались новый PDF и название заменяемого файла."},400);
+    const expected=String(init.body.get("expected_original_name")||"");
+    if(!expected||expected.length>200||!expected.toLowerCase().endsWith(".pdf"))
+      return json({error:"Название старого PDF не подтверждено."},400);
+    let source;
+    try{
+      const original=await getOrder(order,true);
+      source=(original.uploadedMakets||[]).find(x=>x.id===maketId&&x.order===order);
+      if(!source||source.originalName!==expected)
+        return json({error:"Исходный макет изменился или отсутствует. Обновите список."},409);
+      if(!source.canDelete)
+        return json({error:"Нет разрешения gifts.ru на замену выбранного PDF."},403);
+      const proposed=init.body.get("media_file[]");
+      if(!(proposed instanceof Blob)||proposed.size<5||proposed.size>40*1024*1024||
+         !/^[^\\/:*?"<>|]{1,180}\.pdf$/i.test(proposed.name||""))
+        return json({error:"Для замены требуется PDF до 40 МБ."},415);
+      // Request identity is validated again inside the existing uploader.
+      const payload=new FormData();
+      payload.append("media_file[]",proposed,proposed.name);
+      const uploadResponse=await apiUploadReadyMaket(order,{body:payload});
+      let uploaded;
+      try{uploaded=await uploadResponse.json()}catch{
+        return json({error:"Нельзя подтвердить загрузку. Проверьте список: старый PDF не удалён."},502);
+      }
+      if(!uploadResponse.ok||uploaded?.ok!==true||!/^\d{1,20}$/.test(String(uploaded.uploadedId||"")))
+        return json({error:uploaded?.error||"Новый PDF не подтверждён. Старый сохранён."},502);
+      const newId=String(uploaded.uploadedId);
+      if(newId===maketId)
+        return json({error:"gifts.ru не создал новый идентификатор: старый файл не удалён.",partial:true,newId},409);
+      // Never delete an old file if it changed during upload, and never
+      // touch any unselected file in a multi-article order.
+      const latest=await getOrder(order,true);
+      const still=(latest.uploadedMakets||[]).find(x=>x.id===maketId&&x.order===order);
+      const added=(latest.uploadedMakets||[]).find(x=>x.id===newId&&x.order===order);
+      if(!added||added.originalName!==proposed.name||!still||
+         still.originalName!==expected||!still.canDelete){
+        return json({error:"Новый PDF загружен, но исходный изменился или недоступен. Оба файла оставлены для проверки.",
+          partial:true,newId,oldId:maketId},409);
+      }
+      const deletion=await apiDeleteUploadedMaket(order,maketId);
+      let removed;
+      try{removed=await deletion.json()}catch{}
+      if(!deletion.ok||removed?.ok!==true||String(removed.deletedId)!==maketId)
+        return json({error:"Новый PDF сохранён, но старый не удалось удалить: "+
+          (removed?.error||"подтверждение не получено")+". Удалите старый файл вручную после проверки.",
+          partial:true,newId,oldId:maketId},409);
+      return json({ok:true,replaced:true,order,oldId:maketId,
+        uploadedId:newId,filename:uploaded.filename});
+    }catch(error){
+      return json({error:"Замена не завершена: "+(error?.message||String(error))+
+        ". Проверьте список: старый файл не удаляется до подтверждённой загрузки.",
+        partial:!!source},502);
+    }
+  }
+
   async function apiDeleteUploadedMaket(order, maketId) {
     if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
       return json({error:"Некорректный заказ или идентификатор файла."},400);
@@ -1769,6 +1831,7 @@
         if (m && method === "GET") return apiPdf(m[1], m[2]);
 
         m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})$/);
+        if (m && method === "PUT") return apiReplaceUploadedMaket(m[1],m[2],init);
         if (m && method === "DELETE") return apiDeleteUploadedMaket(m[1],m[2]);
 
         m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})\.pdf$/);
