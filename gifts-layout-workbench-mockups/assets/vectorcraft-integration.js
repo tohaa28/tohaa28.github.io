@@ -54,7 +54,8 @@ function secret(){
   return Array.from(data,b=>b.toString(16).padStart(2,'0')).join('');
 }
 function close(force=false){
-  const s=active;if(!s)return;
+  const s=active;if(!s||s.applying)return;
+  s.progress?.destroy();
   if(!force&&s.opened&&!confirm('Закрыть VectorCraft? Несохранённые изменения не попадут в шаблон.'))return;
   active=null;window.removeEventListener('message',receive);
   document.removeEventListener('fullscreenchange',s.onFullscreenChange);
@@ -139,7 +140,7 @@ async function receive(event){
     s.giftsMode=d.message==='gifts';
     decorateHost(s);
   }else if(d.type==='gwb-vectorcraft-error'){
-    s.applying=false;s.apply.disabled=false;
+    s.applying=false;s.progress?.error();s.apply.disabled=false;
     notice(s,'VectorCraft: '+String(d.message||'Ошибка обработки').slice(0,360),true);
   }else if(d.type==='gwb-vectorcraft-apply-request'){
     // Trusted native VectorCraft action goes through the same detached transfer
@@ -147,12 +148,13 @@ async function receive(event){
     if(s.opened&&!s.applying&&!s.apply.disabled)s.apply.click();
   }else if(d.type==='gwb-vectorcraft-svg'){
     if(!s.applying)return;
-    s.applying=false;
     try{
+      s.progress?.set(19,'Получен результат экспорта. Проверяем файл и контуры…');
       const bytes=d.bytes instanceof Uint8Array?d.bytes:null;
       if(!bytes||bytes.byteLength===0||bytes.byteLength>40*1024*1024)throw Error('Некорректный или слишком большой SVG');
       const raw=new TextDecoder().decode(bytes);
       const cropped=window.gwbVectorcraftField.normalizeExport(raw,s.fieldSizeMm,d.logoBoundsMm);
+      s.progress?.set(37,'Проверены размеры и геометрия нарисованного логотипа.');
       // Preserve production color as the engine-generated PDF. The SVG is only
       // a geometry/preview sanity check; transferring it would convert CMYK to RGB.
       if(d.colorSpace!=='CMYK'||d.nativePdf!==true)
@@ -162,22 +164,25 @@ async function receive(event){
         throw Error('Исходные CMYK не были переданы в PDF');
       const check=window.gwbCmykRoundtrip;
       if(!check)throw Error('Модуль контроля CMYK ещё не загрузился');
+      s.progress?.set(51,'Проверяем исходные цвета CMYK в печатном PDF…');
       await check.verifyPdf(rawPdf,cropped.boundsMm);
+      s.progress?.set(63,'CMYK проверен. Передаём в выбранное поле Макетной…');
       const file=new File([rawPdf],s.filename.replace(/\.[^.]*$/,'')+'-vectorcraft-cmyk.pdf',{type:'application/pdf'});
       const xml=new DOMParser().parseFromString(cropped.svg,'image/svg+xml');
       if(xml.querySelector('script,foreignObject'))throw Error('SVG содержит неподдерживаемые исполняемые элементы');
       const warnings=String(d.message||'').trim();
-      if(warnings&&!confirm('VectorCraft сообщает об особенностях экспорта:\n'+warnings.slice(0,900)+'\nПрименить результат?')){s.apply.disabled=false;notice(s,'Экспорт отменён. Исходный макет сохранён.');return}
+      if(warnings&&!confirm('VectorCraft сообщает об особенностях экспорта:\n'+warnings.slice(0,900)+'\nПрименить результат?')){s.applying=false;s.progress?.error();s.apply.disabled=false;notice(s,'Экспорт отменён. Исходный макет сохранён.');return}
       if(active!==s)return;
       if(typeof window.gwbApplyEditedLogoToActiveField!=='function')throw Error('Мост к выбранному полю Макетной недоступен');
       notice(s,'Проверяем CMYK и сохраняем исходный векторный PDF в поле…');
       await window.gwbApplyEditedLogoToActiveField(file,s.placement,{
         artworkBoundsMm:cropped.boundsMm,fieldSizeMm:s.fieldSizeMm,
-        colorSpace:'CMYK',nativePdfCmyk:true
+        colorSpace:'CMYK',nativePdfCmyk:true,
+        onProgress:(percent,stage)=>s.progress?.set(percent,stage)
       });
-      if(active===s)close(true);
+      if(active===s){s.applying=false;s.progress?.complete();close(true)}
     }catch(error){
-      s.apply.disabled=false;
+      s.applying=false;s.progress?.error();s.apply.disabled=false;
       notice(s,'Изменённый логотип не применён: '+error.message,true);
     }
   }
@@ -234,13 +239,17 @@ async function open(externalFile=null){
   footer.append(status);overlay.append(bar,iframe,footer);
   const oldOverflow=document.body.style.overflow;
   active={session:token,iframe,overlay,bar,footer,cancel,status,apply,fullscreenBtn,file,filename:externalFile?.name||selected.file?.name||file.name,placement:selected.token,fieldSizeMm,fieldCanvas,oldOverflow,sent:false,opened:false,applying:false,giftsMode:true,themePending:false};
+  active.progress=window.gwbEditorReturnProgress?.make(overlay,iframe);
   active.onFullscreenChange=()=>syncFullscreen(active);
   document.addEventListener('fullscreenchange',active.onFullscreenChange);
   fullscreenBtn.onclick=()=>{void toggleFullscreen(active)};
   window.addEventListener('message',receive);
   apply.onclick=()=>{
     const s=active;if(!s||s.applying)return;
-    s.applying=true;s.apply.disabled=true;notice(s,'VectorCraft формирует печатный PDF с сохранением CMYK…');
+    s.applying=true;s.apply.disabled=true;
+    s.progress?.start('VectorCraft подготавливает печатный PDF с сохранением CMYK…');
+    s.progress?.set(5,'Ожидаем экспорт редактора и формирование PDF…');
+    notice(s,'Передача в шаблон: PDF, проверка CMYK, размещение…');
     s.iframe.contentWindow.postMessage({type:'gwb-vectorcraft-apply',token:s.session},ORIGIN);
   };
   cancel.onclick=()=>close();
