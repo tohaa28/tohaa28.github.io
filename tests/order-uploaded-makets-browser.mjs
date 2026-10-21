@@ -149,6 +149,8 @@ try {
  await page.locator('#gwbUploadReadySimple').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('добавлен к заказу'),null,{timeout:15000});
  assert.ok(postedPdf,'Ready PDF uploaded to the original order');
+ // Basket/card refresh resolves asynchronously after the server confirms upload.
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===3,null,{timeout:15000});
  assert.equal((await page.locator('.gwb-order-maket-item').count()),3);
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/3/);
  // Regression: 300px sidebar must not squeeze long attachment names into
