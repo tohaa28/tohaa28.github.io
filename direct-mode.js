@@ -819,8 +819,12 @@
             if(!href)return false;
             try{
               const link=new URL(href,giftsUrl("/private/order/"+order));
-              return link.origin===GIFTS_ORIGIN &&
-                link.pathname==="/private/order/"+order;
+              // Saved authorized order pages use /private/order/:number#,
+              // but the SAME official j_delete_maket control on gifts.ru/cart
+              // points to /cart#. Both must be accepted.
+              return link.origin===GIFTS_ORIGIN && !link.search &&
+                (link.pathname==="/private/order/"+order ||
+                 link.pathname==="/cart");
             }catch{return false}
           })());
       // The original name is metadata, never an output path or a download URL.
