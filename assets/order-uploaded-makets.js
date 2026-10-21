@@ -42,8 +42,7 @@ function start(){
  '.gwb-save-actions button{min-width:0;min-height:36px;border-radius:6px;padding:7px 5px;font:700 12px/1.3 system-ui;white-space:normal}',
  '.gwb-save-actions .gwb-ready-save-as{background:white;border:1px solid #b9caae;color:#48663c}',
  '.gwb-save-target{grid-column:1/-1;min-width:0;overflow-wrap:anywhere;font:11px/1.4 system-ui;color:#728072}',
- '.gwb-order-maket-current{outline:2px solid #9cc06f;outline-offset:0}'
- '.gwb-ready-upload[hidden]{display:none!important}',
+ '.gwb-order-maket-current{outline:2px solid #9cc06f;outline-offset:0}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
  '.gwb-order-maket-badge{display:inline-flex;align-items:center;margin:5px 0 0;padding:3px 7px;background:#edf5e6;color:#507329;border:1px solid #d9e6cc;border-radius:6px;font:700 11px system-ui,sans-serif}',
  '@media(max-width:580px){.gwb-order-maket-item{grid-template-columns:minmax(0,1fr)}.gwb-order-maket-actions{width:100%}}'
