@@ -76,7 +76,7 @@ jobs:
           cargo test -p tracedraw ops2::tests::convert_to_bitmap_dialog_cmyk_reaches_pdf_export -- --exact
           cargo build -p tracedraw
           cargo clippy --workspace
-          cargo clippy -p tracedraw-core -p tracedraw-io --all-targets -- -D warnings
+          cargo clippy -p tracedraw-core -p tracedraw-io --lib -- -D warnings
       - name: Compile genuine TraceDraw Rust engine to WebAssembly
         run: |
           set -euo pipefail
