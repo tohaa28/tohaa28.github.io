@@ -37,10 +37,10 @@ const ajaxHtml='<div><label>Загрузка макетов</label>'+uploadForm+
 const pageHtml='<!doctype html><html><head><meta charset="utf-8"></head><body><div id="basketOrders">'+
  '<div class="basket-order"><div class="basket-order-title">Заказ №8006776</div></div></div>'+
  '<div id="orderEditor" style="width:300px;max-width:300px"><details id="orderTemplatePicker"></details>'+ 
- '<div id="stage"></div><div id="editorStep3" hidden></div><div id="fieldLogoTools" hidden></div>'+ 
+ '<div id="stage"></div><div id="editorStep3" hidden></div><div id="fieldLogoTools" hidden><button id="editorAddLogo">Добавить логотип</button><button id="editorOpenLogoEditor">Редактор логотипа</button><button id="editorUndo">Undo</button><button id="editorFit">Подогнать</button><input id="editorAngle" type="number"></div>'+ 
  '<button id="zoomPage" hidden></button><button id="simpleExport">Скачать PDF</button>'+ 
  '<button id="prepareOrderPdf">Скачать для заказа</button></div>'+
- '<input id="order" value="8006776"><input id="artwork" type="file">'+
+ '<input id="order" value="8006776"><input id="artwork" type="file"><button id="simpleFit">Подогнать</button><button id="simpleDraw">Выбрать поле</button><button id="rotateLeft">↶</button>'+
  '<button id="loadOrder"></button><div id="status"></div></body></html>';
 
 try {
@@ -107,6 +107,17 @@ try {
  const forbidden=await page.evaluate(async()=>{const r=await fetch('/api/orders/8006776/uploaded-makets/1234567.pdf');return r.status});
  assert.equal(forbidden,404,'A file outside the current order must not download');
  await page.addScriptTag({path:'assets/order-uploaded-makets.js'});
+ await page.addScriptTag({path:'assets/template-selection-tool-lock.js'});
+ assert.equal(await page.locator('#artwork').isDisabled(),true,
+   'File input is disabled while selecting a template');
+ assert.equal(await page.locator('#editorAddLogo').isDisabled(),true,
+   'Add-logo command cannot run in template selection');
+ assert.equal(await page.locator('#editorOpenLogoEditor').isDisabled(),true,
+   'Both vector editors are unavailable without a selected imprint field');
+ assert.equal(await page.locator('#simpleFit').isDisabled(),true,
+   'Simple mode artwork tools remain disabled');
+ assert.equal(await page.locator('#simpleDraw').isDisabled(),false,
+   'Field selection itself remains usable');
  try {
    await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===2,null,{timeout:8000});
  } catch (error) {
@@ -149,6 +160,7 @@ try {
    window.__fieldLoading=true;
    window.gwbUploadedMaketNative={
      getScope(){return window.__fieldLoading?null:scope;},
+     async identify(){return {kind:'maketnaya',format:2}},
      async inspect(file,expected){
        if(expected!==scope)throw Error('Stale inspected field');
        if(window.__inspectOrigin==='external')return {kind:'external'};
@@ -177,6 +189,13 @@ try {
  // Regression: selecting a real field sets the visible UI before native
  // getScope() is ready (the old busy-state dependency left Download/Delete).
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-edit').length===2);
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-origin').length===2);
+ assert.equal(await page.locator('#editorAddLogo').isDisabled(),false,
+   'Native Add Logo is enabled on selected imprint field');
+ assert.equal(await page.locator('#editorOpenLogoEditor').isDisabled(),false,
+   'Editors become available after field selection');
+ assert.equal(await page.locator('#artwork').isDisabled(),false,
+   'File upload restored in active field');
  assert.equal(await page.evaluate(()=>window.gwbUploadedMaketNative.getScope()),null,
    'Editing action is displayed even while native scope is temporarily busy');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),0,
@@ -209,6 +228,9 @@ try {
    document.getElementById('editorStep3').hidden=true;
  });
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===4);
+ await page.waitForFunction(()=>document.getElementById('artwork')?.disabled===true);
+ assert.equal(await page.locator('#editorOpenLogoEditor').isDisabled(),true,
+   'Logo editor is locked again when returning to full template');
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),2);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2);
