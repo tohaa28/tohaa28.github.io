@@ -7,7 +7,7 @@ try{
  await page.route(url,r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',
    body:'<!doctype html><html><body><div id="app">Макетная</div></body></html>'}));
  await page.route('https://tohaa28.github.io/gifts-layout-workbench-mockups/tracedraw/index.html?**',r=>r.fulfill({
-   status:200,contentType:'text/html; charset=utf-8',body:"<html><body><button id=\"transfer\">Перенести на шаблон артикула</button><script>\nconst token=new URLSearchParams(location.hash.slice(1)).get('gwb');let opened=false;\nwindow.addEventListener('message',event=>{\n if(event.source!==window.parent||event.data?.token!==token)return;\n if(event.data.type==='gwb-tracedraw-open'){opened=true;parent.postMessage({type:'gwb-tracedraw-opened',token},'*')}\n});\ndocument.getElementById('transfer').onclick=()=>{\n if(!opened)return;\n parent.postMessage({type:'gwb-tracedraw-svg',token,\n svg:'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16mm\" height=\"8mm\" viewBox=\"3 4 16 8\"><path d=\"M3 4h16v8H3z\"/></svg>',\n logoBoundsMm:{x:3,y:4,w:16,h:8},pdfBytes:Uint8Array.from([...new TextEncoder().encode('%PDF-1.7 CMYK fixture'),...new Array(160).fill(32)]),colorSpace:'CMYK',nativePdf:true},'*');\n};\nparent.postMessage({type:'gwb-tracedraw-ready',token},'*');\n</script></body></html>"
+   status:200,contentType:'text/html; charset=utf-8',body:"<html><body><button id=\"transfer\">Перенести на шаблон артикула</button><script>\nconst token=new URLSearchParams(location.hash.slice(1)).get('gwb');let opened=false;\nwindow.addEventListener('message',event=>{\n if(event.source!==window.parent||event.data?.token!==token)return;\n if(event.data.type==='gwb-tracedraw-open'){opened=true;parent.postMessage({type:'gwb-tracedraw-opened',token},'*')}\n});\ndocument.getElementById('transfer').onclick=()=>{\n if(!opened)return;\n parent.postMessage({type:'gwb-tracedraw-svg',token,\n svg:'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16mm\" height=\"8mm\" viewBox=\"3 4 16 8\"><path d=\"M3 4h16v8H3z\"/></svg>',\n logoBoundsMm:{x:3,y:4,w:16,h:8},pdfBytes:Uint8Array.from([...new TextEncoder().encode('%PDF-1.7 CMYK fixture'),...new Array(160).fill(32)]),colorSpace:window.__mockSpace||'CMYK',nativePdf:true},'*');\n};\nparent.postMessage({type:'gwb-tracedraw-ready',token},'*');\n</script></body></html>"
  }));
  await page.goto(url);
  await page.evaluate(()=>{
@@ -79,5 +79,17 @@ try{
  assert.match(result.name,/tracedraw\.pdf$/);
  await page.waitForFunction(()=>document.getElementById('gwbTraceDrawHost')===null);
  assert.deepEqual(await page.evaluate(()=>window.__visibility),[true,false]);
+ // RGB paint/document must also return to Maketnaya, not be refused.
+ await page.evaluate(()=>{window.__result=null});
+ await page.evaluate(()=>window.gwbTraceDrawHost.open());
+ await page.getByText('Редактируется поле',{exact:false}).waitFor({timeout:15000});
+ await page.frameLocator('#gwbTraceDrawHost iframe').locator('body').evaluate(()=>{window.__mockSpace='RGB'});
+ await page.frameLocator('#gwbTraceDrawHost iframe').locator('#transfer').click();
+ await page.waitForFunction(()=>window.__result!==null,{},{timeout:15000});
+ const rgb=await page.evaluate(()=>window.__result);
+ assert.equal(rgb.options.nativePdfColors,true);
+ assert.equal(rgb.options.colorSpace,'RGB','RGB export must be returned, not rejected');
+ await page.locator('#gwbTraceDrawHost').waitFor({state:'detached'});
+
  console.log('TraceDraw iframe handoff: exact field and source, real art bounds, application guard and closing');
 }finally{await browser.close()}
