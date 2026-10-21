@@ -996,3 +996,14 @@ Regression:
 - Source and production registry blobs preserved: mockup-profiles 750a78701bbba0ea82ec59fd95f78b01dfd37026; method-settings cbf6c8204e4fb3892d806342d37debefb8d9038e.
 - Backups: backup-colors-20261021-source / backup-colors-20261021-production. Checkpoints: checkpoint-colors-20261021-source / checkpoint-colors-20261021-production.
 - Details: handoff/MAKETNAYA_PDF_COLOR_STATE_2026-10-21.md. RGB must remain detectable after an actual CMYK → RGB conversion; no color warnings are masked by document labels.
+
+## 2026-10-22 — TraceDraw bitmap CMYK conversion in the Rust engine
+
+- Reproduced the original failure through the real deployed WASM menu: Bitmaps > Mode > CMYK still returned a DeviceRGB image.
+- Added a per-bitmap output model and an undoable core command. Both bitmap mode and Convert to Bitmap now create actual four-channel DeviceCMYK PDF images through the working color engine, preserving alpha, dimensions and the original PNG. Unselected RGB objects remain RGB. Native drawing save/load preserves the mode.
+- Core patch: a666448de47e5c0697fe79deef56d966846eca00. Verified WASM build source: 20f841c5005097d8905810ed6a519a38223e9f28. Final functional host source: 8dbcb1213b4a7ebbf0beeb3f02b446c2ec19eedf. Production: fc250443923f4fae660913c53a3bb16a60dcd601.
+- Live Maketnaya r024116c7; TraceDraw web 0.9.4-gifts-raster-cmyk1; PrintCheck remains v25 re1f43fb8.
+- All 204 Maketnaya unit tests pass. Three new native IO tests and both new native app tests pass. Local full workspace: 1233 pass, one old Windows font-justification test fails identically on pristine upstream; the 696 app tests pass with four pre-existing ignored tests. This is not reported as an entirely green Windows workspace run.
+- [Native build and WASM 39679316542](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39679316542), [publish 39682223950](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39682223950), [real WASM menu verification 39682223824](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39682223824), [Pages 39682408171](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39682408171): SUCCESS. Real menu RGB -> CMYK -> RGB, four samples per pixel, alpha, bounds, keyboard undo/redo and mixed raster/vector export passed.
+- Source/production registry blobs are unchanged: mockup-profiles 750a78701bbba0ea82ec59fd95f78b01dfd37026; method-settings cbf6c8204e4fb3892d806342d37debefb8d9038e. Transfer progress, locking, both gifts.ru order save actions and both WASM runtimes are preserved.
+- Checkpoints: checkpoint-tracedraw-raster-cmyk-20261022-source and checkpoint-tracedraw-raster-cmyk-20261022-production. Details and limits: handoff/MAKETNAYA_TRACEDRAW_RASTER_CMYK_2026-10-22.md. CMYK conversion happens at PDF output from the retained RGB PNG source; CMYK editing channels and preservation of this new mode in SVG/CDR are not claimed.
