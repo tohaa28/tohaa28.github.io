@@ -12,6 +12,7 @@ try{
  await page.goto(url);
  await page.evaluate(()=>{
    window.__result=null;window.__visibility=[];
+   window.__returnGate=new Promise(resolve=>{window.__completeTransfer=resolve});
    window.gwbCmykRoundtrip={cropFieldPdf:async(bytes,field,bounds)=>{
      if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-'||field.w!==60||bounds.w!==16)throw Error('Invalid CMYK PDF bounds');
      return new Uint8Array(bytes);
@@ -28,10 +29,14 @@ try{
      prepare:async file=>({file,fieldSizeMm:{w:60,h:35},fieldCanvas:true})
    };
    window.gwbApplyEditedLogoToActiveField=async(file,token,options)=>{
-     window.__result={name:file.name,token,options,pdf:await file.text()};
+     options.onProgress?.(78,'Считываем большой PDF в Макетной…');
+     await window.__returnGate;
+     options.onProgress?.(94,'Устанавливаем макет в поле…');
+     window.__result={name:file.name,token,options:{...options,onProgress:null},pdf:await file.text()};
      return {fieldIndex:0};
    };
  });
+ await page.addScriptTag({path:'assets/editor-return-progress.js'});
  await page.addScriptTag({path:'assets/tracedraw-integration.js'});
  // A field already being edited in VectorCraft must not open in TraceDraw.
  await page.evaluate(()=>{
@@ -49,6 +54,19 @@ try{
  const iframe=page.frameLocator('#gwbTraceDrawHost iframe');
  await page.getByText('Редактируется поле',{exact:false}).waitFor({timeout:15000});
  await iframe.locator('#transfer').click();
+ const progress=page.locator('#gwbTraceDrawHost .gwb-return-progress');
+ await progress.waitFor({state:'visible'});
+ await page.waitForFunction(()=>document.querySelector('#gwbTraceDrawHost .gwb-return-meter')?.value>=78);
+ assert.equal(await page.locator('#gwbTraceDrawHost .gwb-return-percent').textContent(),'78%');
+ assert.equal(await page.locator('#gwbTraceDrawHost iframe').evaluate(el=>el.inert),true,
+   'TraceDraw iframe is locked while Maketnaya parses the exported PDF');
+ assert.equal(await page.getByRole('button',{name:'Закрыть без изменений'}).isDisabled(),true,
+   'Closing while transfer is running is blocked');
+ await page.evaluate(()=>window.gwbTraceDrawHost.close());
+ assert.equal(await page.locator('#gwbTraceDrawHost').count(),1,
+   'Programmatic Close cannot discard an in-flight application');
+ assert.equal(await page.evaluate(()=>window.__result),null,'Commit is not announced before completion');
+ await page.evaluate(()=>window.__completeTransfer());
  await page.waitForFunction(()=>window.__result!==null);
  const result=await page.evaluate(()=>window.__result);
  assert.equal(result.token,'0|0|0|logo.svg');
