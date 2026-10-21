@@ -1568,8 +1568,12 @@
       // Logrus.Order.config.ajaxActions.deleteMaket:
       // /ajax/gifts/order?action=delete_maket&type=10
       // Per-file button: data-id (maket), data-orderid (internal order).
+      // All read/download/upload endpoints use the verified internal oid.
+      // Native delete controls expose it as data-orderid; send both aliases
+      // with the SAME validated value to tolerate Gifts's AJAX naming.
       const endpoint = "/ajax/gifts/order?action=delete_maket&type=10"+
         "&id="+encodeURIComponent(maketId)+
+        "&oid="+encodeURIComponent(original.orderInternalId)+
         "&orderid="+encodeURIComponent(original.orderInternalId);
       const response = await nativeFetch(giftsUrl(endpoint),{
         method:"GET",credentials:"include",redirect:"follow",cache:"no-store",
