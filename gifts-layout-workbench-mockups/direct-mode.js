@@ -785,6 +785,8 @@
     const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
     const files = new Map();
     const links = [];
+    // Only a per-file delete control from the SAME Gifts upload row grants deletion.
+    // Ignore the special data-id="-111" control that removes every attachment.
     // Saved order pages put the modal in declarative shadow DOM templates.
     // Popup AJAX fragments use ordinary DOM. Handle both without touching
     // the "Согласование макетов" tab or unrelated download templates.
@@ -806,10 +808,18 @@
       if (!/^[^\\/:*?"<>|]{1,200}\.(?:pdf|ai|svg|png|jpe?g)$/i.test(filename)) continue;
       const row = node.closest(".flex-item.flex-main,li,tr,.maket-row") || node.parentElement;
       const originalName = clean(row?.querySelector('[title="Исходное имя закачанного файла"]')?.textContent || "") || filename;
+      const host = node.closest(".j_maket_host,.maket-row,li,tr") ||
+        node.closest(".flex") || row?.parentElement;
+      const canDelete = !![...(host?.querySelectorAll("a.j_delete_maket[data-id][data-orderid]")||[])]
+        .find(button => button.getAttribute("data-id") === id &&
+          button.getAttribute("data-orderid") === String(internalOrderId) &&
+          /^\d{1,20}$/.test(button.getAttribute("data-id")||"") &&
+          (button.getAttribute("href")||"").startsWith(GIFTS_ORIGIN+"/private/order/"+order));
       // The original name is metadata, never an output path or a download URL.
       files.set(id, {
         id, order: String(order), filename,
         originalName: originalName.slice(0, 200),
+        canDelete,
         mime: /\.pdf$/i.test(filename) ? "application/pdf" : "",
         source: "gifts-order-uploaded-layout",
         attachmentScope: "order", // NO implicit article/field mapping
@@ -1024,7 +1034,10 @@
         if (relations.uploadForm) parsed.uploadForm = relations.uploadForm;
         if (Array.isArray(relations.uploadedMakets)) {
           const union = new Map(parsed.uploadedMakets.map(file => [file.id, file]));
-          for (const file of relations.uploadedMakets) union.set(file.id, file);
+          for (const file of relations.uploadedMakets) {
+            const older = union.get(file.id);
+            union.set(file.id, {...file,canDelete:!!(file.canDelete||older?.canDelete)});
+          }
           parsed.uploadedMakets = [...union.values()];
         }
         parsed.maketsPopupLoaded = true;
@@ -1527,6 +1540,57 @@
     }
   }
 
+  async function apiDeleteUploadedMaket(order, maketId) {
+    if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
+      return json({error:"Некорректный заказ или идентификатор файла."},400);
+    try {
+      const original = await getOrder(order,true);
+      const file = (original.uploadedMakets||[]).find(f=>f.id===maketId && f.order===order);
+      // The real gifts.ru delete control is the authority. Never rely only
+      // on the client-supplied attachment ID, and never allow delete-all (-111).
+      if (!file) return json({error:"Макет не найден в указанном заказе."},404);
+      if (!file.canDelete) return json({error:"gifts.ru не предоставил удаление этого макета."},403);
+      if (!/^\d{1,20}$/.test(String(original.orderInternalId||"")))
+        return json({error:"Не удалось проверить внутренний номер заказа."},403);
+      // This is the site-native deleteMaket action:
+      // Logrus.Order.config.ajaxActions.deleteMaket:
+      // /ajax/gifts/order?action=delete_maket&type=10
+      // Per-file button: data-id (maket), data-orderid (internal order).
+      const endpoint = "/ajax/gifts/order?action=delete_maket&type=10"+
+        "&id="+encodeURIComponent(maketId)+
+        "&orderid="+encodeURIComponent(original.orderInternalId);
+      const response = await nativeFetch(giftsUrl(endpoint),{
+        method:"GET",credentials:"include",redirect:"follow",cache:"no-store",
+        headers:{accept:"application/json,text/html;q=0.9,*/*;q=0.8",
+                 "x-requested-with":"XMLHttpRequest"}
+      });
+      const body=(await response.text()).slice(0,10000);
+      const origin=new URL(response.url).origin;
+      if (origin!==GIFTS_ORIGIN || isAuthPage(body,response.url))
+        return json({error:"Авторизация или ответ gifts.ru не подтверждены."},401);
+      if (!response.ok) return json({error:"gifts.ru отклонил удаление PDF ("+response.status+")."},502);
+      try{
+        const result=JSON.parse(body);
+        if(result?.success===false || result?.result===false || result?.error)
+          return json({error:String(result.error||result.message||"Ошибка удаления.")},502);
+      }catch{}
+      orderCache.delete(order);
+      let absent=false;
+      for(let attempt=0;attempt<4&&!absent;attempt++){
+        if(attempt)await new Promise(resolve=>setTimeout(resolve,500));
+        const latest=await getOrder(order,true);
+        absent=!(latest.uploadedMakets||[]).some(f=>f.id===maketId);
+      }
+      if(!absent) return json({
+        error:"gifts.ru ответил, но удаление ещё не подтверждено. Проверьте список перед повторной попыткой."
+      },502);
+      orderCache.delete(order);
+      return json({ok:true,order,deletedId:maketId,filename:file.originalName});
+    }catch(error){
+      return json({error:error?.message||String(error)},error?.code==="AUTH"?401:502);
+    }
+  }
+
   async function apiUploadedMaket(order, maketId) {
     if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
       return json({error:"Некорректный номер макета."},400);
@@ -1687,6 +1751,9 @@
 
         let m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\.pdf$/);
         if (m && method === "GET") return apiPdf(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})$/);
+        if (m && method === "DELETE") return apiDeleteUploadedMaket(m[1],m[2]);
 
         m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})\.pdf$/);
         if (m && method === "GET") return apiUploadedMaket(m[1], m[2]);
