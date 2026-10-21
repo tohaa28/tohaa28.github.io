@@ -142,17 +142,28 @@ try {
  await page.locator('#gwbOrderMakets .gwb-order-maket-delete').first().click();
  assert.equal(deleteCount,0,'Cancelled dialog never reaches the deletion endpoint');
  await page.evaluate(()=>{
-   window.__imported=[];
+   window.__imported=[];window.__externalFiles=[];
+   window.__inspectOrigin='maketnaya';
    const scope={order:'8006776',article:'77700.60',itemId:'49428451',
      page:0,active:0,fieldIndex:0,template:{id:'t'},entry:{id:'e'},field:{id:'f'}};
    window.__fieldLoading=true;
    window.gwbUploadedMaketNative={
      getScope(){return window.__fieldLoading?null:scope;},
-     async apply(file,expected){
-       if(expected!==scope)throw Error('Stale selected field');
-       window.__imported.push({name:file.name,head:(await file.text()).slice(0,5)});
+     async inspect(file,expected){
+       if(expected!==scope)throw Error('Stale inspected field');
+       if(window.__inspectOrigin==='external')return {kind:'external'};
+       return {kind:'maketnaya',
+         bytes:new TextEncoder().encode('%PDF-1.7 LOGO ONLY'),
+         sourceField:{x:0,y:0,w:20,h:15},
+         placement:{x:2,y:2,w:10,h:8,rotation:0}};
+     },
+     async apply(file,expected,options){
+       if(expected!==scope||!options?.placement)throw Error('Incorrect logo extraction');
+       window.__imported.push({name:file.name,head:(await file.text()).slice(0,5),
+         placement:options.placement});
      }
    };
+   window.gwbEditorChooser={showWithFile(file){window.__externalFiles.push(file.name)}};
    const entry={id:'current'},template={id:'template'};
    window.gwbReadyPdfNative={
      snapshot(){return {order:'8006776',article:'77700.60',itemId:'49428451',entry,template};},
@@ -179,8 +190,16 @@ try {
  await page.waitForFunction(()=>window.__imported?.length===1);
  const imported=await page.evaluate(()=>window.__imported);
  assert.equal(imported[0].head,'%PDF-');
- assert.deepEqual(imported.map(x=>x.name),['8006776_maket_2_201026_143328.pdf']);
- assert.match(imported[0].name,/\.pdf$/i);
+ assert.deepEqual(imported.map(x=>x.name),['gerb2-логотип.pdf']);
+ assert.equal(imported[0].placement.x,2,'Maketnaya source geometry is handed to field importer');
+ // An external customer PDF MUST go to a real editor chooser without applying
+ // the entire constructor as a logo or resetting already-placed artwork.
+ await page.evaluate(()=>{window.__inspectOrigin='external'});
+ await page.locator('#gwbOrderMakets .gwb-order-maket-item button').nth(1).click();
+ await page.waitForFunction(()=>window.__externalFiles?.length===1);
+ assert.deepEqual(await page.evaluate(()=>window.__externalFiles),['che.pdf']);
+ assert.equal(await page.evaluate(()=>window.__imported.length),1,
+   'External PDF must not enter the imprint field automatically');
  assert.ok(routed.some(path=>path.includes('/cart/act/mda?')),
    'Authorized download was routed via gifts.ru with its internal order ID');
  // Leaving field view restores download and delete for every file.
