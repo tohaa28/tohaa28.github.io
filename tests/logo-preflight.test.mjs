@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {PRINT_REQUIREMENTS,effectiveRule,resolveMethod} from '../assets/print-requirements.mjs';
-import {checkLogo,contextFromOrder,pdfColorOperators,rasterColorModel} from '../assets/logo-preflight.mjs';
+import {checkLogo,contextFromOrder,pdfColorOperators,pdfAppliedPaintOperators,rasterColorModel} from '../assets/logo-preflight.mjs';
 const art={ext:'png',w:25.4,h:25.4,preflight:{rasters:[{pixelW:300,pixelH:300,w:25.4,h:25.4}],limitations:[]}};
 const run=(method,overrides={})=>checkLogo({art,placement:{w:25.4,h:25.4},field:{},method,margin:1,...overrides});
 test('exact method tokens never confuse families, print IDs, unknown or ambiguous variants',()=>{
@@ -54,6 +54,26 @@ test('original PDF color evidence ignores comments, text strings and inline imag
  const r=run('SL1',{art:{...art,preflight:{originalColors:[{model:'CMYK',values:[1,1,1,1]}],originalColorModels:['CMYK'],limitations:[]}}});
  assert.ok(r.findings.some(f=>f.id==='ink-limit'&&f.status==='bad'));
 });
+test('PrintCheck distinguishes unused RGB color-state from actually painted PDF ink',()=>{
+ const ignored=pdfAppliedPaintOperators(
+   '1 0 0 rg\n1 0 0 RG\n0 0 0 1 k\n0 0 10 10 re f\n');
+ assert.deepEqual([...new Set(ignored.colors.map(x=>x.model))],['CMYK'],
+   'Unused RGB setup before a real CMYK fill is not RGB artwork');
+ const painted=pdfAppliedPaintOperators('0 0 0 1 k 0 1 0 rg 0 0 10 10 re f');
+ assert.deepEqual([...new Set(painted.colors.map(x=>x.model))],['RGB'],
+   'CMYK setup before a real RGB fill is not CMYK artwork');
+ const stroked=pdfAppliedPaintOperators('0 0 0 1 K 1 0 0 RG 0 0 m 10 10 l S');
+ assert.deepEqual([...new Set(stroked.colors.map(x=>x.model))],['RGB']);
+ const stack=pdfAppliedPaintOperators(
+   '0 0 0 1 k q 1 0 0 rg Q 0 0 10 10 re f');
+ assert.deepEqual([...new Set(stack.colors.map(x=>x.model))],['CMYK'],
+   'A color changed inside a restored graphics-state scope is not painted');
+ const unused=pdfAppliedPaintOperators('1 0 0 rg 0 0 10 10 re n');
+ assert.equal(unused.colors.length,0,'Construction without fill/stroke is not painted');
+ const mixed=pdfAppliedPaintOperators('0 0 0 1 k 0 0 10 10 re f 1 0 0 rg 0 0 10 10 re f');
+ assert.deepEqual([...new Set(mixed.colors.map(x=>x.model))],['CMYK','RGB']);
+});
+
 test('all 92 source codes match the archived formal map',()=>{
  const map=JSON.parse(fs.readFileSync(new URL('../docs/print-requirements.json',import.meta.url),'utf8'));
  assert.equal(map.sourceCodes.length,92);assert.deepEqual(Object.keys(PRINT_REQUIREMENTS).sort(),map.sourceCodes);
