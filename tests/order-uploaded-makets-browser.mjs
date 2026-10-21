@@ -37,7 +37,7 @@ const ajaxHtml='<div><label>Загрузка макетов</label>'+uploadForm+
 const pageHtml='<!doctype html><html><head><meta charset="utf-8"></head><body><div id="basketOrders">'+
  '<div class="basket-order"><div class="basket-order-title">Заказ №8006776</div></div></div>'+
  '<div id="orderEditor" style="width:300px;max-width:300px"><details id="orderTemplatePicker"></details>'+ 
- '<div id="stage"></div><div id="fieldLogoTools" hidden></div>'+ 
+ '<div id="stage"></div><div id="editorStep3" hidden></div><div id="fieldLogoTools" hidden></div>'+ 
  '<button id="zoomPage" hidden></button><button id="simpleExport">Скачать PDF</button>'+ 
  '<button id="prepareOrderPdf">Скачать для заказа</button></div>'+
  '<input id="order" value="8006776"><input id="artwork" type="file">'+
@@ -139,8 +139,9 @@ try {
    window.__imported=[];
    const scope={order:'8006776',article:'77700.60',itemId:'49428451',
      page:0,active:0,fieldIndex:0,template:{id:'t'},entry:{id:'e'},field:{id:'f'}};
+   window.__fieldLoading=true;
    window.gwbUploadedMaketNative={
-     getScope(){return scope;},
+     getScope(){return window.__fieldLoading?null:scope;},
      async apply(file,expected){
        if(expected!==scope)throw Error('Stale selected field');
        window.__imported.push({name:file.name,head:(await file.text()).slice(0,5)});
@@ -151,16 +152,23 @@ try {
      snapshot(){return {order:'8006776',article:'77700.60',itemId:'49428451',entry,template};},
      async make(){return new File(['%PDF-1.7\\nready PDF'],'8006776_77700.60_макет.pdf',{type:'application/pdf'});}
    };
+   document.getElementById('status').textContent='Загрузите логотип для выбранного поля.';
+   document.getElementById('editorStep3').hidden=false;
    document.getElementById('fieldLogoTools').hidden=false;
    document.getElementById('zoomPage').hidden=false;
  });
+ // Regression: selecting a real field sets the visible UI before native
+ // getScope() is ready (the old busy-state dependency left Download/Delete).
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-edit').length===2);
+ assert.equal(await page.evaluate(()=>window.gwbUploadedMaketNative.getScope()),null,
+   'Editing action is displayed even while native scope is temporarily busy');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),0,
    'Download is replaced, not displayed beside Edit');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),0,
    'Delete must disappear in field editor mode');
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),2,
    'One action per PDF must be preserved in field editing mode');
+ await page.evaluate(()=>{window.__fieldLoading=false});
  await page.locator('#gwbOrderMakets .gwb-order-maket-item button').first().click();
  await page.waitForFunction(()=>window.__imported?.length===1);
  const imported=await page.evaluate(()=>window.__imported);
@@ -170,7 +178,11 @@ try {
  assert.ok(routed.some(path=>path.includes('/cart/act/mda?')),
    'Authorized download was routed via gifts.ru with its internal order ID');
  // Leaving field view restores download and delete for every file.
- await page.evaluate(()=>{document.getElementById('zoomPage').hidden=true;document.getElementById('fieldLogoTools').hidden=true});
+ await page.evaluate(()=>{
+   document.getElementById('zoomPage').hidden=true;
+   document.getElementById('fieldLogoTools').hidden=true;
+   document.getElementById('editorStep3').hidden=true;
+ });
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===4);
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),2);
