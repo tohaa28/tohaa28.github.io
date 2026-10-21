@@ -21,7 +21,10 @@ function install(){
  const former=new Map();
  let wasLocked=null,inside=false;
  function fieldActive(){
-   return !editor.hidden&&!stage.hidden&&!tools.hidden&&!zoom.hidden;
+   // Native X() sets Step 3 hidden=!(y.view&&y.field). This is the
+   // authoritative state for editing. The zoom/back button can be hidden
+   // transiently during PDF loading and must not re-lock a valid field.
+   return !editor.hidden&&!stage.hidden;
  }
  function sync(){
    if(inside)return;
