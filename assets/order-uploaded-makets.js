@@ -37,9 +37,9 @@ function start(){
  '.gwb-order-maket-item button.gwb-order-maket-delete:focus-visible{outline:2px solid #629d31;outline-offset:2px}',
  '.gwb-order-maket-delete g-icon{display:block;width:18px;height:18px;flex:none}',
  '.gwb-order-maket-delete svg{display:block;width:100%;height:100%;fill:currentColor}',
- '.gwb-save-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:7px}',
+ '.gwb-save-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin-top:7px}',
  '.gwb-save-actions[hidden]{display:none!important}',
- '.gwb-save-actions button{min-width:0;min-height:36px;border-radius:6px;padding:7px 5px;font:700 12px/1.3 system-ui;white-space:normal}',
+ '.gwb-save-actions button{width:100%;min-width:0;min-height:40px;border-radius:6px;padding:9px 11px;font:700 12px/1.35 system-ui;white-space:normal;overflow-wrap:anywhere}',
  '.gwb-save-actions .gwb-ready-save-as{background:white;border:1px solid #b9caae;color:#48663c}',
  '.gwb-save-target{grid-column:1/-1;min-width:0;overflow-wrap:anywhere;font:11px/1.4 system-ui;color:#728072}',
  '.gwb-order-maket-current{outline:2px solid #9cc06f;outline-offset:0}',
@@ -75,10 +75,10 @@ function start(){
    const wrap=document.createElement('div');wrap.className='gwb-save-actions';
    const save=document.createElement('button');
    save.id='gwbSaveReady'+suffix;save.type='button';save.className='primary gwb-ready-save';
-   save.textContent='Сохранить';
+   save.textContent='Сохранить макет в заказ на gifts.ru';
    const saveAs=document.createElement('button');
    saveAs.id='gwbSaveAsReady'+suffix;saveAs.type='button';saveAs.className='ghost gwb-ready-save-as';
-   saveAs.textContent='Сохранить как…';
+   saveAs.textContent='Сохранить как.. макет в заказ на gifts.ru';
    const hint=document.createElement('div');hint.className='gwb-save-target';
    save.addEventListener('click',()=>{void saveFinishedPdf('save',save)});
    saveAs.addEventListener('click',()=>{void saveFinishedPdf('as',saveAs)});
