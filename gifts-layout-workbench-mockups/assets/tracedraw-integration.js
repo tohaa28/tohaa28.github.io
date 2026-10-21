@@ -6,7 +6,7 @@
 if(window.gwbTraceDrawHostInstalled)return;
 window.gwbTraceDrawHostInstalled=true;
 const ORIGIN='https://tohaa28.github.io';
-const INDEX=ORIGIN+'/gifts-layout-workbench-mockups/tracedraw/index.html?v=20261019-cmyk-pdf-2';
+const INDEX=ORIGIN+'/gifts-layout-workbench-mockups/tracedraw/index.html?v=20261022-raster-cmyk1';
 let active=null;
 function button(name){const b=document.createElement('button');b.type='button';b.textContent=name;
  Object.assign(b.style,{padding:'8px 13px',borderRadius:'7px',border:'1px solid #b3cda3',
