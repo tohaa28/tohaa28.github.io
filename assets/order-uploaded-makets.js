@@ -26,8 +26,12 @@ function start(){
  '.gwb-order-maket-item button{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:36px;border-radius:6px;padding:8px 10px;background:#eff6e6;border:1px solid #b8d19a;color:#416b19;cursor:pointer;font:650 12px/1.35 system-ui,sans-serif;text-align:center;white-space:normal}',
  '.gwb-order-maket-item button:hover{background:#e3f0d1}',
  '.gwb-order-maket-item button:disabled{cursor:wait;opacity:.65}',
- '.gwb-order-maket-actions{display:block;width:100%;min-width:0;max-width:100%}',
+ '.gwb-order-maket-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;width:100%;min-width:0;max-width:100%}',
+ '.gwb-order-maket-actions.is-field-mode{grid-template-columns:minmax(0,1fr)}',
  '.gwb-order-maket-download{background:#fff!important;color:#435159!important;border-color:#d5ded6!important}',
+ '.gwb-order-maket-delete{background:#fff9f9!important;color:#a94343!important;border-color:#e6c7c7!important}',
+ '.gwb-order-maket-delete:hover:not(:disabled){background:#fce9e9!important}',
+ '@container (max-width:195px){.gwb-order-maket-actions:not(.is-field-mode){grid-template-columns:minmax(0,1fr)}}',
  '.gwb-ready-upload{margin-top:7px;width:100%;font-weight:700;min-height:36px}',
  '.gwb-ready-upload[hidden]{display:none!important}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
@@ -42,7 +46,7 @@ function start(){
  head.append(title);
  const items=document.createElement('div');items.className='gwb-order-makets-list';
  const help=document.createElement('p');help.className='gwb-order-makets-help';
- help.textContent='В общем виде скачайте PDF; при открытом поле — отредактируйте его в этом поле. Прикреплённые исходники на gifts.ru не изменяются.';
+ help.textContent='В режиме выбранного поля — открыть для редактирования. В остальных режимах — скачать PDF или удалить выбранный файл после подтверждения.';
  section.append(head,items,help);
  editor.querySelector('#orderTemplatePicker')?.insertAdjacentElement('afterend',section);
  if(!section.isConnected)editor.insertBefore(section,editor.firstChild);
@@ -109,6 +113,32 @@ function start(){
      activeUpload=false;syncReadyButtons();
    }
  }
+ let activeDelete=false;
+ async function deleteUploadedMaket(order,file,button){
+   if(activeDelete||!file.canDelete||button.disabled||isFieldMode()||
+      orderInput.value.trim()!==order)return;
+   if(!window.confirm('Удалить только макет «'+file.original+'» из заказа №'+order+
+     '?\nЭто действие нельзя отменить. Остальные макеты останутся в заказе.'))return;
+   if(orderInput.value.trim()!==order||isFieldMode()||editor.hidden)return;
+   activeDelete=true;button.disabled=true;
+   try{
+     if(status)status.textContent='Удаляю «'+file.original+'» из заказа №'+order+'…';
+     const response=await fetch('/api/orders/'+order+'/uploaded-makets/'+file.id,{
+       method:'DELETE',credentials:'same-origin',cache:'no-store'
+     });
+     let reply;
+     try{reply=await response.json()}catch{throw Error('Непонятный ответ gifts.ru; проверьте макеты в заказе.')}
+     if(!response.ok||reply?.ok!==true||reply.deletedId!==file.id)
+       throw Error(reply?.error||'Удаление файла не подтверждено.');
+     state.delete(order);
+     await refreshCards();
+     if(status)status.textContent='Удалён только макет «'+file.original+'» из заказа №'+order+'.';
+   }catch(error){
+     if(status)status.textContent='Удаление не подтверждено: '+String(error?.message||error);
+   }finally{
+     activeDelete=false;button.disabled=false;
+   }
+ }
  async function downloadUploadedMaket(order,file,button){
    if(button.disabled)return;
    button.disabled=true;
@@ -141,7 +171,7 @@ function start(){
      if(!/^\d{1,20}$/.test(id)||!/^.{1,200}\.pdf$/i.test(name)||
         String(file?.order||'')!==order||seen.has(id))continue;
      seen.add(id);
-     out.push({id,name,original:String(file.originalName||name).slice(0,200)});
+     out.push({id,name,original:String(file.originalName||name).slice(0,200),canDelete:file.canDelete===true});
    }
    return out;
  }
@@ -185,6 +215,9 @@ function start(){
  function nativeScope(){
    try{return window.gwbUploadedMaketNative?.getScope?.()||null}catch{return null}
  }
+ function isFieldMode(){
+   return !!nativeScope()&&!tools.hidden&&!document.getElementById('zoomPage')?.hidden;
+ }
  function render(){
    const order=orderInput.value.trim(),inEditor=!editor.hidden;
    if(!inEditor||!valid(order)){section.hidden=true;items.replaceChildren();return}
@@ -195,7 +228,7 @@ function start(){
      section.hidden=!files.length;items.replaceChildren();
      if(!files.length)return;
      title.textContent='Макеты, загруженные в gifts.ru ('+files.length+')';
-     const fieldMode=!!nativeScope()&&!tools.hidden&&!document.getElementById('zoomPage')?.hidden;
+     const fieldMode=isFieldMode();
      files.forEach(file=>{
        const item=document.createElement('div');item.className='gwb-order-maket-item';
        const data=document.createElement('div');data.className='gwb-order-maket-data';
@@ -204,7 +237,8 @@ function start(){
        const meta=document.createElement('div');meta.className='gwb-order-maket-meta';
        meta.textContent=file.original!==file.name?'В заказе: '+file.name:'PDF из заказа';
        data.append(filename,meta);
-       const actions=document.createElement('div');actions.className='gwb-order-maket-actions';
+       const actions=document.createElement('div');
+       actions.className='gwb-order-maket-actions'+(fieldMode?' is-field-mode':'');
        const action=document.createElement('button');action.type='button';
        if(fieldMode){
          action.className='gwb-order-maket-edit';
@@ -218,6 +252,17 @@ function start(){
          action.addEventListener('click',()=>{void downloadUploadedMaket(order,file,action)});
        }
        actions.append(action);
+       if(!fieldMode){
+         const remove=document.createElement('button');remove.type='button';
+         remove.className='gwb-order-maket-delete';
+         remove.textContent='Удалить макет';
+         remove.title=file.canDelete
+           ? 'Безвозвратно удалить только этот PDF из заказа gifts.ru'
+           : 'gifts.ru не предоставил право удаления этого PDF';
+         remove.disabled=!file.canDelete;
+         remove.addEventListener('click',()=>{void deleteUploadedMaket(order,file,remove)});
+         actions.append(remove);
+       }
        item.append(data,actions);items.append(item);
      });
    }).catch(()=>{});
