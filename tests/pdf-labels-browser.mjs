@@ -700,6 +700,17 @@ export async function verifyPdfLabels(frame) {
   const logoSvg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><rect width="200" height="100" fill="#111"/></svg>');
   await frame.locator('#artwork').setInputFiles({name:'clip-test.svg',mimeType:'image/svg+xml',buffer:logoSvg});
   await frame.waitForFunction(()=>document.getElementById('step4Box')?.hidden===false && document.getElementById('editorClip')?.disabled===false);
+  console.log('Selected-field logo lock diagnostics:',JSON.stringify(await frame.evaluate(()=>({
+    locked:document.documentElement.classList.contains('gwb-template-logo-locked'),
+    fieldActive:window.gwbTemplateToolLock?.fieldActive?.(),
+    editorHidden:document.getElementById('orderEditor')?.hidden,
+    step3Hidden:document.getElementById('editorStep3')?.hidden,
+    toolsHidden:document.getElementById('fieldLogoTools')?.hidden,
+    zoomHidden:document.getElementById('zoomPage')?.hidden,
+    nativeSelected:!!window.gwbGetActiveLogoForEditor?.(),
+    clipDisabled:document.getElementById('editorClip')?.disabled,
+    clipAria:document.getElementById('editorClip')?.getAttribute('aria-disabled')
+  }))));
   await frame.locator('#editorClip').check();
   // This SVG is RGB and the fixture method is DTF: explicitly acknowledge the
   // new color-model error before testing the unchanged PDF clipping exporter.
