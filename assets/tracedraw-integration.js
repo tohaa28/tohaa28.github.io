@@ -16,7 +16,8 @@ function hideMaketnayaClose(hidden){
  try{window.gwbReportLogoEditorVisibility?.(hidden)}catch{}
 }
 function close(force=false){
- const s=active;if(!s)return;
+ const s=active;if(!s||s.applying)return;
+ s.progress?.destroy();
  if(!force&&s.opened&&!confirm('Закрыть TraceDraw без переноса изменений на шаблон?'))return;
  active=null;window.removeEventListener('message',receive);
  if(document.fullscreenElement===s.overlay)void document.exitFullscreen().catch(()=>{});
@@ -39,10 +40,12 @@ async function receive(event){
    s.opened=true;
    notify(s,'Редактируется поле '+s.field.w.toFixed(2)+' × '+s.field.h.toFixed(2)+' мм. Для возврата нажмите зелёную кнопку внутри TraceDraw.');
  }else if(d.type==='gwb-tracedraw-error'){
-   s.applying=false;notify(s,'TraceDraw: '+String(d.message||'Ошибка обработки').slice(0,400),true);
+   s.applying=false;s.progress?.error();notify(s,'TraceDraw: '+String(d.message||'Ошибка обработки').slice(0,400),true);
  }else if(d.type==='gwb-tracedraw-svg'){
    if(!s.opened||s.applying)return;
    s.applying=true;
+   s.progress?.start('TraceDraw передал результат. Проверяем векторный макет…');
+   s.progress?.set(15,'Считываем границы и содержимое SVG…');
    try{
      const bounds=d.logoBoundsMm;
      if(!bounds||!['x','y','w','h'].every(k=>typeof bounds[k]==='number'&&Number.isFinite(bounds[k]))||
@@ -67,6 +70,7 @@ async function receive(event){
        }
      }
      if(active!==s)return;
+     s.progress?.set(34,'Контуры проверены. Сохраняем печатную цветовую модель…');
      // Real CMYK and spot values must remain in the PDF color streams.
      // The SVG above is a geometry sanity-check, NOT the print artwork.
      if(d.colorSpace!=='CMYK'||d.nativePdf!==true)
@@ -76,15 +80,18 @@ async function receive(event){
        throw Error('TraceDraw не вернул исходный PDF CMYK');
      const verifier=window.gwbCmykRoundtrip;
      if(!verifier?.cropFieldPdf)throw Error('Контроль цветности CMYK недоступен');
+     s.progress?.set(48,'Подготавливаем отдельный PDF логотипа с CMYK…');
      const croppedPdf=await verifier.cropFieldPdf(pdf,s.field,bounds);
+     s.progress?.set(63,'Печатный PDF готов. Отправляем на выбранное поле…');
      const file=new File([croppedPdf],s.name.replace(/\.[^.]*$/,'')+'-tracedraw-cmyk.pdf',{type:'application/pdf'});
      notify(s,'Проверяем палитру CMYK и переносим печатный PDF на поле артикула…');
      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{
        artworkBoundsMm:bounds,fieldSizeMm:s.field,
-       colorSpace:'CMYK',nativePdfCmyk:true
+       colorSpace:'CMYK',nativePdfCmyk:true,
+       onProgress:(percent,stage)=>s.progress?.set(percent,stage)
      });
-     if(active===s)close(true);
-   }catch(e){s.applying=false;notify(s,'Не удалось применить макет: '+e.message,true)}
+     if(active===s){s.applying=false;s.progress?.complete();close(true)}
+   }catch(e){s.applying=false;s.progress?.error();notify(s,'Не удалось применить макет: '+e.message,true)}
  }
 }
 function session(){const x=new Uint8Array(24);crypto.getRandomValues(x);return [...x].map(v=>v.toString(16).padStart(2,'0')).join('')}
@@ -135,6 +142,7 @@ async function open(externalFile=null){
  active={overlay,iframe,status,token:session(),file:prepared.file,field:prepared.fieldSizeMm,
    name:externalFile?.name||selected.file?.name||prepared.file.name,placement:selected.token,originalOverflow:old,
    opened:false,sent:false,applying:false};
+ active.progress=window.gwbEditorReturnProgress?.make(overlay,iframe);
  cancel.onclick=()=>close();
  fullscreen.onclick=()=>{
    const s=active;if(!s)return;
