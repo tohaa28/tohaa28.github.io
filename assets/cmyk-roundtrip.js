@@ -1,8 +1,8 @@
-/* Strict verification of vector-editor PDF color handoff.
-   A working-space label (CMYK) does NOT prove that painted objects are CMYK.
-   Refuse RGB process paint and require real CMYK process operators/4-channel images.
-   No conversion, no upload, no modification of the PDF bytes.
-*/
+/* Preserve the vector editor's ORIGINAL PDF colors, including RGB raster
+ * images, RGB vector paths, CMYK, Gray, spot and embedded ICC profiles.
+ * Validate size and integrity, report color models; NEVER silently recolor.
+ * A CMYK document label does not imply every object is CMYK.
+ */
 (function(root){
 'use strict';
 if(root.gwbCmykRoundtrip)return;
@@ -42,7 +42,7 @@ async function verifyPdf(bytes,bounds){
  if(!Number.isFinite(w)||!Number.isFinite(h)||Math.abs(w-bounds.w)>0.15||Math.abs(h-bounds.h)>0.15)
    throw Error('PDF не соответствует габаритам нарисованного логотипа: '+w.toFixed(3)+' × '+h.toFixed(3)+' мм');
  const texts=[];
- let cmykImage=0,rgbImage=0,unknownPaint=false,spot=false;
+ let cmykImage=0,rgbImage=0,iccImage=0,unknownPaint=false,spot=false;
  const name=lib.PDFName.of('ColorSpace');
  for(const [,obj] of pdf.context.enumerateIndirectObjects()){
    if(!obj?.dict||typeof obj.getContentsString!=='function'&&!obj.contents)continue;
@@ -51,7 +51,7 @@ async function verifyPdf(bytes,bounds){
    if(csName.includes('/DeviceRGB')||csName.includes('/CalRGB'))rgbImage++;
    if(csName.includes('/DeviceCMYK'))cmykImage++;
    if(csName.includes('/Separation')||csName.includes('/DeviceN'))spot=true;
-   if(csName.includes('/ICCBased'))unknownPaint=true;
+   if(csName.includes('/ICCBased'))iccImage++;
    try{
      const decoded=lib.decodePDFRawStream(obj).decode();
      if(decoded.length>24*1024*1024)throw Error('Слишком большой поток PDF для контроля цветности');
@@ -62,19 +62,21 @@ async function verifyPdf(bytes,bounds){
      unknownPaint=true;
    }
  }
- if(!texts.length)throw Error('Невозможно проверить цветовые операторы PDF');
+ if(!texts.length&&!rgbImage&&!cmykImage&&!iccImage&&!spot)
+   throw Error('Не удалось прочитать графическое содержимое PDF');
  const colors=scans(texts);
- if(colors.rgb||rgbImage)
-  throw Error('В экспортированном PDF обнаружены RGB-краски. Цвета не перенесены в CMYK — логотип оставлен без изменений.');
- if(unknownPaint)
-  throw Error('В PDF имеются цветовые пространства, требующие дополнительной проверки. Перенос остановлен.');
- if(!colors.cmyk&&!cmykImage&&!spot)
-  throw Error('В PDF не подтверждены исходные CMYK или плашечные краски — перенос остановлен.');
- return {...colors,cmykImage,rgbImage,spot,model:models.CMYK,widthMm:w,heightMm:h};
+ const hasCMYK=!!(colors.cmyk||cmykImage||spot);
+ const hasRGB=!!(colors.rgb||rgbImage);
+ const model=hasCMYK&&hasRGB?'Mixed':hasCMYK?models.CMYK:
+   hasRGB?models.RGB:models.Gray;
+ // The PDF and its original image XObjects are preserved. ICC/unknown
+ // streams are reported, not dropped or repainted.
+ return {...colors,cmykImage,rgbImage,iccImage,unknownPaint,spot,
+   model,widthMm:w,heightMm:h};
 }
 // TraceDraw's PDF covers the fixed field, while the SVG sends the true art
-// bounds. Change only PDF page boxes; original streams and CMYK values remain
-// byte-for-byte within the saved PDF. Do not rasterize or recolor anything.
+// bounds. Change only PDF page boxes; keep RGB and CMYK paths and image
+// XObjects unchanged. No rasterization or implicit color conversion.
 async function cropFieldPdf(bytes,field,bounds){
  const lib=root.PDFLib;
  if(!lib?.PDFDocument)throw Error('Нет модуля сохранения PDF');
@@ -82,7 +84,7 @@ async function cropFieldPdf(bytes,field,bounds){
     !['x','y','w','h'].every(k=>Number.isFinite(bounds[k]))||
     bounds.w<=0||bounds.h<=0)throw Error('Поле или границы рисунка не определены');
  const pdf=await lib.PDFDocument.load(bytes,{ignoreEncryption:false,updateMetadata:false});
- if(pdf.getPageCount()!==1)throw Error('Должна быть одна страница CMYK PDF');
+ if(pdf.getPageCount()!==1)throw Error('Должна быть одна страница PDF логотипа');
  const page=pdf.getPage(0),box=page.getMediaBox();
  if(Math.abs(box.width*PT_MM-field.w)>0.15||Math.abs(box.height*PT_MM-field.h)>0.15)
    throw Error('TraceDraw вернул PDF неправильного размера поля');
