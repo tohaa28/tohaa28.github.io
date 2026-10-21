@@ -45,6 +45,51 @@ export async function verifyLogoPreflight(frame) {
     const vectorPdf=await toPdf(false),imagePdf=await toPdf(true);
     return {pure:pure.artworkType,mixed:mixed.artworkType,raster:raster.artworkType,vectorPdf:vectorPdf.artworkType,imagePdf:imagePdf.artworkType,rasters:imagePdf.rasters.length};
   });
+  // Color conversion regression: stale unused RGB operands or images in
+  // a PDF must never become a false "RGB in printed artwork" finding.
+  const printedColors=await frame.evaluate(async()=>{
+    const {inspectArtwork}=await import(
+      'https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/logo-preflight.mjs?v=20261021-active-paints');
+    const lib=PDFLib,pdfjs=pdfjsLib;
+    const png=Uint8Array.from(atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAYAAAC09K7GAAAAH0lEQVR4nGN85ij/n4GBgUHPbvFJBgYGBiYGNIAhAAC4WwQjWprXPQAAAABJRU5ErkJggg=='),
+      c=>c.charCodeAt(0));
+    const make=async(type)=>{
+      const doc=await lib.PDFDocument.create();
+      const page=doc.addPage([72,72]);
+      const active=type==='rgb'?lib.rgb(1,.2,.3):lib.cmyk(.2,.1,.15,.45);
+      page.drawRectangle({x:5,y:5,width:35,height:35,color:active});
+      if(type==='cmyk-unused-rgb'||type==='cmyk-unused-image'){
+        if(type==='cmyk-unused-rgb')
+          page.pushOperators(lib.pushGraphicsState(),
+            lib.setFillingRgbColor(1,0,0),lib.popGraphicsState());
+        if(type==='cmyk-unused-image'){
+          const extra=await doc.embedPng(png);
+          const res=page.node.Resources();
+          res.set(lib.PDFName.of('XObject'),doc.context.obj({UnusedRGBImage:extra.ref}));
+        }
+      }
+      if(type==='mixed')page.drawImage(await doc.embedPng(png),{x:43,y:5,width:12,height:12});
+      const bytes=await doc.save({useObjectStreams:false});
+      const pdf=await pdfjs.getDocument({data:bytes.slice(),isEvalSupported:false,useSystemFonts:false}).promise;
+      const art={ext:'pdf',w:25.4,h:25.4,bytes,pages:1,pdfPage:await pdf.getPage(1)};
+      const facts=await inspectArtwork(art,pdfjs.OPS);
+      await pdf.destroy();return {models:facts.originalColorModels,
+        colors:facts.originalColors,uncertain:facts.limitations};
+    };
+    return {cmyk:await make('cmyk'),
+      rgb:await make('rgb'),mixed:await make('mixed'),
+      unusedState:await make('cmyk-unused-rgb'),
+      unusedImage:await make('cmyk-unused-image')};
+  });
+  assert.deepEqual(printedColors.cmyk.models,['CMYK']);
+  assert.deepEqual(printedColors.rgb.models,['RGB']);
+  assert.deepEqual(printedColors.mixed.models.sort(),['CMYK','RGB']);
+  assert.deepEqual(printedColors.unusedState.models,['CMYK'],
+    'Unused RGB state must not trigger RGB after CMYK conversion');
+  assert.deepEqual(printedColors.unusedImage.models,['CMYK'],
+    'Unused RGB image XObject must not trigger a false RGB finding');
+
   assert.deepEqual([artworkEvidence.pure,artworkEvidence.mixed,artworkEvidence.raster,artworkEvidence.vectorPdf,artworkEvidence.imagePdf],
     ['vector','mixed','raster','vector','mixed'],'Raster embedded in SVG or PDF must never pass a vector-only requirement');
   assert.ok(Math.abs(result.stroke-.2)<.01);
