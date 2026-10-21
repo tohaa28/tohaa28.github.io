@@ -251,8 +251,8 @@ try {
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2);
  // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
  await page.evaluate(()=>{window.confirm=()=>true;window.prompt=()=> '8006776_77700.60_макет.pdf'});
- assert.equal(await page.locator('#gwbSaveReadySimple').textContent(),'Сохранить');
- assert.equal(await page.locator('#gwbSaveAsReadySimple').textContent(),'Сохранить как…');
+ assert.equal(await page.locator('#gwbSaveReadySimple').textContent(),'Сохранить макет в заказ на gifts.ru');
+ assert.equal(await page.locator('#gwbSaveAsReadySimple').textContent(),'Сохранить как.. макет в заказ на gifts.ru');
  await page.locator('#gwbSaveAsReadySimple').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Сохранён новый макет'),null,{timeout:15000});
  assert.ok(postedPdf,'Ready PDF uploaded to the original order');
