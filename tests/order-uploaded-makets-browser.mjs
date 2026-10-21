@@ -71,6 +71,7 @@ try {
      assert.equal(route.request().method(),'GET','Only native per-file GET action is supported');
      assert.equal(u.searchParams.get('type'),'10');
      assert.equal(u.searchParams.get('orderid'),OID);
+     assert.equal(u.searchParams.get('oid'),OID,'Delete must use the same validated internal order ID as downloads/uploads');
      const id=u.searchParams.get('id');
      assert.ok(['18311644','18311643','18311645'].includes(id),'Never delete all or foreign IDs');
      deleteCount++;
