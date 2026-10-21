@@ -984,3 +984,15 @@ Regression:
 - Rear artwork is restricted to the front angular interval, preventing repeated wraps.
 - Preview/export use the same renderer. Registry blob d182817f6673a55eb602b75b70e4a1446738adf0 preserved.
 - Local 143 unit tests pass, generated launcher syntax passes. Chromium browser regression added to publish precheck because browser download is unavailable in local runtime.
+
+## 2026-10-21 — PDF color inheritance and repeated editor PrintCheck
+
+- Functional source: cd66260b568f84111ad21b659c99c41b7b632622; production: 2a98bc69fcc547f11db2ef6621d75314f32bf84f.
+- Fixed four reproduced analyzer regressions: Contents array color/q/Q state, per-invocation Form color inheritance, isolated Form state, and false RGB XObject activation by comments/text.
+- 204 unit tests passed. The real Maketnaya/PDF.js browser workflow passed, including repeated RGB → CMYK → RGB returns, byte-identical returned PDFs, new detail scan keys and completed scans.
+- VectorCraft/TraceDraw handoff, JPEG/WebP/mixed SVG raster transfer, RGB/CMYK lossless PDF crop and order save/replace/save-as browser tests passed. Editor messages and order write endpoints are simulated; the user's particular logo and authenticated order were not tested.
+- GitHub Actions [39670411186](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39670411186): precheck SUCCESS, publish SUCCESS, browser_verify SUCCESS. Pages [39670609827](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39670609827): SUCCESS.
+- Live PrintCheck v25 re1f43fb8; Maketnaya r7fa6f062. Live analyzer SHA-256 matches source: 64a000b9eebe27693f1a7d34d0832a80b3aa20ab1d7caede803b83ce5a499a24.
+- Source and production registry blobs preserved: mockup-profiles 750a78701bbba0ea82ec59fd95f78b01dfd37026; method-settings cbf6c8204e4fb3892d806342d37debefb8d9038e.
+- Backups: backup-colors-20261021-source / backup-colors-20261021-production. Checkpoints: checkpoint-colors-20261021-source / checkpoint-colors-20261021-production.
+- Details: handoff/MAKETNAYA_PDF_COLOR_STATE_2026-10-21.md. RGB must remain detectable after an actual CMYK → RGB conversion; no color warnings are masked by document labels.
