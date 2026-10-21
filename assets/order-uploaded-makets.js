@@ -216,7 +216,14 @@ function start(){
    try{return window.gwbUploadedMaketNative?.getScope?.()||null}catch{return null}
  }
  function isFieldMode(){
-   return !!nativeScope()&&!tools.hidden&&!document.getElementById('zoomPage')?.hidden;
+   // This is a UI mode, not permission to import. The native getScope()
+   // temporarily returns null while the selected field is loading (y.busy).
+   // X() already maintains these three visible indicators of the actual
+   // selected-field view even when no artwork has been added yet.
+   const step=document.getElementById('editorStep3');
+   const zoom=document.getElementById('zoomPage');
+   return !editor.hidden && !!step && !step.hidden &&
+     !tools.hidden && !!zoom && !zoom.hidden;
  }
  function render(){
    const order=orderInput.value.trim(),inEditor=!editor.hidden;
@@ -315,6 +322,8 @@ function start(){
  editorObserver.observe(editor,{attributes:true,attributeFilter:['hidden']});
  const modeObserver=new MutationObserver(()=>{render();syncReadyButtons()});
  modeObserver.observe(tools,{attributes:true,attributeFilter:['hidden']});
+ const editorStep3=document.getElementById('editorStep3');
+ if(editorStep3)modeObserver.observe(editorStep3,{attributes:true,attributeFilter:['hidden']});
  const zoomPage=document.getElementById('zoomPage');
  if(zoomPage)modeObserver.observe(zoomPage,{attributes:true,attributeFilter:['hidden']});
  orderInput.addEventListener('change',()=>{render();syncReadyButtons()});
