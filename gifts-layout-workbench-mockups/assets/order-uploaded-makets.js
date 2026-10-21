@@ -116,7 +116,10 @@ function start(){
    const target=mode==='save'?matchingTarget(selected):null;
    let newName=null;
    if(!target){
-     const suggestion=matchingTarget(selected)?.name||
+     // "Save As" must suggest a DISTINCT name, not the one selected
+     // for overwrite; otherwise the default would fail the collision guard.
+     const oldName=matchingTarget(selected)?.name;
+     const suggestion=oldName?oldName.replace(/\.pdf$/i,'_копия.pdf'):
        order+'_'+selected.article+'_макет.pdf';
      const answer=window.prompt('Имя нового PDF в заказе №'+order+':',suggestion);
      if(answer===null)return;
