@@ -46,6 +46,7 @@ try{
    window.__placed=[{file:original,field:{x:20,y:30,w:120,h:80},placement:{x:22,y:33,w:100,h:60,rotation:30,clipToField:true}},
                     {file:different,field:{x:1,y:2,w:80,h:80},placement:{x:1,y:2,w:80,h:80,rotation:0,clipToField:false}}];
    window.__selected=0;window.__applied=[];
+   window.__returnGate=new Promise(resolve=>window.__completeVectorReturn=resolve);
    window.gwbGetActiveLogoForEditor=()=>{
      const i=window.__selected;
      const item=window.__placed[i],f=item.field,p=item.placement;
@@ -62,6 +63,9 @@ try{
      if(!file.name.endsWith('.pdf')||!options.nativePdfCmyk||options.colorSpace!=='CMYK')
        throw Error('VectorCraft returned RGB instead of CMYK PDF');
      if(!(await file.text()).startsWith('%PDF-1.7'))throw Error('Native PDF bytes missing');
+     options.onProgress?.(79,'Макетная разбирает PDF с большим числом контуров…');
+     await window.__returnGate;
+     options.onProgress?.(95,'Подставляем только полученный логотип…');
      current.file=file;
      current.placement={x:current.field.x+b.x,y:current.field.y+b.y,w:b.w,h:b.h,
        rotation:0,clipToField:current.placement.clipToField};
@@ -73,6 +77,7 @@ try{
    return {model:'CMYK'};
  }}});
  await page.addScriptTag({path:'assets/vectorcraft-field.js'});
+ await page.addScriptTag({path:'assets/editor-return-progress.js'});
  await page.addScriptTag({path:'assets/vectorcraft-integration.js'});
  await page.addScriptTag({path:'assets/logo-editor-choice.js'});
  await page.locator('#editorOpenLogoEditor').click();
@@ -133,6 +138,19 @@ try{
  await iframe.locator('body').evaluate(()=>parent.postMessage({
    type:'gwb-vectorcraft-apply-request',token:decodeURIComponent(location.hash.slice('#gwb='.length))
  },'*'));
+ const transfer=page.locator('#gwbVectorcraftHost .gwb-return-progress');
+ await transfer.waitFor({state:'visible'});
+ await page.waitForFunction(()=>document.querySelector('#gwbVectorcraftHost .gwb-return-meter')?.value>=79);
+ assert.equal(await page.locator('#gwbVectorcraftHost .gwb-return-percent').textContent(),'79%');
+ assert.equal(await page.locator('#gwbVectorcraftHost iframe').evaluate(el=>el.inert),true,
+   'VectorCraft editing is blocked until PDF has finished applying');
+ assert.equal(await page.locator('#gwbVectorcraftHost button').filter({hasText:'Закрыть без изменений'}).isDisabled(),true);
+ await page.evaluate(()=>window.gwbVectorcraftHost.close());
+ assert.equal(await page.locator('#gwbVectorcraftHost').count(),1,
+   'Close cannot interrupt large-PDF transfer');
+ assert.deepEqual(await page.evaluate(()=>window.__applied),[],
+   'No premature commit during PDF parsing');
+ await page.evaluate(()=>window.__completeVectorReturn());
  await page.locator('#gwbVectorcraftHost').waitFor({state:'detached'});
  const state=await page.evaluate(async()=>({
   first:await window.__placed[0].file.text(),
