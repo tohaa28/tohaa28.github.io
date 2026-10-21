@@ -71,23 +71,23 @@ async function receive(event){
      }
      if(active!==s)return;
      s.progress?.set(34,'Контуры проверены. Сохраняем печатную цветовую модель…');
-     // Real CMYK and spot values must remain in the PDF color streams.
-     // The SVG above is a geometry sanity-check, NOT the print artwork.
-     if(d.colorSpace!=='CMYK'||d.nativePdf!==true)
-       throw Error('TraceDraw не подтвердил исходную цветовую модель CMYK');
+     // The SVG only checks geometry. PDF preserves raster XObjects
+     // and original RGB, CMYK, Gray and spot colors without conversion.
+     if(!['CMYK','RGB'].includes(d.colorSpace)||d.nativePdf!==true)
+       throw Error('TraceDraw не подтвердил исходный PDF и цветовую модель документа');
      const pdf=d.pdfBytes instanceof Uint8Array?d.pdfBytes:null;
      if(!pdf||pdf.byteLength<100||pdf.byteLength>40*1024*1024)
-       throw Error('TraceDraw не вернул исходный PDF CMYK');
+       throw Error('TraceDraw не вернул исходный PDF с вектором и растром');
      const verifier=window.gwbCmykRoundtrip;
-     if(!verifier?.cropFieldPdf)throw Error('Контроль цветности CMYK недоступен');
-     s.progress?.set(48,'Подготавливаем отдельный PDF логотипа с CMYK…');
+     if(!verifier?.cropFieldPdf)throw Error('Модуль проверки PDF недоступен');
+     s.progress?.set(48,'Сохраняем PDF с исходными RGB/CMYK и растром…');
      const croppedPdf=await verifier.cropFieldPdf(pdf,s.field,bounds);
      s.progress?.set(63,'Печатный PDF готов. Отправляем на выбранное поле…');
-     const file=new File([croppedPdf],s.name.replace(/\.[^.]*$/,'')+'-tracedraw-cmyk.pdf',{type:'application/pdf'});
-     notify(s,'Проверяем палитру CMYK и переносим печатный PDF на поле артикула…');
+     const file=new File([croppedPdf],s.name.replace(/\.[^.]*$/,'')+'-tracedraw.pdf',{type:'application/pdf'});
+     notify(s,'Переносим PDF: вектор, растр, RGB и CMYK сохранены…');
      await window.gwbApplyEditedLogoToActiveField(file,s.placement,{
        artworkBoundsMm:bounds,fieldSizeMm:s.field,
-       colorSpace:'CMYK',nativePdfCmyk:true,
+       colorSpace:d.colorSpace,nativePdfColors:true,
        onProgress:(percent,stage)=>s.progress?.set(percent,stage)
      });
      if(active===s){s.applying=false;s.progress?.complete();close(true)}
@@ -115,6 +115,9 @@ async function open(externalFile=null){
      '<svg xmlns="http://www.w3.org/2000/svg" width="'+size.w+'mm" height="'+size.h+'mm" viewBox="0 0 '+size.w+' '+size.h+'"></svg>'
    ],'Новый.svg',{type:'image/svg+xml'});
    prepared=await fields.prepare(initial,selected);
+   if(!window.gwbTraceDrawRasterBridge?.normalize)
+     throw Error('Не загружен модуль передачи растра TraceDraw');
+   prepared=await window.gwbTraceDrawRasterBridge.normalize(prepared);
    if(!/\.(svg|pdf)$/i.test(prepared.file.name))
      throw Error('Для TraceDraw этот исходный формат пока не поддерживается; используйте PDF или SVG');
    // Only a self-hosted TraceDraw binary is ever opened. Its availability
