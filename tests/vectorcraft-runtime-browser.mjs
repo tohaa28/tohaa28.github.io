@@ -105,7 +105,7 @@ try{
  assert.equal(await page.evaluate(()=>window.__vcReturnColorSpace),'CMYK',
    'Real Rust bridge must report actual document mode, not a hard-coded CMYK token');
  await page.addScriptTag({url:BASE+'vendor/pdf-lib.min.js'});
- const actualPaint=await page.evaluate(async()=>{
+ const actualPaint=await page.evaluate(async base=>{
    const raw=window.__vcPdfBytes;
    const pdf=await PDFLib.PDFDocument.load(raw.slice(),{updateMetadata:false});
    const p=pdf.getPages()[0];
@@ -115,10 +115,10 @@ try{
      const obj=pdf.context.lookup(ref);
      return new TextDecoder('latin1').decode(PDFLib.decodePDFRawStream(obj).decode());
    });
-   const mod=await import(BASE+'assets/logo-preflight.mjs?v=20261021-active-paints');
+   const mod=await import(base+'assets/logo-preflight.mjs?v=20261021-active-paints');
    const models=[...new Set(decoded.flatMap(s=>mod.pdfAppliedPaintOperators(s).colors.map(c=>c.model)))];
    return {models,pdfBytes:raw.length,pdfHeader:new TextDecoder().decode(raw.slice(0,5))};
- });
+ },BASE);
  assert.equal(actualPaint.pdfHeader,'%PDF-');
  assert.ok(actualPaint.pdfBytes>100);
  assert.deepEqual(actualPaint.models,['CMYK'],
