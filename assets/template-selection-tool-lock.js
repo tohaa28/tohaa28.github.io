@@ -37,10 +37,14 @@ function install(){
          if(!former.has(el))former.set(el,el.disabled);
          if(!el.disabled)el.disabled=true;
          el.setAttribute('aria-disabled','true');
-       }else if(former.has(el)){
-         el.disabled=former.get(el);
-         former.delete(el);
-         el.removeAttribute('aria-disabled');
+       }else{
+         if(former.has(el)){
+           el.disabled=former.get(el);
+           former.delete(el);
+         }
+         // Native X() can toggle disabled between observer frames.
+         // Never leave a stale ARIA-disabled flag on an editable field.
+         if(el.hasAttribute('aria-disabled'))el.removeAttribute('aria-disabled');
        }
      }
      const becameEditable=wasLocked===true&&!locked;
