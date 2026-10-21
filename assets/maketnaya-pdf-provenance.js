@@ -84,5 +84,5 @@ function inspectAttachments(attachments,selection={}){
  return {kind:'maketnaya',bytes:new Uint8Array(bytes),placement:p.placement,
    sourceField:p.field,page:p.page,fieldIndex:p.fieldIndex};
 }
-root.gwbMaketnayaPdfProvenance={stamp,inspectAttachments,marker:MARK};
+root.gwbMaketnayaPdfProvenance={stamp,pdfSource,inspectAttachments,marker:MARK};
 })(window);
