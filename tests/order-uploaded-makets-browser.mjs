@@ -30,7 +30,7 @@ const ajaxHtml='<div><label>Загрузка макетов</label>'+uploadForm+
  '<label>Шаблоны макетов</label></div>';
 const pageHtml='<!doctype html><html><head><meta charset="utf-8"></head><body><div id="basketOrders">'+
  '<div class="basket-order"><div class="basket-order-title">Заказ №8006776</div></div></div>'+
- '<div id="orderEditor"><details id="orderTemplatePicker"></details>'+
+ '<div id="orderEditor" style="width:300px;max-width:300px"><details id="orderTemplatePicker"></details>'+ 
  '<div id="stage"></div><div id="fieldLogoTools" hidden></div>'+ 
  '<button id="zoomPage" hidden></button><button id="simpleExport">Скачать PDF</button>'+ 
  '<button id="prepareOrderPdf">Скачать для заказа</button></div>'+
@@ -103,6 +103,10 @@ try {
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/gerb2\.pdf/);
  assert.match(await page.locator('#gwbOrderMakets').textContent(),/che\.pdf/);
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0,'No field view = no edit buttons');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button.gwb-order-maket-download').count(),2,
+   'Every attached PDF has a single download action in full-template mode');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),2,
+   'Do not stack competing actions next to each other');
  await page.evaluate(()=>{
    window.__imported=[];
    const scope={order:'8006776',article:'77700.60',itemId:'49428451',
@@ -122,8 +126,12 @@ try {
    document.getElementById('fieldLogoTools').hidden=false;
    document.getElementById('zoomPage').hidden=false;
  });
- await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===4);
- await page.locator('#gwbOrderMakets .gwb-order-maket-item button').nth(1).click();
+ await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-edit').length===2);
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),0,
+   'Download is replaced, not displayed beside Edit');
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-item button').count(),2,
+   'One action per PDF must be preserved in field editing mode');
+ await page.locator('#gwbOrderMakets .gwb-order-maket-item button').first().click();
  await page.waitForFunction(()=>window.__imported?.length===1);
  const imported=await page.evaluate(()=>window.__imported);
  assert.equal(imported[0].head,'%PDF-');
@@ -131,10 +139,11 @@ try {
  assert.match(imported[0].name,/\.pdf$/i);
  assert.ok(routed.some(path=>path.includes('/cart/act/mda?')),
    'Authorized download was routed via gifts.ru with its internal order ID');
- // Leaving field view removes the editing buttons, but always leaves downloads.
+ // Leaving field view restores the single download action for every file.
  await page.evaluate(()=>{document.getElementById('zoomPage').hidden=true;document.getElementById('fieldLogoTools').hidden=true});
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item button').length===2);
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0);
+ assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),2);
  // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
  await page.evaluate(()=>{window.confirm=()=>true});
  await page.locator('#gwbUploadReadySimple').click();
@@ -142,6 +151,35 @@ try {
  assert.ok(postedPdf,'Ready PDF uploaded to the original order');
  assert.equal((await page.locator('.gwb-order-maket-item').count()),3);
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/3/);
+ // Regression: 300px sidebar must not squeeze long attachment names into
+ // a vertical stack of single glyphs, and the action must stay inside its card.
+ const layout=await page.evaluate(()=>{
+   return [...document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item')].map(card=>{
+     const data=card.querySelector('.gwb-order-maket-data');
+     const filename=card.querySelector('.gwb-order-maket-filename');
+     const actions=card.querySelector('.gwb-order-maket-actions');
+     const button=actions.querySelector('button');
+     const row=card.getBoundingClientRect();
+     const dr=data.getBoundingClientRect(),fr=filename.getBoundingClientRect();
+     const ar=actions.getBoundingClientRect(),br=button.getBoundingClientRect();
+     return {dataWidth:dr.width,filenameWidth:fr.width,filenameHeight:fr.height,
+       fontSize:parseFloat(getComputedStyle(filename).fontSize),wordBreak:getComputedStyle(filename).wordBreak,
+       cardLeft:row.left,cardRight:row.right,buttonLeft:br.left,buttonRight:br.right,
+       actionsWidth:ar.width,buttonWidth:br.width,buttons:actions.querySelectorAll('button').length};
+   });
+ });
+ for(const item of layout){
+   assert.ok(item.dataWidth>=175 && item.filenameWidth>=175,
+     'Attachment filename needs a full-width text block, not a 10px flex column');
+   assert.ok(item.filenameHeight<item.fontSize*6,
+     'Filename must wrap over a few lines rather than one character per line');
+   assert.equal(item.wordBreak,'normal');
+   assert.equal(item.buttons,1);
+   assert.ok(item.buttonLeft>=item.cardLeft-1 && item.buttonRight<=item.cardRight+1,
+     'Only action button must fit inside the card');
+   assert.ok(Math.abs(item.actionsWidth-item.buttonWidth)<3,
+     'Action button should use complete available row width');
+ }
   assert.deepEqual(errors,[],'No browser runtime errors');
  console.log('Uploaded order layouts: 2 files, visible in basket and editor, explicit editable PDF import, foreign attachment rejected — PASS');
 } finally { await browser.close(); }
