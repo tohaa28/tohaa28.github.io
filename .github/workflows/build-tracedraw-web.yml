@@ -7,6 +7,7 @@ on:
     paths:
       - "tools/tracedraw-embedded.rs"
       - "tools/patch-tracedraw-upstream.py"
+      - "tools/tracedraw-raster-cmyk.patch"
       - ".github/workflows/build-tracedraw-web.yml"
   workflow_dispatch:
 
@@ -21,6 +22,10 @@ jobs:
   compile_tracedraw:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
     steps:
       - name: Checkout Maketnaya source
         uses: actions/checkout@v4
@@ -61,6 +66,16 @@ jobs:
           set -euo pipefail
           cp maketnaya/tools/tracedraw-embedded.rs tracedraw/apps/tracedraw/src/gwb_bridge.rs
           python3 maketnaya/tools/patch-tracedraw-upstream.py tracedraw
+      - name: Test native bitmap conversion, history and PDF channels
+        run: |
+          set -euo pipefail
+          cd tracedraw
+          cargo test --workspace --exclude tracedraw
+          cargo test -p tracedraw ops2::tests::bitmap_cmyk_menu_changes_export_and_undo_without_losing_source -- --exact
+          cargo test -p tracedraw ops2::tests::convert_to_bitmap_dialog_cmyk_reaches_pdf_export -- --exact
+          cargo build -p tracedraw
+          cargo clippy --workspace
+          cargo clippy -p tracedraw-core -p tracedraw-io --all-targets -- -D warnings
       - name: Compile genuine TraceDraw Rust engine to WebAssembly
         run: |
           set -euo pipefail
@@ -72,10 +87,11 @@ jobs:
           test -s site/tracedraw.js
           wasm_size=$(wc -c < site/tracedraw_bg.wasm | tr -d ' ')
           sed -e "s/data-wasm-size=\"0\"/data-wasm-size=\"$wasm_size\"/" \
-              -e 's/@VERSION@/0.9.4-gifts/' web/index.html > site/index.html
+              -e 's/@VERSION@/0.9.4-gifts-raster-cmyk1/' web/index.html > site/index.html
           cp assets/icon/tracedraw-256.png site/icon-256.png
           cp LICENSE-MIT LICENSE-APACHE site/
           echo 0f206489770adcacc6cc130a9e31a5610faad68a > site/UPSTREAM_COMMIT
+          printf 'raster-cmyk-v1\nsource=%s\n' "$GITHUB_SHA" > site/RASTER_CMYK_REVISION
           du -sh site
       - name: Checkout live GitHub Pages branch
         uses: actions/checkout@v4
@@ -94,6 +110,6 @@ jobs:
           git config user.email actions@users.noreply.github.com
           git add -A gifts-layout-workbench-mockups/tracedraw
           if ! git diff --cached --quiet; then
-            git commit -m "Publish TraceDraw 0.9.4 pinned WASM with Maketnaya art-only bridge"
+            git commit -m "Publish TraceDraw 0.9.4 with per-bitmap CMYK conversion and native PDF channels"
             git push origin main
           fi

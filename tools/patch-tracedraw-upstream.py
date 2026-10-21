@@ -2,9 +2,13 @@
 """Pin-and-patch TraceDraw WASM to a single Maketnaya imprint field.
 Keep the original igtoth/tracedraw source untouched in our source branch.
 No customer artwork leaves the user's browser."""
-import pathlib, sys
+import pathlib, sys, subprocess, hashlib
 
 root=pathlib.Path(sys.argv[1])
+raster_patch=pathlib.Path(__file__).with_name("tracedraw-raster-cmyk.patch").resolve()
+asset_revision=hashlib.sha256(raster_patch.read_bytes()).hexdigest()[:12]
+subprocess.run(["git","apply","--check",str(raster_patch)],cwd=root,check=True)
+subprocess.run(["git","apply",str(raster_patch)],cwd=root,check=True)
 main=root/"apps/tracedraw/src/main.rs"
 src=main.read_text(encoding="utf-8")
 def once(old,new):
@@ -63,9 +67,12 @@ if page.count('  <script type="module">')!=1:
     raise RuntimeError("TraceDraw index script changed")
 page=page.replace('  <script type="module">',embedded+'  <script type="module">')
 module_import='    import init from "./tracedraw.js";'
-module_new='    import init, {gwb_tracedraw_request_apply} from "./tracedraw.js";'
+module_new='    import init, {gwb_tracedraw_request_apply} from "./tracedraw.js?v='+asset_revision+'";'
 if page.count(module_import)!=1: raise RuntimeError("TraceDraw WASM import changed")
 page=page.replace(module_import,module_new)
+wasm_url='new URL("tracedraw_bg.wasm", import.meta.url)'
+if page.count(wasm_url)!=1: raise RuntimeError("TraceDraw WASM URL changed")
+page=page.replace(wasm_url,'new URL("tracedraw_bg.wasm?v='+asset_revision+'", import.meta.url)')
 
 if page.count('await init({ module_or_path: bytes });')!=1:
     raise RuntimeError("TraceDraw upstream boot drift")
