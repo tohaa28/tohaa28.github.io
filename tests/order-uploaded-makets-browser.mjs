@@ -11,7 +11,8 @@ const uploadMarkup=file=>
  '<div class="j_maket_host"><div class="flex"><div class="flex-item flex-main"><span class="size--md">'+
  '<a data-maket="true" href="https://gifts.ru/cart/act/mda?oid='+OID+'&amp;id='+file.id+'">'+file.filename+'</a>'+
  '</span><br><span class="size--sm"><span title="Исходное имя закачанного файла">'+file.original+'</span></span></div>'+
- '<div class="flex-item"><a href="'+(file.id==='18311643'?'#':'https://gifts.ru/private/order/'+ORDER+'#')+'" title="Удалить макет" '+
+ '<div class="flex-item"><a href="'+(file.id==='18311644'?'https://gifts.ru/cart#':
+   file.id==='18311643'?'https://gifts.ru/private/order/'+ORDER+'#':'#')+'" title="Удалить макет" '+
  'class="j_delete_maket" data-id="'+file.id+'" data-orderid="'+OID+'"></a></div></div></div>';
 const uploaded=filenames.map(uploadMarkup).join('');
 const removedIds=new Set();
@@ -95,7 +96,8 @@ try {
  assert.ok(files.every(f=>f.attachmentScope==='order'&&!f.boundItemId&&!f.boundFieldIndex),
    'Order scoped uploads cannot be incorrectly bound to duplicate article or print');
  assert.ok(!files.some(f=>f.id==='1234567'),'Wrong order and templates excluded');
- assert.ok(files.every(f=>f.canDelete===true),'Each file needs its own verified gifts.ru delete control');
+ assert.ok(files.every(f=>f.canDelete===true),
+   'Both native forms must grant per-file deletion: gifts.ru/cart# and private/order/:number#');
  const badDelete=await page.evaluate(async()=>fetch('/api/orders/8006776/uploaded-makets/1234567',{method:'DELETE'}).then(r=>r.status));
  assert.equal(badDelete,404,'Unknown ID must not invoke destructive gifts.ru action');
  const good=await page.evaluate(async()=>{const r=await fetch('/api/orders/8006776/uploaded-makets/18311644.pdf');return {ok:r.ok,bytes:new Uint8Array(await r.arrayBuffer())}});
