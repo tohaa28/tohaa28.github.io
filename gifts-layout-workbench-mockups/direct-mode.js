@@ -1436,12 +1436,12 @@
     }
   }
 
-  async function apiOrder(order) {
+  async function apiOrder(order, fresh = false) {
     if (!/^\d{5,12}$/.test(order)) {
       return json({ error: "Некорректный номер заказа." }, 400);
     }
     try {
-      const parsed = await getOrder(order);
+      const parsed = await getOrder(order, fresh);
       if (!Array.isArray(parsed.orderItems) || !parsed.orderItems.length) {
         return json({ error: "В заказе не найдены позиции." }, 404);
       }
@@ -1510,6 +1510,9 @@
       const original = await getOrder(order,true);
       if (!original.orderItems?.length || !original.uploadForm)
         return json({error:"У заказа нет доступной формы «Загрузка макетов»."},403);
+      if(init.body.get("require_unique_name")==="1"&&(original.uploadedMakets||[]).some(
+        f=>String(f.originalName||f.filename).toLowerCase()===file.name.toLowerCase()))
+        return json({error:"Файл с таким именем уже появился в заказе. Нажмите «Сохранить» снова и выберите действие."},409);
       const upload = original.uploadForm;
       if (upload.order!==order || upload.oid!==String(original.orderInternalId) || upload.type!=="10")
         return json({error:"Загрузка в этот заказ недоступна."},403);
@@ -1848,7 +1851,7 @@
         if (m && method === "GET") return apiPreview(m[1], m[2]);
 
         m = url.pathname.match(/^\/api\/orders\/(\d{5,12})$/);
-        if (m && method === "GET") return apiOrder(m[1]);
+        if (m && method === "GET") return apiOrder(m[1],url.searchParams.get("fresh")==="1");
 
         return json({ error: "Неизвестный локальный запрос." }, 404);
       }
