@@ -1,9 +1,74 @@
 {
   "schema": "gifts-mockup-profile-registry/v1",
   "version": 1,
-  "updatedAt": "2026-10-20T09:10:06.919Z",
+  "updatedAt": "2026-10-22T11:11:35.763Z",
   "source": "git",
   "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "22065.00",
+      "variant": "",
+      "place": "стела, сторона а",
+      "method": "LUV3: UV лазерная гравировка,1",
+      "photo": {
+        "id": "22065.00-1",
+        "name": "Фото 1 · арт. 22065.00",
+        "url": "https://files.gifts.ru/reviewer/webp/95/22065.00_2_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "стела, сторона а",
+        "sizeCm": [
+          3.9999,
+          3.9999
+        ]
+      },
+      "constructor": {
+        "name": "8060347_22065.00_49771424.pdf",
+        "url": "",
+        "width": 1634,
+        "height": 1483
+      },
+      "fieldRect": {
+        "x": 0.17269019592533794,
+        "y": 0.2622440775538245,
+        "w": 0.13878781417349118,
+        "h": 0.15299020530614985
+      },
+      "targetQuad": [
+        {
+          "x": 0.413625,
+          "y": 0.359
+        },
+        {
+          "x": 0.585625,
+          "y": 0.377
+        },
+        {
+          "x": 0.579625,
+          "y": 0.591
+        },
+        {
+          "x": 0.397625,
+          "y": 0.573
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-22T11:11:35.763Z",
+      "confirmedAt": "2026-10-22T11:11:35.763Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
     {
       "schema": "gifts-mockup-profile/v1",
       "article": "15846.40",
