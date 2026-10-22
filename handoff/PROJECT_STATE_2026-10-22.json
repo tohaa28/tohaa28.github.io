@@ -1,0 +1,129 @@
+{
+  "schema": "maketnaya-project-handoff/v2",
+  "captured_on": "2026-10-22",
+  "repository": "tohaa28/tohaa28.github.io",
+  "source": {
+    "branch": "gifts-layout-workbench-mockups-source",
+    "verified_functional_sha": "8b2b7729df1f2ce140125275a1a291c6f775e33d",
+    "handoff_docs_advance_head": true,
+    "checkpoint": "checkpoint-maketnaya-nextchat-20261022-source"
+  },
+  "production": {
+    "branch": "main",
+    "path": "gifts-layout-workbench-mockups/",
+    "sha": "fc250443923f4fae660913c53a3bb16a60dcd601",
+    "checkpoint": "checkpoint-maketnaya-nextchat-20261022-production",
+    "url": "https://tohaa28.github.io/gifts-layout-workbench-mockups/"
+  },
+  "versions": {
+    "maketnaya": "r024116c7",
+    "printcheck": "v25 re1f43fb8",
+    "tracedraw": "0.9.4-gifts-raster-cmyk1",
+    "tracedraw_upstream": "0f206489770adcacc6cc130a9e31a5610faad68a",
+    "vectorcraft_upstream": "8bc65329286dc1b84aa392997bb205613c3e96cb",
+    "tracedraw_bitmap_revision": "raster-cmyk-v1",
+    "tracedraw_wasm_source": "20f841c5005097d8905810ed6a519a38223e9f28"
+  },
+  "verified_ci": [
+    {
+      "id": 39682223950,
+      "name": "Publish Maketnaya with Mockups",
+      "conclusion": "success",
+      "jobs": [
+        "precheck",
+        "publish",
+        "browser_verify"
+      ]
+    },
+    {
+      "id": 39682223824,
+      "name": "Verify live TraceDraw WASM",
+      "conclusion": "success"
+    },
+    {
+      "id": 39679316542,
+      "name": "Build TraceDraw WebAssembly",
+      "conclusion": "success"
+    },
+    {
+      "id": 39682408171,
+      "name": "GitHub Pages",
+      "conclusion": "success"
+    },
+    {
+      "id": 39606367485,
+      "name": "Verify live VectorCraft WASM",
+      "conclusion": "success"
+    },
+    {
+      "id": 39670411186,
+      "name": "PrintCheck PDF colors",
+      "conclusion": "success"
+    }
+  ],
+  "protected_registries": {
+    "source_and_production_sha_match": true,
+    "mockup-profiles.json": "750a78701bbba0ea82ec59fd95f78b01dfd37026",
+    "method-settings.json": "cbf6c8204e4fb3892d806342d37debefb8d9038e"
+  },
+  "critical_paths": [
+    "editor.html",
+    "direct-mode.js",
+    "tools/build-launcher.mjs",
+    "assets/index-BpU9kvz8.js",
+    "tools/patch-artwork-preflight.mjs",
+    "assets/logo-preflight.mjs",
+    "assets/logo-color.mjs",
+    "assets/logo-detail-check.mjs",
+    "assets/logo-detail-engine.mjs",
+    "tools/patch-logo-editor-bridge.mjs",
+    "tools/vectorcraft-bridge.rs",
+    "assets/vectorcraft-integration.js",
+    "tools/tracedraw-embedded.rs",
+    "tools/tracedraw-raster-cmyk.patch",
+    "assets/tracedraw-integration.js",
+    "assets/cmyk-roundtrip.js",
+    "assets/tracedraw-raster-bridge.js",
+    "assets/order-uploaded-makets.js",
+    "assets/maketnaya-pdf-provenance.js",
+    "assets/mockup-cylinder.mjs",
+    ".github/workflows/publish-maketnaya-mockups.yml",
+    ".github/workflows/build-tracedraw-web.yml",
+    ".github/workflows/build-vectorcraft-web.yml"
+  ],
+  "handoff_entry": "handoff/START_HERE_MAKETNAYA_2026-10-22_CURRENT.md",
+  "next_chat_prompt": "handoff/NEW_CHAT_PROMPT_2026-10-22.md",
+  "reference_handoffs": [
+    "handoff/MAKETNAYA_TRACEDRAW_RASTER_CMYK_2026-10-22.md",
+    "handoff/MAKETNAYA_PDF_COLOR_STATE_2026-10-21.md",
+    "handoff/MAKETNAYA_VECTORCRAFT_COLOR_PDF_EVIDENCE_2026-10-21.md",
+    "handoff/MAKETNAYA_PRINTCHECK_EDITOR_RETURN_2026-10-21.md",
+    "handoff/MAKETNAYA_CHANGELOG_2026-10-21_COMPREHENSIVE.md",
+    "handoff/MAKETNAYA_NEXT_STEPS_2026-10-21.md"
+  ],
+  "outstanding": {
+    "latest_user_report": "User said CMYK->RGB and PrintCheck detects RGB; direction may be reversed; real user PDF has not been retested after fixes.",
+    "confirmed_implemented_fixes": [
+      "VectorCraft native CMS conversion and truthful PDF model",
+      "PrintCheck paints-only and inherited graphics state parsing",
+      "TraceDraw native RGB/CMYK bitmap conversion PDF DeviceCMYK",
+      "Rerun PrintCheck on returned artwork"
+    ],
+    "qa_needed": [
+      "Reproduce on actual de-identified user file and confirm operation RGB->CMYK versus CMYK->RGB",
+      "Real gifts.ru authorized end-to-end upload is not CI-tested",
+      "PrintCheck small features and raster/vector detailed QA",
+      "Private server-side PDF storage security verification"
+    ],
+    "dont_fake_success": true
+  },
+  "safety": [
+    "Do not overwrite protected registry files",
+    "Do not delete actual gifts.ru customer PDFs during tests",
+    "No secrets or private logos in handoff",
+    "Back up current branches before changes",
+    "Compiled bundle built only through guarded patch pipeline",
+    "After Rust changes verify native build and real WASM",
+    "Production should not be reset as a whole"
+  ]
+}
