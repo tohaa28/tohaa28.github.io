@@ -40,7 +40,10 @@ function start(){
  '.gwb-save-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin-top:7px}',
  '.gwb-save-actions[hidden]{display:none!important}',
  '.gwb-save-actions button{width:100%;min-width:0;min-height:40px;border-radius:6px;padding:9px 11px;font:700 12px/1.35 system-ui;white-space:normal;overflow-wrap:anywhere}',
- '.gwb-save-actions .gwb-ready-save-as{background:white;border:1px solid #b9caae;color:#48663c}',
+ '.gwb-save-conflict{max-width:420px;width:calc(100% - 48px);border:1px solid #b9caae;border-radius:10px;padding:20px;color:#435159;font:14px/1.5 system-ui;overflow-wrap:anywhere}',
+ '.gwb-save-conflict::backdrop{background:rgba(0,0,0,.35)}',
+ '.gwb-save-conflict-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}',
+ '.gwb-save-conflict button{padding:9px 13px;cursor:pointer}',
  '.gwb-save-target{grid-column:1/-1;min-width:0;overflow-wrap:anywhere;font:11px/1.4 system-ui;color:#728072}',
  '.gwb-order-maket-current{outline:2px solid #9cc06f;outline-offset:0}',
  '.gwb-order-makets-help{font-size:11px;color:#647566;margin-top:6px}',
@@ -59,7 +62,7 @@ function start(){
  section.append(head,items,help);
  editor.querySelector('#orderTemplatePicker')?.insertAdjacentElement('afterend',section);
  if(!section.isConnected)editor.insertBefore(section,editor.firstChild);
- // Two explicit destinations: Save selected original or Save As a new PDF.
+ // One save action resolves the current server filename before writing.
  const readyButtons=[];
  let activeUpload=false,activeTarget=null;
  function readySnapshot(){
@@ -76,28 +79,22 @@ function start(){
    const save=document.createElement('button');
    save.id='gwbSaveReady'+suffix;save.type='button';save.className='primary gwb-ready-save';
    save.textContent='Сохранить макет в заказ на gifts.ru';
-   const saveAs=document.createElement('button');
-   saveAs.id='gwbSaveAsReady'+suffix;saveAs.type='button';saveAs.className='ghost gwb-ready-save-as';
-   saveAs.textContent='Сохранить как.. макет в заказ на gifts.ru';
    const hint=document.createElement('div');hint.className='gwb-save-target';
-   save.addEventListener('click',()=>{void saveFinishedPdf('save',save)});
-   saveAs.addEventListener('click',()=>{void saveFinishedPdf('as',saveAs)});
-   wrap.append(save,saveAs,hint);anchor.insertAdjacentElement('afterend',wrap);
-   readyButtons.push({save,saveAs,wrap,anchor,hint});
+   save.addEventListener('click',()=>{void saveFinishedPdf(save)});
+   wrap.append(save,hint);anchor.insertAdjacentElement('afterend',wrap);
+   readyButtons.push({save,wrap,anchor,hint});
    new MutationObserver(syncReadyButtons).observe(anchor,{attributes:true,attributeFilter:['disabled','hidden']});
  }
  addReadyButtons('simpleExport','Simple');
  addReadyButtons('prepareOrderPdf','Advanced');
  function syncReadyButtons(){
    const snapshot=readySnapshot(),target=matchingTarget(snapshot);
-   for(const {save,saveAs,wrap,anchor,hint} of readyButtons){
+   for(const {save,wrap,anchor,hint} of readyButtons){
      wrap.hidden=!!anchor.hidden;
      const disabled=activeUpload||activeDelete||anchor.disabled||!snapshot||
        snapshot.order!==orderInput.value.trim();
-     save.disabled=disabled;saveAs.disabled=disabled;
-     save.title=target?'Заменить открытый PDF «'+target.name+'» после подтверждения':
-       'У нового макета «Сохранить» работает как «Сохранить как…»';
-     saveAs.title='Добавить новый PDF в заказ, сохранив существующие макеты';
+     save.disabled=disabled;
+     save.title='Сохранить PDF; при совпадении имени выбрать перезапись или другое имя';
      hint.textContent=target?'Редактируется: '+target.name:
        'Новый макет · будет создан отдельный PDF в заказе';
    }
@@ -108,35 +105,56 @@ function start(){
      throw Error('Введите корректное название PDF до 180 символов.');
    return value;
  }
- async function saveFinishedPdf(mode,button){
+ function chooseSaveConflict(name,canReplace){
+   return new Promise(resolve=>{
+     const dialog=document.createElement('dialog');dialog.id='gwbSaveConflict';
+     dialog.className='gwb-save-conflict';
+     const text=document.createElement('p');text.id='gwbSaveConflictText';
+     text.textContent='Макет «'+name+'» уже есть в заказе. Перезаписать его или сохранить с другим именем?';
+     dialog.setAttribute('aria-labelledby',text.id);
+     const actions=document.createElement('div');actions.className='gwb-save-conflict-actions';
+     for(const [value,label] of [['replace','Перезаписать'],['rename','Другое имя'],['cancel','Отмена']]){
+       const button=document.createElement('button');button.type='button';
+       button.textContent=label;button.dataset.saveChoice=value;
+       button.disabled=value==='replace'&&!canReplace;
+       button.addEventListener('click',()=>dialog.close(value));actions.append(button);
+     }
+     if(!canReplace)text.textContent+=' Перезапись недоступна: выберите другое имя.';
+     dialog.append(text,actions);document.body.append(dialog);
+     dialog.addEventListener('close',()=>{const choice=dialog.returnValue;dialog.remove();resolve(choice)},{once:true});
+     dialog.showModal();actions.querySelector('[data-save-choice="rename"]').focus();
+   });
+ }
+ async function saveFinishedPdf(button){
    if(activeUpload||activeDelete||activeLoad||button.disabled)return;
    const api=window.gwbReadyPdfNative,selected=readySnapshot();
    const order=orderInput.value.trim();
    if(!selected||!valid(order)||selected.order!==order)return;
-   const target=mode==='save'?matchingTarget(selected):null;
-   let newName=null;
-   if(!target){
-     // "Save As" must suggest a DISTINCT name, not the one selected
-     // for overwrite; otherwise the default would fail the collision guard.
-     const oldName=matchingTarget(selected)?.name;
-     const suggestion=oldName?oldName.replace(/\.pdf$/i,'_копия.pdf'):
-       order+'_'+selected.article+'_макет.pdf';
-     const answer=window.prompt('Имя нового PDF в заказе №'+order+':',suggestion);
-     if(answer===null)return;
-     try{newName=safePdfName(answer)}catch(error){if(status)status.textContent=error.message;return}
-     const existing=await readOrder(order).catch(()=>[]);
-     if(existing.some(f=>f.original.toLowerCase()===newName.toLowerCase())){
-       if(status)status.textContent='Файл с таким именем уже существует. Для «Сохранить как…» выберите другое.';
-       return;
-     }
-     if(!window.confirm('Добавить новый макет «'+newName+'» в заказ №'+order+
-       '? Ранее сохранённые файлы останутся без изменений.'))return;
-   }else{
-     if(!window.confirm('Перезаписать макет «'+target.name+'» в заказе №'+order+
-       '?\nСначала будет подтверждена загрузка новой версии, затем удалена старая.'))return;
-   }
+   let target=null,newName=matchingTarget(selected)?.name;
    activeUpload=true;syncReadyButtons();
    try{
+     if(!newName){
+       const answer=window.prompt('Имя PDF в заказе №'+order+':',order+'_'+selected.article+'_макет.pdf');
+       if(answer===null)return;
+       newName=safePdfName(answer);
+     }
+     while(true){
+       const existing=await readOrder(order,true);
+       const collisions=existing.filter(f=>f.original.toLowerCase()===newName.toLowerCase());
+       if(!collisions.length)break;
+       const choice=await chooseSaveConflict(newName,collisions.length===1&&collisions[0].canDelete);
+       if(choice!=='replace'&&choice!=='rename')return;
+       if(choice==='replace'){
+         target={id:collisions[0].id,name:collisions[0].original};break;
+       }
+       const answer=window.prompt('Другое имя PDF в заказе №'+order+':',newName.replace(/\.pdf$/i,'_копия.pdf'));
+       if(answer===null)return;
+       newName=safePdfName(answer);
+     }
+     const current=readySnapshot();
+     if(orderInput.value.trim()!==order||!current||current.order!==selected.order||
+        current.entry!==selected.entry||current.template!==selected.template)
+       throw Error('Заказ или артикул изменились.');
      if(status)status.textContent='Готовлю PDF для сохранения в заказ…';
      const pdf=await api.make(selected);
      const after=readySnapshot();
@@ -147,6 +165,7 @@ function start(){
      const upload=newName?new File([pdf],newName,{type:'application/pdf'}):pdf;
      const form=new FormData();form.append('media_file[]',upload,upload.name);
      if(target)form.append('expected_original_name',target.name);
+     else form.append('require_unique_name','1');
      if(status)status.textContent=target?'Загружаю замену, исходный файл пока сохранён…':
        'Добавляю новый PDF в заказ…';
      const url='/api/orders/'+order+'/uploaded-makets'+(target?'/'+target.id:'');
@@ -247,11 +266,11 @@ function start(){
    }
    return out;
  }
- async function readOrder(order){
+ async function readOrder(order,fresh=false){
    if(!valid(order))return [];
-   if(state.has(order))return state.get(order);
+   if(!fresh&&state.has(order))return state.get(order);
    const task=(async()=>{
-     const response=await fetch('/api/orders/'+order,{credentials:'same-origin',cache:'no-store'});
+     const response=await fetch('/api/orders/'+order+(fresh?'?fresh=1':''),{credentials:'same-origin',cache:'no-store'});
      const data=await response.json();
      if(!response.ok)throw Error(data.error||'Не удалось прочитать заказ');
      const files=cleanFiles(data,order);

@@ -249,11 +249,50 @@ try {
  assert.equal(await page.locator('#gwbOrderMakets button').filter({hasText:'Открыть для редактирования'}).count(),0);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-download').count(),2);
  assert.equal(await page.locator('#gwbOrderMakets .gwb-order-maket-delete').count(),2);
+ const duplicatePost=await page.evaluate(async()=>{
+   const form=new FormData();form.append('require_unique_name','1');
+   form.append('media_file[]',new File(['%PDF-1.7 duplicate'],'GERB2.pdf',{type:'application/pdf'}));
+   return (await fetch('/api/orders/8006776/uploaded-makets',{method:'POST',body:form})).status;
+ });
+ assert.equal(duplicatePost,409,'A concurrent duplicate is blocked before native upload');
+ assert.equal(uploadedExtra.length,0);
  // A completed layout uses the exact gifts.ru upload form and is verified by a new attachment ID.
  await page.evaluate(()=>{window.confirm=()=>true;window.prompt=()=> '8006776_77700.60_макет.pdf'});
  assert.equal(await page.locator('#gwbSaveReadySimple').textContent(),'Сохранить макет в заказ на gifts.ru');
- assert.equal(await page.locator('#gwbSaveAsReadySimple').textContent(),'Сохранить как.. макет в заказ на gifts.ru');
- await page.locator('#gwbSaveAsReadySimple').click();
+ assert.equal(await page.locator('.gwb-ready-save-as').count(),0,'Save As is merged into Save');
+ assert.equal(await page.locator('.gwb-save-actions button').count(),2,'One Save in each editor mode');
+ // A server change after the list was cached must still trigger the collision dialog.
+ filenames[1].original='server-fresh.pdf';
+ await page.evaluate(()=>{window.prompt=()=> 'server-fresh.pdf'});
+ await page.locator('#gwbSaveReadyAdvanced').click();
+ await page.locator('#gwbSaveConflict').screenshot({path:'test-results/unified-save-conflict.png'});
+ await page.locator('[data-save-choice="cancel"]').click();
+ await page.waitForFunction(()=>!document.getElementById('gwbSaveReadyAdvanced').disabled);
+ assert.equal(uploadedExtra.length,0,'Fresh server collision is detected in advanced mode');
+ filenames[1].original='che.pdf';
+ // A failed list read must never be interpreted as an empty order.
+ await page.evaluate(()=>{
+   window.__savedFetch=window.fetch;
+   window.fetch=(url,init)=>String(url).includes('?fresh=1')?
+     Promise.resolve(new Response(JSON.stringify({error:'test list unavailable'}),{status:503})):window.__savedFetch(url,init);
+ });
+ await page.locator('#gwbSaveReadySimple').click();
+ await page.waitForFunction(()=>document.getElementById('status').textContent.includes('test list unavailable'));
+ assert.equal(uploadedExtra.length,0,'Read failure cannot upload');
+ await page.evaluate(()=>{window.fetch=window.__savedFetch});
+ // A collision with an unrelated server file offers cancellation and repeated renaming.
+ await page.evaluate(()=>{window.prompt=()=> 'GERB2.pdf'});
+ await page.locator('#gwbSaveReadySimple').click();
+ await page.locator('[data-save-choice="cancel"]').click();
+ await page.waitForFunction(()=>!document.getElementById('gwbSaveReadySimple').disabled);
+ assert.equal(uploadedExtra.length,0,'Cancel never uploads or deletes');
+ assert.equal(deleteCount,0);
+ await page.locator('#gwbSaveReadySimple').click();
+ await page.locator('[data-save-choice="rename"]').click();
+ await page.locator('[data-save-choice="rename"]').waitFor();
+ assert.equal(uploadedExtra.length,0,'A second colliding name must ask again');
+ await page.evaluate(()=>{window.prompt=()=> '8006776_77700.60_макет.pdf'});
+ await page.locator('[data-save-choice="rename"]').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Сохранён новый макет'),null,{timeout:15000});
  assert.ok(postedPdf,'Ready PDF uploaded to the original order');
  // Basket/card refresh resolves asynchronously after the server confirms upload.
@@ -262,6 +301,7 @@ try {
  assert.match(await page.locator('.gwb-order-maket-badge').textContent(),/3/);
  // Save targets the newly saved PDF, never other customer attachments.
  await page.locator('#gwbSaveReadySimple').click();
+ await page.locator('[data-save-choice="replace"]').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('перезаписан'),null,{timeout:15000});
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===3);
  assert.equal(deleteCount,1,'Overwrite only deletes the verified previous PDF');
@@ -311,6 +351,7 @@ try {
  // report partial success. It cannot be incorrectly announced as overwrite.
  failDeleteId='18311646';
  await page.locator('#gwbSaveReadySimple').click();
+ await page.locator('[data-save-choice="replace"]').click();
  await page.waitForFunction(()=>document.getElementById('status')?.textContent.includes('Новый PDF сохранён'),null,{timeout:15000});
  await page.waitForFunction(()=>document.querySelectorAll('#gwbOrderMakets .gwb-order-maket-item').length===4,null,{timeout:15000});
  assert.ok(uploadedExtra.some(x=>x.id==='18311646')&&uploadedExtra.some(x=>x.id==='18311647'),

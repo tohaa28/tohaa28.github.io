@@ -1007,3 +1007,8 @@ Regression:
 - [Native build and WASM 39679316542](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39679316542), [publish 39682223950](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39682223950), [real WASM menu verification 39682223824](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39682223824), [Pages 39682408171](https://github.com/tohaa28/tohaa28.github.io/actions/runs/39682408171): SUCCESS. Real menu RGB -> CMYK -> RGB, four samples per pixel, alpha, bounds, keyboard undo/redo and mixed raster/vector export passed.
 - Source/production registry blobs are unchanged: mockup-profiles 750a78701bbba0ea82ec59fd95f78b01dfd37026; method-settings cbf6c8204e4fb3892d806342d37debefb8d9038e. Transfer progress, locking, both gifts.ru order save actions and both WASM runtimes are preserved.
 - Checkpoints: checkpoint-tracedraw-raster-cmyk-20261022-source and checkpoint-tracedraw-raster-cmyk-20261022-production. Details and limits: handoff/MAKETNAYA_TRACEDRAW_RASTER_CMYK_2026-10-22.md. CMYK conversion happens at PDF output from the retained RGB PNG source; CMYK editing channels and preservation of this new mode in SVG/CDR are not claimed.
+
+
+## 22.10.2026 — Единая кнопка сохранения в заказ
+
+Обе команды объединены в «Сохранить макет в заказ на gifts.ru». Свежая проверка имени предлагает перезапись, другое имя или отмену. 204 unit tests и браузерный сценарий сохранения PASS; внешние записи в тестах моделируются. Подробности: handoff/MAKETNAYA_UNIFIED_SAVE_2026-10-22.md.
