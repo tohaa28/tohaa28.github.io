@@ -1,3 +1,5 @@
+> **АКТУАЛЬНО НА 22.10.2026 — НАЧАТЬ ЗДЕСЬ:** [Главный handoff](START_HERE_MAKETNAYA_2026-10-22_CURRENT.md), [готовый запрос для нового чата](NEW_CHAT_PROMPT_2026-10-22.md), [машинное состояние и контрольные SHA](PROJECT_STATE_2026-10-22.json). Последний подтверждённый релиз Макетная r024116c7 / PrintCheck v25 re1f43fb8 / TraceDraw 0.9.4-gifts-raster-cmyk1. Вся приведённая ниже документация сохранена как история. Пользовательский RGB/CMYK файл требует отдельной реальной проверки.
+
 > **КАНОНИЧЕСКАЯ ДОПОЛНИТЕЛЬНАЯ ФИКСАЦИЯ 19.10.2026:** [START_HERE_2026-10-19_FINAL.md](START_HERE_2026-10-19_FINAL.md), [PROJECT_STATE_2026-10-19_FINAL.json](PROJECT_STATE_2026-10-19_FINAL.json), [SAFE_RECOVERY_2026-10-19_FINAL.md](SAFE_RECOVERY_2026-10-19_FINAL.md), [NEW_CHAT_PROMPT_2026-10-19_FINAL.md](NEW_CHAT_PROMPT_2026-10-19_FINAL.md). Замороженные source/production ветки созданы отдельно. Содержимое ниже не удалять.
 
 # Навигация по документации Макетной
