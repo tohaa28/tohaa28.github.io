@@ -11,6 +11,7 @@
 import {inspectSvgDocumentViewport} from './svg-viewport.mjs';
 import {parseClosedSvgPath} from './svg-path-subset.mjs';
 import {inspectVectorCorridors} from './vector-corridors.mjs';
+import {inspectCurvedNormalProbes} from './curved-normal-probes.mjs';
 
 const reject=(reason,more={})=>({
   schema:"printcheck.vision.svg-dom-bridge.v1",status:"MANUAL",
@@ -171,8 +172,19 @@ export function inspectSvgTree(context={}){
   });
   if(measured.status!=="RESEARCH_CANDIDATES_ONLY")
     return reject("SVG_VECTOR_GEOMETRY_UNSUPPORTED",{detail:measured.reason});
+  let curved=null;
+  if(context.include_curved_probes===true){
+    curved=inspectCurvedNormalProbes({
+      contours:shapes,matrix_svg_to_mm:identity,
+      fill_rule:"evenodd",curve_flatness_mm:eps,
+      max_candidate_mm:context.max_candidate_mm
+    });
+    if(curved.status!=="RESEARCH_CANDIDATES_ONLY")
+      return reject("SVG_CURVED_PROBES_UNSUPPORTED",{detail:curved.reason});
+  }
   return {
     ...measured,schema:"printcheck.vision.svg-dom-bridge.v1",
+    ...(curved?{curved_probes:curved}:{}),
     status:"RESEARCH_CANDIDATES_ONLY",
     print_scale_proven:false,geometry_proven:false,
     svg_document_scale_proven:true,paths_count:paths,groups_count:groups,
