@@ -116,7 +116,7 @@ test('Missing page matrix or degenerate viewport must reject PDF scale',()=>{
 });
 
 test('Malformed and unsupported PDF shape path is not converted to empty geometry',()=>{
-  for(const d of ['M0 0 A1 1 0 0 1 4 4 Z','M0 0 L4 0','M0 0 C12 10']){
+  for(const d of ['M0 0 A1 1 0 2 1 4 4 Z','M0 0 L4 0','M0 0 C12 10']){
     const r=inspectConvertedPdfVectors(payload(d));
     assert.equal(r.status,'MANUAL');
     assert.equal(r.reason,'PDF_VECTOR_PATH_UNSUPPORTED');
