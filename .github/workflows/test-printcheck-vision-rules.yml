@@ -11,6 +11,7 @@ on:
       - "tests/printcheck-vision-svg-viewport.test.mjs"
       - "tests/printcheck-vision-vector-corridors.test.mjs"
       - "tests/printcheck-vision-spatial-index.test.mjs"
+      - "tests/printcheck-vision-curved-normals.test.mjs"
       - "tests/bench-printcheck-vision-spatial.mjs"
       - "tests/printcheck-vision-pdf-bridge.test.mjs"
       - "tests/printcheck-vision-placement-context.test.mjs"
@@ -47,6 +48,8 @@ jobs:
           node --check vision/geometry/vector-corridors.mjs
           node --check tests/printcheck-vision-vector-corridors.test.mjs
           node --check tests/printcheck-vision-spatial-index.test.mjs
+          node --check vision/geometry/curved-normal-probes.mjs
+          node --check tests/printcheck-vision-curved-normals.test.mjs
           node --check tests/bench-printcheck-vision-spatial.mjs
           node --check vision/geometry/pdfjs-vector-bridge.mjs
           node --check tests/printcheck-vision-pdf-bridge.test.mjs
@@ -55,7 +58,7 @@ jobs:
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-svg-dom.test.mjs
       - name: Run deterministic rule tests
-        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs
+        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs
       - name: Report synthetic CPU performance and exact result parity
         run: node tests/bench-printcheck-vision-spatial.mjs
       - uses: actions/setup-python@v5
