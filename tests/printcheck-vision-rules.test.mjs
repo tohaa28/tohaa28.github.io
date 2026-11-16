@@ -50,6 +50,8 @@ test('UV Soft Touch applies 0.5 mm and exact thresholds',()=>{
 });
 test('Unknown Soft Touch status cannot silently accept generic UV rule',()=>{
   assert.equal(check({measured:0.2,features:{}}).reason,'CONDITIONAL_FEATURE_UNKNOWN');
+  assert.equal(check({measured:0.2,features:{soft_touch:'unknown'}}).status,'MANUAL');
+  assert.equal(check({measured:0.2,features:{soft_touch:'неизвестно'}}).status,'MANUAL');
 });
 test('DTF generic 0.6 and cardboard exception 1.5',()=>{
   const q={technology:'DTF1',features:{material:'cotton'},measured:0.6};
@@ -139,6 +141,8 @@ test('Order rule outranks verified constructor requirement',()=>{
 test('Documented decal Pantone conflict cannot be classified as OK',()=>{
   const r=resolveRequirement(registry,{technology:'H1',dimension:'max_pantone_deviation_percent'});
   assert.equal(r.status,'MANUAL');
+  assert.equal(r.reason,'RULE_SOURCE_CONFLICT');
+  assert.equal(r.conflict_id,'GFT-CONFLICT-DECAL-PALETTE');
 });
 test('Invalid registry and physical measurements cannot pass',()=>{
   assert.equal(evaluateMeasurement({},research()).status,'MANUAL');
