@@ -11,6 +11,7 @@ on:
       - assets/printcheck-vision-ui.*
       - tools/build-launcher.mjs
       - tests/printcheck-vision-ui.browser.mjs
+      - tests/printcheck-vision-session-launch.browser.mjs
       - .github/workflows/publish-printcheck-vision-preview.yml
   workflow_dispatch:
 
@@ -42,6 +43,7 @@ jobs:
           set -euo pipefail
           node --check assets/printcheck-vision-ui.js
           node --check tests/printcheck-vision-ui.browser.mjs
+          node --check tests/printcheck-vision-session-launch.browser.mjs
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
 
@@ -60,6 +62,11 @@ jobs:
           node tools/build-launcher.mjs
           test -s launcher.js
           node --check launcher.js
+
+      - name: Verify Vision bookmarklet on a synthetic authorized Gifts session
+        run: |
+          set -euo pipefail
+          node tests/printcheck-vision-session-launch.browser.mjs
 
       - name: Checkout GitHub Pages site (production files preserved)
         uses: actions/checkout@v4
