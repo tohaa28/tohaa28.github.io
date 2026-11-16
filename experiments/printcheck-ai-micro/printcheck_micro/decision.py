@@ -5,6 +5,7 @@ must originate from calibrated vector geometry or a separately validated raster
 measurement pipeline. False measured values must not be inferred from pixels.
 """
 from dataclasses import dataclass
+import math
 
 
 @dataclass(frozen=True)
@@ -20,8 +21,11 @@ def decide(class_probabilities, measurement_mm: float, rule: Rule, confidence_th
     classes = ('bridge', 'gap', 'corner', 'island', 'safe')
     if len(class_probabilities) != len(classes):
         raise ValueError('expected five classification probabilities')
-    if measurement_mm < 0:
-        raise ValueError('physical size cannot be negative')
+    if not math.isfinite(measurement_mm) or measurement_mm < 0:
+        raise ValueError('physical size must be finite and nonnegative')
+    limits = (rule.min_positive_mm, rule.min_negative_mm, rule.min_island_mm)
+    if any(v is not None and (not math.isfinite(v) or v < 0) for v in limits):
+        raise ValueError('physical limits must be finite and nonnegative')
     ix = max(range(len(classes)), key=lambda i: class_probabilities[i])
     kind, conf = classes[ix], float(class_probabilities[ix])
     if conf < confidence_threshold:
