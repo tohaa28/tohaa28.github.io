@@ -1,0 +1,807 @@
+{
+  "schema": "printcheck.vision.rules.v1",
+  "revision": "2026-11-16-experimental-1",
+  "status": "experimental_not_production_approved",
+  "units": {
+    "linear": "mm",
+    "resolution": "dpi",
+    "percentage": "%"
+  },
+  "source": {
+    "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+    "retrieved_at": "2026-11-16",
+    "content_sha256": null
+  },
+  "comment_ru": "Это проверяемая черновая цифровая таблица; прямой автодопуск без технологии, доказанного физического масштаба и применимых условий запрещён. Условия применяются отдельно к каждой метрике; нет метрики — MANUAL.",
+  "rules": [
+    {
+      "id": "GFT-B-TEXTILE",
+      "technologies": [
+        "B1",
+        "B2",
+        "B3",
+        "B4"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.3,
+        "negative_gap_mm": 0.4,
+        "single_element_mm": 0.3
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      },
+      "note_ru": "Без подложки для позитивных элементов"
+    },
+    {
+      "id": "GFT-B-UNDERBASE",
+      "technologies": [
+        "B1",
+        "B2",
+        "B3",
+        "B4"
+      ],
+      "conditions": {
+        "underbase": true
+      },
+      "measurements": {
+        "positive_width_mm": 0.4
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      },
+      "note_ru": "Подложка увеличивает минимальный позитив"
+    },
+    {
+      "id": "GFT-D-TRANSFER",
+      "technologies": [
+        "D1",
+        "D2",
+        "D3",
+        "D4"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.3,
+        "negative_gap_mm": 0.3,
+        "single_element_mm": 0.4
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      },
+      "note_ru": "Без подложки"
+    },
+    {
+      "id": "GFT-D-UNDERBASE",
+      "technologies": [
+        "D1",
+        "D2",
+        "D3",
+        "D4"
+      ],
+      "conditions": {
+        "underbase": true
+      },
+      "measurements": {
+        "positive_width_mm": 0.4
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-SH",
+      "technologies": [
+        "SH1",
+        "SH2",
+        "SH3",
+        "SHR"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.3,
+        "negative_gap_mm": 0.3
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-EMB",
+      "technologies": [
+        "I1",
+        "I2",
+        "I3",
+        "IB1",
+        "IB2",
+        "IB3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 1,
+        "negative_gap_mm": 1,
+        "letter_height_mm": 5,
+        "single_round_element_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-EMB-LARGE",
+      "technologies": [
+        "IO1",
+        "IO2",
+        "IO3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 2,
+        "negative_gap_mm": 2,
+        "letter_height_mm": 10,
+        "single_round_element_mm": 4.5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-A-TAMPON",
+      "technologies": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.1,
+        "negative_gap_mm": 0.15
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-AR",
+      "technologies": [
+        "AR1",
+        "AR2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.4,
+        "negative_gap_mm": 0.4
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-DECAL-H",
+      "technologies": [
+        "H1",
+        "H2",
+        "H3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.15,
+        "negative_gap_mm": 0.15,
+        "min_halftone_percent": 20
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-DECAL-HC",
+      "technologies": [
+        "HC1",
+        "HC2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.2,
+        "negative_gap_mm": 0.25,
+        "min_halftone_percent": 20
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-SB",
+      "technologies": [
+        "SB1",
+        "SB21",
+        "SB22",
+        "SBR1",
+        "SBR2",
+        "SB3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.25,
+        "negative_gap_mm": 0.3,
+        "effective_dpi": 300
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-LASER",
+      "technologies": [
+        "LM1",
+        "LM2",
+        "LM3",
+        "LB1",
+        "LB2",
+        "LB3",
+        "LB4",
+        "LRM",
+        "LSM"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.1,
+        "negative_gap_mm": 0.2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-LASER-C",
+      "technologies": [
+        "LC1",
+        "LC2",
+        "LC3",
+        "LRC",
+        "LSP",
+        "LSC",
+        "LUV1",
+        "LUV2",
+        "LUV3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.1,
+        "negative_gap_mm": 0.2,
+        "letter_height_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-LASER-C-SOFT",
+      "technologies": [
+        "LC1",
+        "LC2",
+        "LC3",
+        "LRC",
+        "LSP",
+        "LSC",
+        "LUV1",
+        "LUV2",
+        "LUV3"
+      ],
+      "conditions": {
+        "material": [
+          "leather",
+          "fleece",
+          "neoprene"
+        ]
+      },
+      "measurements": {
+        "letter_height_mm": 5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      },
+      "note_ru": "Материалы с отдельным нормативом высоты букв"
+    },
+    {
+      "id": "GFT-LRUV",
+      "technologies": [
+        "LRUV"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.2,
+        "negative_gap_mm": 0.3,
+        "letter_height_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-T1",
+      "technologies": [
+        "T1"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.2,
+        "negative_gap_mm": 0.3,
+        "edge_guard_mm": 18
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-T2",
+      "technologies": [
+        "T2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.3,
+        "negative_gap_mm": 0.5,
+        "edge_guard_mm": 18
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-T3",
+      "technologies": [
+        "T3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.3,
+        "negative_gap_mm": 0.3,
+        "textured_element_mm": 2,
+        "textured_negative_gap_mm": 0.5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-M",
+      "technologies": [
+        "M1",
+        "M2",
+        "PP-V1"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.15,
+        "effective_dpi": 300,
+        "min_halftone_percent": 10
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-M3",
+      "technologies": [
+        "M3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.15,
+        "edge_guard_mm": 5,
+        "bleed_mm": 2,
+        "effective_dpi": 300
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-UV",
+      "technologies": [
+        "UV1",
+        "UV2",
+        "UV3",
+        "UVR",
+        "UVP"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.15,
+        "negative_gap_mm": 0.15
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-UV-SOFT",
+      "technologies": [
+        "UV1",
+        "UV2",
+        "UV3",
+        "UVR",
+        "UVP"
+      ],
+      "conditions": {
+        "soft_touch": true
+      },
+      "measurements": {
+        "positive_width_mm": 0.5,
+        "negative_gap_mm": 0.5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      },
+      "note_ru": "Soft Touch: повышенные минимальные толщины (уточнять область применения)"
+    },
+    {
+      "id": "GFT-UV-L",
+      "technologies": [
+        "UVRL",
+        "UVL1",
+        "UVL2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.15,
+        "negative_gap_mm": 0.2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-UV-L-SOFT",
+      "technologies": [
+        "UVRL",
+        "UVL1",
+        "UVL2"
+      ],
+      "conditions": {
+        "soft_touch": true
+      },
+      "measurements": {
+        "positive_width_mm": 0.5,
+        "negative_gap_mm": 0.5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-F1",
+      "technologies": [
+        "F1"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 1,
+        "negative_gap_mm": 1,
+        "single_element_mm": 3
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-F2",
+      "technologies": [
+        "F2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 2,
+        "negative_gap_mm": 2,
+        "single_element_mm": 3
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-F3",
+      "technologies": [
+        "F3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 3,
+        "negative_gap_mm": 3,
+        "single_element_mm": 3
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-FS",
+      "technologies": [
+        "FS"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 1.5,
+        "negative_gap_mm": 1.1,
+        "letter_height_mm": 5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-SL",
+      "technologies": [
+        "SL1",
+        "SL2",
+        "PS1"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.15,
+        "negative_gap_mm": 0.2,
+        "bleed_mm": 2,
+        "edge_guard_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-DTG",
+      "technologies": [
+        "DTG1",
+        "DTG2",
+        "DTG3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.3,
+        "effective_dpi": 300,
+        "min_color_percent": 15
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-DTF",
+      "technologies": [
+        "DTF1",
+        "DTF2",
+        "DTF3",
+        "DTF4"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.6,
+        "negative_gap_mm": 0.6,
+        "single_element_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-DTF-CARDBOARD",
+      "technologies": [
+        "DTF1",
+        "DTF2",
+        "DTF3",
+        "DTF4"
+      ],
+      "conditions": {
+        "material": [
+          "paper",
+          "cardboard"
+        ]
+      },
+      "measurements": {
+        "positive_width_mm": 1.5,
+        "single_element_mm": 1.5
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      },
+      "note_ru": "Отдельное требование к линиям на бумаге/картоне"
+    },
+    {
+      "id": "GFT-DTF-FOIL",
+      "technologies": [
+        "DTF-F"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 1.2,
+        "negative_gap_mm": 1.2,
+        "single_element_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-UVDTF",
+      "technologies": [
+        "UV-DTF1",
+        "UV-DTF2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.6,
+        "negative_gap_mm": 0.6,
+        "single_element_mm": 2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-MS",
+      "technologies": [
+        "MS1",
+        "MS2"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.1,
+        "negative_gap_mm": 0.2
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    },
+    {
+      "id": "GFT-RP",
+      "technologies": [
+        "RP1",
+        "RP2",
+        "RP3"
+      ],
+      "conditions": {},
+      "measurements": {
+        "positive_width_mm": 0.25,
+        "negative_gap_mm": 0.3
+      },
+      "provenance": {
+        "url": "https://gifts.ru/nanesenie-logotipa/specifications",
+        "reviewed_at": "2026-11-16",
+        "quality": "official_page_extracted",
+        "body_sha256": null
+      }
+    }
+  ],
+  "source_conflicts": [
+    {
+      "id": "GFT-CONFLICT-DECAL-PALETTE",
+      "technologies": [
+        "H1",
+        "H2",
+        "H3"
+      ],
+      "metric": "max_pantone_deviation_percent",
+      "variants": [
+        {
+          "value": 25,
+          "url": "https://gifts.ru/nanesenie-logotipa/specifications"
+        },
+        {
+          "value": 15,
+          "url": "https://gifts.ru/maket-problems/10002353"
+        }
+      ],
+      "state": "MANUAL",
+      "explanation_ru": "Разные страницы Gifts приводят 25% и 15%; не использовать для автоматического вывода до решения технолога."
+    }
+  ]
+}
