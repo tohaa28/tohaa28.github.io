@@ -55,11 +55,27 @@ footer{padding:12px 22px;font-size:11px;color:#93adb2;border-top:1px solid #2944
  <div><label for="note">Комментарий эксперта</label><textarea id="note" placeholder="Что именно здесь важно?"></textarea></div>
  <div><h2>Области · <span class="count" id="count">0</span></h2><p>Координаты сохраняются относительно изображения (0…1).</p><ol id="annotations"></ol></div>
  <div class="actions"><button id="undo" type="button">Отменить последнюю</button><button id="clear" type="button">Очистить</button><button class="primary" id="export" type="button">Скачать JSON</button></div>
+ <div style="padding-top:15px;border-top:1px solid #40595e">
+  <h2>Подготовить слепое задание для экспертов</h2>
+  <p>Задание фиксирует одинаковые области для двух независимых проверок. Результаты алгоритма и ваши комментарии не включаются. Ниже — необязательные технические метки для будущего контроля выборки.</p>
+  <label for="familyHash">SHA-256 группы исходного заказа (64 символа)</label>
+  <input type="text" id="familyHash" placeholder="Вводить только заранее созданный идентификатор" autocomplete="off" spellcheck="false" maxlength="64">
+  <label for="artworkHash">SHA-256 оригинального макета, если подтверждён</label>
+  <input type="text" id="artworkHash" placeholder="Не путать с хешем PNG предпросмотра" autocomplete="off" spellcheck="false" maxlength="64">
+  <label for="technologyCode">Код технологии (например, UV1)</label>
+  <input type="text" id="technologyCode" placeholder="Неизвестен — оставить пустым" autocomplete="off" maxlength="30">
+  <div class="actions" style="margin-top:12px">
+    <button id="exportTask" type="button">Скачать задание для двух экспертов</button>
+    <a href="./vision-review.html" style="font-size:12px;color:#c7e798;padding:9px 0">Открыть слепую проверку</a>
+  </div>
+  <p>Пустые идентификаторы сохраняются как неподтверждённые. Такая разметка пригодна для исследования, но не для окончательной оценки по заказу.</p>
+ </div>
  <p>Сведения о физических размерах здесь не вычисляются. Для реального заключения потребуется проверенная калибровка PDF/SVG и версия технологических требований.</p>
 </aside>
 </div>
 <footer>PrintCheck Vision Studio · локальная разметка · исходное изображение не выгружается · модель и рабочие правила не изменяются</footer>
-<script>
+<script type="module">
+import {createReviewTask} from './vision/dataset/review-task.mjs';
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
@@ -109,6 +125,7 @@ function update(){
  }
  $('undo').disabled=annotations.length===0;$('clear').disabled=annotations.length===0;
  $('export').disabled=!image;
+ $('exportTask').disabled=!image||annotations.length===0;
  draw();
 }
 canvas.addEventListener('pointerdown',event=>{
@@ -150,6 +167,38 @@ file.addEventListener('change',async()=>{
 });
 $('undo').addEventListener('click',()=>{annotations.pop();update()});
 $('clear').addEventListener('click',()=>{annotations=[];update()});
+$('exportTask').addEventListener('click',async()=>{
+ if(!image||annotations.length===0)return;
+ const hex=/^[0-9a-f]{64}$/i;
+ const optional=id=>{
+  const value=$(id).value.trim();
+  if(!value)return null;
+  if(!hex.test(value))throw new Error('Неверный SHA-256 в поле '+id);
+  return value.toLowerCase();
+ };
+ try{
+  const technology=$('technologyCode').value.trim().toUpperCase()||null;
+  const task=await createReviewTask({
+   image_sha256:imgHash,
+   width_px:image.width,height_px:image.height,
+   annotations,
+   family_sha256:optional('familyHash'),
+   artwork_sha256:optional('artworkHash'),
+   technology_code:technology
+  });
+  const blob=new Blob([JSON.stringify(task,null,2)+'\n'],{
+   type:'application/json;charset=utf-8'
+  });
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='vision-review-task-'+imgHash.slice(0,12)+'.json';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  $('info').textContent='Слепое задание создано локально для '+task.regions.length+' областей. Передайте один и тот же JSON обоим экспертам; изображение передаётся только разрешённым внутренним способом.';
+ }catch(err){
+  $('info').textContent='Задание не создано: '+(err?.message||'Некорректные данные');
+ }
+});
 $('export').addEventListener('click',()=>{
  if(!image)return;
  const data={schema:'printcheck.vision.annotation.v1',source:{name:imgName,sha256:imgHash,width_px:image.width,height_px:image.height},
