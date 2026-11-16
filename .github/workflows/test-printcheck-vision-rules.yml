@@ -7,6 +7,7 @@ on:
     paths:
       - "vision/**"
       - "tests/printcheck-vision-rules.test.mjs"
+      - "tests/printcheck-vision-topology.test.mjs"
       - "tests/printcheck-vision-inventory.test.py"
       - "docs/DEVLOG.md"
       - ".github/workflows/test-printcheck-vision-rules.yml"
@@ -31,8 +32,10 @@ jobs:
         run: |
           node --check vision/rules/resolver.mjs
           node --check tests/printcheck-vision-rules.test.mjs
+          node --check vision/geometry/mask-components.mjs
+          node --check tests/printcheck-vision-topology.test.mjs
       - name: Run deterministic rule tests
-        run: node --test tests/printcheck-vision-rules.test.mjs
+        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
