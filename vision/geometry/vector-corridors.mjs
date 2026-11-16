@@ -45,6 +45,72 @@ function intersects(a,b,c,d){
   if(Math.abs(cross(p,ab))>1e-9*hypot(ab.x,ab.y))return false;
   return isOnSegment(c,a,b)||isOnSegment(d,a,b)||isOnSegment(a,c,d)||isOnSegment(b,c,d);
 }
+/**
+ * Complete broad-phase index for finite segment AABBs. This is strictly a
+ * candidate enumerator: all exact geometric decisions still use the same
+ * narrow-phase predicates as the reference implementation.
+ *
+ * Every query expands the asking segment AABB by a NON-NEGATIVE padding,
+ * then finds ALL original segment AABBs overlapping it. No sparse/nearest
+ * heuristic, k-neighbor truncation or sampled coordinates are used.
+ *
+ * Pathological bin link counts fall back to exhaustive pair checks rather
+ * than silently dropping possible micro-features.
+ */
+function buildSegmentGrid(bounds,maxLinks){
+  const n=bounds.length;
+  const minX=Math.min(...bounds.map(b=>b.minX));
+  const minY=Math.min(...bounds.map(b=>b.minY));
+  const maxX=Math.max(...bounds.map(b=>b.maxX));
+  const maxY=Math.max(...bounds.map(b=>b.maxY));
+  const bins=Math.min(32,Math.max(2,Math.ceil(Math.sqrt(n))));
+  const nx=bins,ny=bins;
+  const stepX=Math.max((maxX-minX)/nx,1e-12);
+  const stepY=Math.max((maxY-minY)/ny,1e-12);
+  const clamp=(v,hi)=>Math.min(hi,Math.max(0,v));
+  const rx=(lo,hi)=>[
+    clamp(Math.floor((lo-minX)/stepX),nx-1),
+    clamp(Math.floor((hi-minX)/stepX),nx-1)
+  ];
+  const ry=(lo,hi)=>[
+    clamp(Math.floor((lo-minY)/stepY),ny-1),
+    clamp(Math.floor((hi-minY)/stepY),ny-1)
+  ];
+  const cells=new Map();
+  let links=0;
+  for(let i=0;i<n;i++){
+    const b=bounds[i],xx=rx(b.minX,b.maxX),yy=ry(b.minY,b.maxY);
+    links+=(xx[1]-xx[0]+1)*(yy[1]-yy[0]+1);
+    if(links>maxLinks)return null;
+    for(let x=xx[0];x<=xx[1];x++){
+      for(let y=yy[0];y<=yy[1];y++){
+        const cell=y*nx+x,existing=cells.get(cell);
+        if(existing)existing.push(i);
+        else cells.set(cell,[i]);
+      }
+    }
+  }
+  function query(i,padding){
+    const a=bounds[i],minQX=a.minX-padding,maxQX=a.maxX+padding;
+    const minQY=a.minY-padding,maxQY=a.maxY+padding;
+    const xx=rx(minQX,maxQX),yy=ry(minQY,maxQY);
+    const seen=new Set(),found=[];
+    for(let x=xx[0];x<=xx[1];x++){
+      for(let y=yy[0];y<=yy[1];y++){
+        for(const j of cells.get(y*nx+x)||[]){
+          if(j<=i||seen.has(j))continue;
+          seen.add(j);
+          const b=bounds[j];
+          if(b.maxX<minQX||b.minX>maxQX||
+             b.maxY<minQY||b.minY>maxQY)continue;
+          found.push(j);
+        }
+      }
+    }
+    return found.sort((a,b)=>a-b);
+  }
+  return {query,links,cells:cells.size};
+}
 function isAdjacent(a,b,sizes){
   if(a.ring!==b.ring)return false;
   const n=sizes[a.ring];
@@ -130,19 +196,46 @@ export function inspectVectorCorridors(options={}) {
     }
     if(edges.length>maxSegments)return bad("EDGE_BUDGET_EXCEEDED");
   }
-  // Reject bow ties, crossing or tangent rings, overlaps and touching holes.
-  for(let i=0;i<edges.length;i++){
-    for(let j=i+1;j<edges.length;j++){
-      if(isAdjacent(edges[i],edges[j],sizes))continue;
-      if(intersects(edges[i].p,edges[i].q,edges[j].p,edges[j].q))
-        return bad("SELF_INTERSECTION_OR_TOUCHING_CONTOURS");
+  // Build one complete broad-phase index for both topology and corridor
+  // searches. Reference mode is reserved for exhaustive equivalence tests.
+  const edgeBounds=edges.map(edge=>({
+    minX:Math.min(edge.p.x,edge.q.x),
+    maxX:Math.max(edge.p.x,edge.q.x),
+    minY:Math.min(edge.p.y,edge.q.y),
+    maxY:Math.max(edge.p.y,edge.q.y)
+  }));
+  const indexEnabled=options.pair_index!=="reference";
+  if(options.pair_index!==undefined&&
+     options.pair_index!=="grid"&&options.pair_index!=="reference")
+    return bad("PAIR_INDEX_MODE_INVALID");
+  const spatial=indexEnabled?
+    buildSegmentGrid(edgeBounds,Math.max(16384,edges.length*64)):null;
+  const pairMode=!indexEnabled?"reference":spatial?"grid":"reference_fallback";
+  const boxEpsilon=Math.max(1e-8,
+    1e-10*Math.max(1,...edgeBounds.flatMap(b=>
+      [Math.abs(b.minX),Math.abs(b.maxX),Math.abs(b.minY),Math.abs(b.maxY)])));
+  function* segmentPairs(padding){
+    for(let i=0;i<edges.length;i++){
+      if(spatial){
+        for(const j of spatial.query(i,padding))yield [i,j];
+      }else{
+        for(let j=i+1;j<edges.length;j++)yield [i,j];
+      }
     }
+  }
+  let intersectionPairChecks=0,corridorPairChecks=0;
+  // Reject bow ties, crossing or tangent rings, overlaps and touching holes.
+  for(const [i,j] of segmentPairs(boxEpsilon)){
+    if(isAdjacent(edges[i],edges[j],sizes))continue;
+    intersectionPairChecks++;
+    if(intersects(edges[i].p,edges[i].q,edges[j].p,edges[j].q))
+      return bad("SELF_INTERSECTION_OR_TOUCHING_CONTOURS");
   }
   const candidates=[],angleMin=Math.cos(angle*Math.PI/180);
   let rejectedTapers=0,rejectedAmbiguous=0,possible=0,truncated=false;
-  for(let i=0;i<edges.length;i++){
-    const A=edges[i],U=A.u;
-    for(let j=i+1;j<edges.length;j++){
+  for(const [i,j] of segmentPairs(maxWidth+boxEpsilon)){
+      corridorPairChecks++;
+      const A=edges[i],U=A.u;
       const B=edges[j],V=B.u;
       if(isAdjacent(A,B,sizes))continue;
       const cosine=dot(U,V);
@@ -193,7 +286,6 @@ export function inspectVectorCorridors(options={}) {
         geometry_proven:false,scale_proven:false,
         warning:"Local corridor candidate, not full-artwork minimum or production proof"
       });
-    }
   }
   candidates.sort((x,y)=>x.measured_mm-y.measured_mm);
   if(candidates.length>maxCandidates){candidates.length=maxCandidates;truncated=true}
@@ -206,6 +298,13 @@ export function inspectVectorCorridors(options={}) {
     candidate_count:candidates.length,
     candidates,rejected_tapers:rejectedTapers,
     rejected_ambiguous:rejectedAmbiguous,possible_pairs:possible,
+    pair_search:Object.freeze({
+      mode:pairMode,edges:edges.length,
+      exhaustive_pair_count:edges.length*(edges.length-1)/2,
+      intersection_pair_checks:intersectionPairChecks,
+      corridor_pair_checks:corridorPairChecks,
+      index_cells:spatial?.cells??0,index_links:spatial?.links??0
+    }),
     truncated,warnings:[
       "unverified_source_shapes_and_placement",
       "nonparallel_walls_and_curves_require_additional_methods",
