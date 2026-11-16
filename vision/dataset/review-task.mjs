@@ -34,6 +34,11 @@ export function validateReviewTask(task){
     return fail('TASK_IMAGE_PROVENANCE_INVALID');
   if(!ctx||typeof ctx!=='object')
     return fail('TASK_CONTEXT_INVALID');
+  if(Object.keys(source).some(k=>!['image_sha256','width_px','height_px'].includes(k)))
+    return fail('TASK_SOURCE_UNEXPECTED_FIELDS');
+  if(Object.keys(ctx).some(k=>![
+    'artwork_sha256','family_sha256','technology_code','order_scale_verified'
+  ].includes(k)))return fail('TASK_CONTEXT_UNEXPECTED_FIELDS');
   for(const key of ['artwork_sha256','family_sha256']){
     if(ctx[key]!==null&&!isHash(ctx[key]))return fail('TASK_CONTEXT_HASH_INVALID');
   }
@@ -49,10 +54,10 @@ export function validateReviewTask(task){
      task.regions.length>250)return fail('TASK_REGION_COUNT_INVALID');
   const ids=new Set();
   for(const region of task.regions){
-    if(!region||!isHash(region.region_sha256)||!TYPES.has(region.type)||
+    if(!region||!isHash(region.region_sha256)||
        !normalizedRect(region.rect)||ids.has(region.region_sha256))
       return fail('TASK_REGION_INVALID');
-    if(Object.keys(region).some(k=>!['region_sha256','type','rect'].includes(k)))
+    if(Object.keys(region).some(k=>!['region_sha256','rect'].includes(k)))
       return fail('TASK_REGION_UNEXPECTED_FIELDS');
     ids.add(region.region_sha256);
   }
@@ -82,9 +87,9 @@ export async function createReviewTask({image_sha256,width_px,height_px,
     ]));
     if(!normalizedRect(rect))throw new Error('INVALID_ROUNDED_REGION');
     const region_sha256=await hashBinary(new TextEncoder().encode(
-      JSON.stringify([image_sha256.toLowerCase(),annotation.type,rect])
+      JSON.stringify([image_sha256.toLowerCase(),rect])
     ));
-    regions.push({region_sha256,type:annotation.type,rect});
+    regions.push({region_sha256,rect});
   }
   const task={
     schema:TASK_SCHEMA,
