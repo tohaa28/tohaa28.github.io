@@ -53,6 +53,7 @@ try {
   assert.equal(task.context.family_sha256,null);
   assert.equal(task.context.order_scale_verified,false);
   assert.equal(task.regions.length,1);
+  assert.equal(Object.hasOwn(task.regions[0],'type'),false,'Blind task cannot show preparer labels');
   assert.match(task.regions[0].region_sha256,/^[0-9a-f]{64}$/);
   assert.ok(!JSON.stringify(task).includes('generated.png'));
   assert.ok(!JSON.stringify(task).includes('Экспертная метка'),
