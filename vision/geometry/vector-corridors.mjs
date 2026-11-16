@@ -128,10 +128,16 @@ function insideRing(p,points) {
   }
   return inside;
 }
-function evenOdd(p,rings){
+function evenOdd(p,rings,ringBounds){
   let inside=false;
-  for(const ring of rings){
-    const result=insideRing(p,ring);
+  // No point outside the ring bounding box can be inside its polygon or
+  // exactly on its boundary. This cull is exact, not a raster approximation.
+  // Expand by a tiny tolerance solely to preserve near-boundary uncertainty.
+  for(let k=0;k<rings.length;k++){
+    const box=ringBounds[k];
+    if(p.x<box.minX-1e-9||p.x>box.maxX+1e-9||
+       p.y<box.minY-1e-9||p.y>box.maxY+1e-9)continue;
+    const result=insideRing(p,rings[k]);
     if(result===null)return null;
     if(result)inside=!inside;
   }
@@ -169,7 +175,7 @@ export function inspectVectorCorridors(options={}) {
   const original=options.contours;
   if(!Array.isArray(original)||original.length===0||original.length>128)
     return bad("CONTOURS_REQUIRED");
-  const rings=[],edges=[],sizes=[];
+  const rings=[],ringBounds=[],edges=[],sizes=[];
   const transform=p=>({x:a*p.x+c*p.y+e,y:b*p.x+d*p.y+f});
   for(let k=0;k<original.length;k++){
     const item=original[k];
@@ -189,6 +195,10 @@ export function inspectVectorCorridors(options={}) {
     if(pts.some((p,i)=>same(p,pts[(i+1)%pts.length])))
       return bad("DEGENERATE_EDGE");
     sizes.push(pts.length);rings.push(pts);
+    ringBounds.push({
+      minX:Math.min(...pts.map(p=>p.x)),maxX:Math.max(...pts.map(p=>p.x)),
+      minY:Math.min(...pts.map(p=>p.y)),maxY:Math.max(...pts.map(p=>p.y))
+    });
     for(let i=0;i<pts.length;i++){
       const p=pts[i],q=pts[(i+1)%pts.length],len=distance(p,q);
       if(len<1e-9)return bad("DEGENERATE_EDGE");
@@ -268,7 +278,7 @@ export function inspectVectorCorridors(options={}) {
       for(const frac of fractions){
         const probe=sample(lower+(upper-lower)*frac);
         for(const within of [0.2,0.5,0.8]){
-          const inside=evenOdd(between(probe.P,probe.Q,within),rings);
+          const inside=evenOdd(between(probe.P,probe.Q,within),rings,ringBounds);
           if(inside===null){consistent=false;break}
           if(filled===null)filled=inside;
           if(inside!==filled){consistent=false;break}
