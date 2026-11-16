@@ -88,12 +88,12 @@ test('overlapping vector contours are refused rather than misread as knockout',(
   assert.equal(r.reason,'SELF_INTERSECTION_OR_TOUCHING_CONTOURS');
 });
 
-test('open paths, SVG arcs and unsupported smooth curves return MANUAL',()=>{
+test('open paths, SVG arcs and unknown path commands return MANUAL',()=>{
   for(const [d,reason] of [
     ['M0 0 L2 0 L2 1','UNCLOSED_SUBPATH'],
     ['M0 0 A3 3 0 0 1 6 0 Z','UNSUPPORTED_SVG_COMMAND'],
-    ['M0 0 S1 1 2 2 Z','UNSUPPORTED_SVG_COMMAND'],
-    ['M0 0 T1 1 Z','UNSUPPORTED_SVG_COMMAND']
+    ['M0 0 R1 1 2 2 Z','UNSUPPORTED_SVG_COMMAND'],
+    ['M0 0 P1 1 Z','UNSUPPORTED_SVG_COMMAND']
   ])assert.equal(parseClosedSvgPath(d).reason,reason);
 });
 
@@ -174,4 +174,31 @@ test('empty shape data, unsupported tokens, and curve budget return explicit fai
   assert.equal(parseClosedSvgPath('M0 0 L1 foo Z').reason,'MISSING_PATH_ARGUMENT');
   assert.equal(parseClosedSvgPath('M0 0 C2 1 4 1 6 0 L6 1 L0 1 Z',
     {flatness_user_units:0.000001,max_segments:3}).status,'MANUAL');
+});
+
+
+test('SVG smooth S and T preserve reflected curve controls with explicit and relative syntax',()=>{
+  for(const data of [
+    'M0 0 C1 2 2 2 3 0 S5 -2 6 0 L6 1 L0 1 Z',
+    'M0 0 C1 2 2 2 3 0 s2 -2 3 0 L6 1 L0 1 Z',
+    'M0 0 Q1 2 2 0 T4 0 L4 1 L0 1 Z',
+    'M0 0 Q1 2 2 0 t2 0 L4 1 L0 1 Z',
+  ]){
+    const result=parseClosedSvgPath(data);
+    assert.equal(result.status,'CONTOURS_ONLY',data);
+    assert.ok(result.curve_segments>2,data);
+  }
+});
+
+test('smooth S after a line resets old cubic reflection',()=>{
+  const a=parseClosedSvgPath('M0 0 L1 0 S2 1 3 1 L3 2 L0 2 Z');
+  const b=parseClosedSvgPath('M0 0 L1 0 C1 0 2 1 3 1 L3 2 L0 2 Z');
+  assert.equal(a.status,'CONTOURS_ONLY');
+  assert.deepEqual(a.contours,b.contours);
+});
+test('smooth T after a line resets old quadratic reflection',()=>{
+  const a=parseClosedSvgPath('M0 0 L1 0 T3 1 L3 2 L0 2 Z');
+  const b=parseClosedSvgPath('M0 0 L1 0 Q1 0 3 1 L3 2 L0 2 Z');
+  assert.equal(a.status,'CONTOURS_ONLY');
+  assert.deepEqual(a.contours,b.contours);
 });
