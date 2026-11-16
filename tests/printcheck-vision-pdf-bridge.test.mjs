@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {inspectConvertedPdfVectors} from '../vision/geometry/pdfjs-vector-bridge.mjs';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
 
 const PT_MM=25.4/72;
 const PDF_VIEW=[2,0,0,-2,0,500];
@@ -128,4 +130,48 @@ test('PDF shape has to carry a finite affine transformation',()=>{
     }));
     assert.equal(r.status,'MANUAL');
   }
+});
+
+
+test('integration: existing Maketnaya PDF.js 5.x operator converter produces genuine vector path data for bridge',()=>{
+  const script=readFileSync(new URL('../assets/logo-pdf-import.js',import.meta.url),'utf8');
+  const sandbox={window:{}};
+  runInNewContext(script,sandbox);
+  const converter=sandbox.window.gwbImportPdfVector;
+  assert.equal(typeof converter.convert,'function');
+  // Compressed PDF.js shape commands: 0 move, 1 line, 4 close.
+  const ops=[{name:'constructPath',
+    args:['fill',[Float32Array.from([
+      0,0,0, 1,36,0, 1,36,0.4, 1,0,0.4, 4
+    ])]]
+  }];
+  const converted=converter.convert({
+    width:400,height:500,transform:PDF_VIEW,ops
+  });
+  assert.equal(converted.shapes.length,1);
+  assert.match(converted.shapes[0].d,/^M/);
+  const r=inspectConvertedPdfVectors({
+    converted,viewport_transform:PDF_VIEW,
+    page_to_print_mm:[PT_MM,0,0,PT_MM,0,0]
+  });
+  assert.equal(r.status,'RESEARCH_CANDIDATES_ONLY',r.reason);
+  const item=r.candidates.find(c=>c.kind==='positive_width_mm');
+  assert.ok(item);
+  near(item.measured_mm,0.4*PT_MM,0.0001);
+});
+
+test('integration: existing importer refuses PDF text/effects instead of providing incomplete trace',()=>{
+  const script=readFileSync(new URL('../assets/logo-pdf-import.js',import.meta.url),'utf8');
+  const sandbox={window:{}};
+  runInNewContext(script,sandbox);
+  const converter=sandbox.window.gwbImportPdfVector;
+  const ops=[
+    {name:'constructPath',args:['fill',[Float32Array.from([
+      0,0,0, 1,36,0, 1,36,0.4, 1,0,0.4, 4
+    ])]]},
+    {name:'showText',args:[['not-converted-to-curves']]}
+  ];
+  assert.throws(()=>converter.convert({
+    width:400,height:500,transform:PDF_VIEW,ops
+  }),/Нередактируемый текст PDF/);
 });
