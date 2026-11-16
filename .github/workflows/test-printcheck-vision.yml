@@ -9,6 +9,9 @@ on:
       - assets/printcheck-vision-ui.*
       - tests/printcheck-vision-ui.browser.mjs
       - .github/workflows/test-printcheck-vision.yml
+  pull_request:
+    branches:
+      - gifts-layout-workbench-mockups-source
   workflow_dispatch:
 
 permissions:
