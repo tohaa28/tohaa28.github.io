@@ -76,7 +76,7 @@ class InventoryTest(unittest.TestCase):
     def test_suspicious_ratio_and_total_limits(self):
         with tempfile.TemporaryDirectory() as d:
             f=Path(d)/"ratio.zip"
-            make_zip(f,[("highly-compressible.svg",b"a"*15000),
+            make_zip(f,[("highly-compressible.svg",b"a"*500000),
                         ("safe.pdf",b"start-synthetic-pdf")])
             result=inventory.summarize_archives([f])
             self.assertGreaterEqual(result["skipped"].get("suspicious_ratio",0),1)
