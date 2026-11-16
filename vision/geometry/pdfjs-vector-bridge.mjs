@@ -19,6 +19,7 @@
  */
 import {parseClosedSvgPath} from './svg-path-subset.mjs';
 import {inspectVectorCorridors} from './vector-corridors.mjs';
+import {inspectCurvedNormalProbes} from './curved-normal-probes.mjs';
 
 const fail=(reason,extra={})=>Object.freeze({
   schema:'printcheck.vision.pdf-vector-bridge.v1',
@@ -153,9 +154,20 @@ export function inspectConvertedPdfVectors(context={}) {
   });
   if(measured.status!=='RESEARCH_CANDIDATES_ONLY')
     return fail('PDF_VECTOR_GEOMETRY_UNSUPPORTED',{detail:measured.reason});
+  let curved=null;
+  if(context.include_curved_probes===true){
+    curved=inspectCurvedNormalProbes({
+      contours:mapped,matrix_svg_to_mm:[1,0,0,1,0,0],
+      fill_rule:'evenodd',curve_flatness_mm:accuracy,
+      max_candidate_mm:context.max_candidate_mm
+    });
+    if(curved.status!=='RESEARCH_CANDIDATES_ONLY')
+      return fail('PDF_CURVED_PROBES_UNSUPPORTED',{detail:curved.reason});
+  }
   return {
     ...measured,
     schema:'printcheck.vision.pdf-vector-bridge.v1',
+    ...(curved?{curved_probes:curved}:{}),
     origin:'gwbImportPdfVector.convert / PDFjs operator list',
     status:'RESEARCH_CANDIDATES_ONLY',
     print_scale_proven:false,geometry_proven:false,
