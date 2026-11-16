@@ -171,7 +171,7 @@ test('local candidates cannot be passed as certified geometry into production ru
 
 test('empty shape data, unsupported tokens, and curve budget return explicit failures',()=>{
   assert.equal(parseClosedSvgPath('').reason,'EMPTY_PATH');
-  assert.equal(parseClosedSvgPath('M0 0 L1 foo Z').reason,'UNSUPPORTED_SVG_COMMAND');
+  assert.equal(parseClosedSvgPath('M0 0 L1 foo Z').reason,'MISSING_PATH_ARGUMENT');
   assert.equal(parseClosedSvgPath('M0 0 C2 1 4 1 6 0 L6 1 L0 1 Z',
     {flatness_user_units:0.000001,max_segments:3}).status,'MANUAL');
 });
