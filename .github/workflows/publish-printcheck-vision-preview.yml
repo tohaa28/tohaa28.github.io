@@ -1,0 +1,110 @@
+name: Publish isolated PrintCheck Vision preview
+
+on:
+  push:
+    branches:
+      - feature/printcheck-vision-copy-v01
+    paths:
+      - editor.html
+      - index.html
+      - vision-studio.html
+      - assets/printcheck-vision-ui.*
+      - tools/build-launcher.mjs
+      - tests/printcheck-vision-ui.browser.mjs
+      - .github/workflows/publish-printcheck-vision-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: isolated-printcheck-vision-preview
+  cancel-in-progress: false
+
+jobs:
+  validate-and-publish:
+    if: github.ref == 'refs/heads/feature/printcheck-vision-copy-v01'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout experimental source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Static validation
+        run: |
+          set -euo pipefail
+          node --check assets/printcheck-vision-ui.js
+          node --check tests/printcheck-vision-ui.browser.mjs
+          node --check direct-mode.js
+          node --check assets/index-BpU9kvz8.js
+
+      - name: Browser smoke test (no customer data)
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node tests/printcheck-vision-ui.browser.mjs
+
+      - name: Build isolated bookmarklet launcher
+        env:
+          WORKBENCH_BASE: https://tohaa28.github.io/gifts-layout-workbench-vision/
+        run: |
+          set -euo pipefail
+          node tools/build-launcher.mjs
+          test -s launcher.js
+          node --check launcher.js
+
+      - name: Checkout GitHub Pages site (production files preserved)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+
+      - name: Assemble preview under isolated URL
+        run: |
+          set -euo pipefail
+          PREVIEW="site/gifts-layout-workbench-vision"
+          mkdir -p "$PREVIEW"
+          cp index.html editor.html direct-mode.js launcher.js "$PREVIEW/"
+          cp vision-studio.html "$PREVIEW/"
+          cp -R assets vendor "$PREVIEW/"
+          if test -f mockup.html; then cp mockup.html "$PREVIEW/"; fi
+          for json in *.json; do
+            if test -f "$json"; then cp "$json" "$PREVIEW/"; fi
+          done
+          test -f "$PREVIEW/assets/printcheck-vision-ui.js"
+          test -f "$PREVIEW/assets/printcheck-vision-ui.css"
+          test -f "$PREVIEW/launcher.js"
+          grep -q 'gifts-layout-workbench-vision' "$PREVIEW/launcher.js"
+          echo "Preview isolated at /gifts-layout-workbench-vision/"
+
+      - name: Commit only the new preview folder
+        run: |
+          set -euo pipefail
+          cd site
+          git config user.name "printcheck-vision-preview"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A gifts-layout-workbench-vision
+          if git diff --cached --quiet; then
+            echo "Preview already current"
+            exit 0
+          fi
+          git commit -m "Publish isolated PrintCheck Vision preview"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Failed to publish preview after retries" >&2
+          exit 1
