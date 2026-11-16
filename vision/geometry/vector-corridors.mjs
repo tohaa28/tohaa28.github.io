@@ -208,8 +208,11 @@ export function inspectVectorCorridors(options={}) {
   if(options.pair_index!==undefined&&
      options.pair_index!=="grid"&&options.pair_index!=="reference")
     return bad("PAIR_INDEX_MODE_INVALID");
+  const maxIndexLinks=options.max_index_links??Math.max(16384,edges.length*64);
+  if(!Number.isSafeInteger(maxIndexLinks)||maxIndexLinks<1||maxIndexLinks>1_000_000)
+    return bad("SPATIAL_INDEX_BUDGET_INVALID");
   const spatial=indexEnabled?
-    buildSegmentGrid(edgeBounds,Math.max(16384,edges.length*64)):null;
+    buildSegmentGrid(edgeBounds,maxIndexLinks):null;
   const pairMode=!indexEnabled?"reference":spatial?"grid":"reference_fallback";
   const boxEpsilon=Math.max(1e-8,
     1e-10*Math.max(1,...edgeBounds.flatMap(b=>
