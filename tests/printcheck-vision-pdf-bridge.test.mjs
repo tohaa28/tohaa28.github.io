@@ -255,3 +255,27 @@ test('integration: legacy PDF converter emits separate fill operations with same
   assert.equal(r.painted_shapes_count,2);
   assert.ok(r.candidates.some(x=>x.kind==='negative_gap_mm'));
 });
+
+test('opt-in curved PDF rings create local mm candidates, not a print approval',()=>{
+  const ring=radius=>{
+    const coords=Array.from({length:48},(_,i)=>{
+      const t=i*2*Math.PI/48;
+      return [(10+radius*Math.cos(t)).toFixed(8),(10+radius*Math.sin(t)).toFixed(8)];
+    });
+    return 'M'+coords.map((p,i)=>i===0?p.join(' '):'L'+p.join(' ')).join(' ')+' Z';
+  };
+  const result=inspectConvertedPdfVectors({
+    ...payload('M0 0 H10 V0.4 H0 Z'),
+    converted:{width:400,height:500,shapes:[
+      shape(ring(6)+' '+ring(5.82),{'fill-rule':'evenodd'})
+    ]},
+    include_curved_probes:true,
+    page_to_print_mm:[1,0,0,1,0,0],
+    max_candidate_mm:0.5
+  });
+  assert.equal(result.status,'RESEARCH_CANDIDATES_ONLY',result.reason);
+  assert.equal(result.curved_probes.status,'RESEARCH_CANDIDATES_ONLY');
+  assert.ok(result.curved_probes.candidates.some(c=>
+    c.kind==='positive_width_mm'&&Math.abs(c.measured_mm-0.18)<0.03));
+  assert.equal(result.print_scale_proven,false);
+});
