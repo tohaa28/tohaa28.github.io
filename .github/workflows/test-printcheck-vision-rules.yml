@@ -1,0 +1,40 @@
+name: PrintCheck Vision rules and dataset safety
+
+on:
+  push:
+    branches:
+      - feature/printcheck-vision-copy-v01
+    paths:
+      - "vision/**"
+      - "tests/printcheck-vision-rules.test.mjs"
+      - "tests/printcheck-vision-inventory.test.py"
+      - "docs/DEVLOG.md"
+      - ".github/workflows/test-printcheck-vision-rules.yml"
+  pull_request:
+    branches:
+      - gifts-layout-workbench-mockups-source
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rule-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify source and tests syntax
+        run: |
+          node --check vision/rules/resolver.mjs
+          node --check tests/printcheck-vision-rules.test.mjs
+      - name: Run deterministic rule tests
+        run: node --test tests/printcheck-vision-rules.test.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify private archive inventory utility on synthetic ZIPs
+        run: python -m unittest discover -s tests -p 'printcheck-vision-inventory.test.py' -v
