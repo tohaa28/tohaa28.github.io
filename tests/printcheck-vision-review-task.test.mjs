@@ -27,6 +27,7 @@ test('the same annotated image produces exactly the same immutable blinded task'
   assert.equal(a.review_state,'UNVERIFIED');
   assert.equal(a.context.order_scale_verified,false);
   assert.equal(a.regions.length,2);
+  assert.ok(a.regions.every(region=>!Object.hasOwn(region,'type')));
   assert.equal(new Set(a.regions.map(x=>x.region_sha256)).size,2);
   assert.ok(!JSON.stringify(a).includes('customer-order'));
 });
