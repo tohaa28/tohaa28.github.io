@@ -34,7 +34,7 @@ try {
     assert.match(await page.locator('#gwbvLegacyChecks').textContent(),/Размеры макета/);
     assert.match(await page.locator('#gwbVisionPanel').textContent(),/Нейросетевая проверка ещё не подключена/);
     await page.locator('#gwbvTabVisual').click();
-    await page.locator('#gwbvZoom').fill('3');
+    await page.locator('#gwbvZoom').evaluate(el => { el.value = '3'; el.dispatchEvent(new Event('input', {bubbles:true})); });
     assert.equal(await page.locator('#gwbvZoomLabel').textContent(),'3×');
     await page.locator('#gwbvTabSummary').click();
     const promise = page.waitForEvent('download');
