@@ -1,0 +1,35 @@
+name: PrintCheck Vision experimental UI smoke
+
+on:
+  push:
+    branches:
+      - feature/printcheck-vision-copy-v01
+    paths:
+      - editor.html
+      - assets/printcheck-vision-ui.*
+      - tests/printcheck-vision-ui.browser.mjs
+      - .github/workflows/test-printcheck-vision.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vision-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check assets/printcheck-vision-ui.js
+          node --check tests/printcheck-vision-ui.browser.mjs
+      - name: Install headless browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Smoke test desktop and mobile layouts
+        run: node tests/printcheck-vision-ui.browser.mjs
