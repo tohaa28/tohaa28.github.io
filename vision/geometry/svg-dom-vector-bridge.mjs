@@ -95,7 +95,7 @@ export function inspectSvgTree(context={}){
   const eps=context.curve_flatness_mm??0.002;
   if(!finite(eps)||eps<=0||eps>0.02)return reject("SVG_FLATTEN_ERROR_INVALID");
   const stack=[{node:root,matrix:svgToPrint,fill:null,rule:null,depth:0}];
-  const shapes=[],boxes=[];let paths=0,groups=0,segments=0,color=null;
+  const shapes=[],boxes=[];let paths=0,groups=0,segments=0,curveSegments=0,color=null;
   while(stack.length){
     const {node,matrix,fill,rule,depth}=stack.pop();
     if(depth>16)return reject("SVG_TREE_DEPTH_EXCEEDED");
@@ -136,6 +136,8 @@ export function inspectSvgTree(context={}){
       const fillRule=nextRule??"nonzero";
       if(fillRule!=="evenodd" && !(fillRule==="nonzero"&&parsed.contours.length===1))
         return reject("SVG_COMPLEX_FILL_RULE_UNSUPPORTED");
+      const ringCount=parsed.contours.reduce((sum,r)=>sum+r.points.length,0);
+      if(segments+ringCount>768)return reject("SVG_TOTAL_SEGMENT_BUDGET_EXCEEDED");
       const rings=parsed.contours.map(r=>({points:r.points.map(p=>point(p,nextMatrix))}));
       const box=boxOf(rings);
       const guard=Math.max(1e-5,eps*2);
@@ -146,7 +148,8 @@ export function inspectSvgTree(context={}){
           return reject("SVG_PATHS_OVERLAP_OR_PROXIMITY_UNVERIFIED");
       }
       boxes.push(box);shapes.push(...rings);
-      segments+=parsed.curve_segments;
+      segments+=ringCount;
+      curveSegments+=parsed.curve_segments;
     } else {
       if(name==="g")groups++;
       const children=node.children;
@@ -173,7 +176,8 @@ export function inspectSvgTree(context={}){
     status:"RESEARCH_CANDIDATES_ONLY",
     print_scale_proven:false,geometry_proven:false,
     svg_document_scale_proven:true,paths_count:paths,groups_count:groups,
-    curve_segments:segments,source_matrix_document_to_print_mm:print.slice(),
+    curve_segments:curveSegments,vertex_count:segments,
+    source_matrix_document_to_print_mm:print.slice(),
     warnings:[...measured.warnings,
       "svg_tree_subset_not_complete_svg2",
       "document_scale_is_not_authorized_order_placement",
