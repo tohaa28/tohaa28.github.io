@@ -15,7 +15,8 @@ applyMaketnayaProvenance();
 stampComponentVersions();
 import fs from "node:fs";
 
-const base = "https://tohaa28.github.io/gifts-layout-workbench-mockups/";
+const base = process.env.WORKBENCH_BASE || "https://tohaa28.github.io/gifts-layout-workbench-mockups/";
+if (!/^https:\/\/tohaa28\.github\.io\/[-a-z0-9/]+\/$/.test(base)) throw new Error("Unsafe WORKBENCH_BASE");
 const assetStamp = Date.now().toString(36);
 let app = fs.readFileSync(new URL("../editor.html", import.meta.url), "utf8");
 let direct = fs.readFileSync(new URL("../direct-mode.js", import.meta.url), "utf8");
