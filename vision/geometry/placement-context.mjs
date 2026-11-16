@@ -33,7 +33,10 @@ export function crosscheckArtworkPlacement(snapshot={}, editor={}) {
       snapshot[key]!==editor[key])return manual("PLACEMENT_IDENTITY_MISMATCH",{key});
   }
   if(!hash(snapshot.artwork_sha256))return manual("ARTWORK_DIGEST_INVALID");
-  if(!hash(snapshot.source_revision_sha256))return manual("SOURCE_REVISION_DIGEST_MISSING");
+  if(!hash(snapshot.source_revision_sha256) ||
+     !hash(editor.source_revision_sha256) ||
+     snapshot.source_revision_sha256.toLowerCase() !== editor.source_revision_sha256.toLowerCase())
+    return manual("SOURCE_REVISION_DIGEST_MISMATCH");
   if(snapshot.source_system!=="gifts.ru"||!id(snapshot.source_document_ref))
     return manual("SOURCE_PROVENANCE_MISSING");
   if(editor.source_document_ref!==snapshot.source_document_ref)
