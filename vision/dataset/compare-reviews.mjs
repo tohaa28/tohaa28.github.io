@@ -7,7 +7,7 @@
  * Usage: node vision/dataset/compare-reviews.mjs task.json A.json B.json
  *        node vision/dataset/compare-reviews.mjs task.json A.json B.json output.json
  */
-import {readFile,open} from 'node:fs/promises';
+import {readFile,open,stat} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {
   hashBinary,validateReviewTask,compareIndependentReviews
@@ -15,9 +15,12 @@ import {
 
 const INPUT_LIMIT=1_000_000;
 const parseFile=async path=>{
+  const meta=await stat(path);
+  if(!meta.isFile()||meta.size>INPUT_LIMIT)
+    throw new Error('REVIEW_FILE_TOO_LARGE');
   const bytes=await readFile(path);
   if(bytes.length>INPUT_LIMIT)throw new Error('REVIEW_FILE_TOO_LARGE');
-  return {bytes,data:JSON.parse(bytes.toString('utf8'))};
+  return {bytes};
 };
 export async function analyzeReviews(taskBytes,aBytes,bBytes){
   if(![taskBytes,aBytes,bBytes].every(x=>
