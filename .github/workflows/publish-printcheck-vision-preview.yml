@@ -8,6 +8,10 @@ on:
       - editor.html
       - index.html
       - vision-studio.html
+      - vision-review.html
+      - vision/dataset/review-task.mjs
+      - tests/printcheck-vision-review.browser.mjs
+      - tests/printcheck-vision-studio.browser.mjs
       - assets/printcheck-vision-ui.*
       - tools/build-launcher.mjs
       - tests/printcheck-vision-ui.browser.mjs
@@ -44,6 +48,9 @@ jobs:
           node --check assets/printcheck-vision-ui.js
           node --check tests/printcheck-vision-ui.browser.mjs
           node --check tests/printcheck-vision-session-launch.browser.mjs
+          node --check vision/dataset/review-task.mjs
+          node --check tests/printcheck-vision-studio.browser.mjs
+          node --check tests/printcheck-vision-review.browser.mjs
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
 
@@ -53,6 +60,8 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
           node tests/printcheck-vision-ui.browser.mjs
+          node tests/printcheck-vision-studio.browser.mjs
+          node tests/printcheck-vision-review.browser.mjs
 
       - name: Build isolated bookmarklet launcher
         env:
@@ -82,6 +91,9 @@ jobs:
           mkdir -p "$PREVIEW"
           cp index.html editor.html direct-mode.js launcher.js "$PREVIEW/"
           cp vision-studio.html "$PREVIEW/"
+          cp vision-review.html "$PREVIEW/"
+          mkdir -p "$PREVIEW/vision/dataset"
+          cp vision/dataset/review-task.mjs "$PREVIEW/vision/dataset/"
           cp -R assets vendor "$PREVIEW/"
           if test -f mockup.html; then cp mockup.html "$PREVIEW/"; fi
           for json in *.json; do
