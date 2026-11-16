@@ -59,3 +59,11 @@ def test_uncertainty_requires_review():
 def test_missing_island_limit_reviews():
     rule=Rule('TEST',0.3,0.2)
     assert decide([0,0,0,1,0],0.1,rule)['state']=='review'
+
+def test_invalid_physical_measurements_blocked():
+    r=Rule("TEST",.2,.2)
+    for v in (-1, float("nan"), float("inf")):
+        with pytest.raises(ValueError):
+            decide([1,0,0,0,0],v,r)
+    with pytest.raises(ValueError):
+        decide([1,0,0,0,0],.1,Rule("TEST",float("nan"),.2))
