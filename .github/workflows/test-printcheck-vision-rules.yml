@@ -13,6 +13,7 @@ on:
       - "tests/printcheck-vision-spatial-index.test.mjs"
       - "tests/printcheck-vision-curved-normals.test.mjs"
       - "tests/bench-printcheck-vision-spatial.mjs"
+      - "tests/bench-printcheck-vision-curved.mjs"
       - "tests/printcheck-vision-pdf-bridge.test.mjs"
       - "tests/printcheck-vision-placement-context.test.mjs"
       - "tests/printcheck-vision-svg-dom.test.mjs"
@@ -52,6 +53,7 @@ jobs:
           node --check vision/geometry/curved-normal-probes.mjs
           node --check tests/printcheck-vision-curved-normals.test.mjs
           node --check tests/bench-printcheck-vision-spatial.mjs
+          node --check tests/bench-printcheck-vision-curved.mjs
           node --check vision/geometry/pdfjs-vector-bridge.mjs
           node --check tests/printcheck-vision-pdf-bridge.test.mjs
           node --check vision/geometry/placement-context.mjs
@@ -62,6 +64,8 @@ jobs:
         run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs
       - name: Report synthetic CPU performance and exact result parity
         run: node tests/bench-printcheck-vision-spatial.mjs
+      - name: Report synthetic curved-boundary CPU scaling
+        run: node tests/bench-printcheck-vision-curved.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
