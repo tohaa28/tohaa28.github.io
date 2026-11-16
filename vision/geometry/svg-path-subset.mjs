@@ -1,10 +1,10 @@
 /**
  * Strict SVG path-data adapter for PrintCheck Vision C3B.2.
  *
- * Supported: M/m, L/l, H/h, V/v, C/c, Q/q, Z/z, repeated and
+ * Supported: M/m, L/l, H/h, V/v, C/c, S/s, Q/q, T/t, Z/z, repeated and
  * implicit coordinate commands. Every returned contour is CLOSED and filled.
  *
- * Deliberately unsupported (MANUAL): A/a, S/s, T/t, unclosed strokes, CSS
+ * Deliberately unsupported (MANUAL): A/a, unclosed strokes, CSS
  * styling, clip-path, marker, text, external references, group transforms.
  * The caller must independently check actual fill and document placement.
  *
@@ -65,8 +65,11 @@ export function parseClosedSvgPath(d, options={}){
      errorBudget<=0||errorBudget>10)return refused("INVALID_FLATTEN_OPTIONS");
   const tokens=tokensOf(d,maxTokens);
   if(!tokens||tokens.length===0)return refused("INVALID_PATH_DATA");
-  const supported=new Set(["M","L","H","V","C","Q","Z"]);
+  const supported=new Set(["M","L","H","V","C","S","Q","T","Z"]);
   let i=0,command=null,position={x:0,y:0},start=null,points=null,contours=[],count=0,curveSegments=0;
+  let lastCubicControl=null,lastQuadControl=null;
+  const resetSmooth=()=>{lastCubicControl=null;lastQuadControl=null;};
+  const reflected=control=>control?{x:2*position.x-control.x,y:2*position.y-control.y}:{...position};
   const emit=p=>{
     if(!Number.isFinite(p.x)||!Number.isFinite(p.y))throw new Error("NONFINITE_COORDINATE");
     if(Math.abs(p.x)>1e8||Math.abs(p.y)>1e8)throw new Error("COORDINATE_RANGE_EXCEEDED");
@@ -90,26 +93,34 @@ export function parseClosedSvgPath(d, options={}){
         if(!points||points.length<3)return refused("DEGENERATE_OR_OPEN_SUBPATH");
         if(points.length>3&&same(points[points.length-1],start))points.pop();
         contours.push({points,closed:true});
-        points=null;position={...start};start=null;command=null;
+        points=null;position={...start};start=null;command=null;resetSmooth();
         continue;
       }
       if(i>=tokens.length||typeof tokens[i]!=="number")
         return refused("MISSING_PATH_ARGUMENT");
       if(upper==="M"){
         if(points)return refused("UNCLOSED_SUBPATH");
-        const p=target(rel);position=p;start={...p};points=[{...p}];
+        const p=target(rel);position=p;start={...p};points=[{...p}];resetSmooth();
         command=rel?"l":"L";
         continue;
       }
-      if(upper==="L"){const p=target(rel);emit(p);position=p;continue}
-      if(upper==="H"){const x=scalar(),p={x:rel?position.x+x:x,y:position.y};emit(p);position=p;continue}
-      if(upper==="V"){const y=scalar(),p={x:position.x,y:rel?position.y+y:y};emit(p);position=p;continue}
+      if(upper==="L"){const p=target(rel);emit(p);position=p;resetSmooth();continue}
+      if(upper==="H"){const x=scalar(),p={x:rel?position.x+x:x,y:position.y};emit(p);position=p;resetSmooth();continue}
+      if(upper==="V"){const y=scalar(),p={x:position.x,y:rel?position.y+y:y};emit(p);position=p;resetSmooth();continue}
       if(upper==="C"){
         const c1=target(rel),c2=target(rel),end=target(rel);
         const before=count;
         cubicToPolyline(position,c1,c2,end,errorBudget,14,emit);
         curveSegments+=count-before;
-        position=end;continue;
+        position=end;lastCubicControl=c2;lastQuadControl=null;continue;
+      }
+      if(upper==="S"){
+        const c1=reflected(lastCubicControl);
+        const c2=target(rel),end=target(rel);
+        const before=count;
+        cubicToPolyline(position,c1,c2,end,errorBudget,14,emit);
+        curveSegments+=count-before;
+        position=end;lastCubicControl=c2;lastQuadControl=null;continue;
       }
       if(upper==="Q"){
         const c=target(rel),end=target(rel);
@@ -118,7 +129,17 @@ export function parseClosedSvgPath(d, options={}){
         const before=count;
         cubicToPolyline(position,c1,c2,end,errorBudget,14,emit);
         curveSegments+=count-before;
-        position=end;continue;
+        position=end;lastQuadControl=c;lastCubicControl=null;continue;
+      }
+      if(upper==="T"){
+        const c=reflected(lastQuadControl);
+        const end=target(rel);
+        const c1={x:position.x+(c.x-position.x)*2/3,y:position.y+(c.y-position.y)*2/3};
+        const c2={x:end.x+(c.x-end.x)*2/3,y:end.y+(c.y-end.y)*2/3};
+        const before=count;
+        cubicToPolyline(position,c1,c2,end,errorBudget,14,emit);
+        curveSegments+=count-before;
+        position=end;lastQuadControl=c;lastCubicControl=null;continue;
       }
     }
     if(points)return refused("UNCLOSED_SUBPATH");
