@@ -1,0 +1,1863 @@
+(() => {
+  const GIFTS_ORIGIN = "https://gifts.ru";
+  let inGiftsContext = location.origin === GIFTS_ORIGIN;
+  if (!inGiftsContext) {
+    try { inGiftsContext = parent !== window && parent.location.origin === GIFTS_ORIGIN; }
+    catch {}
+  }
+  if (!inGiftsContext) return;
+
+  const nativeFetch = window.fetch.bind(window);
+  const giftsUrl = path => new URL(path, GIFTS_ORIGIN + "/").toString();
+  const orderCache = new Map();
+
+  const clean = value => String(value || "").replace(/\s+/g, " ").trim();
+
+  function json(value, status = 200) {
+    return new Response(JSON.stringify(value), {
+      status,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store"
+      }
+    });
+  }
+
+  function isAuthPage(html, finalUrl = "") {
+    return /<form[^>]+name=["']authform["']/i.test(html) ||
+      /Авторизация\s*-\s*Проект 111/i.test(html) ||
+      /\/auth(?:[/?#]|$)/i.test(finalUrl);
+  }
+
+  async function getHtml(path) {
+    const res = await nativeFetch(giftsUrl(path), {
+      method: "GET",
+      credentials: "include",
+      redirect: "follow",
+      cache: "no-store",
+      headers: { "accept": "text/html,application/xhtml+xml" }
+    });
+    const html = await res.text();
+    if (isAuthPage(html, res.url)) {
+      const error = new Error("Сеанс gifts.ru не активен. Войдите в gifts.ru.");
+      error.code = "AUTH";
+      throw error;
+    }
+    if (!res.ok) throw new Error("gifts.ru вернул HTTP " + res.status + ".");
+    return { html, url: res.url };
+  }
+
+  function parseBasketOrders(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const found = new Map();
+
+    for (const a of doc.querySelectorAll("a[href]")) {
+      try {
+        const url = new URL(a.getAttribute("href") || "", GIFTS_ORIGIN + "/");
+        if (url.origin !== GIFTS_ORIGIN) continue;
+        const match = url.pathname.match(/^\/private\/order\/(\d{5,12})(?:\/|$)/i);
+        if (match && !found.has(match[1])) found.set(match[1], { number: match[1] });
+      } catch {}
+    }
+
+    return [...found.values()];
+  }
+
+  function hostDocument() {
+    try {
+      if (parent !== window && parent.location.origin === GIFTS_ORIGIN) return parent.document;
+    } catch {}
+    return null;
+  }
+
+  function basketLinksFromHtml(html) {
+    const paths = new Set();
+    const doc = new DOMParser().parseFromString(html || "", "text/html");
+
+    const addUrl = raw => {
+      if (!raw) return;
+      try {
+        const url = new URL(raw, GIFTS_ORIGIN + "/");
+        if (url.origin !== GIFTS_ORIGIN) return;
+        const probe = (url.pathname + url.search).toLowerCase();
+        if (/logout|delete|remove|checkout|submit|confirm|action=|\/act\//.test(probe)) return;
+        if (/cart|basket/.test(probe)) paths.add(url.pathname + url.search);
+      } catch {}
+    };
+
+    for (const node of doc.querySelectorAll("a[href],[data-href],[data-url],[data-hash]")) {
+      const label = clean([
+        node.textContent,
+        node.getAttribute("title"),
+        node.getAttribute("aria-label"),
+        node.getAttribute("class")
+      ].filter(Boolean).join(" "));
+      const raw =
+        node.getAttribute("href") ||
+        node.getAttribute("data-href") ||
+        node.getAttribute("data-url") ||
+        node.getAttribute("data-hash") ||
+        "";
+      if (/корзин|cart|basket/i.test(label + " " + raw)) addUrl(raw);
+    }
+
+    return [...paths];
+  }
+
+  async function readBasketFromSite() {
+    const scanned = [];
+
+    for (const path of ["/private/orders/basket", "/private/orders/basket/"]) {
+      try {
+        const { html } = await getHtml(path);
+        scanned.push(path);
+        const orders = parseBasketOrders(html);
+        return {
+          found: new Map(orders.map(order => [order.number, order])),
+          scanned,
+          source: "private-orders-basket"
+        };
+      } catch (error) {
+        if (error?.code === "AUTH") throw error;
+      }
+    }
+
+    return {
+      found: new Map(),
+      scanned,
+      source: "private-orders-basket-not-found"
+    };
+  }
+
+  function absolute(url) {
+    if (!url) return "";
+    try { return new URL(url, "https://gifts.ru").toString(); }
+    catch { return ""; }
+  }
+
+  function imageUrlCandidates(root, article = "") {
+    const found = [];
+    const seen = new Set();
+    const baseArticle = clean(article).split(".")[0].toLowerCase();
+
+    const add = raw => {
+      if (!raw) return;
+      const value = clean(String(raw).split(",")[0].trim().split(/\s+/)[0]);
+      if (!value || /^data:/i.test(value)) return;
+      const url = absolute(value);
+      if (!url || seen.has(url)) return;
+      try {
+        const parsed = new URL(url);
+        if (!/\.(?:jpe?g|png|webp|gif)(?:$|[?#])/i.test(parsed.pathname + parsed.search)) return;
+      } catch { return; }
+      seen.add(url);
+      found.push(url);
+    };
+
+    for (const node of root.querySelectorAll("img,source")) {
+      for (const attr of ["src","data-src","data-original","data-lazy","data-image","data-url","srcset","data-srcset"]) {
+        add(node.getAttribute(attr));
+      }
+    }
+
+    for (const node of root.querySelectorAll("[style]")) {
+      const style = node.getAttribute("style") || "";
+      for (const m of style.matchAll(/url\((['"]?)(.*?)\1\)/gi)) add(m[2]);
+    }
+
+    for (const node of root.querySelectorAll("a[href]")) add(node.getAttribute("href"));
+
+    return found.sort((a,b) => {
+      const score = url => {
+        const s = url.toLowerCase();
+        let n = 0;
+        if (s.includes("files.gifts.ru")) n += 20;
+        if (s.includes("/reviewer/")) n += 15;
+        if (baseArticle && (s.includes("/"+baseArticle+"_") || s.includes("/"+baseArticle+"."))) n += 40;
+        if (/_(?:500|400|300|200)(?:\.|_)/.test(s)) n += 5;
+        return n;
+      };
+      return score(b)-score(a);
+    });
+  }
+
+  function imageMatchesArticle(url, article) {
+    try {
+      const name = decodeURIComponent(new URL(url).pathname.split("/").pop() || "").toLowerCase();
+      const full = clean(article).toLowerCase();
+      const base = full.split(".")[0];
+      return !!full && (name.startsWith(full + "_") || name.startsWith(full + ".") ||
+        name.startsWith(base + "_") || name.startsWith(base + "."));
+    } catch {
+      return false;
+    }
+  }
+
+  function productUrlFromItem(root) {
+    const selectors = [
+      ".cart-tbl-name a[href]",
+      ".cart-tbl-id a[href]",
+      "a[href*='/id/']"
+    ];
+    for (const selector of selectors) {
+      for (const link of root.querySelectorAll(selector)) {
+        const href = absolute(link.getAttribute("href") || "");
+        try {
+          const u = new URL(href);
+          if (u.origin === GIFTS_ORIGIN && /\/id\/\d+(?:[/?#]|$)/i.test(u.pathname + u.search)) return u.href;
+        } catch {}
+      }
+    }
+    return "";
+  }
+
+  function productPhotoUrlsFromHtml(html, article) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const articleCandidates = imageUrlCandidates(doc, article)
+      .filter(url => imageMatchesArticle(url, article));
+    const productGallery = articleCandidates.filter(url => {
+      try {
+        const u = new URL(url);
+        return u.hostname === "files.gifts.ru" && /\/reviewer\/webp\//i.test(u.pathname);
+      } catch {
+        return false;
+      }
+    });
+    const fallback = articleCandidates.filter(url => !/\/reviewer\/tb\//i.test(url));
+    const pool = productGallery.length ? productGallery : fallback;
+    const bestByPhoto = new Map();
+    for (const url of pool) {
+      let key = url;
+      let size = 0;
+      try {
+        const u = new URL(url);
+        const filename = decodeURIComponent(u.pathname.split("/").pop() || "");
+        const match = filename.match(/^(.*)_([0-9]{2,4})(\.(?:jpe?g|png|webp|gif))$/i);
+        if (match) {
+          key = match[1].toLowerCase() + match[3].toLowerCase();
+          size = Number(match[2]) || 0;
+        } else {
+          key = filename.toLowerCase();
+        }
+      } catch {}
+      const prev = bestByPhoto.get(key);
+      if (!prev || size > prev.size) bestByPhoto.set(key, { url, size });
+    }
+    return [...bestByPhoto.values()].map(entry => entry.url).slice(0, 30);
+  }
+
+  function imageFromProductHtml(html, article) {
+    const photos = productPhotoUrlsFromHtml(html, article);
+    if (photos.length) return photos[0];
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const candidates = imageUrlCandidates(doc, article);
+    return candidates.find(url => imageMatchesArticle(url, article)) || candidates[0] || "";
+  }
+
+  async function resolveItemPhotos(item) {
+    if (Array.isArray(item?.productPhotos) && item.productPhotos.length) return item.productPhotos;
+    const photos = [];
+    if (item?.productUrl) {
+      try {
+        const { html } = await getHtml(item.productUrl);
+        photos.push(...productPhotoUrlsFromHtml(html, item.article));
+      } catch {}
+    }
+    if (!photos.length && item?.imageUrl) photos.push(item.imageUrl);
+    item.productPhotos = [...new Set(photos)].slice(0, 30);
+    if (!item.imageUrl && item.productPhotos[0]) item.imageUrl = item.productPhotos[0];
+    return item.productPhotos;
+  }
+
+  async function resolveItemImage(item) {
+    if (item?.imageUrl) return item.imageUrl;
+    const photos = await resolveItemPhotos(item);
+    return photos[0] || "";
+  }
+
+  function removeArticlePrefix(value, article) {
+    const text = clean(value);
+    if (!article || !text.startsWith(article)) return text;
+    return clean(text.slice(article.length).replace(/^\s*[,;:]\s*/, ""));
+  }
+
+  function normalizeOrderPlace(raw, article) {
+    const bad = /(?:скачать|шаблон|конструктор|pdf|cdr|макет|тираж|артикул|файл)/i;
+    const methodWord = /(?:DTF|DTG|шелк|тампо|грав|УФ|UV|сублим|вышив|тиснен|деколь|лазер|флекс|трансфер|печать)/i;
+    let value = removeArticlePrefix(raw, article);
+    value = clean(value)
+      // Strip only explicit UI labels. Real place names such as
+      // "сторона 1 [черный(403/Black)]" must remain byte-for-byte meaningful.
+      .replace(/^место\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "")
+      .replace(/^место\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "")
+      .replace(/^поле\s+нанесения\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "")
+      .replace(/^поле\s*(?:№|#)?\s*\d{0,2}\s*[:—-]\s*/i, "");
+    if (!value || value.length > 180 || bad.test(value) || methodWord.test(value)) return "";
+    return value;
+  }
+
+  function placeKey(value) {
+    return clean(value)
+      .toLocaleLowerCase("ru-RU")
+      .replace(/ё/g, "е")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  }
+
+  function selectedApplicationId(raw) {
+    const text = clean(raw);
+    const match = text.match(/(?:,|\()\s*(\d{1,20})\s*\)?\s*$/);
+    return match ? match[1] : "";
+  }
+
+  function printIdForApplication(id) {
+    return /^\d{1,20}$/.test(String(id || "")) ? "print" + String(Number(id)) : "";
+  }
+
+  function extractDrawTaskCatalog(doc) {
+    const catalog = new Map();
+    for (const node of doc.querySelectorAll(".j_drawtaskfilter_item[data-draw-task-id]")) {
+      const drawTaskId = clean(node.getAttribute("data-draw-task-id"));
+      if (!/^\d{1,20}$/.test(drawTaskId)) continue;
+      const rawType = clean(node.getAttribute("data-draw-type") || node.textContent || "");
+      const indexMatch = rawType.match(/\[(\d{1,20})\]\s*$/);
+      const applicationId = indexMatch ? indexMatch[1] : "";
+      catalog.set(drawTaskId, {
+        drawTaskId,
+        applicationId,
+        applicationIndex: /^\d+$/.test(applicationId) ? Number(applicationId) : null,
+        type: rawType.replace(/\s*\[\d{1,20}\]\s*$/, "")
+      });
+    }
+    return catalog;
+  }
+
+  function drawTaskIdsForItem(root) {
+    const explicit = clean(root.getAttribute("data-drawtaskids"))
+      .split(/[\s,;]+/)
+      .filter(value => /^\d{1,20}$/.test(value));
+    if (explicit.length) return explicit;
+
+    const buttons = [...root.querySelectorAll(
+      ".j_edit_draw[data-drawtaskid],.j_edit_draw[data-draw-task-id],[data-drawtaskid][data-id]"
+    )];
+    const ids = buttons
+      .map(node => clean(node.getAttribute("data-drawtaskid") || node.getAttribute("data-draw-task-id")))
+      .filter(value => /^\d{1,20}$/.test(value));
+    return [...new Set(ids)];
+  }
+
+  function extractOrderApplicationBindings(root, article, drawTaskCatalog = new Map()) {
+    const imp = root.querySelector(".cart-tbl-imp");
+    if (!imp) return [];
+
+    const methodNodes = [...imp.querySelectorAll("g-droper > span")]
+      .filter(node => /\b[A-ZА-Я]+[\w-]*\d+[\w-]*\s*:/i.test(clean(node.textContent || "")));
+
+    // Real order DOM (verified on saved order 7980838):
+    // direct child with method -> next direct child .size--sm.flex.flex-center.flex-column with place.
+    const renderedPlaceNodes = [...imp.querySelectorAll(":scope > .size--sm.flex.flex-center.flex-column > div")];
+    const legacyPlaceNodes = [...imp.querySelectorAll(".flex-center.flex-column > .color-text")];
+    const allPlaceNodes = renderedPlaceNodes.length ? renderedPlaceNodes : legacyPlaceNodes;
+    const drawTaskIds = drawTaskIdsForItem(root);
+    const bindings = [];
+
+    const siblingPlaceFor = methodNode => {
+      let block = methodNode;
+      while (block.parentElement && block.parentElement !== imp) block = block.parentElement;
+      if (block.parentElement !== imp) return null;
+      let next = block.nextElementSibling;
+      while (next) {
+        if (next.matches?.(".size--sm.flex.flex-center.flex-column")) {
+          return next.querySelector(":scope > div") || next;
+        }
+        if (next.querySelector?.("g-droper > span")) break;
+        next = next.nextElementSibling;
+      }
+      return null;
+    };
+
+    methodNodes.forEach((methodNode, index) => {
+      const rawMethod = clean(methodNode.textContent || "");
+      const methodApplicationId = selectedApplicationId(rawMethod);
+      const drawTaskId = drawTaskIds[index] || "";
+      const catalog = drawTaskCatalog.get(drawTaskId) || null;
+      const applicationId = catalog?.applicationId || methodApplicationId;
+      const applicationIndex = /^\d+$/.test(applicationId) ? Number(applicationId) : null;
+
+      let placeNode = siblingPlaceFor(methodNode);
+      if (!placeNode && methodNodes.length === allPlaceNodes.length) placeNode = allPlaceNodes[index];
+      const name = normalizeOrderPlace(placeNode?.textContent || "", article);
+      if (!name) return;
+
+      bindings.push({
+        name,
+        taskId: drawTaskId || applicationId,
+        drawTaskId,
+        applicationId,
+        applicationIndex,
+        printId: "",
+        index: null,
+        method: rawMethod,
+        methodType: catalog?.type || rawMethod.replace(/,\s*\d+\s*$/, ""),
+        source: drawTaskId ? "order-drawtask-row" : "order-application-row"
+      });
+    });
+
+    return bindings;
+  }
+
+  function popupApplicationTextFromContext(context) {
+    if (!context) return "";
+    let text = "";
+    const row = context.closest?.("tr");
+    const table = row?.closest?.("table");
+    if (row && table) {
+      const headerRow = table.querySelector("thead tr") || [...table.querySelectorAll("tr")].find(candidate => candidate.querySelector("th"));
+      const headers = headerRow ? [...headerRow.children] : [];
+      const cells = [...row.children];
+      for (let index = 0; index < headers.length; index++) {
+        const label = clean(headers[index].textContent);
+        if (!/нанесени|application|print/i.test(label) || /макет|template/i.test(label)) continue;
+        text += " " + clean(cells[index]?.textContent || "");
+      }
+    }
+    return text.trim() || clean(context.textContent || "");
+  }
+
+  function popupApplicationSpecsFromContext(context) {
+    const text = popupApplicationTextFromContext(context);
+    const specs = [];
+    const seen = new Set();
+    const rx = /\[([^\]]+)\]\s*([^()]*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*[xх×]\s*(\d+(?:[.,]\d+)?)\s*(?:см|cm)\s*\)\s*\(\s*(\d{1,20})\s*\)/gi;
+    for (const match of text.matchAll(rx)) {
+      const applicationId = match[5];
+      if (seen.has(applicationId)) continue;
+      seen.add(applicationId);
+      const w = Number(match[3].replace(",", ".")) * 10;
+      const h = Number(match[4].replace(",", ".")) * 10;
+      if (!(w > 0 && h > 0 && Number.isFinite(w + h))) continue;
+      specs.push({
+        applicationId,
+        applicationIndex: Number(applicationId),
+        code: clean(match[1]),
+        method: clean(`[${match[1]}] ${match[2]}`),
+        w,
+        h,
+        source: "makets-popup-application-size"
+      });
+    }
+    return specs;
+  }
+
+  function popupApplicationIdsFromContext(context) {
+    const specs = popupApplicationSpecsFromContext(context);
+    if (specs.length) return specs.map(spec => spec.applicationId);
+    const text = popupApplicationTextFromContext(context);
+    const ids = [...text.matchAll(/\((\d{1,20})\)/g)].map(match => match[1]);
+    return [...new Set(ids)];
+  }
+
+  function explicitPlaceIndex(raw) {
+    const text = clean(raw);
+    const match = text.match(/(?:место(?:\s+нанесения)?|поле(?:\s+нанесения)?|позиция|place|field)\s*(?:№|#)?\s*(\d{1,2})\b/i);
+    const value = match ? Number(match[1]) : 0;
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+
+  function makePlaceBindings(entries, article, source) {
+    const bindings = [];
+    const seen = new Set();
+    for (const entry of entries) {
+      const raw = typeof entry === "string" ? entry : entry?.raw;
+      const index = typeof entry === "object" && Number.isInteger(entry?.index)
+        ? entry.index
+        : explicitPlaceIndex(raw);
+      const name = normalizeOrderPlace(raw, article);
+      if (!name) continue;
+      const key = `${index || ""}|${placeKey(name)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      bindings.push({ name, index, source });
+    }
+    return bindings;
+  }
+
+  function placeAuditFromBindings(bindings, source, reliable, signals) {
+    return {
+      places: bindings.map(binding => binding.name),
+      placeBindings: bindings,
+      source,
+      reliable,
+      signals
+    };
+  }
+
+  function extractPlaceAudit(root, article) {
+    const placeWord = /(?:лицо|оборот|спереди|сзади|слева|справа|верх|низ|внутр|наруж|торец|сторон[аы]|клапан|крышк|дно|ручк|карман|рукав|груд|спин|капюшон|чехол|шов|клин|купол|горловин|этикет|бирк|упаковк|бок|периметр|основан|поле|центр)/i;
+
+    const fromNodes = (nodes, source) => makePlaceBindings(
+      [...nodes].map(node => ({ raw: node.textContent || node.value || "", index: explicitPlaceIndex(node.textContent || node.value || "") })),
+      article,
+      source
+    );
+
+    // Authoritative place rows on the order page. These selectors already mean
+    // "selected application place", so do not reject an unfamiliar place name.
+    const orderRows = fromNodes(
+      root.querySelectorAll(".cart-tbl-imp .flex-center.flex-column > .color-text"),
+      "order-place-row"
+    );
+    if (orderRows.length) {
+      return placeAuditFromBindings(
+        orderRows,
+        "order-place-row",
+        true,
+        { orderRows: orderRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
+      );
+    }
+
+    // Alternative rendered order layout used on some gifts.ru pages.
+    const renderedRows = fromNodes(
+      root.querySelectorAll("div.size--sm.flex.flex-center.flex-column > div"),
+      "rendered-place-row"
+    );
+    if (renderedRows.length) {
+      return placeAuditFromBindings(
+        renderedRows,
+        "rendered-place-row",
+        true,
+        { orderRows: renderedRows.length, selectedControls: 0, labelledValues: 0, attributes: 0 }
+      );
+    }
+
+    const selectedEntries = [];
+    for (const select of root.querySelectorAll("select")) {
+      const attrs = [
+        select.getAttribute("name"),
+        select.id,
+        String(select.className),
+        select.parentElement?.textContent
+      ].filter(Boolean).join(" ");
+      if (!/место|сторон|поле|поверхност|place|position|side|field|location/i.test(attrs)) continue;
+      const option = [...select.options].find(o => o.selected) || select.options[select.selectedIndex];
+      if (option) selectedEntries.push({ raw: option.textContent || option.value || "", index: explicitPlaceIndex(option.textContent || option.value || "") });
+    }
+    const selected = makePlaceBindings(selectedEntries, article, "selected-place-control");
+    if (selected.length) {
+      return placeAuditFromBindings(
+        selected,
+        "selected-place-control",
+        true,
+        { orderRows: 0, selectedControls: selected.length, labelledValues: 0, attributes: 0 }
+      );
+    }
+
+    const labelledEntries = [];
+    for (const label of root.querySelectorAll("[data-label],label,dt,th")) {
+      const labelText = clean(label.textContent);
+      if (!/место\s*нанесения|поле\s*нанесения|сторона|поверхность|place|position|side|field|location/i.test(labelText)) continue;
+      const valueNode = label.nextElementSibling;
+      if (!valueNode) continue;
+      labelledEntries.push({
+        raw: valueNode.textContent || "",
+        index: explicitPlaceIndex(labelText) || explicitPlaceIndex(valueNode.textContent || "")
+      });
+    }
+    const labelled = makePlaceBindings(labelledEntries, article, "labelled-place-value");
+    if (labelled.length) {
+      return placeAuditFromBindings(
+        labelled,
+        "labelled-place-value",
+        true,
+        { orderRows: 0, selectedControls: 0, labelledValues: labelled.length, attributes: 0 }
+      );
+    }
+
+    // Attribute scanning is only a last-resort hint.
+    const attrEntries = [];
+    for (const node of root.querySelectorAll("*")) {
+      for (const attr of [...node.attributes]) {
+        if (!/place|position|side|field|location|место|сторон|поле|поверхност/i.test(attr.name)) continue;
+        const value = normalizeOrderPlace(attr.value, article);
+        if (value && placeWord.test(value)) {
+          attrEntries.push({ raw: attr.value, index: explicitPlaceIndex(attr.value) });
+        }
+      }
+    }
+    const attrs = makePlaceBindings(attrEntries, article, "place-attribute-fallback");
+    return placeAuditFromBindings(
+      attrs,
+      attrs.length ? "place-attribute-fallback" : "not-found",
+      false,
+      { orderRows: 0, selectedControls: 0, labelledValues: 0, attributes: attrs.length }
+    );
+  }
+
+  function getOrderInternalId(doc) {
+    const nodes = [
+      doc.querySelector("#j_cart_host[data-orderid]"),
+      doc.querySelector(".cart-order[data-orderid]"),
+      doc.querySelector(".j_add_maket[data-orderid]")
+    ];
+
+    for (const node of nodes) {
+      const value = clean(node?.getAttribute("data-orderid"));
+      if (/^\d{1,20}$/.test(value)) return value;
+    }
+    return "";
+  }
+
+  function popupArticleHint(text) {
+    const value = clean(text);
+    const match = value.match(/(?:артикул|арт\.?)[\s:№#-]*([\p{L}\p{N}][\p{L}\p{N}._\/-]*)/iu);
+    return clean(match?.[1] || "");
+  }
+
+  function articleKey(value) {
+    return clean(value).replace(/^артикул\s*/i, "").replace(/\s+/g, "").toLocaleLowerCase("ru-RU");
+  }
+
+  function popupArticleFromContext(context) {
+    if (!context) return "";
+    const attr = clean(
+      context.getAttribute?.("data-article") ||
+      context.getAttribute?.("data-articul") ||
+      ""
+    );
+    if (attr) return attr;
+
+    const candidates = context.querySelectorAll?.(
+      "[data-article],[data-articul],.cart-tbl-name,.article,.articul,td,th,span,strong"
+    ) || [];
+    for (const node of candidates) {
+      const directAttr = clean(
+        node.getAttribute?.("data-article") ||
+        node.getAttribute?.("data-articul") ||
+        ""
+      );
+      if (directAttr) return directAttr;
+      const hint = popupArticleHint(node.textContent || "");
+      if (hint) return hint;
+    }
+
+    // In the real "Шаблоны макетов для выбранных нанесений" table the article
+    // is often a standalone line under the product name, without "Артикул".
+    for (const node of candidates) {
+      const value = clean(node.textContent || "");
+      if (/^\d{4,}(?:\.\d+)*$/.test(value)) return value;
+
+      // <td>Product name<br>16535.66</td> has concatenated textContent in
+      // some DOM implementations, so keep BR boundaries from innerHTML.
+      const html = String(node.innerHTML || "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, " ");
+      for (const line of html.split(/\n+/).map(clean)) {
+        if (/^\d{4,}(?:\.\d+)*$/.test(line)) return line;
+      }
+    }
+    return popupArticleHint(context.textContent || "");
+  }
+
+
+  function escapeRegExp(value) {
+    const specials = "\\^$.*+?()[]{}|";
+    return [...String(value)].map(char => specials.includes(char) ? "\\" + char : char).join("");
+  }
+
+  function contextHasArticle(contextText, article) {
+    const haystack = clean(contextText);
+    const needle = clean(article);
+    if (!haystack || !needle) return false;
+    try {
+      return new RegExp("(^|[^\\p{L}\\p{N}._\\/-])" + escapeRegExp(needle) + "(?=$|[^\\p{L}\\p{N}._\\/-])", "iu").test(haystack);
+    } catch {
+      return haystack.includes(needle);
+    }
+  }
+
+  function popupPlaceBindingsFromContext(context, article) {
+    if (!context) return [];
+    const entries = [];
+    const add = (raw, index = null) => {
+      const text = clean(raw);
+      if (!text) return;
+      entries.push({ raw: text, index: Number.isInteger(index) ? index : explicitPlaceIndex(text) });
+    };
+
+    // Most reliable case: a table column explicitly named "Место нанесения",
+    // "Поле", "Сторона" etc. Read the cell in the same template row.
+    const row = context.closest?.("tr");
+    const table = row?.closest?.("table");
+    if (row && table) {
+      const headerRow = table.querySelector("thead tr") || [...table.querySelectorAll("tr")].find(candidate => candidate.querySelector("th"));
+      const headers = headerRow ? [...headerRow.children] : [];
+      const cells = [...row.children];
+      headers.forEach((header, index) => {
+        const label = clean(header.textContent);
+        if (!/место(?:\s+нанесения)?|поле(?:\s+нанесения)?|сторона|поверхность|place|position|side|field|location/i.test(label)) return;
+        const cell = cells[index];
+        if (cell) add(cell.textContent, explicitPlaceIndex(label) || explicitPlaceIndex(cell.textContent || ""));
+      });
+    }
+
+    // Explicitly labelled value pairs in non-table popup layouts.
+    for (const label of context.querySelectorAll?.("[data-label],label,dt,th,.label") || []) {
+      const labelText = clean(label.textContent);
+      if (!/место(?:\s+нанесения)?|поле(?:\s+нанесения)?|сторона|поверхность|place|position|side|field|location/i.test(labelText)) continue;
+      const value = label.nextElementSibling;
+      if (value) add(value.textContent, explicitPlaceIndex(labelText) || explicitPlaceIndex(value.textContent || ""));
+    }
+
+    // Dedicated attributes/classes are also authoritative because they encode
+    // the semantic role of the value, not a guessed word from arbitrary text.
+    for (const node of context.querySelectorAll?.(
+      "[data-place],[data-position],[data-side],[data-field],[data-location],[class*='place'],[class*='position'],[class*='side'],[class*='field'],[class*='location']"
+    ) || []) {
+      const attrValue =
+        node.getAttribute?.("data-place") ||
+        node.getAttribute?.("data-position") ||
+        node.getAttribute?.("data-side") ||
+        node.getAttribute?.("data-field") ||
+        node.getAttribute?.("data-location");
+      add(attrValue || node.textContent || "", explicitPlaceIndex(node.textContent || "") || explicitPlaceIndex(attrValue || ""));
+    }
+
+    // Some popup versions render "Место нанесения: ..." as plain text in a
+    // small leaf element. Restrict this fallback to explicit place prefixes.
+    for (const node of context.querySelectorAll?.("td,li,div,span,p,strong") || []) {
+      const text = clean(node.textContent);
+      if (!text || text.length > 220) continue;
+      if (!/^(?:место(?:\s+нанесения)?|поле(?:\s+нанесения)?|сторона|поверхность)\b/i.test(text)) continue;
+      add(text);
+    }
+
+    return makePlaceBindings(entries, article, "makets-popup-place");
+  }
+
+  function popupMethodFromContext(context) {
+    if (!context) return "";
+    const row = context.closest?.("tr");
+    const table = row?.closest?.("table");
+    if (row && table) {
+      const headerRow = table.querySelector("thead tr") || [...table.querySelectorAll("tr")].find(candidate => candidate.querySelector("th"));
+      const headers = headerRow ? [...headerRow.children] : [];
+      const cells = [...row.children];
+      for (let index = 0; index < headers.length; index++) {
+        const label = clean(headers[index].textContent);
+        if (!/(?:^|\s)(?:вид\s+)?нанесени|способ\s+печати|метод(?:\s+нанесения)?/i.test(label) || /место/i.test(label)) continue;
+        const value = clean(cells[index]?.textContent || "");
+        if (value) return value;
+      }
+    }
+    const node = context.querySelector?.("[data-method],[data-print-method],.method,.printing-method");
+    return clean(
+      node?.getAttribute?.("data-method") ||
+      node?.getAttribute?.("data-print-method") ||
+      node?.textContent ||
+      ""
+    );
+  }
+
+  function popupTemplateSection(doc) {
+    const phrase = "шаблоны макетов для выбранных нанесений";
+    const nodes = [...doc.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,strong,div")];
+    const exact = nodes.find(node =>
+      clean(node.textContent || "").toLocaleLowerCase("ru-RU") === phrase
+    );
+    if (exact) return exact;
+
+    // Fallback only to a short heading-like node. A large wrapper may contain
+    // the same phrase together with the upper "готовые макеты" section and must
+    // not become the boundary.
+    return nodes.find(node => {
+      const text = clean(node.textContent || "");
+      return text.length <= 90 &&
+        /шаблоны\s+макетов\s+для\s+выбранных\s+нанесений/i.test(text);
+    }) || null;
+  }
+
+
+  // Uploaded CUSTOMER layouts from "Макеты для заказа" → "Загрузка макетов".
+  // Deliberately ignores drawing templates and the designer-approval tab.
+  function extractUploadedMakets(html, order, internalOrderId) {
+    if (!/^\d{5,12}$/.test(String(order)) || !/^\d{1,20}$/.test(String(internalOrderId))) return [];
+    const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+    const files = new Map();
+    const links = [];
+    // Only a per-file delete control from the SAME Gifts upload row grants deletion.
+    // Ignore the special data-id="-111" control that removes every attachment.
+    // Saved order pages put the modal in declarative shadow DOM templates.
+    // Popup AJAX fragments use ordinary DOM. Handle both without touching
+    // the "Согласование макетов" tab or unrelated download templates.
+    function collect(root) {
+      links.push(...root.querySelectorAll('a[data-maket="true"][href]'));
+      for (const template of root.querySelectorAll("template")) {
+        if (template.content) collect(template.content);
+      }
+    }
+    collect(doc);
+    for (const node of links) {
+      let url;
+      try { url = new URL(node.getAttribute("href"), GIFTS_ORIGIN); } catch { continue; }
+      if (url.origin !== GIFTS_ORIGIN || url.pathname !== "/cart/act/mda") continue;
+      const id = url.searchParams.get("id") || "";
+      const oid = url.searchParams.get("oid") || "";
+      if (!/^\d{1,20}$/.test(id) || oid !== String(internalOrderId)) continue;
+      const filename = clean(node.textContent);
+      if (!/^[^\\/:*?"<>|]{1,200}\.(?:pdf|ai|svg|png|jpe?g)$/i.test(filename)) continue;
+      const row = node.closest(".flex-item.flex-main,li,tr,.maket-row") || node.parentElement;
+      const originalName = clean(row?.querySelector('[title="Исходное имя закачанного файла"]')?.textContent || "") || filename;
+      const host = node.closest(".j_maket_host,.maket-row,li,tr") ||
+        node.closest(".flex") || row?.parentElement;
+      const canDelete = !![...(host?.querySelectorAll("a.j_delete_maket[data-id][data-orderid]")||[])]
+        .find(button => button.getAttribute("data-id") === id &&
+          button.getAttribute("data-orderid") === String(internalOrderId) &&
+          /^\d{1,20}$/.test(button.getAttribute("data-id")||"") &&
+          (() => {
+            const href=button.getAttribute("href");
+            if(!href)return false;
+            try{
+              const link=new URL(href,giftsUrl("/private/order/"+order));
+              // Saved authorized order pages use /private/order/:number#,
+              // but the SAME official j_delete_maket control on gifts.ru/cart
+              // points to /cart#. Both must be accepted.
+              return link.origin===GIFTS_ORIGIN && !link.search &&
+                (link.pathname==="/private/order/"+order ||
+                 link.pathname==="/cart");
+            }catch{return false}
+          })());
+      // The original name is metadata, never an output path or a download URL.
+      files.set(id, {
+        id, order: String(order), filename,
+        originalName: originalName.slice(0, 200),
+        canDelete,
+        mime: /\.pdf$/i.test(filename) ? "application/pdf" : "",
+        source: "gifts-order-uploaded-layout",
+        attachmentScope: "order", // NO implicit article/field mapping
+        boundItemId: null, boundFieldIndex: null
+      });
+    }
+    return [...files.values()];
+  }
+
+  // Extract only the official customer-upload form, never designer approval.
+  // The order page stores its dialog in declarative shadow DOM; the AJAX
+  // fragment contains the same form without a shadow-root wrapper.
+  function uploadedMaketForm(html, order, oid) {
+    const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+    const forms = [];
+    function visit(root) {
+      forms.push(...root.querySelectorAll("form#j_upload_area"));
+      for (const tmpl of root.querySelectorAll("template")) if (tmpl.content) visit(tmpl.content);
+    }
+    visit(doc);
+    for (const form of forms) {
+      const value = name => form.querySelector('input[name="' + name + '"]')?.value || "";
+      const candidate = {oid:value("oid"),type:value("type"),order:value("order"),folder:value("folder")};
+      if (candidate.oid !== String(oid) || candidate.order !== String(order) ||
+          candidate.type !== "10" || !/^[a-zA-Z0-9_-]{1,32}$/.test(candidate.folder) ||
+          !form.querySelector('input[type="file"][name="media_file[]"]')) continue;
+      return candidate;
+    }
+    return null;
+  }
+
+  async function getPopupTemplateRelations(orderId, orderNumber) {
+    if (!/^\d{1,20}$/.test(String(orderId || ""))) return [];
+
+    const res = await nativeFetch(
+      giftsUrl("/ajax/gifts/order?action=makets_popup&oid=" + encodeURIComponent(orderId)),
+      {
+        method: "GET",
+        credentials: "include",
+        redirect: "follow",
+        cache: "no-store",
+        headers: {
+          "accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    );
+
+    const raw = await res.text();
+    if (isAuthPage(raw, res.url)) {
+      const error = new Error("Сеанс gifts.ru не активен. Войдите в gifts.ru.");
+      error.code = "AUTH";
+      throw error;
+    }
+    if (!res.ok) throw new Error("gifts.ru не вернул раздел «Макеты для заказа».");
+
+    let html = raw;
+    try {
+      const data = JSON.parse(raw);
+      if (data && typeof data.html === "string") html = data.html;
+    } catch {}
+
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const uploadedMakets = extractUploadedMakets(html, orderNumber, orderId);
+    const relations = [];
+    relations.uploadForm = uploadedMaketForm(html, orderNumber, orderId);
+    const seen = new Set();
+    const templateHeading = popupTemplateSection(doc);
+    let candidateNodes = [...doc.querySelectorAll("a[href*=\'getOrderItemPdf\'],[data-orderitemid],[data-oiid]")];
+
+    // The popup contains ordinary maket downloads above and the authoritative
+    // "Шаблоны макетов для выбранных нанесений" section below. If that heading
+    // exists, ignore candidate links that occur before it.
+    if (templateHeading) {
+      candidateNodes = candidateNodes.filter(node =>
+        Boolean(templateHeading.compareDocumentPosition(node) & 4)
+      );
+    }
+
+    for (const node of candidateNodes) {
+      let pdfItemId = clean(node.getAttribute("data-orderitemid") || node.getAttribute("data-oiid"));
+      if (!pdfItemId) {
+        try {
+          const url = new URL(node.getAttribute("href") || "", GIFTS_ORIGIN + "/");
+          pdfItemId = clean(url.searchParams.get("orderitemid") || url.searchParams.get("oiid"));
+        } catch {}
+      }
+      if (!/^\d{1,20}$/.test(pdfItemId) || seen.has(pdfItemId)) continue;
+      seen.add(pdfItemId);
+
+      const context = node.closest("tr,li,[data-itemid],.cart-tbl-row,.maket-row,.template-row") || node.parentElement;
+      const contextText = clean(context?.textContent || node.textContent || "");
+      const article = popupArticleFromContext(context);
+      const placeBindings = popupPlaceBindingsFromContext(context, article);
+      const places = placeBindings.map(binding => binding.name);
+      const method = popupMethodFromContext(context);
+      const applications = popupApplicationSpecsFromContext(context);
+      const applicationIds = applications.length
+        ? applications.map(application => application.applicationId)
+        : popupApplicationIdsFromContext(context);
+
+      relations.push({
+        pdfItemId,
+        article,
+        method,
+        places,
+        placeBindings,
+        applicationIds,
+        applications,
+        placeSource: places.length ? "makets-popup-place" : "not-found",
+        contextText
+      });
+    }
+
+    relations.uploadedMakets = uploadedMakets;
+    return relations;
+  }
+
+  function parseOrder(html, order) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const items = [];
+    const drawTaskCatalog = extractDrawTaskCatalog(doc);
+
+    for (const root of doc.querySelectorAll("li[data-itemid]")) {
+      const itemId = clean(root.getAttribute("data-itemid"));
+      const article = clean(root.querySelector(".cart-tbl-name")?.textContent)
+        .replace(/^Артикул\s*/i, "");
+      const product = clean(root.querySelector(".cart-tbl-id .cart-tbl-lbl")?.textContent);
+      const qtyNode = root.querySelector(".cart-qty");
+      const qtyMatch = clean(qtyNode?.value || qtyNode?.getAttribute?.("value") || qtyNode?.textContent).match(/\d+/);
+      const quantity = qtyMatch ? Number(qtyMatch[0]) : NaN;
+      const primaryMethod = clean(root.querySelector(".cart-tbl-imp g-droper > span")?.textContent);
+      const drawTaskIds = drawTaskIdsForItem(root);
+      const placeAudit = extractPlaceAudit(root, article);
+      const applicationBindings = extractOrderApplicationBindings(root, article, drawTaskCatalog);
+      if (applicationBindings.length) {
+        const byName = new Map(applicationBindings.map(binding => [placeKey(binding.name), binding]));
+        placeAudit.placeBindings = (placeAudit.placeBindings || []).map(binding => {
+          const application = byName.get(placeKey(binding.name));
+          return application ? {...binding, ...application} : binding;
+        });
+      }
+      const places = placeAudit.places;
+      const methods = [...new Set(applicationBindings.map(binding => binding.method).filter(Boolean))];
+      const method = methods.length ? methods.join("; ") : primaryMethod;
+
+      if (!/^\d+$/.test(itemId) || !article || !method ||
+          !Number.isSafeInteger(quantity) || quantity < 1) continue;
+
+      const imageUrl = imageUrlCandidates(root, article).find(url => imageMatchesArticle(url, article)) || "";
+      const productUrl = productUrlFromItem(root);
+
+      items.push({
+        itemId,
+        article,
+        product,
+        quantity,
+        method,
+        methods,
+        place: places.join(", "),
+        places,
+        placeBindings: placeAudit.placeBindings || [],
+        applicationBindings,
+        placeCount: places.length,
+        placeCountSource: placeAudit.source,
+        placeCountReliable: placeAudit.reliable,
+        placeCountSignals: {
+          ...placeAudit.signals,
+          drawTasks: drawTaskIds.length,
+          methods: root.querySelectorAll(".cart-tbl-imp g-droper > span").length
+        },
+        drawTaskIds,
+        imageUrl,
+        productUrl,
+        requirements: clean(root.textContent).slice(0, 5000),
+        source: "order-dom"
+      });
+    }
+
+    const articleSummary = {};
+    for (const item of items) {
+      const key = item.article;
+      if (!articleSummary[key]) articleSummary[key] = { article: key, itemCount: 0, placeCount: 0, itemIds: [] };
+      articleSummary[key].itemCount++;
+      articleSummary[key].placeCount += item.placeCount || 0;
+      articleSummary[key].itemIds.push(item.itemId);
+    }
+    for (const item of items) {
+      item.articlePlaceCount = articleSummary[item.article]?.placeCount || item.placeCount || 0;
+      item.articleItemCount = articleSummary[item.article]?.itemCount || 1;
+    }
+
+    return { order: String(order), orderInternalId: getOrderInternalId(doc), items, articlePlaceSummary: Object.values(articleSummary) };
+  }
+
+  async function getOrder(order, fresh = false) {
+    if (!fresh && orderCache.has(order)) return orderCache.get(order);
+    const { html } = await getHtml("/private/order/" + order);
+    const parsed = parseOrder(html, order);
+    parsed.uploadedMakets = extractUploadedMakets(html, order, parsed.orderInternalId);
+    parsed.uploadForm = uploadedMaketForm(html, order, parsed.orderInternalId);
+
+    // Preserve the complete order composition separately from the subset that has
+    // an application-template. Basket/order UI needs every real item; the editor
+    // must only attempt PDF download for template-linked items.
+    const orderItems = parsed.items;
+    let templateItemIds = null;
+
+    if (parsed.orderInternalId) {
+      try {
+        const relations = await getPopupTemplateRelations(parsed.orderInternalId, order);
+        if (relations.uploadForm) parsed.uploadForm = relations.uploadForm;
+        if (Array.isArray(relations.uploadedMakets)) {
+          const union = new Map(parsed.uploadedMakets.map(file => [file.id, file]));
+          for (const file of relations.uploadedMakets) {
+            const older = union.get(file.id);
+            union.set(file.id, {...file,canDelete:!!(file.canDelete||older?.canDelete)});
+          }
+          parsed.uploadedMakets = [...union.values()];
+        }
+        parsed.maketsPopupLoaded = true;
+        parsed.popupTemplateRelations = relations;
+        parsed.popupOrderItemIds = relations.map(relation => relation.pdfItemId);
+
+        if (relations.length) {
+          const claimed = new Set();
+          const assign = (item, relation, source) => {
+            item.hasTemplate = true;
+            item.pdfItemId = String(relation.pdfItemId);
+            item.templateRelationSource = source;
+            item.templateRelationArticle = relation.article || "";
+            item.templateRelationMethod = relation.method || "";
+            item.templatePlaces = Array.isArray(relation.places) ? [...relation.places] : [];
+            item.templatePlaceBindings = Array.isArray(relation.placeBindings)
+              ? relation.placeBindings.map(binding => ({...binding}))
+              : [];
+            item.templateApplicationIds = Array.isArray(relation.applicationIds)
+              ? [...relation.applicationIds]
+              : [];
+            item.templateApplications = Array.isArray(relation.applications)
+              ? relation.applications.map(application => ({...application}))
+              : [];
+            item.expectedFieldSizes = item.templateApplications
+              .filter(application => Number.isFinite(application.w) && Number.isFinite(application.h))
+              .map(application => ({
+                applicationId: application.applicationId,
+                w: application.w,
+                h: application.h,
+                source: application.source || "makets-popup-application-size"
+              }));
+
+            if (!Array.isArray(item.placeBindings)) item.placeBindings = [];
+            if (!Array.isArray(item.applicationBindings)) item.applicationBindings = [];
+
+            // Strongest mapping visible on the real Gifts pages:
+            // order row ",N" -> template popup "(N)" -> PDF [printN].
+            if (item.templateApplicationIds.length && item.applicationBindings.length) {
+              const matched = item.templateApplicationIds
+                .map((id, localIndex) => {
+                  const binding = item.applicationBindings.find(candidate =>
+                    String(candidate.applicationId || "") === String(id)
+                  );
+                  const application = item.templateApplications.find(candidate =>
+                    String(candidate.applicationId || "") === String(id)
+                  );
+                  return binding ? {
+                    ...binding,
+                    templateIndex: localIndex + 1,
+                    index: localIndex + 1,
+                    printId: "print" + (localIndex + 1),
+                    fieldW: application?.w,
+                    fieldH: application?.h,
+                    fieldSizeSource: application?.source || ""
+                  } : null;
+                })
+                .filter(Boolean);
+              const unique = [...new Map(matched.map(binding => [placeKey(binding.name), binding])).values()];
+              if (unique.length === item.templateApplicationIds.length) {
+                item.places = unique.map(binding => binding.name);
+                item.place = item.places.join(", ");
+                item.placeBindings = unique.map(binding => ({
+                  ...binding,
+                  source: "order-application-id+makets-popup"
+                }));
+                item.placeCount = item.places.length;
+                item.placeCountSource = "order-application-id";
+                item.placeCountReliable = true;
+                item.templatePlacesMatch = true;
+              }
+            }
+
+            // The order page owns the place name. The popup may add an explicit
+            // field number for the same name, which is useful for numeric PDF labels.
+            if (item.places?.length) {
+              item.placeBindings = item.places.map(name => {
+                const existing = item.placeBindings.find(binding => placeKey(binding.name) === placeKey(name));
+                const popup = item.templatePlaceBindings.find(binding => placeKey(binding.name) === placeKey(name));
+                return {
+                  name,
+                  taskId: existing?.taskId || "",
+                  drawTaskId: existing?.drawTaskId || "",
+                  applicationId: existing?.applicationId || "",
+                  applicationIndex: existing?.applicationIndex || null,
+                  templateIndex: existing?.templateIndex || null,
+                  printId: existing?.printId || "",
+                  index: existing?.index || popup?.index || null,
+                  method: existing?.method || "",
+                  fieldW: existing?.fieldW,
+                  fieldH: existing?.fieldH,
+                  fieldSizeSource: existing?.fieldSizeSource || "",
+                  source: existing?.source || (popup ? "order+makets-popup" : item.placeCountSource)
+                };
+              });
+
+              if (item.templatePlaces.length) {
+                const orderKeys = new Set(item.places.map(placeKey));
+                const templateKeys = new Set(item.templatePlaces.map(placeKey));
+                item.templatePlacesMatch =
+                  orderKeys.size === templateKeys.size &&
+                  [...orderKeys].every(key => templateKeys.has(key));
+              }
+            } else if (item.templatePlaces.length) {
+              // Some order layouts hide the selected place in the item row, while
+              // "Макеты для заказа" prints it next to the PDF link. Use that exact
+              // value instead of inventing "Место 1/2".
+              item.places = [...item.templatePlaces];
+              item.place = item.places.join(", ");
+              item.placeBindings = item.templatePlaceBindings.map(binding => ({...binding}));
+              item.placeCount = item.places.length;
+              item.placeCountSource = "makets-popup-place";
+              item.placeCountReliable = true;
+              item.templatePlacesMatch = true;
+            }
+
+            claimed.add(String(relation.pdfItemId));
+          };
+
+          // Strongest relation: order row id exactly equals PDF orderitemid.
+          for (const item of orderItems) {
+            const exact = relations.filter(relation =>
+              !claimed.has(String(relation.pdfItemId)) &&
+              String(relation.pdfItemId) === String(item.itemId)
+            );
+            if (exact.length === 1) assign(item, exact[0], "makets-popup-orderitemid");
+          }
+
+          // If Gifts uses a different PDF id, use the article printed in that popup
+          // row only when both the order article and popup relation are unique.
+          for (const item of orderItems) {
+            if (item.hasTemplate) continue;
+            const sameArticleItems = orderItems.filter(other => articleKey(other.article) === articleKey(item.article));
+            const candidates = relations.filter(relation =>
+              !claimed.has(String(relation.pdfItemId)) &&
+              (
+                (relation.article && articleKey(relation.article) === articleKey(item.article)) ||
+                contextHasArticle(relation.contextText, item.article)
+              )
+            );
+
+            const itemPlaceKeys = new Set((item.places || []).map(placeKey));
+            const placeMatched = itemPlaceKeys.size
+              ? candidates.filter(relation => {
+                  const relationKeys = new Set((relation.places || []).map(placeKey));
+                  return relationKeys.size &&
+                    [...itemPlaceKeys].every(key => relationKeys.has(key));
+                })
+              : [];
+            const itemApplicationIds = new Set(
+              (item.applicationBindings || [])
+                .map(binding => String(binding.applicationId || binding.taskId || ""))
+                .filter(Boolean)
+            );
+            const applicationMatched = itemApplicationIds.size
+              ? candidates.filter(relation => {
+                  const ids = Array.isArray(relation.applicationIds) ? relation.applicationIds : [];
+                  return ids.length && ids.every(id => itemApplicationIds.has(String(id)));
+                })
+              : [];
+            const resolvedCandidates =
+              applicationMatched.length === 1 ? applicationMatched :
+              placeMatched.length === 1 ? placeMatched :
+              candidates;
+
+            if ((sameArticleItems.length === 1 || placeMatched.length === 1 || applicationMatched.length === 1) && resolvedCandidates.length === 1) {
+              assign(
+                item,
+                resolvedCandidates[0],
+                applicationMatched.length === 1
+                  ? "makets-popup-article-application"
+                  : placeMatched.length === 1
+                    ? "makets-popup-article-place"
+                    : "makets-popup-article"
+              );
+            } else {
+              item.hasTemplate = false;
+              item.templateRelationSource = candidates.length > 1 || sameArticleItems.length > 1
+                ? "makets-popup-ambiguous"
+                : "unassigned";
+            }
+          }
+        } else {
+          for (const item of orderItems) {
+            item.hasTemplate = Boolean(item.drawTaskIds?.length);
+            item.templateRelationSource = item.hasTemplate ? "drawtask-fallback" : "unassigned";
+            if (item.hasTemplate) item.pdfItemId = String(item.itemId);
+          }
+        }
+      } catch (error) {
+        if (error?.code === "AUTH") throw error;
+        parsed.maketsPopupLoaded = false;
+        parsed.maketsPopupError = error?.message || String(error);
+        for (const item of orderItems) {
+          item.hasTemplate = Boolean(item.drawTaskIds?.length);
+          item.templateRelationSource = item.hasTemplate ? "drawtask-fallback" : "unassigned";
+          if (item.hasTemplate) item.pdfItemId = String(item.itemId);
+        }
+      }
+    } else {
+      parsed.maketsPopupLoaded = false;
+      for (const item of orderItems) {
+        item.hasTemplate = Boolean(item.drawTaskIds?.length);
+        item.templateRelationSource = item.hasTemplate ? "drawtask-fallback" : "unassigned";
+        if (item.hasTemplate) item.pdfItemId = String(item.itemId);
+      }
+    }
+
+    parsed.orderItems = orderItems;
+    parsed.items = orderItems.filter(item => item.hasTemplate);
+
+    const summary = {};
+    for (const item of parsed.items) {
+      if (!summary[item.article]) {
+        summary[item.article] = {
+          article: item.article,
+          itemCount: 0,
+          placeCount: 0,
+          itemIds: []
+        };
+      }
+      summary[item.article].itemCount++;
+      summary[item.article].placeCount += item.placeCount || 0;
+      summary[item.article].itemIds.push(item.itemId);
+    }
+
+    parsed.articlePlaceSummary = Object.values(summary);
+    for (const item of parsed.items) {
+      item.articlePlaceCount = summary[item.article]?.placeCount || item.placeCount || 0;
+      item.articleItemCount = summary[item.article]?.itemCount || 1;
+    }
+
+    orderCache.set(order, parsed);
+    return parsed;
+  }
+
+  function authStateFromHost() {
+    const doc = hostDocument();
+    if (!doc) return null;
+
+    const bodyText = clean(doc.body?.innerText || doc.body?.textContent || "");
+    const logoutNode = [...doc.querySelectorAll("a,button,[role='button']")].find(node => {
+      const label = clean([
+        node.textContent,
+        node.getAttribute("title"),
+        node.getAttribute("aria-label"),
+        node.getAttribute("href")
+      ].filter(Boolean).join(" "));
+      return /(?:^|\s)(?:выйти|выход|logout)(?:\s|$)/i.test(label);
+    });
+    if (logoutNode) return true;
+
+    const loginNode = [...doc.querySelectorAll("a,button,[role='button'],form")].find(node => {
+      const label = clean([
+        node.textContent,
+        node.getAttribute("title"),
+        node.getAttribute("aria-label"),
+        node.getAttribute("href"),
+        node.getAttribute("action")
+      ].filter(Boolean).join(" "));
+      return /(?:^|\s)(?:войти|вход|авторизац|login)(?:\s|$)/i.test(label);
+    });
+    if (loginNode && !/выйти/i.test(bodyText)) return false;
+
+    return null;
+  }
+
+  async function apiSession() {
+    const hostState = authStateFromHost();
+    if (hostState !== null) return json({ active: hostState, direct: true, source: "host-dom" });
+
+    for (const path of ["/", "/auth"]) {
+      try {
+        const res = await nativeFetch(giftsUrl(path), {
+          method: "GET",
+          credentials: "include",
+          redirect: "follow",
+          cache: "no-store",
+          headers: { accept: "text/html,application/xhtml+xml" }
+        });
+        const html = await res.text();
+        if (path === "/" && res.ok && !isAuthPage(html, res.url)) {
+          return json({ active: true, direct: true, source: "home" });
+        }
+      } catch {}
+    }
+    return json({ active: false, direct: true, source: "fallback" });
+  }
+
+  async function apiLogin(init) {
+    if (String(init.method || "GET").toUpperCase() === "DELETE") {
+      return json({ ok: true, note: "Сеанс gifts.ru остаётся в браузере." });
+    }
+
+    let body;
+    try { body = JSON.parse(String(init.body || "{}")); }
+    catch { body = {}; }
+
+    const login = clean(body.login);
+    const password = String(body.password || "");
+    const code = clean(body.code);
+
+    if (!login || !password) {
+      return json({ error: "Введите логин и пароль gifts.ru." }, 400);
+    }
+
+    await nativeFetch(giftsUrl("/auth"), {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store"
+    });
+
+    const form = new URLSearchParams({
+      login,
+      password,
+      code,
+      redirect: "/",
+      orderconf: ""
+    });
+
+    const res = await nativeFetch(giftsUrl("/auth"), {
+      method: "POST",
+      credentials: "include",
+      redirect: "follow",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      body: form
+    });
+
+    const html = await res.text();
+    if (!res.ok || isAuthPage(html, res.url)) {
+      return json({ error: "gifts.ru не подтвердил логин, пароль или код компании." }, 403);
+    }
+
+    orderCache.clear();
+    return json({ ok: true, active: true, direct: true });
+  }
+
+  async function apiBasket() {
+    // A basket refresh must reflect gifts.ru now, not the DOM/cache captured when the editor opened.
+    orderCache.clear();
+
+    try {
+      const snapshot = await readBasketFromSite();
+      const rawOrders = [...snapshot.found.values()].slice(0, 30);
+      const verified = [];
+      let cursor = 0;
+
+      async function verifyNext() {
+        while (cursor < rawOrders.length) {
+          const candidate = rawOrders[cursor++];
+          try {
+            const parsed = await getOrder(String(candidate.number), true);
+            if (Array.isArray(parsed.orderItems) && parsed.orderItems.length) {
+              verified.push(candidate);
+            }
+          } catch (error) {
+            if (error?.code === "AUTH") throw error;
+          }
+        }
+      }
+
+      await Promise.all(
+        Array.from({ length: Math.min(3, rawOrders.length) }, () => verifyNext())
+      );
+
+      verified.sort((a, b) => rawOrders.findIndex(x => x.number === a.number) - rawOrders.findIndex(x => x.number === b.number));
+
+      return json({
+        orders: verified,
+        direct: true,
+        source: snapshot.source,
+        refreshedFromSite: true,
+        scanned: snapshot.scanned,
+        candidates: rawOrders.length,
+        verified: verified.length
+      });
+    } catch (error) {
+      return json(
+        { error: error?.message || String(error), refreshedFromSite: true },
+        error?.code === "AUTH" ? 401 : 502
+      );
+    }
+  }
+
+  async function apiOrder(order, fresh = false) {
+    if (!/^\d{5,12}$/.test(order)) {
+      return json({ error: "Некорректный номер заказа." }, 400);
+    }
+    try {
+      const parsed = await getOrder(order, fresh);
+      if (!Array.isArray(parsed.orderItems) || !parsed.orderItems.length) {
+        return json({ error: "В заказе не найдены позиции." }, 404);
+      }
+      parsed.templateCount = Array.isArray(parsed.items) ? parsed.items.length : 0;
+      return json(parsed);
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, error?.code === "AUTH" ? 401 : 502);
+    }
+  }
+
+  async function apiPdf(order, itemId) {
+    if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(itemId)) {
+      return json({ error: "Некорректная ссылка на PDF." }, 400);
+    }
+
+    try {
+      const parsed = await getOrder(order);
+      if (!parsed.items.some(item => String(item.pdfItemId || item.itemId) === String(itemId))) {
+        return json({ error: "Этот PDF не относится к выбранному заказу." }, 404);
+      }
+
+      const res = await nativeFetch(
+        giftsUrl("/drawing?action=getOrderItemPdf&orderitemid=" + encodeURIComponent(itemId)),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "referer": "https://gifts.ru/private/order/" + order }
+        }
+      );
+
+      const bytes = await res.arrayBuffer();
+      const head = bytes.byteLength >= 5
+        ? new TextDecoder().decode(bytes.slice(0, 5))
+        : "";
+
+      if (!res.ok || head !== "%PDF-") {
+        return json({ error: "gifts.ru вернул некорректный PDF." }, 502);
+      }
+
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          "content-type": "application/pdf",
+          "cache-control": "no-store"
+        }
+      });
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, error?.code === "AUTH" ? 401 : 502);
+    }
+  }
+
+  async function apiUploadReadyMaket(order, init) {
+    if (!/^\d{5,12}$/.test(order)) return json({error:"Некорректный номер заказа."},400);
+    try {
+      if (!(init?.body instanceof FormData)) return json({error:"Ожидался PDF-макет."},400);
+      const file = init.body.get("media_file[]");
+      if (!(file instanceof Blob) || !/^[^\\/:*?"<>|]{1,180}\.pdf$/i.test(file.name||"") ||
+          file.size<5 || file.size>40*1024*1024)
+        return json({error:"Разрешён PDF до 40 МБ с корректным именем."},415);
+      const bytes = await file.arrayBuffer();
+      if (new TextDecoder().decode(bytes.slice(0,5)) !== "%PDF-")
+        return json({error:"Файл не является PDF."},415);
+
+      // Authoritative permissions and form fields are read afresh from gifts.ru.
+      const original = await getOrder(order,true);
+      if (!original.orderItems?.length || !original.uploadForm)
+        return json({error:"У заказа нет доступной формы «Загрузка макетов»."},403);
+      if(init.body.get("require_unique_name")==="1"&&(original.uploadedMakets||[]).some(
+        f=>String(f.originalName||f.filename).toLowerCase()===file.name.toLowerCase()))
+        return json({error:"Файл с таким именем уже появился в заказе. Нажмите «Сохранить» снова и выберите действие."},409);
+      const upload = original.uploadForm;
+      if (upload.order!==order || upload.oid!==String(original.orderInternalId) || upload.type!=="10")
+        return json({error:"Загрузка в этот заказ недоступна."},403);
+      const known = new Set((original.uploadedMakets||[]).map(f=>String(f.id)));
+      const payload = new FormData();
+      payload.set("oid",upload.oid);
+      payload.set("type","10");
+      payload.set("order",order);
+      payload.set("folder",upload.folder);
+      payload.append("media_file[]",new File([bytes],file.name,{type:"application/pdf"}),file.name);
+      const response = await nativeFetch(giftsUrl("/ajax/gifts/order?action=upload_makets"),{
+        method:"POST",credentials:"include",redirect:"follow",cache:"no-store",
+        body:payload,headers:{"accept":"application/json,text/html;q=0.9,*/*;q=0.8",
+                              "x-requested-with":"XMLHttpRequest"}
+      });
+      const answer = (await response.text()).slice(0,10000);
+      if (isAuthPage(answer,response.url))
+        return json({error:"Авторизация gifts.ru истекла."},401);
+      if (!response.ok) return json({error:"gifts.ru отклонил загрузку PDF ("+response.status+")."},502);
+      try {
+        const state = JSON.parse(answer);
+        if (state?.success===false || state?.result===false || state?.error)
+          return json({error:String(state.error||state.message||"gifts.ru не принял PDF.")},502);
+      } catch {}
+      // Do not claim success from HTTP 200: verify a NEW attachment with the
+      // same original file name, preserving all older order attachments.
+      orderCache.delete(order);
+      let matched = null;
+      for (let attempt=0;attempt<3&&!matched;attempt++){
+        if (attempt) await new Promise(resolve=>setTimeout(resolve,500));
+        const latest=await getOrder(order,true);
+        matched=(latest.uploadedMakets||[]).find(f=>
+          !known.has(String(f.id)) && f.originalName===file.name);
+      }
+      if (!matched) return json({error:"Сервер ответил, но новый PDF пока не обнаружен в заказе. Проверьте список вложений перед повторной отправкой."},502);
+      orderCache.delete(order);
+      return json({ok:true,order,uploadedId:matched.id,filename:matched.originalName});
+    } catch(error) {
+      return json({error:error?.message||String(error)},error?.code==="AUTH"?401:502);
+    }
+  }
+
+  // Safe, non-atomic replacement: upload and independently confirm new PDF
+  // BEFORE deleting precisely the explicitly selected old attachment.
+  // If deletion fails, BOTH copies remain; report partial success with new ID.
+  async function apiReplaceUploadedMaket(order,maketId,init) {
+    if(!/^\d{5,12}$/.test(order)||!/^\d{1,20}$/.test(maketId))
+      return json({error:"Некорректный заказ или идентификатор макета."},400);
+    if(!(init?.body instanceof FormData))
+      return json({error:"Ожидались новый PDF и название заменяемого файла."},400);
+    const expected=String(init.body.get("expected_original_name")||"");
+    if(!expected||expected.length>200||!expected.toLowerCase().endsWith(".pdf"))
+      return json({error:"Название старого PDF не подтверждено."},400);
+    let confirmedNewId=null;
+    try{
+      const original=await getOrder(order,true);
+      source=(original.uploadedMakets||[]).find(x=>x.id===maketId&&x.order===order);
+      if(!source||source.originalName!==expected)
+        return json({error:"Исходный макет изменился или отсутствует. Обновите список."},409);
+      if(!source.canDelete)
+        return json({error:"Нет разрешения gifts.ru на замену выбранного PDF."},403);
+      const proposed=init.body.get("media_file[]");
+      if(!(proposed instanceof Blob)||proposed.size<5||proposed.size>40*1024*1024||
+         !/^[^\\/:*?"<>|]{1,180}\.pdf$/i.test(proposed.name||""))
+        return json({error:"Для замены требуется PDF до 40 МБ."},415);
+      // Request identity is validated again inside the existing uploader.
+      const payload=new FormData();
+      payload.append("media_file[]",proposed,proposed.name);
+      const uploadResponse=await apiUploadReadyMaket(order,{body:payload});
+      let uploaded;
+      try{uploaded=await uploadResponse.json()}catch{
+        return json({error:"Нельзя подтвердить загрузку. Проверьте список: старый PDF не удалён."},502);
+      }
+      if(!uploadResponse.ok||uploaded?.ok!==true||!/^\d{1,20}$/.test(String(uploaded.uploadedId||"")))
+        return json({error:uploaded?.error||"Новый PDF не подтверждён. Старый сохранён."},502);
+      const newId=String(uploaded.uploadedId);
+      confirmedNewId=newId;
+      if(newId===maketId)
+        return json({error:"gifts.ru не создал новый идентификатор: старый файл не удалён.",partial:true,newId},409);
+      // Never delete an old file if it changed during upload, and never
+      // touch any unselected file in a multi-article order.
+      const latest=await getOrder(order,true);
+      const still=(latest.uploadedMakets||[]).find(x=>x.id===maketId&&x.order===order);
+      const added=(latest.uploadedMakets||[]).find(x=>x.id===newId&&x.order===order);
+      if(!added||added.originalName!==proposed.name||!still||
+         still.originalName!==expected||!still.canDelete){
+        return json({error:"Новый PDF загружен, но исходный изменился или недоступен. Оба файла оставлены для проверки.",
+          partial:true,newId,oldId:maketId},409);
+      }
+      const deletion=await apiDeleteUploadedMaket(order,maketId);
+      let removed;
+      try{removed=await deletion.json()}catch{}
+      if(!deletion.ok||removed?.ok!==true||String(removed.deletedId)!==maketId)
+        return json({error:"Новый PDF сохранён, но старый не удалось удалить: "+
+          (removed?.error||"подтверждение не получено")+". Удалите старый файл вручную после проверки.",
+          partial:true,newId,oldId:maketId},409);
+      return json({ok:true,replaced:true,order,oldId:maketId,
+        uploadedId:newId,filename:uploaded.filename});
+    }catch(error){
+      return json({error:"Замена не завершена: "+(error?.message||String(error))+
+        ". Проверьте список: старый файл не удаляется до подтверждённой загрузки.",
+        partial:!!confirmedNewId,newId:confirmedNewId||undefined,oldId:maketId},502);
+    }
+  }
+
+  async function apiDeleteUploadedMaket(order, maketId) {
+    if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
+      return json({error:"Некорректный заказ или идентификатор файла."},400);
+    try {
+      const original = await getOrder(order,true);
+      const file = (original.uploadedMakets||[]).find(f=>f.id===maketId && f.order===order);
+      // The real gifts.ru delete control is the authority. Never rely only
+      // on the client-supplied attachment ID, and never allow delete-all (-111).
+      if (!file) return json({error:"Макет не найден в указанном заказе."},404);
+      if (!file.canDelete) return json({error:"gifts.ru не предоставил удаление этого макета."},403);
+      if (!/^\d{1,20}$/.test(String(original.orderInternalId||"")))
+        return json({error:"Не удалось проверить внутренний номер заказа."},403);
+      // This is the site-native deleteMaket action:
+      // Logrus.Order.config.ajaxActions.deleteMaket:
+      // /ajax/gifts/order?action=delete_maket&type=10
+      // Per-file button: data-id (maket), data-orderid (internal order).
+      // All read/download/upload endpoints use the verified internal oid.
+      // Native delete controls expose it as data-orderid; send both aliases
+      // with the SAME validated value to tolerate Gifts's AJAX naming.
+      const endpoint = "/ajax/gifts/order?action=delete_maket&type=10"+
+        "&id="+encodeURIComponent(maketId)+
+        "&oid="+encodeURIComponent(original.orderInternalId)+
+        "&orderid="+encodeURIComponent(original.orderInternalId);
+      const response = await nativeFetch(giftsUrl(endpoint),{
+        method:"GET",credentials:"include",redirect:"follow",cache:"no-store",
+        headers:{accept:"application/json,text/html;q=0.9,*/*;q=0.8",
+                 "x-requested-with":"XMLHttpRequest"}
+      });
+      const body=(await response.text()).slice(0,10000);
+      const origin=new URL(response.url).origin;
+      if (origin!==GIFTS_ORIGIN || isAuthPage(body,response.url))
+        return json({error:"Авторизация или ответ gifts.ru не подтверждены."},401);
+      if (!response.ok) return json({error:"gifts.ru отклонил удаление PDF ("+response.status+")."},502);
+      try{
+        const result=JSON.parse(body);
+        if(result?.success===false || result?.result===false || result?.error)
+          return json({error:String(result.error||result.message||"Ошибка удаления.")},502);
+      }catch{}
+      orderCache.delete(order);
+      let absent=false;
+      for(let attempt=0;attempt<4&&!absent;attempt++){
+        if(attempt)await new Promise(resolve=>setTimeout(resolve,500));
+        const latest=await getOrder(order,true);
+        absent=!(latest.uploadedMakets||[]).some(f=>f.id===maketId);
+      }
+      if(!absent) return json({
+        error:"gifts.ru ответил, но удаление ещё не подтверждено. Проверьте список перед повторной попыткой."
+      },502);
+      orderCache.delete(order);
+      return json({ok:true,order,deletedId:maketId,filename:file.originalName});
+    }catch(error){
+      return json({error:error?.message||String(error)},error?.code==="AUTH"?401:502);
+    }
+  }
+
+  async function apiUploadedMaket(order, maketId) {
+    if (!/^\d{5,12}$/.test(order) || !/^\d{1,20}$/.test(maketId))
+      return json({error:"Некорректный номер макета."},400);
+    try {
+      // Always re-read the gifts order for an attachment download. Never fetch
+      // an arbitrary URL supplied by the client, and never reuse stale permissions.
+      const orderData = await getOrder(order, true);
+      if (!orderData.uploadedMakets?.some(file => file.id === maketId))
+        return json({error:"Этот загруженный макет не найден в заказе."},404);
+      const internalId = orderData.orderInternalId;
+      if (!/^\d{1,20}$/.test(String(internalId)))
+        return json({error:"Внутренний идентификатор заказа недоступен."},404);
+      const path = "/cart/act/mda?oid=" + encodeURIComponent(internalId) + "&id=" + encodeURIComponent(maketId);
+      const response = await nativeFetch(giftsUrl(path), {
+        method:"GET",credentials:"include",redirect:"follow",cache:"no-store",
+        headers:{accept:"application/pdf,application/octet-stream"}
+      });
+      // Gift files can be returned directly or redirected to its official
+      // download host. Refuse unrelated redirect targets even if they serve PDF.
+      let safeOrigin = false;
+      try {
+        const origin = new URL(response.url).origin;
+        safeOrigin = origin === GIFTS_ORIGIN || origin === "https://files.gifts.ru";
+      } catch {}
+      if (!response.ok || !safeOrigin || isAuthPage("",response.url))
+        return json({error:"gifts.ru не предоставил файл макета."},502);
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength < 5 || bytes.byteLength > 40*1024*1024 ||
+          new TextDecoder().decode(bytes.slice(0,5)) !== "%PDF-")
+        return json({error:"Получен неподдерживаемый файл. Редактирование доступно для PDF до 40 МБ."},415);
+      return new Response(bytes,{status:200,headers:{
+        "content-type":"application/pdf","cache-control":"no-store",
+        "x-content-type-options":"nosniff"
+      }});
+    } catch (error) {
+      return json({error:error?.message||String(error)},error?.code==="AUTH"?401:502);
+    }
+  }
+
+  async function apiProductPhotos(order, itemId) {
+    try {
+      const parsed = await getOrder(order);
+      const item = parsed.orderItems.find(x => String(x.itemId) === String(itemId));
+      if (!item) return json({ error: "Артикул заказа не найден." }, 404);
+      const urls = await resolveItemPhotos(item);
+      return json({
+        order: String(order),
+        itemId: String(itemId),
+        article: String(item.article || ""),
+        product: String(item.product || ""),
+        productUrl: String(item.productUrl || ""),
+        count: urls.length,
+        photos: urls.map((url, index) => ({
+          index,
+          id: String(item.article || "photo") + "-" + String(index + 1),
+          name: "Фото " + String(index + 1) + " · арт. " + String(item.article || ""),
+          url
+        }))
+      });
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, 502);
+    }
+  }
+
+  async function apiProductPhoto(order, itemId, photoIndex) {
+    try {
+      const parsed = await getOrder(order);
+      const item = parsed.orderItems.find(x => String(x.itemId) === String(itemId));
+      if (!item) return json({ error: "Артикул заказа не найден." }, 404);
+      const urls = await resolveItemPhotos(item);
+      const index = Number(photoIndex);
+      if (!Number.isInteger(index) || index < 0 || index >= urls.length) {
+        return json({ error: "Фотография артикула не найдена." }, 404);
+      }
+      const res = await nativeFetch(urls[index], {
+        credentials: "include",
+        cache: "no-store",
+        headers: { accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8" }
+      });
+      const contentType = res.headers.get("content-type") || "image/jpeg";
+      if (!res.ok || !/^image\//i.test(contentType)) {
+        return json({ error: "Фотография артикула недоступна." }, 502);
+      }
+      return new Response(await res.arrayBuffer(), {
+        status: 200,
+        headers: {
+          "content-type": contentType,
+          "cache-control": "private, max-age=1800"
+        }
+      });
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, 502);
+    }
+  }
+
+  async function apiPreview(order, itemId) {
+    try {
+      const parsed = await getOrder(order);
+      const item = parsed.items.find(x => String(x.itemId) === String(itemId));
+      if (!item) return json({ error: "Артикул заказа не найден." }, 404);
+
+      const imageUrl = await resolveItemImage(item);
+      if (!imageUrl) return json({ error: "Превью не найдено ни в заказе, ни в карточке товара." }, 404);
+
+      const res = await nativeFetch(imageUrl, {
+        credentials: "include",
+        cache: "no-store",
+        headers: { accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8" }
+      });
+      const contentType = res.headers.get("content-type") || "image/jpeg";
+      if (!res.ok || !/^image\//i.test(contentType)) return json({ error: "Превью недоступно." }, 502);
+
+      return new Response(await res.arrayBuffer(), {
+        status: 200,
+        headers: {
+          "content-type": contentType,
+          "cache-control": "private, max-age=300"
+        }
+      });
+    } catch (error) {
+      return json({ error: error?.message || String(error) }, 502);
+    }
+  }
+
+  window.fetch = async (input, init = {}) => {
+    try {
+      const raw = typeof input === "string"
+        ? input
+        : input instanceof Request
+          ? input.url
+          : String(input);
+      const url = new URL(raw, document.baseURI || (GIFTS_ORIGIN + "/"));
+      const method = String(init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+
+      const isLocalApi = url.pathname.startsWith("/api/") &&
+        (url.origin === GIFTS_ORIGIN || url.origin === location.origin);
+      if (isLocalApi) {
+        if (url.origin !== GIFTS_ORIGIN) {
+          if (url.pathname === "/api/session" && method === "GET") {
+            return json({
+              active: false,
+              direct: true,
+              source: "requires-gifts-origin",
+              note: "Для чтения заказов запустите «Макетную + мокапы» поверх gifts.ru."
+            });
+          }
+          return json({
+            error: "Эта отдельная страница не может читать защищённые заказы gifts.ru напрямую. Откройте gifts.ru и запустите независимую «Макетную + мокапы» через её launcher."
+          }, 409);
+        }
+
+        if (url.pathname === "/api/session" && method === "GET") return apiSession();
+        if (url.pathname === "/api/login") return apiLogin({ ...init, method });
+        if (url.pathname === "/api/basket" && method === "GET") return apiBasket();
+
+        let uploadMatch = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets$/);
+        if (uploadMatch && method === "POST") return apiUploadReadyMaket(uploadMatch[1],init);
+
+        let m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\.pdf$/);
+        if (m && method === "GET") return apiPdf(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})$/);
+        if (m && method === "PUT") return apiReplaceUploadedMaket(m[1],m[2],init);
+        if (m && method === "DELETE") return apiDeleteUploadedMaket(m[1],m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/uploaded-makets\/(\d{1,20})\.pdf$/);
+        if (m && method === "GET") return apiUploadedMaket(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/photos$/);
+        if (m && method === "GET") return apiProductPhotos(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/photos\/(\d{1,2})$/);
+        if (m && method === "GET") return apiProductPhoto(m[1], m[2], m[3]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})\/items\/(\d{1,20})\/preview$/);
+        if (m && method === "GET") return apiPreview(m[1], m[2]);
+
+        m = url.pathname.match(/^\/api\/orders\/(\d{5,12})$/);
+        if (m && method === "GET") return apiOrder(m[1],url.searchParams.get("fresh")==="1");
+
+        return json({ error: "Неизвестный локальный запрос." }, 404);
+      }
+    } catch {}
+    return nativeFetch(input, init);
+  };
+
+  document.documentElement.dataset.directGiftsMode = "true";
+})();

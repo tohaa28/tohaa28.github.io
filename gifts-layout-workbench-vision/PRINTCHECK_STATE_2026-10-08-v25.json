@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-08",
+  "repository": "tohaa28/tohaa28.github.io",
+  "branch": "gifts-layout-workbench-mockups-source",
+  "functionalCommit": "3b18d0afb8ea5edc090077d5cd4227823ac66703",
+  "publishedMain": "747558fd70709be280f44f4523daf58203465a7f",
+  "workflowRun": 37761617860,
+  "workflow": {
+    "precheck": "success",
+    "publish": "success",
+    "browser_verify": "success"
+  },
+  "unitTests": {
+    "passed": 118,
+    "total": 118
+  },
+  "algorithm": "PrintCheck-coverage-swt-v25-multisegment-ink",
+  "cache": "20261008-3",
+  "bundlePatchHash": "78e2262b9ab8a35ce435624627e095d79b051de6c9597dc229c3d325e718f68a",
+  "userSource": {
+    "fileSuppliedInChat": true,
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "embeddedPdfReferenceDimensions": [
+      354,
+      354
+    ],
+    "hasDpiMetadata": false,
+    "assumedDpi": 1048,
+    "assumedPlacementMm": 30.39274809,
+    "sourceImagePublished": false
+  },
+  "anchors": [
+    {
+      "id": 1,
+      "x": 581,
+      "y": 838
+    },
+    {
+      "id": 2,
+      "x": 715,
+      "y": 842
+    },
+    {
+      "id": 3,
+      "x": 612,
+      "y": 886
+    },
+    {
+      "id": 4,
+      "x": 724,
+      "y": 692
+    },
+    {
+      "id": 5,
+      "x": 288,
+      "y": 608
+    },
+    {
+      "id": 6,
+      "x": 843,
+      "y": 754
+    },
+    {
+      "id": 7,
+      "x": 861,
+      "y": 739
+    },
+    {
+      "id": 8,
+      "x": 678,
+      "y": 548
+    },
+    {
+      "id": 9,
+      "x": 780,
+      "y": 793
+    },
+    {
+      "id": 10,
+      "x": 707,
+      "y": 885
+    }
+  ],
+  "v23": {
+    "positive": 16,
+    "negative": 54
+  },
+  "realWorldV25Validated": false,
+  "next": "Ask user to reload same original in Maketnaya v25 and capture PrintCheck overlay + counts; compare 10 manual annotations and suspected remaining defects."
+}

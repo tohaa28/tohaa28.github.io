@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "methods": {
+    "H1": {
+      "enabled": true,
+      "checks": {},
+      "values": {},
+      "orderColorPolicy": "match"
+    }
+  }
+}

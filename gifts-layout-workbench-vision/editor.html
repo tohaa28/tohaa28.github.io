@@ -1,0 +1,1036 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Редактор макетов Gifts</title><meta name="description" content="Размещение нанесения в выбранном поле шаблона, экспорт исходного качества и проверка геометрии."><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='5' fill='%2344525a'/%3E%3Crect x='8' y='8' width='16' height='16' fill='none' stroke='%2382b515' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2382b515'/%3E%3C/svg%3E"><script src="./vendor/pdf-lib.min.js"></script><script src="./vendor/jszip.min.js"></script><script src="./vendor/jspdf.umd.min.js"></script><script src="./vendor/svg2pdf.umd.min.js"></script>  <script src="./direct-mode.js"></script><script src="./assets/maketnaya-pdf-provenance.js?v=20261021-art-only-1"></script><script src="./assets/maketnaya-pdf-sidecar.js?v=20261021-sidecar-1"></script><script type="module" crossorigin src="./assets/index-BpU9kvz8.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CdEUuUA7.css">
+<style>
+/* Secondary navigation action: compact, neutral and subordinate to order editing. */
+#mockupModeButton{align-self:center;height:30px;min-height:30px;max-height:30px;box-sizing:border-box;border:1px solid #7d9098;background:transparent;color:#dce4e7;border-radius:5px;padding:3px 10px;line-height:20px;font-size:12px;font-weight:500;white-space:nowrap;box-shadow:none;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease}
+#mockupModeButton:hover{background:#50616a;border-color:#a6b5bc;color:#fff}
+#mockupModeButton:focus-visible{outline:2px solid #c6dcac;outline-offset:2px}
+#mockupModeButton[hidden]{display:none!important}
+#downloadLayoutMockup{margin-top:8px;width:100%}
+#downloadLayoutMockup[hidden]{display:none!important}
+#mockupShell[hidden]{display:none!important}
+#mockupShell{position:fixed;inset:0;z-index:2147483000;background:#f4f6f6;display:grid;grid-template-rows:106px 1fr}
+#mockupShellBar{display:grid;grid-template-rows:56px 50px;box-shadow:0 1px 0 #dce2e2;z-index:2}
+.mockup-shell-topbar{height:56px;background:#435159;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 28px;gap:18px}
+.mockup-shell-brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:730;letter-spacing:.005em;white-space:nowrap}
+.mockup-shell-brand .mockup-shell-mark{display:inline-grid;place-items:center;width:32px;height:32px;background:#81b315;color:#fff;font-size:20px;font-weight:800;border-radius:3px}
+.mockup-shell-brand small{font-size:13px;font-weight:400;color:#d5dfe0;border-left:1px solid #839095;padding-left:13px;margin-left:4px}
+.mockup-shell-navrow{height:50px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid #dce2e2;gap:18px}
+.mockup-shell-nav-left{display:flex;align-items:center;gap:18px;min-width:0}
+.mockup-shell-navrow strong{font-size:15px;letter-spacing:.07em;font-weight:680;color:#44525a}
+.mockup-shell-navrow>span{font-size:13px;color:#78858a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mockupBackButton{border:1px solid #cbd4d4;background:#fff;border-radius:4px;min-height:36px;padding:6px 11px;cursor:pointer;color:#44525a;font-weight:600}
+#mockupBackButton:hover{background:#f4f7ef;border-color:#a9bc80}
+#mockupFrame{width:100%;height:100%;border:0;background:#f4f6f6}
+.asset-readiness{display:none!important}
+.asset-readiness-row{display:grid;grid-template-columns:88px minmax(120px,1fr) minmax(110px,auto);gap:9px;align-items:center;font-size:11px;color:#64747b}
+.asset-readiness-row strong{font-size:11px;color:#405157}
+.asset-readiness-row progress{width:100%;height:8px;accent-color:#82b515}
+.asset-readiness-row[data-state="ready"] span{color:#3f6f0d;font-weight:700}
+.asset-readiness-row[data-state="loading"] span{color:#8b6410;font-weight:700}
+.readiness-locked{opacity:.45!important;cursor:not-allowed!important;filter:saturate(.45)}
+/* Step 1: one green frame around the article section; no duplicate around its list. */
+#orderEditor .article-card #orderTemplatePicker{border:0!important;box-shadow:none!important;border-radius:0}
+/* Step 1: compact order item details without bold, cramped value columns. */
+#orderTemplateList .article-choice{font-size:10px;line-height:1.3;font-weight:400;padding:8px 9px}
+#orderTemplateList .article-choice-content{grid-template-columns:76px minmax(0,1fr);gap:8px}
+#orderTemplateList .article-thumb-wrap{width:76px;height:76px;min-width:76px}
+#orderTemplateList .article-row{grid-template-columns:minmax(0,64px) minmax(0,1fr);gap:2px 5px;padding:1px 0}
+#orderTemplateList .article-row .detail-key{font-size:10px;line-height:1.3;font-weight:400}
+#orderTemplateList .article-row .detail-value{font-size:10px;line-height:1.3;font-weight:400;overflow-wrap:anywhere}
+#orderTemplateList .article-row.place-count-audit.bad .detail-value{font-weight:800}
+.article-choice.has-mockup-map,.basket-method.has-mockup-map{position:relative}
+.article-choice.has-mockup-map{padding-right:30px}
+.basket-method.has-mockup-map{padding-right:24px}
+.mockup-map-badge{position:absolute;right:7px;top:7px;display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:999px;background:#82b515;color:#fff;border:1px solid #6e9911;font:700 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 1px 2px #0002;z-index:2;pointer-events:none}
+.mockup-map-badge::before{content:"M"}
+@media(max-width:620px){.asset-readiness-row{grid-template-columns:72px 1fr}.asset-readiness-row span{grid-column:1/-1}}
+
+.workspace{position:relative}
+.order-waiting-screen{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:#f4f6f6;padding:28px;text-align:center}
+.order-waiting-screen[hidden]{display:none!important}
+.order-waiting-card{display:grid;justify-items:center;gap:8px;max-width:420px;color:#44525a}
+.order-waiting-icon{display:grid;place-items:center;width:58px;height:58px;border:1px solid #d7dddd;border-radius:12px;background:#fff;color:#81b315;font-size:30px;font-weight:750;box-shadow:0 6px 22px #43515912}
+.order-waiting-card strong{font-size:18px;font-weight:720}
+.order-waiting-card span{font-size:13px;line-height:1.45;color:#78858a}
+.workspace.order-waiting>.toolbar,.workspace.order-waiting>.workspace-step,.workspace.order-waiting>.stage-logo-tools,.workspace.order-waiting>#stageScroll{visibility:hidden;pointer-events:none}
+.workspace.order-waiting #overlay,.workspace.order-waiting #detailOverlay,.workspace.order-waiting #logoErrorOverlay{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+.selected-field-size{display:inline-flex;margin-left:12px;padding:3px 8px;border:1px solid #82b515;border-radius:4px;background:#f2f8e8;color:#496d09;font-weight:700}
+.selected-field-size[hidden]{display:none!important}
+
+/* Discreet, non-interactive component versions; never block editing tools. */
+.gwb-build-versions{position:fixed;bottom:10px;right:12px;z-index:65;display:flex;align-items:flex-end;flex-direction:column;gap:2px;pointer-events:none}
+.gwb-build-versions span{font:400 10px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;color:#67777d;background:rgba(255,255,255,.87);border-radius:3px;padding:1px 5px;letter-spacing:.01em;white-space:nowrap}
+@media(max-width:620px){.gwb-build-versions{right:5px;bottom:5px}.gwb-build-versions span{font-size:9px}}
+
+/* 2026-10-09: Full-width order overview, animated return to the existing editor size. */
+/* Keep the original editor grid untouched; animate only the overlaid order rail. */
+.app>main{position:relative!important}
+.app>main>.workspace{grid-column:2;min-width:0}
+.app>main.gwb-orders-full>.rail,.app>main.gwb-orders-animating>.rail{
+ position:absolute;left:0;top:0;bottom:0;width:100%;height:100%;
+ z-index:8;min-width:0;overflow:auto;
+ transition:width .52s cubic-bezier(.22,.8,.22,1)
+}
+.app>main.gwb-orders-full>.rail{border-right:0}
+.app>main.gwb-orders-full>.workspace{opacity:0;visibility:hidden;pointer-events:none}
+.app>main.gwb-orders-full #basketOrders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px;align-items:stretch}
+.app>main.gwb-orders-full .basket-order{margin:0;align-self:stretch;box-sizing:border-box}
+.basket-order{position:relative;min-width:0;overflow:hidden;border-radius:7px!important;padding:9px 11px!important;box-shadow:0 2px 8px #263b4410}
+.basket-order-title{display:flex!important;align-items:center;justify-content:space-between;gap:10px;font-size:14px!important;padding:0 1px 6px!important;border-bottom:1px solid #e5ebe3}
+.gwb-basket-count{position:absolute;right:12px;top:12px;color:#65737a;font:750 12.5px/1.3 system-ui,sans-serif;white-space:nowrap}
+.basket-methods{margin-top:3px!important;gap:0!important}
+.basket-methods .basket-method{padding:6px 1px!important}
+.gwb-basket-item{display:grid;grid-template-columns:58px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
+.gwb-basket-thumb{width:58px;height:58px;display:grid;place-items:center;overflow:hidden;background:#f6f8f8;border:1px solid #e2e8e6;border-radius:5px;color:#a3aca9;position:relative;font:500 10px/1.1 system-ui,sans-serif}
+.gwb-basket-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#fff;opacity:0;transition:opacity .15s ease}
+.gwb-basket-details{display:grid;gap:4px;min-width:0}
+.gwb-basket-first{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;line-height:1.25}
+.gwb-basket-art{color:#3e5a24;font-size:12.5px;font-weight:750;overflow-wrap:anywhere}
+.gwb-basket-quantity{margin-left:auto;background:#f0f5e7;color:#526b30;border-radius:3px;padding:2px 5px;font-size:11px;white-space:nowrap}
+.gwb-basket-name{font-size:12px;color:#53636a;line-height:1.3;overflow-wrap:anywhere}
+.gwb-basket-method{font-size:11.5px;color:#44565e;line-height:1.3;overflow-wrap:anywhere}
+.gwb-basket-place{font-size:11.5px;color:#718085;line-height:1.3;overflow-wrap:anywhere}
+@media(max-width:780px){
+ .app>main{display:flex!important;flex-direction:column!important}
+ .app>main:not(.gwb-orders-full)>.rail{display:contents!important}
+ .app>main:not(.gwb-orders-full)>.workspace{overflow:visible!important;flex:0 1 auto!important}
+ .app>main.gwb-orders-full>.rail{position:relative!important;display:block!important;width:100%!important;height:auto!important;overflow:visible!important;flex:none!important}
+ .app>main.gwb-orders-full>.workspace{display:none!important}
+ .app>main.gwb-orders-full #basketOrders{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+}
+@media(max-width:440px){.gwb-basket-item{grid-template-columns:48px minmax(0,1fr);gap:7px}.gwb-basket-thumb{width:48px;height:48px}}
+
+/* Multi-position cards open on hover; the arrow is only a visual hint. */
+.basket-order.gwb-multi-order{min-width:0}
+.basket-order.gwb-multi-order>.basket-order-title{padding-right:105px!important;min-height:25px}
+.basket-order.gwb-multi-order>.gwb-basket-count{right:48px;top:12px}
+.gwb-order-multi-indicator{position:absolute;z-index:3;right:8px;top:7px;display:grid;place-items:center;width:27px;height:27px;padding:0;border:1px solid #dae5d1;border-radius:5px;background:#f1f7e8;color:#567919;pointer-events:none;cursor:default;font:700 18px/1 system-ui,sans-serif}
+.gwb-order-multi-indicator .gwb-order-arrow{display:inline-block;transition:transform .36s cubic-bezier(.2,.8,.2,1)}
+.gwb-multi-order[data-gwb-expanded="true"] .gwb-order-arrow{transform:rotate(180deg)}
+/* Always show the first real article; animate only the remaining articles. */
+.gwb-multi-order>.basket-methods{min-height:0;overflow:visible}
+.gwb-multi-order .gwb-order-extra{height:0;min-height:0;opacity:0;overflow:hidden;pointer-events:none;transition:height .38s cubic-bezier(.22,.8,.22,1),opacity .25s ease}
+.gwb-multi-order[data-gwb-expanded="true"] .gwb-order-extra{opacity:1;pointer-events:auto;visibility:visible}
+.gwb-multi-order[data-gwb-expanded="false"] .gwb-order-extra{visibility:hidden;transition:height .38s cubic-bezier(.22,.8,.22,1),opacity .25s ease,visibility 0s linear .38s}
+.gwb-order-extra>.basket-method:first-child{border-top:1px solid #e5ebe3}
+.gwb-multi-order>.basket-order-title{cursor:pointer}
+/* Keep the mockup marker in its own reserved gutter instead of over the quantity chip. */
+.basket-method.has-mockup-map .gwb-basket-details{padding-right:28px;box-sizing:border-box}
+
+/* Full-width animated production line — the original navrow heights and hyperlinks are preserved. */
+.navrow:has(>.gwb-orders-motion){position:relative;padding:0;gap:0;isolation:isolate}
+.navrow>.gwb-orders-motion{position:relative;box-sizing:border-box;width:100%;max-width:none;min-width:0;height:100%;max-height:50px;flex:1 1 100%;display:block;overflow:hidden;background:linear-gradient(95deg,#f8fcf5 0%,#fff 68%,#f7faef 100%);color:#44525a;font-family:system-ui,sans-serif}
+.gwb-om-background{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(90deg,transparent 25px,#a4bb9d22 26px,transparent 27px),linear-gradient(0deg,transparent 24px,#a4bb9d1a 25px,transparent 26px);background-size:108px 50px;opacity:.5}
+.gwb-om-portrait{position:absolute;top:0;left:24px;width:82px;height:50px;overflow:hidden;z-index:13;border:0;background:transparent;padding:0;cursor:pointer;-webkit-mask-image:linear-gradient(90deg,#000 72%,transparent);mask-image:linear-gradient(90deg,#000 72%,transparent)}
+/* Approved 8-frame WebP sprite, rendered as four independent opacity layers per gender. */
+.gwb-om-persona{position:absolute;inset:0;display:block;pointer-events:none;opacity:0;transition:opacity .38s ease-in-out}
+.gwb-orders-motion[data-gender="female"] .gwb-om-persona-female,
+.gwb-orders-motion[data-gender="male"] .gwb-om-persona-male{opacity:1}
+.gwb-om-frame{position:absolute;inset:0;display:block;width:82px;height:50px;pointer-events:none;background-image:url("https://tohaa28.github.io/gifts-layout-workbench-mockups/assets/orders-persona-poses.webp?v=20261014-1");background-repeat:no-repeat;background-size:328px 100px;background-position-y:0;opacity:0;animation-duration:18s;animation-timing-function:linear;animation-iteration-count:infinite}
+.gwb-om-persona-male .gwb-om-frame{background-position-y:-50px}
+.gwb-om-frame-1{background-position-x:-164px;animation-name:gwbOmFrame1}
+.gwb-om-frame-2{background-position-x:0;animation-name:gwbOmFrame2}
+.gwb-om-frame-3{background-position-x:-82px;animation-name:gwbOmFrame3}
+.gwb-om-frame-4{background-position-x:-246px;animation-name:gwbOmFrame4}
+/* 0.72s crossfades, including a seamless frame 4 -> frame 1 transition at loop wrap. */
+@keyframes gwbOmFrame1{0%,13%{opacity:1}17%,96%{opacity:0}100%{opacity:1}}
+@keyframes gwbOmFrame2{0%,13%{opacity:0}17%,48%{opacity:1}52%,100%{opacity:0}}
+@keyframes gwbOmFrame3{0%,48%{opacity:0}52%,73%{opacity:1}77%,100%{opacity:0}}
+@keyframes gwbOmFrame4{0%,73%{opacity:0}77%,96%{opacity:1}100%{opacity:0}}
+.gwb-om-workstation{position:absolute;top:0;left:105px;width:106px;height:50px;pointer-events:none}
+.gwb-om-laptop{height:50px;width:auto;aspect-ratio:106/52;display:block;filter:drop-shadow(0 2px 2px #41565a24)}
+/* Screen stages are drawn in the laptop's real 40×23 SVG display region. */
+.gwb-om-screen-sequence{position:absolute;left:37px;top:11px;width:37px;height:23px;overflow:hidden;border-radius:2px;pointer-events:none}
+.gwb-om-screen-icon{position:absolute;inset:0;display:grid;place-items:center;opacity:0;animation-duration:18s;animation-timing-function:linear;animation-iteration-count:infinite}
+.gwb-om-screen-icon svg{width:35px;height:22px;display:block;overflow:visible}
+.gwb-om-screen-icon-1{animation-name:gwbOmFrame1}
+.gwb-om-screen-icon-2{animation-name:gwbOmFrame2}
+.gwb-om-screen-icon-3{animation-name:gwbOmFrame3}
+.gwb-om-screen-icon-4{animation-name:gwbOmFrame4}
+.gwb-om-bulb-glow{transform-origin:18px 11px;animation:gwbOmBulbLight 18s ease-in-out infinite}
+.gwb-om-bulb-rays{animation:gwbOmBulbRays 18s ease-in-out infinite}
+.gwb-om-brush-trace{stroke-dasharray:44;stroke-dashoffset:44;animation:gwbOmBrushWrite 18s linear infinite}
+.gwb-om-brush-tip{animation:gwbOmBrushMove 18s ease-in-out infinite}
+.gwb-om-ok-pop{transform-origin:18px 11.5px;animation:gwbOmOkPop 18s ease-out infinite}
+.gwb-om-send-arrow{animation:gwbOmSendArrow 18s ease-in-out infinite}
+.gwb-om-production{position:absolute;top:4px;left:216px;width:185px;height:40px;z-index:3;pointer-events:none;background:linear-gradient(90deg,rgba(248,252,245,.98) 0%,rgba(248,252,245,.94) 76%,rgba(248,252,245,0) 100%)}
+.gwb-om-phase{position:absolute;inset:0;display:flex;align-items:center;white-space:nowrap;opacity:0;color:#526f5d;font:600 11px/1.3 system-ui,sans-serif;letter-spacing:.01em;animation-duration:18s;animation-timing-function:linear;animation-iteration-count:infinite}
+.gwb-om-phase-1{animation-name:gwbOmFrame1}.gwb-om-phase-2{animation-name:gwbOmFrame2}.gwb-om-phase-3{animation-name:gwbOmFrame3}.gwb-om-phase-4{animation-name:gwbOmFrame4}
+.gwb-om-flight{position:absolute;top:0;left:218px;right:262px;height:50px;min-width:0;pointer-events:none}
+.gwb-om-route{position:absolute;inset:2px 0 0;width:100%;height:44px;opacity:.65}
+.gwb-om-sheet{position:absolute;top:4px;left:0;width:86px;height:42px;opacity:0;filter:drop-shadow(0 1px 2px #4351592e);animation:gwbOmFly 18s cubic-bezier(.33,.12,.39,1) infinite;will-change:left,opacity,transform}
+
+.gwb-om-card{position:relative;display:flex;align-items:center;gap:3px;box-sizing:border-box;width:86px;height:38px;padding:3px;border:1px solid #d4e2d3;border-radius:5px;background:#fff;box-shadow:0 2px 5px #43515918;overflow:hidden}
+.gwb-om-card-photo{position:relative;display:grid;place-items:center;flex:0 0 32px;width:32px;height:30px;overflow:hidden;border-radius:3px;background:#f4f7f5}
+.gwb-om-doc-icon{color:#9bb28c;font-size:17px}
+.gwb-om-card-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;display:none}
+.gwb-om-card-photo img.gwb-om-loaded{display:block}
+.gwb-om-card-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;text-align:left}
+.gwb-om-card-copy small{font:700 6px/1 system-ui,sans-serif;color:#7b9c49}
+.gwb-om-card-copy b{font:650 7px/1.15 system-ui,sans-serif;color:#435159;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gwb-om-card-check{position:absolute;right:2px;top:2px;display:grid;place-items:center;width:10px;height:10px;border-radius:50%;background:#81b315;color:#fff;font-size:8px}
+
+.gwb-om-sheet-1{animation-delay:0s;--flier-offset:0px}.gwb-om-sheet-2{animation-delay:.3s;--flier-offset:-4px}.gwb-om-sheet-3{animation-delay:.6s;--flier-offset:4px}
+.gwb-om-success{position:absolute;right:248px;top:15px;display:flex;align-items:center;gap:4px;opacity:0;white-space:nowrap;font:600 10px system-ui,sans-serif;color:#6c9343;animation:gwbOmSuccess 18s ease-in-out infinite;pointer-events:none}
+.gwb-om-success-icon{display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:#81b315;color:#fff;font-size:10px}
+.gwb-om-portrait:hover{background:#d8eec22a}.gwb-om-portrait:focus-visible{outline:2px solid #81b315;outline-offset:-2px;border-radius:8px}
+.navrow:has(>.gwb-orders-motion)>.navlinks{position:absolute;right:12px;top:50%;z-index:10;transform:translateY(-50%);display:flex;align-items:center;gap:7px;padding:4px 9px;border:1px solid #e2e9df;border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 1px 6px #44525a12}
+.navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:11px;line-height:17px;white-space:nowrap;color:#5c6e6c}
+/* Keep finished layouts moving during all four animation stages. Previously
+   they were invisible for 69% (~12.4 s) of each cycle, which looked frozen. */
+@keyframes gwbOmFly{
+  0%,6%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  10%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  21%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  24%,25%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+  25.01%,31%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  35%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  46%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  49%,50%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+  50.01%,56%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  60%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  71%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  74%,75%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+  75.01%,81%{left:0;opacity:0;transform:translateY(3px) rotate(-9deg) scale(.72)}
+  85%{left:12%;opacity:1;transform:translateY(0) rotate(-4deg) scale(.9)}
+  96%{left:calc(100% - 86px);opacity:1;transform:translateY(var(--flier-offset,0px)) rotate(1deg)}
+  99%,100%{left:calc(100% - 86px);opacity:0;transform:scale(.93)}
+}
+@keyframes gwbOmSuccess{0%,49%{opacity:0}55%,69%{opacity:1}76%,100%{opacity:0}}
+@keyframes gwbOmBulbLight{0%,2%{filter:none;transform:scale(.82)}7%,12%{filter:drop-shadow(0 0 3px #d3e95b);transform:scale(1.04)}17%,100%{filter:none;transform:scale(.95)}}
+@keyframes gwbOmBulbRays{0%,3%{opacity:0}7%,12%{opacity:1}17%,100%{opacity:0}}
+@keyframes gwbOmBrushWrite{0%,16%{stroke-dashoffset:44}44%,100%{stroke-dashoffset:0}}
+@keyframes gwbOmBrushMove{0%,16%{transform:translate(0,0)}44%,100%{transform:translate(11px,-4px)}}
+@keyframes gwbOmOkPop{0%,48%{opacity:.35;transform:scale(.7)}56%,70%{opacity:1;transform:scale(1)}76%,100%{opacity:1;transform:scale(1)}}
+@keyframes gwbOmSendArrow{0%,75%{transform:translate(-3px,3px);opacity:.25}89%{transform:translate(3px,-3px);opacity:1}97%,100%{transform:translate(5px,-5px);opacity:0}}
+
+@media(max-width:1060px){
+ .gwb-om-flight{left:218px;right:240px}
+ .gwb-om-production{left:216px;width:170px}
+ .gwb-om-phase{font-size:10px}
+ .navrow:has(>.gwb-orders-motion)>.navlinks{right:12px}
+ .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:10px}
+ .gwb-om-success{right:218px;font-size:0}
+}
+@media(max-width:760px){
+ .gwb-om-portrait{left:5px;width:70px;height:49px}
+ .gwb-om-portrait img{width:70px;height:49px}
+ .gwb-om-workstation{left:70px;width:102px}
+ .gwb-om-laptop{height:49px;width:auto}
+ .gwb-om-screen-sequence{left:36px;top:11px}
+ .gwb-om-production{display:none}
+ .gwb-om-flight{left:171px;right:190px}
+ .gwb-om-success{display:none}
+ .navrow:has(>.gwb-orders-motion)>.navlinks{right:8px;gap:4px;padding:3px 6px}
+ .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:9px}
+}
+@media(max-width:530px){
+ .navrow:has(>.gwb-orders-motion)>.navlinks{right:5px;max-width:90px;overflow:hidden}
+ .navrow:has(>.gwb-orders-motion)>.navlinks a{font-size:9px}
+ .navrow:has(>.gwb-orders-motion)>.navlinks a:last-child{display:none}
+ .gwb-om-flight{left:164px;right:120px}
+ .gwb-om-sheet{width:68px;height:35px;top:9px}.gwb-om-card{width:68px;height:35px}.gwb-om-card-copy{display:none}
+ .gwb-om-workstation{left:61px;width:100px}
+ .gwb-om-laptop{width:auto}
+ .gwb-om-portrait{left:0;width:61px}
+ .gwb-om-portrait img{width:61px}
+}
+/* Header animation always runs; no pause control is rendered. */
+
+</style><link rel="stylesheet" href="./assets/editor-mockup-transition.css?v=1"><script src="./assets/editor-mockup-transition.js?v=2"></script><link rel="stylesheet" href="./assets/printcheck-vision-ui.css?v=20261116-1"></head><body><div class="app"><header class="site-header"><div class="topbar"><div class="brand"><span class="mark" aria-hidden="true">М</span><span>Макетная</span><small>редактор макетов для gifts.ru</small></div><button id="mockupModeButton" type="button" title="Открыть редактор мокапов" hidden>Редактор мокапов</button><button id="accountButton" class="account-button" type="button">Войти</button><button id="modeToggle" class="mode-toggle" type="button" aria-pressed="true" hidden>Подробный режим</button></div><nav class="navrow" aria-label="Ссылки на gifts.ru"><div class="gwb-orders-motion" id="gwbOrdersMotion" data-gender="female" role="group" aria-label="Готовые макеты вылетают из ноутбука дизайнера. Выбор персонажа">
+  <div class="gwb-om-background" aria-hidden="true"></div>
+  <button class="gwb-om-portrait" id="gwbMotionCharacter" type="button" aria-label="Показать мужского персонажа" title="Сменить персонажа">
+    <span class="gwb-om-persona gwb-om-persona-female" aria-hidden="true">
+      <span class="gwb-om-frame gwb-om-frame-1"></span><span class="gwb-om-frame gwb-om-frame-2"></span><span class="gwb-om-frame gwb-om-frame-3"></span><span class="gwb-om-frame gwb-om-frame-4"></span>
+    </span>
+    <span class="gwb-om-persona gwb-om-persona-male" aria-hidden="true">
+      <span class="gwb-om-frame gwb-om-frame-1"></span><span class="gwb-om-frame gwb-om-frame-2"></span><span class="gwb-om-frame gwb-om-frame-3"></span><span class="gwb-om-frame gwb-om-frame-4"></span>
+    </span>
+  </button>
+  <div class="gwb-om-workstation" aria-hidden="true"><svg class="gwb-om-laptop" viewBox="0 0 106 52" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 3h73a4 4 0 0 1 4 4v34H13V7a4 4 0 0 1 4-4Z" fill="#435159" stroke="#35454c"/><rect x="17" y="7" width="73" height="30" rx="2" fill="#f5faf4"/><path d="M20 11h17m-17 4h13" stroke="#cbd8cf" stroke-width="1.2" stroke-linecap="round"/><rect x="39" y="11" width="40" height="23" rx="2" fill="#eaf6dc" stroke="#86b135" stroke-dasharray="2 2"/><path d="M5 42h96l-7 6H12l-7-6Z" fill="#9da9aa" stroke="#62757b" stroke-width=".8"/><path d="M41 42h25l3 2H39Z" fill="#f1f5f4"/><circle cx="53" cy="5" r=".75" fill="#c6d1d0"/></svg><span class="gwb-om-screen-sequence" aria-hidden="true">
+    <span class="gwb-om-screen-icon gwb-om-screen-icon-1" data-screen-stage="idea">
+      <svg viewBox="0 0 36 23" xmlns="http://www.w3.org/2000/svg"><g class="gwb-om-bulb-glow">
+        <path d="M18 4a7 7 0 0 0-4.5 12.3c1.1.9 1.5 1.8 1.5 2.7h6c0-1.1.4-1.8 1.5-2.7A7 7 0 0 0 18 4Z" fill="#eaf6bd" stroke="#81b315" stroke-width="1.4"/>
+        <path d="M16 20h4m-3 2h2" stroke="#628b16" stroke-width="1.2" stroke-linecap="round"/>
+        <g class="gwb-om-bulb-rays" stroke="#9cc62f" stroke-width="1.4" stroke-linecap="round"><path d="M18 1v2m-9 8H7m22 0h-2M11 4l-2-2m16 2 2-2"/></g>
+      </g></svg>
+    </span>
+    <span class="gwb-om-screen-icon gwb-om-screen-icon-2" data-screen-stage="draw">
+      <svg viewBox="0 0 36 23" xmlns="http://www.w3.org/2000/svg">
+        <path class="gwb-om-brush-trace" d="M6 17C9 11 15 9 21 12S30 14 32 6" fill="none" stroke="#81b315" stroke-width="2.2" stroke-linecap="round"/>
+        <g class="gwb-om-brush-tip"><path d="m10 14 7-9 4 3-9 8-4 1z" fill="#53696d"/><path d="m8 17 4-1-2-3z" fill="#8cb94f"/><path d="m17 5 2-2 4 3-2 2z" fill="#b5c7ba"/></g>
+      </svg>
+    </span>
+    <span class="gwb-om-screen-icon gwb-om-screen-icon-3" data-screen-stage="ready">
+      <svg viewBox="0 0 36 23" xmlns="http://www.w3.org/2000/svg">
+        <g class="gwb-om-ok-pop"><circle cx="18" cy="11.5" r="10.2" fill="#81b315"/><text x="18" y="14.5" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" font-weight="700" fill="#fff">OK</text></g>
+      </svg>
+    </span>
+    <span class="gwb-om-screen-icon gwb-om-screen-icon-4" data-screen-stage="send">
+      <svg viewBox="0 0 36 23" xmlns="http://www.w3.org/2000/svg">
+        <path d="M7 3h15l5 5v12H7z" fill="#fff" stroke="#839d85" stroke-width="1.3"/><path d="M22 3v5h5M10 11h8m-8 3h6" fill="none" stroke="#c9d4c8" stroke-width="1.1"/>
+        <g class="gwb-om-send-arrow"><path d="M16 18 29 5m-7 0h7v7" fill="none" stroke="#81b315" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></g>
+      </svg>
+    </span>
+  </span></div>
+  <div class="gwb-om-production" aria-hidden="true">
+    <span class="gwb-om-phase gwb-om-phase-1">У меня идея!</span>
+    <span class="gwb-om-phase gwb-om-phase-2">Делаю макет!</span>
+    <span class="gwb-om-phase gwb-om-phase-3">Макет готов!</span>
+    <span class="gwb-om-phase gwb-om-phase-4">Отправляю в печать!</span>
+  </div>
+  <div class="gwb-om-flight" aria-hidden="true">
+    <svg class="gwb-om-route" viewBox="0 0 1000 48" preserveAspectRatio="none"><path d="M0 25C135 4 268 43 400 24S780 4 1000 24" fill="none" stroke="#b7d68a" stroke-width="1.3" stroke-dasharray="5 7"/><path d="m987 18 13 6-13 5" fill="none" stroke="#95ba5a" stroke-width="1.5"/></svg>
+    <span class="gwb-om-sheet gwb-om-sheet-1" aria-hidden="true"><span class="gwb-om-card"><span class="gwb-om-card-photo"><span class="gwb-om-doc-icon">▧</span><img alt="" loading="lazy" decoding="async"></span><span class="gwb-om-card-copy"><small>ЭСКИЗ</small><b>Товар заказа</b></span><span class="gwb-om-card-check">✓</span></span></span><span class="gwb-om-sheet gwb-om-sheet-2" aria-hidden="true"><span class="gwb-om-card"><span class="gwb-om-card-photo"><span class="gwb-om-doc-icon">▧</span><img alt="" loading="lazy" decoding="async"></span><span class="gwb-om-card-copy"><small>ЭСКИЗ</small><b>Товар заказа</b></span><span class="gwb-om-card-check">✓</span></span></span><span class="gwb-om-sheet gwb-om-sheet-3" aria-hidden="true"><span class="gwb-om-card"><span class="gwb-om-card-photo"><span class="gwb-om-doc-icon">▧</span><img alt="" loading="lazy" decoding="async"></span><span class="gwb-om-card-copy"><small>ЭСКИЗ</small><b>Товар заказа</b></span><span class="gwb-om-card-check">✓</span></span></span>
+  </div>
+  <div class="gwb-om-success" aria-hidden="true"><span class="gwb-om-success-icon">✓</span><span>Готовые макеты</span></div>
+  
+  
+</div><div class="navlinks"><a href="https://gifts.ru/catalog/" target="_blank" rel="noopener noreferrer">Каталог gifts.ru ↗</a><a href="https://gifts.ru/nanesenie-logotipa/specifications" target="_blank" rel="noopener noreferrer">Технические требования ↗</a></div></nav></header><div id="directGithubNotice" hidden style="margin:0;padding:10px 16px;background:#fff4d8;border-bottom:1px solid #e4c56a;color:#4c4635;font:13px/1.45 system-ui"><strong>Режим без доступа к заказам.</strong> Эта страница открыта напрямую с GitHub Pages. Редактор мокапов и ручная загрузка файлов доступны, но для чтения корзины и заказов gifts.ru откройте <a href="https://gifts.ru/" target="_blank" rel="noopener">gifts.ru</a> и запустите независимую «Макетную + мокапы» через launcher.</div><main class="gwb-orders-full"><aside class="rail"><section class="panel" id="orderPanel"><div id="orderBrowser"><h1>Заказы и шаблоны</h1><label class="file">Открыть сохранённый проект <input id="project" type="file" accept=".zip,application/zip"></label><p id="orderIntro" class="help">Войдите в свой аккаунт gifts.ru, затем введите номер существующего заказа. Шаблоны выбранных нанесений загрузятся сразу в редактор.</p><details id="giftsLogin" class="connection"><summary>Вход в gifts.ru</summary><form id="loginForm"><label>Логин <input id="giftsUser" name="login" autocomplete="username" required></label><label>Пароль <input id="giftsPassword" name="password" type="password" autocomplete="current-password" required></label><label>Код компании <input id="giftsCode" name="code" type="text" maxlength="8" value="s1" autocomplete="off"></label><p class="help">Если вы не дилер, оставьте код пустым. Пароль не сохраняется приложением.</p><button id="loginButton" type="submit">Войти в gifts.ru</button></form><button id="logoutButton" type="button" class="ghost" hidden>Завершить сеанс</button><p id="loginStatus" class="help" role="status"></p></details><div id="basketBox" class="basket-list" hidden><div class="basket-head"><strong>Корзины и выбранные нанесения</strong><button id="refreshBasket" class="ghost icon-button" type="button" aria-label="Обновить корзины" title="Обновить корзины">↻</button></div><p id="basketStatus" class="help" role="status"></p><div id="basketOrders"></div></div><label id="manualOrderLabel">Номер заказа <input id="order" type="text" inputmode="numeric" autocomplete="off" placeholder="Например, 7976119"></label><button id="loadOrder" class="primary" type="button">Получить шаблоны заказа</button><div id="orderLoading" class="order-loading" role="status" aria-live="polite" hidden><span class="loading-title">Загрузка шаблонов gifts.ru</span><progress id="orderProgress" max="100"></progress><span id="orderProgressText">Подключаюсь к заказу…</span></div><p id="orderStep" class="help" hidden>Не удалось получить шаблоны.</p><details id="staticTransfer" class="connection" open><summary>Передать заказ из gifts.ru</summary><p class="help">Можно открыть PDF заказа вручную. Передача через закладку также доступна для браузеров с панелью закладок.</p><a id="transferBookmark" class="bookmark" href="#">Передать шаблоны</a><p class="help">Если закладки недоступны, скачайте PDF заказа на gifts.ru и откройте его здесь. Передача не оформляет и не запускает заказ.</p><label class="file">Открыть шаблон PDF или SVG вручную <input id="manualTemplate" type="file" accept=".pdf,.svg,application/pdf,image/svg+xml"></label></details><button id="resumeEditor" class="ghost" type="button" hidden>Вернуться к открытому макету</button></div><div id="orderEditor" hidden><div id="assetReadiness" class="asset-readiness" role="status" aria-live="polite"><div id="templateReadinessRow" class="asset-readiness-row" data-state="waiting"><strong>Шаблон</strong><progress id="templateLoadProgress" max="100" value="0"></progress><span id="templateLoadText">Ожидание шаблона</span></div><div id="logoReadinessRow" class="asset-readiness-row" data-state="waiting"><strong>Логотип</strong><progress id="logoLoadProgress" max="100" value="0"></progress><span id="logoLoadText">Ожидание логотипа</span></div></div><button id="backToOrders" class="back-link" type="button">← Назад к списку заказов</button><h1 id="editorTitle">Редактирование макета</h1><div class="article-card"><div class="article-picker"><div id="orderTemplatesBox" hidden><span class="full-label">Нанесения из заказа</span><span class="simple-label">Шаг 1. Выберите артикул</span><details id="orderTemplatePicker" class="template-picker"><summary id="orderTemplateSummary"><span id="orderTemplateSummaryText">Выберите артикул</span></summary><div id="orderTemplateList" class="template-options" role="group" aria-label="Артикулы заказа"></div></details><select id="orderTemplates" hidden aria-hidden="true" tabindex="-1"></select></div></div></div><div id="orderFieldChoiceBox" class="field-choice step-card step2-card" hidden><label for="orderFieldChoice"><span class="full-label">В какое поле добавить логотип</span><span class="simple-label">Шаг 2. Выберите место для логотипа</span><select id="orderFieldChoice"><option value="">Выберите поле</option></select></label><p id="fieldChoiceHint" class="help" role="status"></p></div><label class="file"><span class="full-label">Логотип для выбранного поля: PDF, AI, SVG, PNG или JPG</span><span class="simple-label">Шаг 3. Добавьте логотип</span><input id="artwork" type="file" accept=".pdf,.ai,.cdr,.eps,.svg,.png,.jpg,.jpeg,application/pdf,image/svg+xml,image/png,image/jpeg"><span id="artworkName">Выбрать файл</span></label><div id="transformControls" class="transform-controls"><div class="row"><button id="rotateLeft" type="button" disabled>↶ Повернуть</button><button id="rotateRight" type="button" disabled>Повернуть ↷</button></div><label>Угол, ° <input id="rotation" type="number" min="-360" max="360" step="1" value="0" disabled></label><label class="check"><input id="clipToField" type="checkbox" disabled> Обрезать по границе поля</label><p class="help">Часть логотипа за границей поля будет удалена из PDF. Проверьте результат перед скачиванием.</p></div><div id="simpleControls" class="simple-controls"><button id="simpleDraw" class="ghost" type="button">Обвести поле на шаблоне</button><button id="simpleFit" class="ghost" type="button" disabled>Подогнать под поле</button><button id="simpleCenter" class="ghost" type="button" disabled>По центру</button><button id="simpleFill" class="ghost" type="button" disabled>Добавить логотип в остальные поля</button><div id="step4Box" class="step-card step4-card" hidden><label class="check" hidden style="display:none"><input id="preflightMarkers" type="checkbox" checked> Показать возможные проблемные участки</label><p id="simpleChecks" class="help" role="status"></p><div id="confirmErrorsBox" class="error-confirm" hidden><label class="check"><input id="confirmErrors" type="checkbox"> Подтверждаю скачивание макета с ошибками для последующей отправки</label><p class="help">Макет может не соответствовать требованиям выбранного нанесения.</p></div><button id="simpleExport" class="primary" type="button" disabled>Шаг 4. Скачать готовый макет</button><button id="downloadLayoutMockup" class="primary" type="button" hidden disabled>Скачать макет и мокап</button><p class="help">Для другого логотипа выберите другое поле и загрузите файл ещё раз.</p></div></div><details class="metadata"><summary>Данные нанесения и замена шаблона</summary><label>Артикул <input id="article" type="text" placeholder="Например, 15255"></label><label>Вид нанесения <input id="method" type="text" placeholder="Код или название с сайта"></label><label class="file">Шаблон PDF или SVG <input id="template" type="file" accept=".pdf,.svg,application/pdf,image/svg+xml"><span id="templateName">Выбрать файл</span></label></details><p class="help">Для PDF и AI с PDF-совместимым содержимым используется первая страница. CDR и EPS пока требуют экспорта в PDF в исходной программе. В разных полях можно разместить разные файлы.</p><div class="row"><button id="prevPage" class="ghost" title="Предыдущая страница">←</button><span id="pageNumber">Страница —</span><button id="nextPage" class="ghost" title="Следующая страница">→</button></div></div></section><section class="panel" id="fieldsPanel" hidden><h2>Поле нанесения</h2><p class="help">Если полей несколько, выберите нужное в списке выше или коснитесь его рамки на шаблоне. Также можно выделить поле вручную. Перемещайте нанесение внутри поля; круг в углу меняет размер.</p><div class="row"><button id="drawField">Выделить поле</button><button id="clearField" class="ghost">Сбросить</button></div><label>Поля из шаблона<select id="fields"><option value="">Загрузите шаблон</option></select></label><div id="fieldSize" class="stat">Поле не выбрано</div><h2>Нанесение</h2><div class="row"><button id="fit" class="ghost">Вписать в поле</button><button id="center" class="ghost">Центрировать</button></div><div class="row"><label class="mini">Ширина, мм<input id="width" type="number" min="0.01" step="0.1"></label><label class="mini">Высота, мм<input id="height" type="number" min="0.01" step="0.1"></label></div><label class="check"><input type="checkbox" id="lockRatio" checked> Сохранять пропорции</label><div id="position" class="stat">Загрузите нанесение</div><h2>Логотипы в макете</h2><div id="placementCount" class="stat">Добавлено логотипов: 0</div><div id="placementsList" class="placements-list"></div><button id="fillEmpty" class="ghost" type="button" disabled>Добавить текущее лого во все пустые поля</button><button id="removePlacement" class="ghost" type="button" disabled>Удалить логотип из выбранного поля</button></section><section class="panel" id="checksPanel" hidden><h2>Проверка</h2><label class="mini">Охранное поле, мм <input id="guard" type="number" min="0" step="0.1" placeholder="Из требования сайта"></label><label class="mini">Мин. разрешение, ppi <input id="minDpi" type="number" min="1" step="1" placeholder="Из требования сайта"></label><details><summary>Требования из шаблона</summary><p id="requirementsText" class="help">Загрузите PDF выбранного нанесения.</p><a href="https://gifts.ru/nanesenie-logotipa/specifications" target="_blank" rel="noopener">Требования gifts.ru ↗</a></details><div id="checks" aria-live="polite" class="checks"><p>Загрузите шаблон и нанесение.</p></div><button id="export" class="primary" disabled>Скачать единый PDF-макет</button><button id="saveProject" class="ghost" type="button" disabled>Сохранить проект и исходники</button><div id="orderAttachment" class="order-attachment" hidden><h2>Прикрепить макет к заказу</h2><button id="prepareOrderPdf" class="ghost" type="button" disabled>Скачать PDF для заказа</button><a id="openGiftOrder" class="bookmark" target="_blank" rel="noopener noreferrer">Открыть заказ на gifts.ru ↗</a><p class="help">После скачивания прикрепите PDF в разделе «Макеты для заказа» на gifts.ru. Отправка заказа в работу здесь не выполняется.</p></div><a id="downloadResult" class="bookmark" hidden>Скачать архив</a><p id="exportHint" class="help">Один PDF со всеми выбранными полями. Отдельно можно сохранить редактируемый проект и исходники. PDF-вектор сохраняется; SVG преобразуется в векторный PDF. Растр не уменьшается. Цветопрофили и сложные эффекты требуют отдельной проверки.</p></section></aside><section class="workspace order-waiting" aria-label="Рабочее поле"><div id="orderWaitingWorkspace" class="order-waiting-screen" role="status" aria-live="polite"><div class="order-waiting-card"><div class="order-waiting-icon" aria-hidden="true">▧</div><strong>Ожидание выбора заказа</strong><span>Выберите заказ в списке слева. После открытия заказа здесь появится шаблон и рабочее поле.</span></div></div><div class="toolbar"><div><strong id="status">Ожидание шаблона</strong><span id="dimensions"></span><span id="selectedFieldSize" class="selected-field-size" hidden></span></div><div class="row template-nav"><span id="templatePickHint" class="template-pick-hint">Выберите нужное место нанесения прямо на шаблоне</span><button id="zoomPage" class="ghost" hidden>Шаблон целиком</button></div></div><div id="editorStep3" class="workspace-step workspace-step3" hidden><strong>Шаг 3. Добавьте логотип</strong><span>Загрузите файл и разместите логотип. Для поворота потяните круглый маркер ↻ над логотипом; Shift — шаг 15°, Esc — отмена.</span></div><div id="fieldLogoTools" class="stage-logo-tools" hidden aria-label="Инструменты логотипа"><button id="editorAddLogo" class="ghost primary-tool" type="button">Добавить логотип</button><button id="editorOpenLogoEditor" class="ghost" type="button" title="Создать или изменить SVG, растровое изображение и текст непосредственно в Макетной">Редактор логотипа</button><button id="editorUndo" class="ghost" type="button" title="Отменить изменение логотипа (Ctrl+Z)" aria-label="Отменить изменение логотипа" disabled>↶ Undo</button><button id="editorRedo" class="ghost" type="button" title="Повторить изменение логотипа (Ctrl+Y / Ctrl+Shift+Z)" aria-label="Повторить изменение логотипа" disabled>↷ Redo</button><button id="editorFit" class="ghost" type="button" disabled>Подогнать</button><button id="editorCenter" class="ghost" type="button" disabled>Центровать</button><label class="stage-angle">Угол <input id="editorAngle" type="number" min="-360" max="360" step="1" value="0" disabled><span>°</span></label><button id="editorRotateLeft" class="ghost" type="button" title="Повернуть логотип на 90° влево" disabled>↶ 90°</button><button id="editorRotateRight" class="ghost" type="button" title="Повернуть логотип на 90° вправо" disabled>↷ 90°</button><label class="stage-clip"><input id="editorClip" type="checkbox" disabled> Обрезать по полю</label><button id="editorRemoveLogo" class="ghost danger-tool" type="button" title="Удалить логотип из выбранного места нанесения" disabled>Удалить лого</button></div><div id="stageScroll"><div id="stage"><canvas id="templateCanvas"></canvas><canvas id="overlay"></canvas><div id="empty"><div class="emptyIcon">▧</div><strong>Шаблон появится здесь</strong><span>PDF или SVG, созданный на gifts.ru</span></div></div></div></section></main></div><div class="gwb-build-versions" aria-label="Версии Макетной и PrintCheck"><span id="maketnayaVersion">Макетная rcc386ac1</span><span id="printcheckVersion">PrintCheck v25 re1f43fb8</span></div><div id="mockupShell" hidden aria-label="Редактор мокапов"><div id="mockupShellBar"><div class="mockup-shell-topbar"><div class="mockup-shell-brand"><span class="mockup-shell-mark" aria-hidden="true">М</span><span>Макетная</span><small>редактор мокапов для gifts.ru</small></div></div><div class="mockup-shell-navrow"><div class="mockup-shell-nav-left"><button id="mockupBackButton" type="button">← Макетная</button><strong>РЕДАКТОР МОКАПОВ</strong></div><span>сопоставление фотографий, полей конструктора и нанесения</span></div></div><iframe id="mockupFrame" title="Редактор мокапов" src="https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup.html"></iframe></div><script>
+(()=>{
+  const open=document.getElementById("mockupModeButton"),combo=document.getElementById("downloadLayoutMockup"),shell=document.getElementById("mockupShell"),back=document.getElementById("mockupBackButton"),frame=document.getElementById("mockupFrame"),simpleExport=document.getElementById("simpleExport"),status=document.getElementById("status");
+  if(!open||!combo||!shell||!back||!frame)return;
+  const motion=window.gwbCreateMockupTransition?.({shell,open,back});
+  // Keep the mockup entry out of the compact order list even if the previous
+  // order's template remains cached and reports templateReady=true.
+  const orderEditorPane=document.getElementById("orderEditor");
+  const editorWorkspace=document.querySelector(".workspace");
+  const isTemplateOrFieldOpen=()=>!!orderEditorPane&&!orderEditorPane.hidden&&
+    editorWorkspace?.dataset.orderState!=="waiting"&&!editorWorkspace?.classList.contains("order-waiting");
+  const targetOrigin="https://tohaa28.github.io";
+  const registryUrls=["https://raw.githubusercontent.com/tohaa28/tohaa28.github.io/gifts-layout-workbench-mockups-source/mockup-profiles.json","https://tohaa28.github.io/gifts-layout-workbench-mockups/mockup-profiles.json"];
+  let registry={profiles:[]},registryPromise=null,lastProfiles=[],busy=false;
+
+  const placeKey=v=>String(v||"").trim().toLocaleLowerCase("ru-RU").replace(/ё/g,"е").replace(/\s+/g," ").replace(/\s*\[[^\]]*\]\s*$/,"").replace(/\s*\([^)]*(?:pantone|black|white|cmyk|rgb)[^)]*\)\s*$/i,"").trim();
+  const sizeScore=(profile,state)=>{
+    const cm=profile?.field?.sizeCm;if(!Array.isArray(cm)||cm.length!==2||!(state.fieldW>0&&state.fieldH>0))return 0;
+    const a=[Number(cm[0])*10,Number(cm[1])*10],b=[Number(state.fieldW),Number(state.fieldH)];
+    const err=(x,y)=>Math.max(Math.abs(x[0]-y[0])/Math.max(1,x[0]),Math.abs(x[1]-y[1])/Math.max(1,x[1]));
+    const e=Math.min(err(a,b),err([a[1],a[0]],b));
+    return e<=.12?20-Math.round(e*50):-1000;
+  };
+  const photoKey=p=>{
+    const raw=String(p?.photo?.id||p?.photo?.url||p?.photo?.name||"").trim().toLowerCase();
+    if(!raw)return "";
+    try{return decodeURIComponent(new URL(raw,location.href).pathname.split("/").pop()||raw).replace(/_(?:200x200|300x300|400|500)(?=\.)/i,"").replace(/\.[^.]+$/,"").toLowerCase()}catch{return raw}
+  };
+  const articleKey=v=>String(v||"").trim().toLocaleLowerCase("ru-RU");
+  const confirmedMappingCounts=()=>{
+    const counts=new Map();
+    for(const p of registry.profiles||[]){
+      if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))continue;
+      const key=articleKey(p.article);if(!key)continue;
+      counts.set(key,(counts.get(key)||0)+1);
+    }
+    return counts;
+  };
+  const decorateMockupMappingBadges=()=>{
+    const counts=confirmedMappingCounts();
+    for(const node of document.querySelectorAll("#orderTemplateList [data-article],#basketOrders [data-article]")){
+      const article=String(node.dataset.article||"").trim(),count=counts.get(articleKey(article))||0;
+      let badge=[...node.children].find(child=>child.classList?.contains("mockup-map-badge"))||null;
+      if(!count){
+        node.classList.remove("has-mockup-map");
+        badge?.remove();
+        node.removeAttribute("data-mockup-mapped");
+        node.removeAttribute("data-mockup-mapping-count");
+        if("mockupOriginalTitle" in node.dataset){
+          const original=node.dataset.mockupOriginalTitle;
+          if(original)node.setAttribute("title",original);else node.removeAttribute("title");
+          delete node.dataset.mockupOriginalTitle;
+        }
+        continue;
+      }
+      node.classList.add("has-mockup-map");
+      if(!badge){
+        badge=document.createElement("span");
+        badge.className="mockup-map-badge";
+        badge.setAttribute("aria-hidden","true");
+        node.append(badge);
+      }
+      const label=count===1?"Есть сохранённая привязка мокапа":`Есть сохранённые привязки мокапа: ${count}`;
+      badge.title=label;
+      node.setAttribute("data-mockup-mapped","true");
+      node.setAttribute("data-mockup-mapping-count",String(count));
+      const original=node.dataset.mockupOriginalTitle??node.getAttribute("title")??"";
+      if(!("mockupOriginalTitle" in node.dataset))node.dataset.mockupOriginalTitle=original;
+      node.setAttribute("title",original?original+" · "+label:label);
+    }
+  };
+  const findProfiles=state=>{
+    if(!state?.article)return [];
+    const matches=[];
+    for(const p of registry.profiles||[]){
+      if(!["confirmed","confirmed-auto","confirmed-manual"].includes(String(p.status||"")))continue;
+      if(String(p.article||"").trim()!==String(state.article||"").trim())continue;
+      const pv=String(p.variant||"").trim().toLowerCase(),sv=String(state.variant||"").trim().toLowerCase();
+      if(pv&&sv&&pv!==sv)continue;
+      const pp=placeKey(p.place||p.field?.place),sp=placeKey(state.place);
+      if(pp&&sp&&pp!==sp)continue;
+      const pi=String(p.field?.printId||"").trim().toLowerCase(),si=String(state.printId||"").trim().toLowerCase();
+      if(pi&&si&&pi!==si)continue;
+      const pa=String(p.field?.applicationId||"").trim().toLowerCase(),sa=String(state.applicationId||"").trim().toLowerCase();
+      if(pa&&sa&&pa!==sa)continue;
+      const ss=sizeScore(p,state);if(ss<0)continue;
+      let score=50+ss+Math.round(Number(p.confidence||0)*10);
+      if(pa&&sa&&pa===sa)score+=40;if(pi&&si&&pi===si)score+=30;if(pp&&sp&&pp===sp)score+=20;
+      if(p.status==="confirmed-manual")score+=5;
+      matches.push({profile:p,score});
+    }
+    matches.sort((a,b)=>b.score-a.score||String(b.profile.updatedAt||b.profile.confirmedAt||"").localeCompare(String(a.profile.updatedAt||a.profile.confirmedAt||"")));
+    const out=[],seen=new Set();
+    for(const m of matches){
+      const k=photoKey(m.profile)||JSON.stringify([m.profile.photo?.id,m.profile.photo?.url,m.profile.photo?.name]);
+      if(seen.has(k))continue;seen.add(k);out.push(m.profile);
+    }
+    return out;
+  };
+  const mockupWord=n=>{const a=Math.abs(Number(n))%100,b=a%10;return a>10&&a<20?"мокапов":b===1?"мокап":b>=2&&b<=4?"мокапа":"мокапов"};
+  const currentState=()=>{
+    try{
+      if(typeof window.gwbGetMockupState==="function"){
+        const state=window.gwbGetMockupState()||{};
+        const readiness=typeof window.gwbGetEditorReadiness==="function"?window.gwbGetEditorReadiness():null;
+        if(readiness&&typeof readiness==="object"){
+          state.templateReady=!!readiness.templateReady;
+          state.templateFieldCount=Number(readiness.templateFieldCount||0);
+        }
+        return state;
+      }
+    }catch{}
+    const count=Number((document.getElementById("placementCount")?.textContent.match(/Добавлено логотипов:\s*(\d+)/i)||[])[1]||0);
+    const fields=document.getElementById("orderFieldChoice");
+    const fieldCount=fields?[...fields.options].filter(option=>String(option.value||"").trim()!=="").length:0;
+    return{hasSelectedArticle:!!document.getElementById("article")?.value,article:document.getElementById("article")?.value||"",logoCount:count,templateReady:fieldCount>0,templateFieldCount:fieldCount,exportDisabled:!!simpleExport?.disabled};
+  };
+  const currentTargets=()=>{
+    try{
+      if(typeof window.gwbGetMockupTargets==="function"){
+        const targets=window.gwbGetMockupTargets();
+        if(Array.isArray(targets))return targets;
+      }
+    }catch(error){console.warn("Mockup targets unavailable",error)}
+    const state=currentState();
+    return Number(state?.logoCount)>0?[state]:[];
+  };
+  const collectProfileJobs=()=>{
+    const jobs=[],seen=new Set();
+    for(const target of currentTargets()){
+      for(const profile of findProfiles(target)){
+        const key=[target.fieldIndex,profile.field?.applicationId||profile.field?.printId||target.printId,photoKey(profile)].map(v=>String(v??"")).join("|");
+        if(seen.has(key))continue;seen.add(key);jobs.push({target,profile});
+      }
+    }
+    return jobs;
+  };
+  const loadRegistry=()=>registryPromise||(registryPromise=(async()=>{
+    let error=null;
+    for(const url of registryUrls)try{const r=await fetch(url+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);const data=await r.json();if(data?.schema!=="gifts-mockup-profile-registry/v1"||!Array.isArray(data.profiles))throw Error("Неверный реестр");registry=data;refresh();return data}catch(e){error=e}
+    console.warn("Mockup profile registry unavailable",error);return registry;
+  })());
+
+  const deliver=async (payload,transitionTicket)=>{
+    const child=frame.contentWindow;if(!child)return false;
+    try{if(typeof child.gwbApplyMockupHandoff==="function"){await child.gwbApplyMockupHandoff(payload);return true}}catch{}
+    try{child.postMessage({type:"gifts-mockup-handoff",payload,transitionTicket},location.origin==="null"?"*":location.origin);return "queued"}catch{}
+    try{child.postMessage({type:"gifts-mockup-handoff",payload,transitionTicket},targetOrigin);return "queued"}catch{}
+    return false;
+  };
+  const deliverError=message=>{const child=frame.contentWindow;if(!child)return;try{if(typeof child.gwbSetMockupStatus==="function"){child.gwbSetMockupStatus(message);return}}catch{}try{child.postMessage({type:"gifts-mockup-handoff-error",message},"*")}catch{}};
+  const sendHandoff=async()=>{
+    const ticket=motion?.ticket();let queued=false;
+    try{
+      const build=window.gwbBuildMockupHandoff,payload=typeof build==="function"?await build():null;
+      if(payload){motion?.present(payload,ticket);queued=(await deliver(payload,ticket))==="queued"}
+      else deliverError("Сначала выберите артикул и загрузите шаблон с полями.");
+    }catch(error){deliverError(error?.message||String(error))}
+    finally{if(!queued)motion?.ready(ticket)}
+  };
+  const show=()=>{if(open.hidden)return;if(motion){if(!motion.show())return}else{shell.hidden=false;document.documentElement.style.overflow="hidden";document.body.style.overflow="hidden"}setTimeout(sendHandoff,0)};
+  const hide=()=>{if(motion){motion.hide();return}shell.hidden=true;document.documentElement.style.overflow="";document.body.style.overflow="";window.dispatchEvent(new Event("resize"))};
+
+  function refresh(){
+    decorateMockupMappingBadges();
+    const state=currentState(),editorEligible=!!state?.templateReady&&Number(state.templateFieldCount)>0;
+    const openEligible=editorEligible&&isTemplateOrFieldOpen();
+    const mockupEligible=editorEligible&&Number(state.logoCount)>0;
+    const hideOpen=!openEligible;if(open.hidden!==hideOpen)open.hidden=hideOpen;
+    const jobs=mockupEligible?collectProfileJobs():[];
+    lastProfiles=jobs.map(job=>job.profile);
+    const count=jobs.length,hideCombo=!(mockupEligible&&count);if(combo.hidden!==hideCombo)combo.hidden=hideCombo;
+    const disableCombo=busy||!!state?.exportDisabled||!count;if(combo.disabled!==disableCombo)combo.disabled=disableCombo;
+    if(count)combo.textContent=count===1?"Скачать макет и мокап":`Скачать макет и ${count} ${mockupWord(count)}`;
+    else combo.textContent="Скачать макет и мокап";
+    if(editorEligible&&!registryPromise)loadRegistry();
+    if(!openEligible&&!shell.hidden)hide();
+  }
+
+  const waitForChild=async()=>{
+    for(let i=0;i<60;i++){const child=frame.contentWindow;try{if(child&&typeof child.gwbCreateMockupPng==="function"&&typeof child.gwbApplyMockupProfile==="function")return child}catch{}await new Promise(r=>setTimeout(r,50))}
+    throw new Error("Редактор мокапа ещё не готов.");
+  };
+  const safeName=v=>String(v||"макет").replace(/[^\p{L}\p{N}._-]+/gu,"_").replace(/^_+|_+$/g,"").slice(0,120)||"макет";
+
+  combo.addEventListener("click",async()=>{
+    if(busy)return;
+    const state=currentState(),jobs=collectProfileJobs();if(!jobs.length)return refresh();
+    if(typeof window.gwbBuildMockupHandoff!=="function"||typeof window.gwbCreateReadyLayoutPdf!=="function"){if(status)status.textContent="Экспорт ещё загружается. Повторите через секунду.";return}
+    busy=true;refresh();if(status)status.textContent=`Собираю PDF и ${jobs.length} ${mockupWord(jobs.length)}…`;
+    try{
+      const child=await waitForChild();
+      const pdf=await window.gwbCreateReadyLayoutPdf();
+      const zip=new JSZip();
+      zip.file(pdf.filename,new Uint8Array(await pdf.blob.arrayBuffer()));
+      let activeFieldKey="";
+      for(let i=0;i<jobs.length;i++){
+        const {target,profile}=jobs[i];
+        const fieldKey=String(target.fieldIndex);
+        if(fieldKey!==activeFieldKey){
+          const payload=typeof window.gwbBuildMockupHandoffForField==="function"
+            ?await window.gwbBuildMockupHandoffForField(target.fieldIndex)
+            :await window.gwbBuildMockupHandoff();
+          if(!payload)throw new Error("Не удалось получить данные поля "+String(target.place||target.fieldIndex+1));
+          await deliver(payload);
+          activeFieldKey=fieldKey;
+        }
+        if(status)status.textContent=`Создаю мокап ${i+1} из ${jobs.length}: ${target.place||"поле"}…`;
+        await child.gwbApplyMockupProfile(profile);
+        const png=await child.gwbCreateMockupPng();
+        const photo=safeName(profile.photo?.id||profile.photo?.name||String(i+1));
+        const place=safeName(profile.place||profile.field?.place||target.place||"place");
+        const name=safeName([state.article,place,`mockup_${String(i+1).padStart(2,"0")}`,photo].filter(Boolean).join("_"))+".png";
+        zip.file(name,new Uint8Array(await png.blob.arrayBuffer()));
+      }
+      await sendHandoff();
+      const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});
+      const a=document.createElement("a"),url=URL.createObjectURL(blob);
+      a.href=url;a.download=safeName([state.order,state.article,`макет_и_${jobs.length}_мокапов`].filter(Boolean).join("_"))+".zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
+      if(status)status.textContent=`Скачан ZIP: PDF-макет и ${jobs.length} ${mockupWord(jobs.length)} по всем заполненным полям.`;
+    }catch(error){if(status)status.textContent="Не удалось скачать макет и мокапы: "+(error?.message||String(error));console.error(error)}
+    finally{busy=false;refresh()}
+  });
+
+  open.addEventListener("click",show);back.addEventListener("click",hide);frame.addEventListener("load",()=>{sendHandoff();refresh()});
+  window.addEventListener("gwb-mockup-handoff-ready",()=>{sendHandoff();refresh()});
+  window.addEventListener("message",event=>{
+    if(event.source!==frame.contentWindow)return;
+    if(event.data?.type==="gifts-mockup-handoff-applied"){motion?.ready(event.data.transitionTicket);return}
+    if(event.data?.type==="gifts-mockup-handoff-request"){sendHandoff();return}
+    if(event.data?.type==="gifts-mockup-profile-registry-changed"&&event.data.profile){
+      const saved=event.data.profile;
+      const id=p=>[p.article,p.variant,p.place,p.photo?.id||p.photo?.url||p.photo?.name,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLowerCase()).join("|");
+      registry.profiles=(registry.profiles||[]).filter(p=>id(p)!==id(saved));
+      registry.profiles.unshift(saved);
+      refresh();
+      if(status)status.textContent="Новое сопоставление сохранено в Git и уже доступно для мокапов.";
+    }else if(event.data?.type==="gifts-mockup-profile-registry-deleted"&&event.data.profile){
+      const removed=event.data.profile;
+      const id=p=>[p.article,p.variant,p.place,p.photo?.id||p.photo?.url||p.photo?.name,p.field?.printId||p.field?.applicationId||p.field?.id].map(x=>String(x||"").trim().toLowerCase()).join("|");
+      registry.profiles=(registry.profiles||[]).filter(p=>id(p)!==id(removed));
+      refresh();
+      if(status)status.textContent="Привязка фотографии к полю удалена.";
+    }
+  });
+  window.addEventListener("keydown",e=>{if(e.key==="Escape"&&!shell.hidden)hide()});
+  const watch=(node,options)=>{if(node)new MutationObserver(refresh).observe(node,options)};
+  watch(document.getElementById("placementCount"),{subtree:true,childList:true,characterData:true});
+  watch(document.getElementById("orderTemplateSummaryText"),{subtree:true,childList:true,characterData:true});
+  watch(document.getElementById("orderTemplateList"),{subtree:true,childList:true});
+  watch(document.getElementById("basketOrders"),{subtree:true,childList:true});
+  watch(simpleExport,{attributes:true,attributeFilter:["disabled"]});
+  watch(orderEditorPane,{attributes:true,attributeFilter:["hidden"]});
+  watch(editorWorkspace,{attributes:true,attributeFilter:["class","data-order-state"]});
+  window.addEventListener("gwb-editor-readiness-changed",refresh);
+  document.addEventListener("change",refresh,true);document.addEventListener("input",refresh,true);
+  setInterval(refresh,500);loadRegistry();refresh();
+})();
+</script><script>
+(()=>{if(!/github\.io$/i.test(location.hostname))return;const n=document.getElementById("directGithubNotice");if(n)n.hidden=false;const intro=document.getElementById("orderIntro");if(intro)intro.textContent="Для заказов gifts.ru эта независимая версия должна быть запущена поверх gifts.ru. Здесь можно вручную открыть шаблон или перейти в редактор мокапов.";const status=document.getElementById("loginStatus");if(status)status.textContent="Прямой вход с GitHub Pages отключён: браузер не даёт этой странице читать защищённые заказы gifts.ru.";})();
+</script><script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  const templateButtons=["simpleDraw","drawField","clearField","prevPage","nextPage","zoomPage","editorAddLogo","mockupModeButton"];
+  const logoButtons=["rotateLeft","rotateRight","simpleFit","simpleCenter","simpleFill","fit","center","fillEmpty","removePlacement","editorFit","editorCenter","editorRotateLeft","editorRotateRight","editorRemoveLogo","simpleExport","downloadLayoutMockup","export","saveProject","prepareOrderPdf"];
+  let templateRequested=false,logoRequested=false,lastTemplateReady=false,lastLogoReady=false;
+
+  function editorReadiness(){
+    try{
+      const state=typeof window.gwbGetEditorReadiness==="function"?window.gwbGetEditorReadiness():null;
+      if(state&&typeof state==="object")return state;
+    }catch(error){console.warn("Editor readiness state unavailable",error)}
+    return null;
+  }
+  function templateReady(){
+    const internal=editorReadiness();
+    if(internal&&typeof internal.templateReady==="boolean")return internal.templateReady;
+
+    const name=String($("templateName")?.textContent||"").trim();
+    const hasName=!!name&&!/^Выбрать файл$/i.test(name);
+    if(!hasName)return false;
+
+    const hasRealOption=select=>!!select&&[...select.options].some(option=>{
+      const value=String(option.value||"").trim();
+      const label=String(option.textContent||"").trim();
+      return value!==""&&!/^(?:загрузите шаблон|выберите поле)$/i.test(label);
+    });
+    const hasDetectedField=hasRealOption($("fields"))||hasRealOption($("orderFieldChoice"));
+    const hasRenderedPage=/^Страница\s+\d+\s*\/\s*\d+/i.test(String($("pageNumber")?.textContent||"").trim());
+    const hasSelectedOrderTemplate=String($("orderTemplates")?.value||"").trim()!=="";
+    return hasDetectedField||hasRenderedPage||hasSelectedOrderTemplate;
+  }
+  function logoReady(){
+    const internal=editorReadiness();
+    if(internal&&typeof internal.logoReady==="boolean")return internal.logoReady;
+    const count=Number((($("placementCount")?.textContent||"").match(/(\d+)/)||[])[1]||0);
+    return count>0;
+  }
+  function lockButton(button,locked,reason){
+    if(!button)return;
+    button.classList.toggle("readiness-locked",locked);
+    if(locked){
+      button.setAttribute("aria-disabled","true");
+      button.dataset.readinessReason=reason||"Данные ещё загружаются";
+      if(!button.dataset.readinessTitle)button.dataset.readinessTitle=button.getAttribute("title")||"";
+      button.setAttribute("title",button.dataset.readinessReason);
+    }else{
+      button.removeAttribute("aria-disabled");
+      button.removeAttribute("data-readiness-reason");
+      if("readinessTitle" in button.dataset){
+        const old=button.dataset.readinessTitle;
+        if(old)button.setAttribute("title",old);else button.removeAttribute("title");
+        delete button.dataset.readinessTitle;
+      }
+    }
+  }
+  function setProgress(kind,ready,requested,textReady,textWaiting,textLoading){
+    const p=$(kind+"LoadProgress"),row=$(kind+"ReadinessRow"),text=$(kind+"LoadText");
+    if(!p||!row||!text)return;
+    if(ready){
+      p.value=100;row.dataset.state="ready";text.textContent=textReady;
+    }else if(requested){
+      p.removeAttribute("value");row.dataset.state="loading";text.textContent=textLoading;
+    }else{
+      p.value=0;row.dataset.state="waiting";text.textContent=textWaiting;
+    }
+  }
+  function sync(){
+    const tReady=templateReady(),lReady=logoReady();
+    const orderLoading=$("orderLoading");
+    const orderBusy=!!orderLoading && !orderLoading.hidden;
+    if(orderBusy&&!tReady)templateRequested=true;
+    if(tReady)templateRequested=false;
+    if(lReady)logoRequested=false;
+    setProgress("template",tReady,templateRequested,"Шаблон готов","Ожидание шаблона","Загрузка и подготовка шаблона…");
+    setProgress("logo",lReady,logoRequested,"Логотип готов","Ожидание логотипа","Загрузка и подготовка логотипа…");
+    for(const id of templateButtons)lockButton($(id),!tReady,"Дождитесь загрузки шаблона");
+    for(const id of logoButtons)lockButton($(id),!tReady||!lReady,!tReady?"Дождитесь загрузки шаблона":"Сначала загрузите логотип");
+    const becameReady=(!lastTemplateReady&&tReady)||(!lastLogoReady&&lReady);
+    lastTemplateReady=tReady;lastLogoReady=lReady;
+    if(becameReady&&typeof window.gwbRefreshEditorState==="function")queueMicrotask(()=>window.gwbRefreshEditorState());
+  }
+  document.addEventListener("click",event=>{
+    const button=event.target?.closest?.("button.readiness-locked");
+    if(!button)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const status=$("status");if(status)status.textContent=button.dataset.readinessReason||"Инструмент пока недоступен";
+  },true);
+  ["manualTemplate","template"].forEach(id=>$(id)?.addEventListener("change",()=>{templateRequested=true;sync();}));
+  $("artwork")?.addEventListener("change",()=>{logoRequested=true;sync();});
+  $("loadOrder")?.addEventListener("click",()=>{templateRequested=true;sync();});
+  window.addEventListener("gwb-editor-readiness-changed",sync);
+  const observer=new MutationObserver(sync);
+  for(const id of ["empty","placementCount","orderLoading","templateName","artworkName","status","fields","orderFieldChoice","pageNumber","orderTemplates"]){
+    const el=$(id);if(el)observer.observe(el,{attributes:true,childList:true,characterData:true,subtree:true});
+  }
+  setInterval(sync,350);
+  sync();
+})();
+</script><script>
+(()=>{
+  const intro=document.getElementById("orderIntro"),logout=document.getElementById("logoutButton");
+  if(!intro||!logout)return;
+  function syncOrderIntroAuthState(){
+    const authenticated=!logout.hidden;
+    intro.hidden=authenticated;
+    intro.dataset.authState=authenticated?"authenticated":"anonymous";
+  }
+  new MutationObserver(syncOrderIntroAuthState).observe(logout,{attributes:true,attributeFilter:["hidden"]});
+  window.gwbSyncOrderIntroAuthState=syncOrderIntroAuthState;
+  syncOrderIntroAuthState();
+})();
+</script><script>
+(()=>{
+  const workspace=document.querySelector(".workspace"),editor=document.getElementById("orderEditor"),waiting=document.getElementById("orderWaitingWorkspace");
+  if(!workspace||!editor||!waiting)return;
+  const managed=[workspace.querySelector(":scope > .toolbar"),workspace.querySelector(":scope > .workspace-step"),workspace.querySelector(":scope > .stage-logo-tools"),workspace.querySelector(":scope > #stageScroll")].filter(Boolean);
+  function clearOrderArtworkLayers(){
+    for(const id of ["overlay","detailOverlay"]){
+      const canvas=document.getElementById(id);
+      if(!canvas?.getContext)continue;
+      try{canvas.getContext("2d")?.clearRect(0,0,canvas.width,canvas.height)}catch{}
+    }
+    const errorOverlay=document.getElementById("logoErrorOverlay");
+    if(errorOverlay){
+      errorOverlay.hidden=true;
+      errorOverlay.dataset.errors="";
+    }
+    workspace.dataset.artworkVisualState="unloaded";
+  }
+  function restoreOrderArtworkLayers(){
+    workspace.dataset.artworkVisualState="active";
+    requestAnimationFrame(()=>{
+      try{window.gwbRefreshEditorState?.()}catch(error){console.warn("Editor redraw after order return failed",error)}
+    });
+  }
+  function syncOrderWorkspaceWaiting(){
+    const isWaiting=editor.hidden;
+    workspace.classList.toggle("order-waiting",isWaiting);
+    waiting.hidden=!isWaiting;
+    for(const node of managed){
+      node.inert=isWaiting;
+      if(isWaiting)node.setAttribute("aria-hidden","true");else node.removeAttribute("aria-hidden");
+    }
+    if(isWaiting)clearOrderArtworkLayers();else restoreOrderArtworkLayers();
+    workspace.dataset.orderState=isWaiting?"waiting":"open";
+  }
+  new MutationObserver(syncOrderWorkspaceWaiting).observe(editor,{attributes:true,attributeFilter:["hidden"]});
+  window.gwbSyncOrderWorkspaceWaiting=syncOrderWorkspaceWaiting;
+  window.gwbClearOrderArtworkLayers=clearOrderArtworkLayers;
+  syncOrderWorkspaceWaiting();
+})();
+</script>
+<script>
+/* The existing order reader stays authoritative; this only formats its DOM. */
+(()=>{
+  const layout=document.querySelector(".app>main");
+  const editor=document.getElementById("orderEditor");
+  const orders=document.getElementById("basketOrders");
+  if(!layout||!editor||!orders)return;
+
+  const workspace=layout.querySelector(":scope > .workspace");
+  const rail=layout.querySelector(":scope > .rail");
+  let showingOrders=editor.hidden,animationTimer=0,animationFrame=0;
+  const refreshEditorSize=()=>{
+    if(!editor.hidden){
+      window.dispatchEvent(new Event("resize"));
+      try{window.gwbRefreshEditorState?.()}catch{}
+    }
+  };
+  const updateLayout=()=>{
+    const picking=editor.hidden;
+    if(picking===showingOrders)return;
+    showingOrders=picking;
+    clearTimeout(animationTimer);
+    cancelAnimationFrame(animationFrame);
+    if(window.innerWidth<=780){
+      rail.style.removeProperty("width");
+      layout.classList.remove("gwb-orders-animating");
+      layout.classList.toggle("gwb-orders-full",picking);
+      if(!picking)requestAnimationFrame(refreshEditorSize);
+      return;
+    }
+    const from=rail.getBoundingClientRect().width;
+    layout.classList.add("gwb-orders-animating");
+    layout.classList.toggle("gwb-orders-full",picking);
+    rail.style.width=from+"px";
+    // Flush starting width after positioning the rail over the normal grid.
+    void rail.offsetWidth;
+    const target=picking?layout.clientWidth:Math.min(490,Math.max(317,window.innerWidth*.389));
+    animationFrame=requestAnimationFrame(()=>{rail.style.width=target+"px"});
+    animationTimer=setTimeout(()=>{
+      layout.classList.remove("gwb-orders-animating");
+      rail.style.removeProperty("width");
+      if(!picking)requestAnimationFrame(refreshEditorSize);
+    },560);
+  };
+  new MutationObserver(updateLayout).observe(editor,{attributes:true,attributeFilter:["hidden"]});
+  layout.classList.toggle("gwb-orders-full",showingOrders);
+
+  const detailRequests=new WeakMap();
+  const photoRequests=new WeakSet();
+  const visibleImages=typeof IntersectionObserver==="function"
+    ?new IntersectionObserver(entries=>{
+      for(const entry of entries)if(entry.isIntersecting){
+        visibleImages.unobserve(entry.target);
+        const fn=entry.target.__gwbLoadPhoto;
+        if(fn)void fn();
+      }
+    },{rootMargin:"160px"}):null;
+
+  const element=(tag,cls,value)=>{
+    const n=document.createElement(tag);
+    if(cls)n.className=cls;
+    if(value!==undefined)n.textContent=String(value);
+    return n;
+  };
+  function trustedImage(value){
+    if(!value)return "";
+    try{
+      const u=new URL(value,"https://gifts.ru/");
+      return u.protocol==="https:"&&/(^|\.)gifts\.ru$/i.test(u.hostname)?u.href:"";
+    }catch{return "";}
+  }
+  function proxyImage(img,thumb,order,itemId){
+    if(!/^\d{5,12}$/.test(order)||!/^\d{1,20}$/.test(String(itemId||""))||photoRequests.has(img))return;
+    photoRequests.add(img);
+    const load=async()=>{
+      if(!thumb.isConnected)return;
+      try{
+        const response=await fetch("/api/orders/"+order+"/items/"+itemId+"/photos/0",{cache:"force-cache"});
+        if(!response.ok||!/^image\//i.test(response.headers.get("content-type")||""))return;
+        const url=URL.createObjectURL(await response.blob());
+        if(!thumb.isConnected){URL.revokeObjectURL(url);return;}
+        img.addEventListener("load",()=>URL.revokeObjectURL(url),{once:true});
+        img.addEventListener("error",()=>URL.revokeObjectURL(url),{once:true});
+        img.src=url;
+      }catch{/* Missing artwork is displayed as a neutral placeholder. */}
+    };
+    thumb.__gwbLoadPhoto=load;
+    if(visibleImages)visibleImages.observe(thumb);
+    else void load();
+  }
+  function applyImage(row,src,order,itemId){
+    const thumb=row.querySelector(".gwb-basket-thumb");
+    if(!thumb)return;
+    const img=element("img");
+    img.alt="";
+    img.loading="lazy";
+    img.decoding="async";
+    const fallback=thumb.querySelector(".gwb-basket-placeholder");
+    img.addEventListener("load",()=>{img.style.opacity="1";if(fallback)fallback.hidden=true});
+    img.addEventListener("error",()=>{
+      img.style.opacity="0";if(fallback)fallback.hidden=false;
+      proxyImage(img,thumb,order,itemId);
+    });
+    thumb.append(img);
+    if(src)img.src=src;
+    else proxyImage(img,thumb,order,itemId);
+  }
+  function detailFor(card,order){
+    // The cache belongs to the rendered card, not the order number:
+    // basket refresh replaces cards, forcing a fresh read from gifts.ru.
+    if(!detailRequests.has(card)){
+      detailRequests.set(card,fetch("/api/orders/"+order,{cache:"no-store"})
+        .then(r=>{if(!r.ok)throw Error("Order unavailable");return r.json()})
+        .catch(()=>null));
+    }
+    return detailRequests.get(card);
+  }
+  function renderBasic(row){
+    if(row.dataset.gwbCompact==="1")return;
+    const pairs=[...row.querySelectorAll(".basket-method-row")].map(n=>[
+      n.querySelector(".detail-key")?.textContent?.trim()||"",
+      n.querySelector(".detail-value")?.textContent?.trim()||""
+    ]);
+    if(!pairs.length)return;
+    const get=label=>pairs.find(p=>p[0]===label)?.[1]||"";
+    const places=pairs.filter(p=>/^Место/.test(p[0])).map(p=>p[1]).filter(Boolean);
+    const item=element("div","gwb-basket-item");
+    const thumb=element("div","gwb-basket-thumb");
+    thumb.append(element("span","gwb-basket-placeholder","▧"));
+    const details=element("div","gwb-basket-details");
+    const primary=element("div","gwb-basket-first");
+    primary.append(element("strong","gwb-basket-art","Арт. "+(get("Артикул")||row.dataset.article||"—")));
+    if(get("Тираж"))primary.append(element("span","gwb-basket-quantity",get("Тираж")));
+    details.append(primary);
+    details.append(element("div","gwb-basket-name",""));
+    if(get("Нанесение"))details.append(element("div","gwb-basket-method",get("Нанесение")));
+    if(places.length)details.append(element("div","gwb-basket-place",places.join(" · ")));
+    item.append(thumb,details);
+    row.dataset.gwbCompact="1";
+    row.replaceChildren(item);
+  }
+
+  // First article remains visible. Other items unfold on pointer hover
+  // (or keyboard focus); the arrow is a non-interactive visual indicator.
+  function prepareOrderAccordion(card,rows){
+    if(rows.length<=1||card.dataset.gwbAccordion==="1")return;
+    const panel=card.querySelector(":scope > .basket-methods");
+    const title=card.querySelector(":scope > .basket-order-title");
+    if(!panel||!title)return;
+    card.dataset.gwbAccordion="1";
+    card.dataset.gwbExpanded="false";
+    card.classList.add("gwb-multi-order");
+    const extra=element("div","gwb-order-extra");
+    extra.id="gwb-order-extra-"+String(card.getAttribute("aria-label")||"").replace(/\D/g,"");
+    for(const row of rows.slice(1))extra.append(row);
+    panel.append(extra);
+    const arrow=element("span","gwb-order-arrow","⌄");
+    arrow.setAttribute("aria-hidden","true");
+    const indicator=element("span","gwb-order-multi-indicator");
+    indicator.title="В заказе несколько артикулов — наведите для просмотра";
+    indicator.setAttribute("aria-hidden","true");
+    indicator.append(arrow);
+    card.append(indicator);
+    card.setAttribute("aria-controls",extra.id);
+    card.setAttribute("aria-expanded","false");
+    extra.style.height="0px";
+    extra.setAttribute("aria-hidden","true");
+    extra.inert=true;
+    const syncHeight=event=>{
+      if(event.target!==extra||event.propertyName!=="height")return;
+      if(card.dataset.gwbExpanded==="true")extra.style.height="auto";
+    };
+    extra.addEventListener("transitionend",syncHeight);
+    const setExpanded=expand=>{
+      if((card.dataset.gwbExpanded==="true")===expand)return;
+      const currentHeight=extra.getBoundingClientRect().height;
+      extra.style.height=currentHeight+"px";
+      void extra.offsetHeight;
+      card.dataset.gwbExpanded=String(expand);
+      card.setAttribute("aria-expanded",String(expand));
+      extra.inert=!expand;
+      extra.setAttribute("aria-hidden",String(!expand));
+      extra.style.height=expand?extra.scrollHeight+"px":"0px";
+    };
+    card.addEventListener("mouseenter",()=>setExpanded(true));
+    card.addEventListener("mouseleave",()=>setExpanded(false));
+    // Keyboard users can inspect all positions by focusing the card.
+    // Enter/Space and mouse clicks remain owned by the original order handler.
+    card.addEventListener("focusin",()=>setExpanded(true));
+    card.addEventListener("focusout",event=>{
+      if(!card.contains(event.relatedTarget))setExpanded(false);
+    });
+    // Orders may finish loading after the pointer is already over the card.
+    if(card.matches(":hover"))setExpanded(true);
+  }
+  async function enhanceCard(card){
+    const match=String(card.getAttribute("aria-label")||"").match(/\d{5,12}/);
+    const order=match?.[0];
+    if(!order)return;
+    const rows=[...card.querySelectorAll(".basket-method")];
+    if(!rows.length)return;
+    for(const row of rows)renderBasic(row);
+    const title=card.querySelector(".basket-order-title");
+    if(title&&!card.querySelector(":scope > .gwb-basket-count"))
+      card.insertBefore(element("span","gwb-basket-count",rows.length+" поз."),title.nextSibling);
+    prepareOrderAccordion(card,rows);
+    if(card.dataset.gwbEnriched==="1")return;
+    card.dataset.gwbEnriched="1";
+    const response=await detailFor(card,order);
+    if(!response||!card.isConnected)return;
+    const items=Array.isArray(response.orderItems)?response.orderItems:response.items||[];
+    for(const row of rows){
+      if(!row.isConnected)return;
+      const item=items[Number(row.dataset.row)-1];
+      if(!item)continue;
+      const name=row.querySelector(".gwb-basket-name");
+      if(name&&item.product)name.textContent=item.product;
+      const src=trustedImage(item.imageUrl);
+      applyImage(row,src,order,item.itemId);
+    }
+  }
+  function scan(){
+    for(const card of orders.querySelectorAll(".basket-order")){
+      if(card.querySelector(".basket-method:not([data-gwb-compact])"))void enhanceCard(card);
+    }
+  }
+  const observer=new MutationObserver(scan);
+  observer.observe(orders,{subtree:true,childList:true});
+  scan();
+})();
+</script>
+<script>
+/* Compact orders motion: character click, read-only copies of already-rendered basket data. */
+(function(){
+  const root=document.getElementById("gwbOrdersMotion");
+  const orders=document.getElementById("basketOrders");
+  if(!root)return;
+  const storageKey="gwb.ordersMotion.gender.v1";
+  const persona=root.querySelector("#gwbMotionCharacter");
+  const sheets=[...root.querySelectorAll(".gwb-om-sheet")];
+  const flight=root.querySelector(".gwb-om-flight");
+  const stage=root.querySelector(".gwb-om-production");
+  let products=[],signature="",rotation=0,queued=false;
+  function setGender(value,save){
+    const gender=value==="male"?"male":"female";
+    root.dataset.gender=gender;
+    persona?.setAttribute("aria-label",gender==="male"?"Показать женского персонажа":"Показать мужского персонажа");
+    if(save){try{localStorage.setItem(storageKey,gender)}catch(_){}}
+  }
+  let selected="female";
+  try{selected=localStorage.getItem(storageKey)==="male"?"male":"female"}catch(_){}
+  setGender(selected,false);
+  persona?.addEventListener("click",()=>setGender(root.dataset.gender==="male"?"female":"male",true));
+  // Use only existing baskets: the animation never fetches an order, a constructor, or an image.
+  const validPhoto=img=>{
+    if(!img||!img.complete||!img.naturalWidth)return "";
+    const raw=img.currentSrc||img.src||"";
+    try{
+      const url=new URL(raw,location.href);
+      return url.protocol==="https:"&&/(^|\.)gifts\.ru$/i.test(url.hostname)?url.href:"";
+    }catch{return ""}
+  };
+  function basketProducts(){
+    if(!orders)return [];
+    const items=[],seen=new Set();
+    for(const row of orders.querySelectorAll(".basket-order .gwb-basket-item")){
+      const article=(row.querySelector(".gwb-basket-art")?.textContent||"").trim().slice(0,40);
+      const name=(row.querySelector(".gwb-basket-name")?.textContent||"").trim().slice(0,90);
+      const img=row.querySelector(".gwb-basket-thumb img");
+      const url=validPhoto(img);
+      if(!article||!/\d{3,}/.test(article))continue;
+      const key=article+"|"+name;
+      if(seen.has(key))continue;
+      seen.add(key);
+      items.push({key,article,name,url});
+      if(items.length===36)break;
+    }
+    return items;
+  }
+  function paint(){
+    if(!products.length){
+      for(const sheet of sheets){
+        sheet.dataset.orderArt="";
+        sheet.querySelector(".gwb-om-card-copy b").textContent="Ожидание корзины";
+        const pic=sheet.querySelector(".gwb-om-card-photo img");
+        pic.classList.remove("gwb-om-loaded");
+        pic.removeAttribute("src");
+      }
+      root.dataset.productSource="placeholder";
+      return;
+    }
+    root.dataset.productSource="basket";
+    sheets.forEach((sheet,i)=>{
+      const item=products[(rotation+i)%products.length];
+      sheet.dataset.orderArt=item.article;
+      sheet.title=item.name||item.article;
+      sheet.querySelector(".gwb-om-card-copy b").textContent=item.article.replace(/^Арт\.?\s*/i,"№ ");
+      const pic=sheet.querySelector(".gwb-om-card-photo img");
+      if(item.url){
+        if(pic.getAttribute("src")!==item.url)pic.src=item.url;
+        pic.classList.add("gwb-om-loaded");
+      }else{
+        pic.classList.remove("gwb-om-loaded");
+        pic.removeAttribute("src");
+      }
+    });
+  }
+  function refresh(){
+    queued=false;
+    const next=basketProducts();
+    const nextSignature=next.map(item=>item.key+"|"+item.url).join(";");
+    if(nextSignature===signature)return;
+    signature=nextSignature;
+    products=next;
+    rotation=0;
+    paint();
+  }
+  function queueRefresh(){
+    if(queued)return;
+    queued=true;
+    requestAnimationFrame(refresh);
+  }
+  if(orders){
+    const observer=new MutationObserver(queueRefresh);
+    observer.observe(orders,{childList:true,subtree:true,characterData:true});
+    orders.addEventListener("load",queueRefresh,true);
+    orders.addEventListener("error",queueRefresh,true);
+  }
+  sheets[0]?.addEventListener("animationiteration",()=>{
+    if(products.length>3){rotation=(rotation+3)%products.length;paint();}
+  });
+  queueRefresh();
+})();</script>
+<script src="./assets/logo-path.js?v=20261016-2"></script><script src="./assets/logo-pdf-import.js?v=20261016-vector-1"></script><script src="./assets/logo-editor.js?v=20261017-close-1"></script><script src="./assets/vectorcraft-field.js?v=20261016-art-1"></script><script src="./assets/cmyk-roundtrip.js?v=20261019-pdf-1"></script><script src="./assets/editor-return-progress.js?v=20261021-transfer-1"></script><script src="./assets/vectorcraft-integration.js?v=20261019-cmyk-pdf-1"></script><script src="./assets/personal-layout-library.js?v=20261018-pdf-block-1"></script><script src="./assets/tracedraw-raster-bridge.js?v=20261021-png-1"></script><script src="./assets/tracedraw-integration.js?v=20261019-cmyk-pdf-1"></script><script src="./assets/logo-editor-choice.js?v=20261019-approved-characters-3"></script><script src="./assets/logo-drop.js?v=20261020-explorer-drop-1"></script><script src="./assets/logo-tools-mode-lock.js?v=20261021-selection-lock-1"></script><script src="./assets/order-uploaded-makets.js?v=20261020-order-files-2"></script><script src="./assets/template-selection-tool-lock.js?v=20261021-locked-1"></script><script src="./assets/printcheck-vision-ui.js?v=20261116-1"></script></body></html>

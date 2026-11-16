@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-08",
+  "repository": "tohaa28/tohaa28.github.io",
+  "source_branch": "gifts-layout-workbench-mockups-source",
+  "functional_source_commit": "eea6d0688bb15790beb3d2e539f173ff74841cad",
+  "published_main": "430d8e7f71c96375efac55e5d832d6710560093a",
+  "workflow_run": 37757876595,
+  "workflow": {
+    "precheck": "success",
+    "publish": "success",
+    "browser_verify": "success"
+  },
+  "algorithm": "PrintCheck-coverage-swt-v24-pixel-stroke-recovery",
+  "cache": "20261008-2",
+  "expected_bundle_sha256": "cd4911b4cfcacee70f3b6630213221b5a3d00263f4db252700cce852e3e2b11b",
+  "unit_tests": "115/115 passed",
+  "real_v23_sample": {
+    "order": "7967900",
+    "article": "15637",
+    "method": "LM1",
+    "field_mm": [
+      32,
+      32
+    ],
+    "source_dpi": 1048,
+    "markers_total": 70,
+    "positive": 16,
+    "negative": 54
+  },
+  "change": "Recover 1px positive lines via persistence-confirmed disk-opening fallback on components with no SWT candidates. Negative unchanged.",
+  "user_retest_required": true
+}

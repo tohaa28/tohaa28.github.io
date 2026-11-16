@@ -1,0 +1,3193 @@
+{
+  "schema": "gifts-mockup-profile-registry/v1",
+  "version": 1,
+  "updatedAt": "2026-10-22T11:11:35.763Z",
+  "source": "git",
+  "profiles": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "22065.00",
+      "variant": "",
+      "place": "стела, сторона а",
+      "method": "LUV3: UV лазерная гравировка,1",
+      "photo": {
+        "id": "22065.00-1",
+        "name": "Фото 1 · арт. 22065.00",
+        "url": "https://files.gifts.ru/reviewer/webp/95/22065.00_2_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "стела, сторона а",
+        "sizeCm": [
+          3.9999,
+          3.9999
+        ]
+      },
+      "constructor": {
+        "name": "8060347_22065.00_49771424.pdf",
+        "url": "",
+        "width": 1634,
+        "height": 1483
+      },
+      "fieldRect": {
+        "x": 0.17269019592533794,
+        "y": 0.2622440775538245,
+        "w": 0.13878781417349118,
+        "h": 0.15299020530614985
+      },
+      "targetQuad": [
+        {
+          "x": 0.413625,
+          "y": 0.359
+        },
+        {
+          "x": 0.585625,
+          "y": 0.377
+        },
+        {
+          "x": 0.579625,
+          "y": 0.591
+        },
+        {
+          "x": 0.397625,
+          "y": 0.573
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-22T11:11:35.763Z",
+      "confirmedAt": "2026-10-22T11:11:35.763Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15846.40",
+      "variant": "",
+      "place": "лоб [белый(White); черный(Black)]",
+      "method": "D2: Шелкография с трансфером,1",
+      "photo": {
+        "id": "15846.40-3",
+        "name": "Фото 3 · арт. 15846.40",
+        "url": "https://files.gifts.ru/reviewer/webp/61/15846.40_39_500.webp?v=2",
+        "width": 375,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лоб [белый(White); черный(Black)]",
+        "sizeCm": [
+          11.0001,
+          4.9999
+        ]
+      },
+      "constructor": {
+        "name": "8044997_15846.40_49674087.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 775
+      },
+      "fieldRect": {
+        "x": 0.24087118524088366,
+        "y": 0.19505381993432316,
+        "w": 0.08578022928218952,
+        "h": 0.09056030544881515
+      },
+      "targetQuad": [
+        {
+          "x": 0.3501666666666667,
+          "y": 0.257
+        },
+        {
+          "x": 0.6115,
+          "y": 0.261
+        },
+        {
+          "x": 0.6301666666666667,
+          "y": 0.353
+        },
+        {
+          "x": 0.3421666666666667,
+          "y": 0.353
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-20T09:10:06.919Z",
+      "confirmedAt": "2026-10-20T09:10:06.919Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "7224.14",
+      "variant": "",
+      "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+      "method": "H1: Деколь,1",
+      "photo": {
+        "id": "7224.14-3",
+        "name": "Фото 3 · арт. 7224.14",
+        "url": "https://files.gifts.ru/reviewer/webp/67/7224.14_26_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+        "sizeCm": [
+          6,
+          5
+        ]
+      },
+      "constructor": {
+        "name": "8023221_7224.14_49528225.pdf",
+        "url": "",
+        "width": 1121,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.42227505946040406,
+        "y": 0.3873048515193977,
+        "w": 0.15557100981827093,
+        "h": 0.11624938587880353
+      },
+      "targetQuad": [
+        {
+          "x": 0.03290038487833369,
+          "y": 0.41035102088308695
+        },
+        {
+          "x": 0.2420737392486825,
+          "y": 0.4112397756208462
+        },
+        {
+          "x": 0.24374636188960386,
+          "y": 0.6416501139001649
+        },
+        {
+          "x": 0.03790740422294755,
+          "y": 0.6440220743263743
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.72,
+        "topArc": 0.023636981570609467,
+        "bottomArc": 0.04687814590277589,
+        "preserveFieldAspect": true,
+        "targetQuad": [
+          {
+            "x": 0.15321875,
+            "y": 0.374
+          },
+          {
+            "x": 0.44921875,
+            "y": 0.376
+          },
+          {
+            "x": 0.44721875,
+            "y": 0.672
+          },
+          {
+            "x": 0.15721875,
+            "y": 0.676
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T13:27:28.681Z",
+      "confirmedAt": "2026-10-14T13:27:28.681Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "21327.30",
+      "variant": "",
+      "place": "крепление, сторона b [белый(White)]",
+      "method": "D2: Шелкография с трансфером,1",
+      "photo": {
+        "id": "21327.30-8",
+        "name": "Фото 8 · арт. 21327.30",
+        "url": "https://files.gifts.ru/reviewer/webp/70/21327.30_6_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "крепление, сторона b [белый(White)]",
+        "sizeCm": [
+          4.9999,
+          1.8
+        ]
+      },
+      "constructor": {
+        "name": "8030778_21327.30_49579268.pdf",
+        "url": "",
+        "width": 1038,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.5547824504140395,
+        "y": 0.6218411658217111,
+        "w": 0.2581041216757312,
+        "h": 0.053536944699893875
+      },
+      "targetQuad": [
+        {
+          "x": 0.531625,
+          "y": 0.693
+        },
+        {
+          "x": 0.821625,
+          "y": 0.557
+        },
+        {
+          "x": 0.913625,
+          "y": 0.633
+        },
+        {
+          "x": 0.613625,
+          "y": 0.771
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T09:37:47.086Z",
+      "confirmedAt": "2026-10-14T09:37:47.086Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "77700.60",
+      "variant": "",
+      "place": "Стандартное",
+      "method": "SB1: Сублимация/посуда,1",
+      "photo": {
+        "id": "77700.60-4",
+        "name": "Фото 4 · арт. 77700.60",
+        "url": "https://files.gifts.ru/reviewer/webp/12/77700.60_19_500.webp?v=2",
+        "width": 750,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "Стандартное",
+        "sizeCm": [
+          22.9997,
+          9.4999
+        ]
+      },
+      "constructor": {
+        "name": "8006776_77700.60_49428451.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1388
+      },
+      "fieldRect": {
+        "x": 0.15226932604396873,
+        "y": 0.19348179245644465,
+        "w": 0.6951135044051561,
+        "h": 0.37239733433358907
+      },
+      "targetQuad": [
+        {
+          "x": 0.16445145803698435,
+          "y": 0.7420042643923241
+        },
+        {
+          "x": 0.44954479456348967,
+          "y": 0.7376664717857909
+        },
+        {
+          "x": 0.44467905405405406,
+          "y": 0.9125799573560768
+        },
+        {
+          "x": 0.1672964082503556,
+          "y": 0.9104477611940298
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.76,
+        "topArc": -0.08294538482185357,
+        "bottomArc": 0.08807869185326808,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.3507956970128023,
+            "y": 0.7057569296375267
+          },
+          {
+            "x": 0.46032628022759603,
+            "y": 0.697228144989339
+          },
+          {
+            "x": 0.4560588549075391,
+            "y": 0.9104477611940298
+          },
+          {
+            "x": 0.3507956970128023,
+            "y": 0.908315565031983
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T09:33:44.307Z",
+      "confirmedAt": "2026-10-14T09:33:44.307Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "77700.60",
+      "variant": "",
+      "place": "Стандартное",
+      "method": "SB1: Сублимация/посуда,1",
+      "photo": {
+        "id": "77700.60-1",
+        "name": "Фото 1 · арт. 77700.60",
+        "url": "https://files.gifts.ru/reviewer/webp/67/77700.60_16_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "Стандартное",
+        "sizeCm": [
+          22.9997,
+          9.4999
+        ]
+      },
+      "constructor": {
+        "name": "8006776_77700.60_49428451.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1388
+      },
+      "fieldRect": {
+        "x": 0.15226932604396873,
+        "y": 0.19348179245644465,
+        "w": 0.6951135044051561,
+        "h": 0.37239733433358907
+      },
+      "targetQuad": [
+        {
+          "x": -0.8887812499999999,
+          "y": 0.20799999999999993
+        },
+        {
+          "x": 0.7609630346119935,
+          "y": 0.19689645403749437
+        },
+        {
+          "x": 0.7571555204496518,
+          "y": 0.9518319024786659
+        },
+        {
+          "x": -0.8787812500000001,
+          "y": 0.956
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.76,
+        "topArc": 0.09,
+        "bottomArc": 0.136685680037784,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.005625,
+            "y": 0.101
+          },
+          {
+            "x": 0.67921875,
+            "y": 0.082
+          },
+          {
+            "x": 0.67121875,
+            "y": 0.88
+          },
+          {
+            "x": 0.00921875,
+            "y": 0.866
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T10:59:00.516Z",
+      "confirmedAt": "2026-10-14T10:59:00.516Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "77700.60",
+      "variant": "",
+      "place": "Стандартное",
+      "method": "SB1: Сублимация/посуда,1",
+      "photo": {
+        "id": "77700.60-3",
+        "name": "Фото 3 · арт. 77700.60",
+        "url": "https://files.gifts.ru/reviewer/webp/11/77700.60_18_500.webp?v=2",
+        "width": 750,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "Стандартное",
+        "sizeCm": [
+          22.9997,
+          9.4999
+        ]
+      },
+      "constructor": {
+        "name": "8006776_77700.60_49428451.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1388
+      },
+      "fieldRect": {
+        "x": 0.15226932604396873,
+        "y": 0.19348179245644465,
+        "w": 0.6951135044051561,
+        "h": 0.37239733433358907
+      },
+      "targetQuad": [
+        {
+          "x": 0.21139313655761025,
+          "y": 0.279317697228145
+        },
+        {
+          "x": 0.37213282361308675,
+          "y": 0.2857142857142857
+        },
+        {
+          "x": 0.3707103485064011,
+          "y": 0.40085287846481876
+        },
+        {
+          "x": 0.20570323613086772,
+          "y": 0.39658848614072495
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.76,
+        "topArc": -0.15,
+        "bottomArc": -0.03333333333333327,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.3266136201991465,
+            "y": 0.2835820895522388
+          },
+          {
+            "x": 0.4076947012802276,
+            "y": 0.2921108742004264
+          },
+          {
+            "x": 0.4034272759601707,
+            "y": 0.4115138592750533
+          },
+          {
+            "x": 0.3308810455192034,
+            "y": 0.4200426439232409
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T09:25:59.566Z",
+      "confirmedAt": "2026-10-14T09:25:59.566Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "7224.14",
+      "variant": "",
+      "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+      "method": "H1: Деколь,1",
+      "photo": {
+        "id": "7224.14-2",
+        "name": "Фото 2 · арт. 7224.14",
+        "url": "https://files.gifts.ru/reviewer/webp/66/7224.14_25_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+        "sizeCm": [
+          6,
+          5
+        ]
+      },
+      "constructor": {
+        "name": "8023221_7224.14_49528225.pdf",
+        "url": "",
+        "width": 1121,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.42227505946040406,
+        "y": 0.3873048515193977,
+        "w": 0.15557100981827093,
+        "h": 0.11624938587880353
+      },
+      "targetQuad": [
+        {
+          "x": 0.7451302638013738,
+          "y": 0.38685481443543135
+        },
+        {
+          "x": 0.97921875,
+          "y": 0.388
+        },
+        {
+          "x": 0.98321875,
+          "y": 0.742
+        },
+        {
+          "x": 0.7391081195891223,
+          "y": 0.7467442824143078
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.72,
+        "topArc": 0.17377059204190504,
+        "bottomArc": 0.23821820529373788,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.27321875,
+            "y": 0.268
+          },
+          {
+            "x": 0.76521875,
+            "y": 0.278
+          },
+          {
+            "x": 0.75921875,
+            "y": 0.716
+          },
+          {
+            "x": 0.28321875,
+            "y": 0.716
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T13:25:16.707Z",
+      "confirmedAt": "2026-10-14T13:25:16.707Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "7224.14",
+      "variant": "",
+      "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+      "method": "H1: Деколь,1",
+      "photo": {
+        "id": "7224.14-1",
+        "name": "Фото 1 · арт. 7224.14",
+        "url": "https://files.gifts.ru/reviewer/webp/65/7224.14_24_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "напротив от ручки [подложка; пантон(H32446/3435C)]",
+        "sizeCm": [
+          6,
+          5
+        ]
+      },
+      "constructor": {
+        "name": "8023221_7224.14_49528225.pdf",
+        "url": "",
+        "width": 1121,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.42227505946040406,
+        "y": 0.3873048515193977,
+        "w": 0.15557100981827093,
+        "h": 0.11624938587880353
+      },
+      "targetQuad": [
+        {
+          "x": 0.04921875000000003,
+          "y": 0.386
+        },
+        {
+          "x": 0.30721875000000004,
+          "y": 0.388
+        },
+        {
+          "x": 0.31321875000000005,
+          "y": 0.758
+        },
+        {
+          "x": 0.05321875000000004,
+          "y": 0.756
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.72,
+        "topArc": 0.13958333333333334,
+        "bottomArc": 0.18889783260329562,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.23521875,
+            "y": 0.286
+          },
+          {
+            "x": 0.73321875,
+            "y": 0.284
+          },
+          {
+            "x": 0.71921875,
+            "y": 0.738
+          },
+          {
+            "x": 0.24721875,
+            "y": 0.732
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T13:25:30.743Z",
+      "confirmedAt": "2026-10-14T13:25:30.743Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "77700.60",
+      "variant": "",
+      "place": "Стандартное",
+      "method": "SB1: Сублимация/посуда,1",
+      "photo": {
+        "id": "77700.60-2",
+        "name": "Фото 2 · арт. 77700.60",
+        "url": "https://files.gifts.ru/reviewer/webp/68/77700.60_17_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "Стандартное",
+        "sizeCm": [
+          22.9997,
+          9.4999
+        ]
+      },
+      "constructor": {
+        "name": "8006776_77700.60_49428451.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1388
+      },
+      "fieldRect": {
+        "x": 0.15226932604396873,
+        "y": 0.19348179245644465,
+        "w": 0.6951135044051561,
+        "h": 0.37239733433358907
+      },
+      "targetQuad": [
+        {
+          "x": 0.42121875,
+          "y": 0.196
+        },
+        {
+          "x": 1.99321875,
+          "y": 0.194
+        },
+        {
+          "x": 1.99721875,
+          "y": 0.922
+        },
+        {
+          "x": 0.41521875,
+          "y": 0.9319999999999999
+        }
+      ],
+      "surface": "cylinder",
+      "cylinder": {
+        "geometry": "3d",
+        "axis": "vertical",
+        "curvature": 0.76,
+        "topArc": 0.09479574591463451,
+        "bottomArc": 0.136685680037784,
+        "preserveFieldAspect": false,
+        "targetQuad": [
+          {
+            "x": 0.269625,
+            "y": 0.10300000000000001
+          },
+          {
+            "x": 0.93921875,
+            "y": 0.09
+          },
+          {
+            "x": 0.93321875,
+            "y": 0.876
+          },
+          {
+            "x": 0.27321875,
+            "y": 0.868
+          }
+        ]
+      },
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 32
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-14T09:05:39.295Z",
+      "confirmedAt": "2026-10-14T09:05:39.295Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "6578.60",
+      "variant": "",
+      "place": "по периметру",
+      "method": "SB1: Сублимация/посуда,4",
+      "photo": {
+        "id": "6578.60-4",
+        "name": "Фото 4 · арт. 6578.60",
+        "url": "https://files.gifts.ru/reviewer/webp/15/6578.60_20_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "4",
+        "printId": "print1",
+        "applicationId": "4",
+        "place": "по периметру",
+        "sizeCm": [
+          22.6995,
+          9.4998
+        ]
+      },
+      "constructor": {
+        "name": "7980902_6578.60_49427066.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1410
+      },
+      "fieldRect": {
+        "x": 0.15231968259295453,
+        "y": 0.19619477378557482,
+        "w": 0.6949317197772683,
+        "h": 0.3714081111220389
+      },
+      "targetQuad": [
+        {
+          "x": 0.305625,
+          "y": 0.24900000000000005
+        },
+        {
+          "x": 0.871625,
+          "y": 0.24100000000000005
+        },
+        {
+          "x": 0.861625,
+          "y": 0.887
+        },
+        {
+          "x": 0.293625,
+          "y": 0.895
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 28
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-05T06:49:57.855Z",
+      "confirmedAt": "2026-10-05T06:49:57.855Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-7",
+        "name": "Фото 7 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/25/15637_20_500.webp?v=2",
+        "width": 667,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7967900_15637_49173915.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1104
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.32849277458210413,
+        "w": 0.16518319468432358,
+        "h": 0.1643218825445589
+      },
+      "targetQuad": [
+        {
+          "x": 0.3422976011994003,
+          "y": 0.373
+        },
+        {
+          "x": 0.45773988005997,
+          "y": 0.483
+        },
+        {
+          "x": 0.3407983508245877,
+          "y": 0.659
+        },
+        {
+          "x": 0.2208583208395802,
+          "y": 0.543
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-05T06:47:37.890Z",
+      "confirmedAt": "2026-10-05T06:47:37.890Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15255.30",
+      "variant": "",
+      "place": "лоб, слева",
+      "method": "DTF3: Печать DTF,1",
+      "photo": {
+        "id": "15255.30-3",
+        "name": "Фото 3 · арт. 15255.30",
+        "url": "https://files.gifts.ru/reviewer/webp/80/15255.30_2_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лоб, слева",
+        "sizeCm": [
+          6,
+          6
+        ]
+      },
+      "constructor": {
+        "name": "7976119_15255.30_49228820.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 625
+      },
+      "fieldRect": {
+        "x": 0.30751140232494883,
+        "y": 0.14774633626526434,
+        "w": 0.04412014996612495,
+        "h": 0.12720482919717305
+      },
+      "targetQuad": [
+        {
+          "x": 0.337625,
+          "y": 0.345
+        },
+        {
+          "x": 0.463625,
+          "y": 0.369
+        },
+        {
+          "x": 0.399625,
+          "y": 0.565
+        },
+        {
+          "x": 0.265625,
+          "y": 0.523
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T19:12:09.772Z",
+      "confirmedAt": "2026-10-04T19:12:09.772Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-8",
+        "name": "Фото 8 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/26/15637_21_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7967900_15637_49173915.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1104
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.32849277458210413,
+        "w": 0.16518319468432358,
+        "h": 0.1643218825445589
+      },
+      "targetQuad": [
+        {
+          "x": 0.297625,
+          "y": 0.415
+        },
+        {
+          "x": 0.447625,
+          "y": 0.429
+        },
+        {
+          "x": 0.429625,
+          "y": 0.609
+        },
+        {
+          "x": 0.279625,
+          "y": 0.589
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T19:00:16.982Z",
+      "confirmedAt": "2026-10-04T19:00:16.982Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-2",
+        "name": "Фото 2 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+        "width": 489,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.31919448877874895,
+        "w": 0.16518319468432358,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.3040899795501023,
+          "y": 0.558
+        },
+        {
+          "x": 0.7040899795501022,
+          "y": 0.558
+        },
+        {
+          "x": 0.7040899795501022,
+          "y": 0.958
+        },
+        {
+          "x": 0.3040899795501023,
+          "y": 0.958
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T17:59:35.584Z",
+      "confirmedAt": "2026-10-04T17:59:35.584Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона а",
+      "method": "F1: Флекс,3",
+      "photo": {
+        "id": "16535.66-2",
+        "name": "Фото 2 · арт. 16535.66",
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "3",
+        "printId": "print1",
+        "applicationId": "3",
+        "place": "сторона а [черный(403/Black)]",
+        "sizeCm": [
+          29.9999,
+          29.9999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_16535.66_49298390.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 1755
+      },
+      "fieldRect": {
+        "x": 0.055144329285755356,
+        "y": 0.4494576062526364,
+        "w": 0.3665352554952585,
+        "h": 0.37610614990574726
+      },
+      "targetQuad": [
+        {
+          "x": 0.3077893513410458,
+          "y": 0.5527882551235164
+        },
+        {
+          "x": 0.6962102657968151,
+          "y": 0.5527882551235164
+        },
+        {
+          "x": 0.6962102657968151,
+          "y": 0.9854894137829789
+        },
+        {
+          "x": 0.3077893513410458,
+          "y": 0.9854894137829789
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-13T11:23:46.570Z",
+      "confirmedAt": "2026-10-13T11:23:46.570Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-3",
+        "name": "Фото 3 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/52/15637_3_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.31919448877874895,
+        "w": 0.16518319468432358,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.360875,
+          "y": 0.375
+        },
+        {
+          "x": 0.670875,
+          "y": 0.545
+        },
+        {
+          "x": 0.382875,
+          "y": 0.785
+        },
+        {
+          "x": 0.058875,
+          "y": 0.603
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T16:33:12.066Z",
+      "confirmedAt": "2026-10-04T16:33:12.066Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "оборот",
+      "method": "LM1: Лазерная гравировка,2",
+      "photo": {
+        "id": "15637-8",
+        "name": "Фото 8 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/26/15637_21_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "2",
+        "printId": "print2",
+        "applicationId": "2",
+        "place": "оборот",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.5353426925472875,
+        "y": 0.31919448877874895,
+        "w": 0.1651831812941492,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.304875,
+          "y": 0.425
+        },
+        {
+          "x": 0.442875,
+          "y": 0.437
+        },
+        {
+          "x": 0.422875,
+          "y": 0.597
+        },
+        {
+          "x": 0.286875,
+          "y": 0.581
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T16:18:37.871Z",
+      "confirmedAt": "2026-10-04T16:18:37.871Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "оборот",
+      "method": "LM1: Лазерная гравировка,2",
+      "photo": {
+        "id": "15637-7",
+        "name": "Фото 7 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/25/15637_20_500.webp?v=2",
+        "width": 667,
+        "height": 500
+      },
+      "field": {
+        "id": "2",
+        "printId": "print2",
+        "applicationId": "2",
+        "place": "оборот",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.5353426925472875,
+        "y": 0.31919448877874895,
+        "w": 0.1651831812941492,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.3387368815592204,
+          "y": 0.375
+        },
+        {
+          "x": 0.4556784107946027,
+          "y": 0.487
+        },
+        {
+          "x": 0.34323463268365817,
+          "y": 0.661
+        },
+        {
+          "x": 0.23229010494752625,
+          "y": 0.537
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T16:18:06.604Z",
+      "confirmedAt": "2026-10-04T16:18:06.604Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "оборот",
+      "method": "LM1: Лазерная гравировка,2",
+      "photo": {
+        "id": "15637-3",
+        "name": "Фото 3 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/52/15637_3_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "2",
+        "printId": "print2",
+        "applicationId": "2",
+        "place": "оборот",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.5353426925472875,
+        "y": 0.31919448877874895,
+        "w": 0.1651831812941492,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.360875,
+          "y": 0.375
+        },
+        {
+          "x": 0.670875,
+          "y": 0.545
+        },
+        {
+          "x": 0.382875,
+          "y": 0.785
+        },
+        {
+          "x": 0.058875,
+          "y": 0.603
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T16:16:57.723Z",
+      "confirmedAt": "2026-10-04T16:16:57.723Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "оборот",
+      "method": "LM1: Лазерная гравировка,2",
+      "photo": {
+        "id": "15637-1",
+        "name": "Фото 1 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "2",
+        "printId": "print2",
+        "applicationId": "2",
+        "place": "оборот",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.5353426925472875,
+        "y": 0.31919448877874895,
+        "w": 0.1651831812941492,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.362,
+          "y": 0.558
+        },
+        {
+          "x": 0.664875,
+          "y": 0.549
+        },
+        {
+          "x": 0.664875,
+          "y": 0.9349999999999999
+        },
+        {
+          "x": 0.362,
+          "y": 0.958
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T16:16:24.021Z",
+      "confirmedAt": "2026-10-04T16:16:24.021Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "оборот",
+      "method": "LM1: Лазерная гравировка,2",
+      "photo": {
+        "id": "15637-2",
+        "name": "Фото 2 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/50/15637_1_500.webp?v=2",
+        "width": 489,
+        "height": 500
+      },
+      "field": {
+        "id": "2",
+        "printId": "print2",
+        "applicationId": "2",
+        "place": "оборот",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.5353426925472875,
+        "y": 0.31919448877874895,
+        "w": 0.1651831812941492,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.30408997955010225,
+          "y": 0.554
+        },
+        {
+          "x": 0.7040899795501022,
+          "y": 0.554
+        },
+        {
+          "x": 0.7040899795501022,
+          "y": 0.954
+        },
+        {
+          "x": 0.30408997955010225,
+          "y": 0.954
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T17:59:53.251Z",
+      "confirmedAt": "2026-10-04T17:59:53.251Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-4",
+        "name": "Фото 4 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/53/15637_4_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7980838_15637_49271958.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1137
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.31919448877874895,
+        "w": 0.16518319468432358,
+        "h": 0.15967060268128516
+      },
+      "targetQuad": [
+        {
+          "x": 0.3,
+          "y": 0.558
+        },
+        {
+          "x": 0.7,
+          "y": 0.558
+        },
+        {
+          "x": 0.7,
+          "y": 0.958
+        },
+        {
+          "x": 0.3,
+          "y": 0.958
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T15:44:21.514Z",
+      "confirmedAt": "2026-10-04T15:44:21.514Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15637",
+      "variant": "",
+      "place": "лицо",
+      "method": "LM1: Лазерная гравировка,1",
+      "photo": {
+        "id": "15637-1",
+        "name": "Фото 1 · арт. 15637",
+        "url": "https://files.gifts.ru/reviewer/webp/15/15637_7_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лицо",
+        "sizeCm": [
+          3.1999,
+          3.1999
+        ]
+      },
+      "constructor": {
+        "name": "7967900_15637_49173915.pdf",
+        "url": "",
+        "width": 1099,
+        "height": 1104
+      },
+      "fieldRect": {
+        "x": 0.3004297713959046,
+        "y": 0.32849277458210413,
+        "w": 0.16518319468432358,
+        "h": 0.1643218825445589
+      },
+      "targetQuad": [
+        {
+          "x": 0.354875,
+          "y": 0.553
+        },
+        {
+          "x": 0.652875,
+          "y": 0.551
+        },
+        {
+          "x": 0.652875,
+          "y": 0.943
+        },
+        {
+          "x": 0.362875,
+          "y": 0.957
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T15:40:57.731Z",
+      "confirmedAt": "2026-10-04T15:40:57.731Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "15255.30",
+      "variant": "",
+      "place": "лоб, слева",
+      "method": "DTF3: Печать DTF,1",
+      "photo": {
+        "id": "15255.30-2",
+        "name": "Фото 2 · арт. 15255.30",
+        "url": "https://files.gifts.ru/reviewer/webp/79/15255.30_1_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "лоб, слева",
+        "sizeCm": [
+          6,
+          6
+        ]
+      },
+      "constructor": {
+        "name": "7976119_15255.30_49228820.pdf",
+        "url": "",
+        "width": 1800,
+        "height": 625
+      },
+      "fieldRect": {
+        "x": 0.30751140232494883,
+        "y": 0.14774633626526434,
+        "w": 0.04412014996612495,
+        "h": 0.12720482919717305
+      },
+      "targetQuad": [
+        {
+          "x": 0.426875,
+          "y": 0.321
+        },
+        {
+          "x": 0.676875,
+          "y": 0.353
+        },
+        {
+          "x": 0.646875,
+          "y": 0.581
+        },
+        {
+          "x": 0.376875,
+          "y": 0.535
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-04T17:51:15.067Z",
+      "confirmedAt": "2026-10-04T17:51:15.067Z",
+      "confirmedBy": "mockup-editor-manual",
+      "generatedBy": "mockup-editor-manual"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона b [черный(Black); белый(White)]",
+      "method": "D1: Шелкография с трансфером,1",
+      "photo": {
+        "id": "16535.66-2",
+        "name": "Фото 2 · арт. 16535.66",
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "width": 500,
+        "height": 500
+      },
+      "field": {
+        "id": "1",
+        "printId": "print1",
+        "applicationId": "1",
+        "place": "сторона b [черный(Black); белый(White)]",
+        "sizeCm": [
+          29.9999,
+          29.9999
+        ]
+      },
+      "constructor": {
+        "name": "7987235_16535.66_49312484.pdf",
+        "url": "",
+        "width": 1736,
+        "height": 1800
+      },
+      "fieldRect": {
+        "x": 0.055144329285755356,
+        "y": 0.42237806568639275,
+        "w": 0.3665352554952585,
+        "h": 0.3534459888540693
+      },
+      "targetQuad": [
+        {
+          "x": 0.304,
+          "y": 0.548
+        },
+        {
+          "x": 0.704,
+          "y": 0.548
+        },
+        {
+          "x": 0.704,
+          "y": 0.948
+        },
+        {
+          "x": 0.304,
+          "y": 0.948
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-manual",
+      "updatedAt": "2026-10-03T19:28:42.050Z",
+      "confirmedAt": "2026-10-03T19:28:42.050Z",
+      "confirmedBy": "mockup-editor-github-issue",
+      "generatedBy": "mockup-editor-github-issue"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона а",
+      "method": "",
+      "photo": {
+        "id": "16535.66_76",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-1",
+        "printId": "",
+        "applicationId": "",
+        "place": "сторона а",
+        "sizeCm": [
+          30,
+          30
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3057893513410458,
+          "y": 0.49278825512351637
+        },
+        {
+          "x": 0.6942102657968151,
+          "y": 0.49278825512351637
+        },
+        {
+          "x": 0.6942102657968151,
+          "y": 0.925489413782979
+        },
+        {
+          "x": 0.3057893513410458,
+          "y": 0.925489413782979
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-auto",
+      "confidence": 0.9232,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 82.98279571533203,
+          "y": 613.8558959960938,
+          "w": 216.72463989257812,
+          "h": 216.724609375
+        },
+        "svgObjectBox": {
+          "x": 54.08623504638672,
+          "y": 370.0409851074219,
+          "w": 274.5179748535156,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.10526290922976786,
+          "y": 0.49270066308048216,
+          "w": 0.7894734033653849,
+          "h": 0.4379566383192941
+        },
+        "photoObjectBox": {
+          "x": 0.254,
+          "y": 0.006,
+          "w": 0.492,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.13,
+        "photoScore": 0.9232,
+        "validation": "official gifts.ru SVG print polygon + exact hidden place/size metadata + high-confidence product silhouette"
+      },
+      "confirmedAt": "2026-10-01T21:15:56.328Z",
+      "confirmedBy": "official-gifts-svg-zone+photo-silhouette"
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона а",
+      "method": "",
+      "photo": {
+        "id": "16535.66_76",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-2",
+        "printId": "",
+        "applicationId": "",
+        "place": "сторона а",
+        "sizeCm": [
+          26,
+          25
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.33168421844263823,
+          "y": 0.5288460350937261
+        },
+        {
+          "x": 0.6683158089046575,
+          "y": 0.5288460350937261
+        },
+        {
+          "x": 0.6683158089046575,
+          "y": 0.8894305370760112
+        },
+        {
+          "x": 0.33168421844263823,
+          "y": 0.8894305370760112
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "confirmed-auto",
+      "confidence": 0.9232,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 97.43118286132812,
+          "y": 631.9159545898438,
+          "w": 187.82809448242188,
+          "h": 180.60394287109375
+        },
+        "svgObjectBox": {
+          "x": 54.08623504638672,
+          "y": 370.0409851074219,
+          "w": 274.5179748535156,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.1578947529321915,
+          "y": 0.5291963917952693,
+          "w": 0.6842105497195513,
+          "h": 0.36496407083227234
+        },
+        "photoObjectBox": {
+          "x": 0.254,
+          "y": 0.006,
+          "w": 0.492,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.13,
+        "photoScore": 0.9232,
+        "validation": "official gifts.ru SVG print polygon + exact hidden place/size metadata + high-confidence product silhouette"
+      },
+      "confirmedAt": "2026-10-01T21:15:56.328Z",
+      "confirmedBy": "official-gifts-svg-zone+photo-silhouette"
+    }
+  ],
+  "candidates": [
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона а",
+      "method": "",
+      "photo": {
+        "id": "16535.66_76",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-1",
+        "printId": "",
+        "applicationId": "",
+        "place": "сторона а",
+        "sizeCm": [
+          30,
+          30
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3057893513410458,
+          "y": 0.49278825512351637
+        },
+        {
+          "x": 0.6942102657968151,
+          "y": 0.49278825512351637
+        },
+        {
+          "x": 0.6942102657968151,
+          "y": 0.925489413782979
+        },
+        {
+          "x": 0.3057893513410458,
+          "y": 0.925489413782979
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9232,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 82.98279571533203,
+          "y": 613.8558959960938,
+          "w": 216.72463989257812,
+          "h": 216.724609375
+        },
+        "svgObjectBox": {
+          "x": 54.08623504638672,
+          "y": 370.0409851074219,
+          "w": 274.5179748535156,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.10526290922976786,
+          "y": 0.49270066308048216,
+          "w": 0.7894734033653849,
+          "h": 0.4379566383192941
+        },
+        "photoObjectBox": {
+          "x": 0.254,
+          "y": 0.006,
+          "w": 0.492,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.13,
+        "photoScore": 0.9232
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона а",
+      "method": "",
+      "photo": {
+        "id": "16535.66_76",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/59/16535.66_76_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-2",
+        "printId": "",
+        "applicationId": "",
+        "place": "сторона а",
+        "sizeCm": [
+          26,
+          25
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.33168421844263823,
+          "y": 0.5288460350937261
+        },
+        {
+          "x": 0.6683158089046575,
+          "y": 0.5288460350937261
+        },
+        {
+          "x": 0.6683158089046575,
+          "y": 0.8894305370760112
+        },
+        {
+          "x": 0.33168421844263823,
+          "y": 0.8894305370760112
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9232,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 97.43118286132812,
+          "y": 631.9159545898438,
+          "w": 187.82809448242188,
+          "h": 180.60394287109375
+        },
+        "svgObjectBox": {
+          "x": 54.08623504638672,
+          "y": 370.0409851074219,
+          "w": 274.5179748535156,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.1578947529321915,
+          "y": 0.5291963917952693,
+          "w": 0.6842105497195513,
+          "h": 0.36496407083227234
+        },
+        "photoObjectBox": {
+          "x": 0.254,
+          "y": 0.006,
+          "w": 0.492,
+          "h": 0.988
+        },
+        "photoPixelRatio": 0.13,
+        "photoScore": 0.9232
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона b",
+      "method": "",
+      "photo": {
+        "id": "16535.66_77",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-3",
+        "printId": "",
+        "applicationId": "",
+        "place": "сторона b",
+        "sizeCm": [
+          30,
+          30
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.157156395581644,
+          "y": 0.49270066308048216
+        },
+        {
+          "x": 0.9008421383327577,
+          "y": 0.49270066308048216
+        },
+        {
+          "x": 0.9008421383327577,
+          "y": 0.9306573013997763
+        },
+        {
+          "x": 0.157156395581644,
+          "y": 0.9306573013997763
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate",
+      "confidence": 0.5,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 392.2926025390625,
+          "y": 613.8558959960938,
+          "w": 216.724609375,
+          "h": 216.724609375
+        },
+        "svgObjectBox": {
+          "x": 363.396484375,
+          "y": 370.0409851074219,
+          "w": 274.51727294921875,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.10526156643486624,
+          "y": 0.49270066308048216,
+          "w": 0.7894753107761293,
+          "h": 0.4379566383192941
+        },
+        "photoObjectBox": {
+          "x": 0.058,
+          "y": 0,
+          "w": 0.942,
+          "h": 1
+        },
+        "photoPixelRatio": 0.1297,
+        "photoScore": 0.6667
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "16535.66",
+      "variant": "",
+      "place": "сторона b",
+      "method": "",
+      "photo": {
+        "id": "16535.66_77",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/60/16535.66_77_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-4",
+        "printId": "",
+        "applicationId": "",
+        "place": "сторона b",
+        "sizeCm": [
+          26,
+          25
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.20673480281326573,
+          "y": 0.5291963917952693
+        },
+        {
+          "x": 0.8512626838971373,
+          "y": 0.5291963917952693
+        },
+        {
+          "x": 0.8512626838971373,
+          "y": 0.8941604626275417
+        },
+        {
+          "x": 0.20673480281326573,
+          "y": 0.8941604626275417
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate",
+      "confidence": 0.5,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 406.74072265625,
+          "y": 631.9159545898438,
+          "w": 187.82806396484375,
+          "h": 180.60394287109375
+        },
+        "svgObjectBox": {
+          "x": 363.396484375,
+          "y": 370.0409851074219,
+          "w": 274.51727294921875,
+          "h": 494.8540344238281
+        },
+        "normalizedField": {
+          "x": 0.15789257198860482,
+          "y": 0.5291963917952693,
+          "w": 0.6842121879871249,
+          "h": 0.36496407083227234
+        },
+        "photoObjectBox": {
+          "x": 0.058,
+          "y": 0,
+          "w": 0.942,
+          "h": 1
+        },
+        "photoPixelRatio": 0.1297,
+        "photoScore": 0.6667
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "по периметру",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-1",
+        "printId": "",
+        "applicationId": "",
+        "place": "по периметру",
+        "sizeCm": [
+          22,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.21825273333229364,
+          "y": 0.7623069729163131
+        },
+        {
+          "x": 0.7827001302638257,
+          "y": 0.7623069729163131
+        },
+        {
+          "x": 0.7827001302638257,
+          "y": 0.9565723812185256
+        },
+        {
+          "x": 0.21825273333229364,
+          "y": 0.9565723812185256
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 211.8555145263672,
+          "y": 750.8095703125,
+          "w": 268.74285888671875,
+          "h": 103.832275390625
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 370.0909729003906,
+          "w": 433.8399963378906,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.19079708321618305,
+          "y": 0.7759335216953301,
+          "w": 0.6194515516209157,
+          "h": 0.21161809183247546
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "слева от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-2",
+        "printId": "",
+        "applicationId": "",
+        "place": "слева от ручки",
+        "sizeCm": [
+          5,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.5281296715847972,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.6820179870292458,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.6820179870292458,
+          "y": 0.6309222447921861
+        },
+        {
+          "x": 0.5281296715847972,
+          "y": 0.6309222447921861
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 393.2569580078125,
+          "y": 576.7534790039062,
+          "w": 61.077972412109375,
+          "h": 103.83270263671875
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 370.0909729003906,
+          "w": 361.655517578125,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.5308708460779793,
+          "y": 0.42119394023115075,
+          "w": 0.1688843925875271,
+          "h": 0.21161896259258123
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "напротив ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-3",
+        "printId": "",
+        "applicationId": "",
+        "place": "напротив ручки",
+        "sizeCm": [
+          5,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.40401890939361024,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.5959809946926307,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.5959809946926307,
+          "y": 0.6309222447921861
+        },
+        {
+          "x": 0.40401890939361024,
+          "y": 0.6309222447921861
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 315.6879577636719,
+          "y": 576.7534790039062,
+          "w": 61.077972412109375,
+          "h": 103.83270263671875
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 370.0909729003906,
+          "w": 289.92474365234375,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.394665763673266,
+          "y": 0.42119394023115075,
+          "w": 0.21066836739312444,
+          "h": 0.21161896259258123
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "справа от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-4",
+        "printId": "",
+        "applicationId": "",
+        "place": "справа от ручки",
+        "sizeCm": [
+          5,
+          8.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3187802286089118,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.47247572965292683,
+          "y": 0.4366560371321964
+        },
+        {
+          "x": 0.47247572965292683,
+          "y": 0.6309222447921861
+        },
+        {
+          "x": 0.3187802286089118,
+          "y": 0.6309222447921861
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 238.11871337890625,
+          "y": 576.7534790039062,
+          "w": 61.077972412109375,
+          "h": 103.83270263671875
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 370.0909729003906,
+          "w": 362.1092224121094,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.30112076132718163,
+          "y": 0.42119394023115075,
+          "w": 0.1686727888487682,
+          "h": 0.21161896259258123
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, справа от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-5",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, справа от ручки",
+        "sizeCm": [
+          5,
+          1
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.6395454446193019,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.7872920000220416,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.7872920000220416,
+          "y": 0.10252721886045227
+        },
+        {
+          "x": 0.6395454446193019,
+          "y": 0.10252721886045227
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 437.4776611328125,
+          "y": 412.74444580078125,
+          "w": 58.64031982421875,
+          "h": 19.300567626953125
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 406.0260925292969,
+          "w": 361.655517578125,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.6531438406146863,
+          "y": 0.014774584683550123,
+          "w": 0.16214413156727586,
+          "h": 0.04244460797489461
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, на стороне с ручкой",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-6",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, на стороне с ручкой",
+        "sizeCm": [
+          5,
+          1
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.6364745261533378,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.7903629184880056,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.7903629184880056,
+          "y": 0.038210350537922336
+        },
+        {
+          "x": 0.6364745261533378,
+          "y": 0.038210350537922336
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 436.2588195800781,
+          "y": 387.9705810546875,
+          "w": 61.0780029296875,
+          "h": 12.215606689453125
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 406.0260925292969,
+          "w": 361.655517578125,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.6497736679130599,
+          "y": -0.03970655791779877,
+          "w": 0.16888447697052872,
+          "h": 0.026863802512485414
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, слева от ручки",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-7",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, слева от ручки",
+        "sizeCm": [
+          5,
+          1
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.4078491294514052,
+          "y": 0.1298026846404821
+        },
+        {
+          "x": 0.5921499114110033,
+          "y": 0.1298026846404821
+        },
+        {
+          "x": 0.5921499114110033,
+          "y": 0.16591315834828502
+        },
+        {
+          "x": 0.4078491294514052,
+          "y": 0.16591315834828502
+        }
+      ],
+      "surface": "cylinder",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 316.9066467285156,
+          "y": 412.74444580078125,
+          "w": 58.64031982421875,
+          "h": 19.300567626953125
+        },
+        "svgObjectBox": {
+          "x": 201.26458740234375,
+          "y": 370.0909729003906,
+          "w": 289.92474365234375,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.3988692302332127,
+          "y": 0.08693102902013303,
+          "w": 0.20226048693013893,
+          "h": 0.03933602800414258
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "внутри, дно",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-8",
+        "printId": "",
+        "applicationId": "",
+        "place": "внутри, дно",
+        "sizeCm": [
+          3.5,
+          3.5
+        ]
+      },
+      "targetQuad": [
+        {
+          "x": 0.3204044810471492,
+          "y": 0.08345192393512416
+        },
+        {
+          "x": 0.49686488765468406,
+          "y": 0.08345192393512416
+        },
+        {
+          "x": 0.49686488765468406,
+          "y": 0.10630676181918457
+        },
+        {
+          "x": 0.3204044810471492,
+          "y": 0.10630676181918457
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 271.3291931152344,
+          "y": 387.9705810546875,
+          "w": 61.077972412109375,
+          "h": 12.215606689453125
+        },
+        "svgObjectBox": {
+          "x": 175.79530334472656,
+          "y": 370.0909729003906,
+          "w": 315.39402770996094,
+          "h": 490.6587829589844
+        },
+        "normalizedField": {
+          "x": 0.3029032935853865,
+          "y": 0.03644000428662761,
+          "w": 0.19365608428158698,
+          "h": 0.024896337564335954
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-9",
+        "printId": "",
+        "applicationId": "",
+        "place": "",
+        "sizeCm": null
+      },
+      "targetQuad": [
+        {
+          "x": 0.20942989090599992,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.36312543034695477,
+          "y": 0.013549379831460727
+        },
+        {
+          "x": 0.36312543034695477,
+          "y": 0.038210350537922336
+        },
+        {
+          "x": 0.20942989090599992,
+          "y": 0.038210350537922336
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 194.663330078125,
+          "y": 387.9705810546875,
+          "w": 61.07798767089844,
+          "h": 12.215606689453125
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 406.0260925292969,
+          "w": 362.1092224121094,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.18111447424254748,
+          "y": -0.03970655791779877,
+          "w": 0.16867283098740518,
+          "h": 0.026863802512485414
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    },
+    {
+      "schema": "gifts-mockup-profile/v1",
+      "article": "3445.20",
+      "variant": "",
+      "place": "",
+      "method": "",
+      "photo": {
+        "id": "3445.20_2",
+        "name": "Фото gifts.ru",
+        "url": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2",
+        "sourceUrl": "https://files.gifts.ru/reviewer/webp/83/3445.20_2_500.webp?v=2"
+      },
+      "field": {
+        "id": "field-10",
+        "printId": "",
+        "applicationId": "",
+        "place": "",
+        "sizeCm": null
+      },
+      "targetQuad": [
+        {
+          "x": 0.2124966544884432,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.36005805241347455,
+          "y": 0.06356306873949902
+        },
+        {
+          "x": 0.36005805241347455,
+          "y": 0.10252721886045227
+        },
+        {
+          "x": 0.2124966544884432,
+          "y": 0.10252721886045227
+        }
+      ],
+      "surface": "perspective",
+      "render": {
+        "opacity": 0.9,
+        "blend": "source-over",
+        "mesh": 18
+      },
+      "status": "candidate-high",
+      "confidence": 0.9181,
+      "generatedBy": "github-actions-svg-silhouette-v1",
+      "evidence": {
+        "svgPrintBox": {
+          "x": 195.88204956054688,
+          "y": 412.74444580078125,
+          "w": 58.64030456542969,
+          "h": 19.300567626953125
+        },
+        "svgObjectBox": {
+          "x": 129.08010864257812,
+          "y": 406.0260925292969,
+          "w": 362.1092224121094,
+          "h": 454.7236633300781
+        },
+        "normalizedField": {
+          "x": 0.18448008717641215,
+          "y": 0.014774584683550123,
+          "w": 0.1619409309014845,
+          "h": 0.04244460797489461
+        },
+        "photoObjectBox": {
+          "x": 0.04439746300211417,
+          "y": 0.05,
+          "w": 0.9112050739957717,
+          "h": 0.918
+        },
+        "photoPixelRatio": 0.6086,
+        "photoScore": 0.9181
+      }
+    }
+  ],
+  "articleSources": [
+    {
+      "article": "15637",
+      "product": "Брелок Tetta",
+      "productUrl": "https://gifts.ru/id/228756",
+      "constructorUrl": "https://files.gifts.ru/reviewer/constructor/15637_1.pdf",
+      "places": [
+        {
+          "printId": "print1",
+          "place": "лицо",
+          "fieldSizeCm": [
+            3.2,
+            3.2
+          ]
+        },
+        {
+          "printId": "print2",
+          "place": "оборот",
+          "fieldSizeCm": [
+            3.2,
+            3.2
+          ]
+        }
+      ],
+      "sourceStatus": "verified-public-page"
+    },
+    {
+      "article": "16535.66",
+      "product": "Сумка для покупок Cottonica Recycle, неокрашенная",
+      "productUrl": "https://gifts.ru/id/242994",
+      "places": [
+        {
+          "place": "сторона а"
+        },
+        {
+          "place": "сторона b"
+        }
+      ],
+      "sourceStatus": "verified-public-page"
+    },
+    {
+      "article": "12393.89",
+      "product": "Зонт-трость Standard, желтый неон",
+      "places": [
+        {
+          "printId": "print1",
+          "place": "купол, клин 1",
+          "fieldSizeCm": [
+            20,
+            10
+          ]
+        }
+      ],
+      "sourceStatus": "verified-real-template"
+    },
+    {
+      "article": "3445.20",
+      "product": "Кружка Promo матовая, оранжевая",
+      "productUrl": "https://gifts.ru/id/135170",
+      "places": [],
+      "sourceStatus": "verified-public-page"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-08",
+  "repository": "tohaa28/tohaa28.github.io",
+  "source_branch": "gifts-layout-workbench-mockups-source",
+  "functional_source_commit": "6a8d800a5d0006c1577f229704b91663baec691c",
+  "published_main": "6db3059d78e81b67e41c3d59ee9cab4625610b9d",
+  "workflow_run": 37755818416,
+  "workflow": {
+    "precheck": "success",
+    "publish": "success",
+    "browser_verify": "success"
+  },
+  "algorithm": "PrintCheck-coverage-local-v23-control-circle-topology",
+  "cache": "20261008-1",
+  "expected_bundle_sha256": "2943354870275bb5b2755459a3017f30fc5c354509d4bd1844565e658f5ad7d4",
+  "unit_tests": "110/110 passed",
+  "real_v22_failure": {
+    "total": 724,
+    "positive": 392,
+    "negative": 332,
+    "min_width_mm": 0.02,
+    "source_dpi": 1048,
+    "field_mm": [
+      32,
+      32
+    ]
+  },
+  "next_required_test": "Rerun the same blue LM1 raster on published v23 and compare contour/gap marker placement."
+}
