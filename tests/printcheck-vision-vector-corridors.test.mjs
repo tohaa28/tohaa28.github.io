@@ -88,10 +88,10 @@ test('overlapping vector contours are refused rather than misread as knockout',(
   assert.equal(r.reason,'SELF_INTERSECTION_OR_TOUCHING_CONTOURS');
 });
 
-test('open paths, SVG arcs and unknown path commands return MANUAL',()=>{
+test('open paths, malformed arcs and unknown path commands return MANUAL',()=>{
   for(const [d,reason] of [
     ['M0 0 L2 0 L2 1','UNCLOSED_SUBPATH'],
-    ['M0 0 A3 3 0 0 1 6 0 Z','UNSUPPORTED_SVG_COMMAND'],
+    ['M0 0 A3 3 0 2 1 6 0 Z','SVG_ARC_PARAMETERS_INVALID'],
     ['M0 0 R1 1 2 2 Z','UNSUPPORTED_SVG_COMMAND'],
     ['M0 0 P1 1 Z','UNSUPPORTED_SVG_COMMAND']
   ])assert.equal(parseClosedSvgPath(d).reason,reason);
@@ -201,4 +201,58 @@ test('smooth T after a line resets old quadratic reflection',()=>{
   const b=parseClosedSvgPath('M0 0 L1 0 Q1 0 3 1 L3 2 L0 2 Z');
   assert.equal(a.status,'CONTOURS_ONLY');
   assert.deepEqual(a.contours,b.contours);
+});
+
+
+test('SVG elliptical arcs A/a preserve endpoint and closed path geometry',()=>{
+  const abs=parseClosedSvgPath('M0 0 L10 0 A10 10 0 0 1 0 10 Z',{flatness_user_units:0.002});
+  const rel=parseClosedSvgPath('m0 0 l10 0 a10 10 0 0 1 -10 10 z',{flatness_user_units:0.002});
+  assert.equal(abs.status,'CONTOURS_ONLY',abs.reason);
+  assert.equal(rel.status,'CONTOURS_ONLY',rel.reason);
+  assert.ok(abs.contours[0].points.length>20);
+  assert.deepEqual(abs.contours,rel.contours);
+  const pts=abs.contours[0].points;
+  assert.deepEqual(pts[0],{x:0,y:0});
+  assert.deepEqual(pts[1],{x:10,y:0});
+  assert.deepEqual(pts.at(-1),{x:0,y:10});
+});
+test('SVG circular-arc adaptive flatten stays under requested error budget',()=>{
+  const epsilon=0.002,radius=10;
+  const result=parseClosedSvgPath('M0 0 L10 0 A10 10 0 0 1 0 10 Z',
+    {flatness_user_units:epsilon});
+  assert.equal(result.status,'CONTOURS_ONLY');
+  const points=result.contours[0].points;
+  for(let i=2;i<points.length-1;i++){
+    const p=points[i],q=points[i+1];
+    const theta=(Math.atan2(p.y,p.x)+Math.atan2(q.y,q.x))/2;
+    const midpoint={x:(p.x+q.x)/2,y:(p.y+q.y)/2};
+    const ideal={x:radius*Math.cos(theta),y:radius*Math.sin(theta)};
+    const err=Math.hypot(midpoint.x-ideal.x,midpoint.y-ideal.y);
+    assert.ok(err<=epsilon+1e-8, 'arc deviation exceeded: '+err);
+  }
+});
+test('rotated ellipse, large arc and relative endpoint are not dropped',()=>{
+  for(const d of [
+    'M0 0 L8 0 A5 3 30 1 1 0 8 Z',
+    'm0 0 l8 0 a5 3 30 1 1 -8 8 z'
+  ]){
+    const r=parseClosedSvgPath(d,{flatness_user_units:0.003});
+    assert.equal(r.status,'CONTOURS_ONLY',r.reason);
+    assert.ok(r.curve_segments>4);
+  }
+});
+test('degenerate arcs and insufficient resolution explicitly fail closed',()=>{
+  for(const d of [
+    'M0 0 L10 0 A-10 10 0 0 1 0 10 Z',
+    'M0 0 L10 0 A0 10 0 0 1 0 10 Z',
+    'M0 0 L10 0 A10 10 0 1 4 0 10 Z',
+    'M0 0 L10 0 A10 10 0 1 1 10 0 Z'
+  ]){
+    const r=parseClosedSvgPath(d);
+    assert.equal(r.status,'MANUAL',d);
+  }
+  const budget=parseClosedSvgPath('M0 0 L1000 0 A1000 1000 0 0 1 0 1000 Z',
+    {flatness_user_units:0.00001,max_segments:25});
+  assert.equal(budget.status,'MANUAL');
+  assert.match(budget.reason,/BUDGET/);
 });
