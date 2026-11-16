@@ -1,10 +1,10 @@
 /**
  * Strict SVG path-data adapter for PrintCheck Vision C3B.2.
  *
- * Supported: M/m, L/l, H/h, V/v, C/c, S/s, Q/q, T/t, Z/z, repeated and
+ * Supported: M/m, L/l, H/h, V/v, C/c, S/s, Q/q, T/t, A/a, Z/z, repeated and
  * implicit coordinate commands. Every returned contour is CLOSED and filled.
  *
- * Deliberately unsupported (MANUAL): A/a, unclosed strokes, CSS
+ * Deliberately unsupported (MANUAL): invalid arcs, unclosed strokes, CSS
  * styling, clip-path, marker, text, external references, group transforms.
  * The caller must independently check actual fill and document placement.
  *
@@ -54,6 +54,57 @@ function cubicToPolyline(p0,p1,p2,p3,eps,depth,emit){
   cubicToPolyline(p0,p01,p012,p,eps,depth-1,emit);
   cubicToPolyline(p,p123,p23,p3,eps,depth-1,emit);
 }
+/**
+ * SVG 2 elliptical endpoint arc (A/a) to a safely bounded polyline.
+ * Error bound <= eps in local user units for each arc chord, with maximum
+ * curvature controlled by the ellipse's largest radius. Invalid, degenerate
+ * or very large arcs fail closed rather than silently producing straight lines.
+ */
+function arcToPolyline(start,rx,ry,rotation,largeFlag,sweepFlag,end,eps,emit,maxSegments){
+  if(!(rx>0&&ry>0) || ![rx,ry,rotation].every(Number.isFinite)||
+     !(largeFlag===0||largeFlag===1) || !(sweepFlag===0||sweepFlag===1))
+    throw new Error("SVG_ARC_PARAMETERS_INVALID");
+  if(rx>1e8||ry>1e8 || (start.x===end.x&&start.y===end.y))
+    throw new Error("SVG_ARC_DEGENERATE_OR_OVERSIZED");
+  const phi=rotation*Math.PI/180,cosPhi=Math.cos(phi),sinPhi=Math.sin(phi);
+  const dx=(start.x-end.x)/2,dy=(start.y-end.y)/2;
+  const xp=cosPhi*dx+sinPhi*dy,yp=-sinPhi*dx+cosPhi*dy;
+  const correction=Math.sqrt(xp*xp/(rx*rx)+yp*yp/(ry*ry));
+  if(!Number.isFinite(correction))throw new Error("SVG_ARC_PARAMETERS_INVALID");
+  if(correction>1){rx*=correction;ry*=correction}
+  const rx2=rx*rx,ry2=ry*ry,xp2=xp*xp,yp2=yp*yp;
+  const denom=rx2*yp2+ry2*xp2;
+  if(!(denom>1e-24))throw new Error("SVG_ARC_DEGENERATE_OR_OVERSIZED");
+  const ratio=Math.max(0,(rx2*ry2-denom)/denom);
+  const sign=largeFlag===sweepFlag?-1:1;
+  const factor=sign*Math.sqrt(ratio);
+  const cxp=factor*(rx*yp/ry),cyp=factor*(-ry*xp/rx);
+  const cx=cosPhi*cxp-sinPhi*cyp+(start.x+end.x)/2;
+  const cy=sinPhi*cxp+cosPhi*cyp+(start.y+end.y)/2;
+  const ux=(xp-cxp)/rx,uy=(yp-cyp)/ry;
+  const vx=(-xp-cxp)/rx,vy=(-yp-cyp)/ry;
+  const begin=Math.atan2(uy,ux);
+  let delta=Math.atan2(ux*vy-uy*vx,ux*vx+uy*vy);
+  if(sweepFlag===0&&delta>0)delta-=2*Math.PI;
+  if(sweepFlag===1&&delta<0)delta+=2*Math.PI;
+  const maxRadius=Math.max(rx,ry);
+  const angleBound=2*Math.acos(Math.max(-1,Math.min(1,1-eps/maxRadius)));
+  const maxStep=Math.min(Math.PI/6,angleBound);
+  if(!(maxStep>0)||!Number.isFinite(maxStep))
+    throw new Error("SVG_ARC_ERROR_BUDGET_UNREACHABLE");
+  const steps=Math.max(1,Math.ceil(Math.abs(delta)/maxStep));
+  if(!Number.isSafeInteger(steps)||steps>maxSegments)
+    throw new Error("SVG_ARC_SEGMENT_BUDGET_EXCEEDED");
+  for(let i=1;i<=steps;i++){
+    if(i===steps){emit(end);continue}
+    const t=begin+delta*i/steps;
+    const ct=Math.cos(t),st=Math.sin(t);
+    emit({
+      x:cx+rx*cosPhi*ct-ry*sinPhi*st,
+      y:cy+rx*sinPhi*ct+ry*cosPhi*st
+    });
+  }
+}
 function same(a,b){return a.x===b.x&&a.y===b.y}
 export function parseClosedSvgPath(d, options={}){
   if(typeof d!=="string"||!d.trim())return refused("EMPTY_PATH");
@@ -65,7 +116,7 @@ export function parseClosedSvgPath(d, options={}){
      errorBudget<=0||errorBudget>10)return refused("INVALID_FLATTEN_OPTIONS");
   const tokens=tokensOf(d,maxTokens);
   if(!tokens||tokens.length===0)return refused("INVALID_PATH_DATA");
-  const supported=new Set(["M","L","H","V","C","S","Q","T","Z"]);
+  const supported=new Set(["M","L","H","V","C","S","Q","T","A","Z"]);
   let i=0,command=null,position={x:0,y:0},start=null,points=null,contours=[],count=0,curveSegments=0;
   let lastCubicControl=null,lastQuadControl=null;
   const resetSmooth=()=>{lastCubicControl=null;lastQuadControl=null;};
@@ -130,6 +181,15 @@ export function parseClosedSvgPath(d, options={}){
         cubicToPolyline(position,c1,c2,end,errorBudget,14,emit);
         curveSegments+=count-before;
         position=end;lastQuadControl=c;lastCubicControl=null;continue;
+      }
+      if(upper==="A"){
+        const rx=scalar(),ry=scalar(),rotation=scalar(),
+              large=scalar(),sweep=scalar(),end=target(rel);
+        const before=count;
+        arcToPolyline(position,rx,ry,rotation,large,sweep,end,
+                      errorBudget,emit,maxSegments-count);
+        curveSegments+=count-before;
+        position=end;resetSmooth();continue;
       }
       if(upper==="T"){
         const c=reflected(lastQuadControl);
