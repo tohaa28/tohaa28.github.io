@@ -140,3 +140,24 @@ test('closed SVG elliptical arcs and smooth curves are accepted inside nested gr
   assert.equal(r.status,'RESEARCH_CANDIDATES_ONLY',r.reason);
   assert.ok(r.curve_segments>10);
 });
+
+test('opt-in curved SVG analysis reports research candidates without changing default production state',()=>{
+  const ring=radius=>{
+    const points=Array.from({length:48},(_,i)=>{
+      const t=i*2*Math.PI/48;
+      return [10+radius*Math.cos(t),10+radius*Math.sin(t)];
+    });
+    return 'M'+points.map((p,i)=>i===0?p.join(' '):'L'+p.join(' ')).join(' ')+' Z';
+  };
+  const root=svg([path(ring(6)+' '+ring(5.82),{'fill-rule':'evenodd'})]);
+  const normal=evaluate(root,{include_curved_probes:true,max_candidate_mm:0.4});
+  assert.equal(normal.status,'RESEARCH_CANDIDATES_ONLY',normal.reason);
+  assert.equal(normal.curved_probes.status,'RESEARCH_CANDIDATES_ONLY');
+  assert.ok(normal.curved_probes.candidates.some(c=>
+    c.kind==='positive_width_mm'&&Math.abs(c.measured_mm-0.18)<0.03));
+  assert.equal(normal.print_scale_proven,false);
+  assert.equal(normal.curved_probes.geometry_proven,false);
+  const defaultResult=evaluate(root,{max_candidate_mm:0.4});
+  assert.ok(!Object.hasOwn(defaultResult,'curved_probes'),
+    'curve analysis must remain strictly opt-in');
+});
