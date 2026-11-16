@@ -9,6 +9,9 @@ on:
       - assets/printcheck-vision-ui.*
       - tests/printcheck-vision-ui.browser.mjs
       - tests/printcheck-vision-studio.browser.mjs
+      - tests/printcheck-vision-review.browser.mjs
+      - vision-review.html
+      - vision/dataset/review-task.mjs
       - vision-studio.html
       - .github/workflows/test-printcheck-vision.yml
   pull_request:
@@ -32,6 +35,8 @@ jobs:
         run: |
           node --check assets/printcheck-vision-ui.js
           node --check tests/printcheck-vision-studio.browser.mjs
+          node --check tests/printcheck-vision-review.browser.mjs
+          node --check vision/dataset/review-task.mjs
           node --check tests/printcheck-vision-ui.browser.mjs
       - name: Install headless browser
         run: |
@@ -41,3 +46,5 @@ jobs:
         run: node tests/printcheck-vision-ui.browser.mjs
       - name: Smoke test local expert annotations
         run: node tests/printcheck-vision-studio.browser.mjs
+      - name: Smoke test blinded two-reviewer local workflow
+        run: node tests/printcheck-vision-review.browser.mjs
