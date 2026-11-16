@@ -1,0 +1,12 @@
+import {readFileSync} from 'node:fs';
+import {performance} from 'node:perf_hooks';
+import {classifyCandidate} from './printcheck-micro.mjs';
+const model=JSON.parse(readFileSync(new URL('./weights-aug.json',import.meta.url),'utf8'));
+const p=new Uint8Array(441);
+for (let i=0;i<441;i++) p[i] = (i*31)%11 < 4 ? 1 : 0;
+const loops=2000;
+for(let i=0;i<50;i++) classifyCandidate(p,model);
+const start=performance.now();
+for(let i=0;i<loops;i++) classifyCandidate(p,model);
+const elapsed=performance.now()-start;
+console.log(JSON.stringify({candidate_count:loops,ms:elapsed.toFixed(2),ms_per_candidate:(elapsed/loops).toFixed(3),heap_used_bytes:process.memoryUsage().heapUsed},null,2));
