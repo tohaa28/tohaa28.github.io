@@ -34,16 +34,17 @@ function tokensOf(d,maxTokens){
 }
 const midpoint=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
 function flatness(p0,p1,p2,p3){
-  const dx=p3.x-p0.x,dy=p3.y-p0.y,base=Math.hypot(dx,dy);
-  if(base<1e-14)return Math.max(Math.hypot(p1.x-p0.x,p1.y-p0.y),Math.hypot(p2.x-p0.x,p2.y-p0.y));
-  // A flat collinear cubic may still overshoot its end point. In that case
-  // flatness to the infinite line is zero but error to the SEGMENT is large.
-  const projection1=(dx*(p1.x-p0.x)+dy*(p1.y-p0.y))/(base*base);
-  const projection2=(dx*(p2.x-p0.x)+dy*(p2.y-p0.y))/(base*base);
-  if(projection1<0||projection1>1||projection2<0||projection2>1)return Infinity;
-  const d1=Math.abs(dx*(p1.y-p0.y)-dy*(p1.x-p0.x))/base;
-  const d2=Math.abs(dx*(p2.y-p0.y)-dy*(p2.x-p0.x))/base;
-  return Math.max(d1,d2);
+  // Distance to the FINITE chord segment, not to its infinite supporting line.
+  // The segment is convex, so bounding its distance for every Bezier control
+  // point bounds the entire cubic curve (convex-hull property). This also
+  // handles collinear control-point overshoot without infinite subdivisions.
+  const dx=p3.x-p0.x,dy=p3.y-p0.y,den=dx*dx+dy*dy;
+  const distanceToChord=p=>{
+    if(den<=1e-28)return Math.hypot(p.x-p0.x,p.y-p0.y);
+    const t=Math.max(0,Math.min(1,((p.x-p0.x)*dx+(p.y-p0.y)*dy)/den));
+    return Math.hypot(p.x-(p0.x+t*dx),p.y-(p0.y+t*dy));
+  };
+  return Math.max(distanceToChord(p1),distanceToChord(p2));
 }
 function cubicToPolyline(p0,p1,p2,p3,eps,depth,emit){
   if(flatness(p0,p1,p2,p3)<=eps){emit(p3);return}
