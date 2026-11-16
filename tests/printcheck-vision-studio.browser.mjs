@@ -1,7 +1,7 @@
 // Browser smoke for the isolated specialist annotation studio.
 // Uses generated 1x1 pixel, no customer files or external endpoints.
 import { chromium } from 'playwright';
-import { readFile, readFileSync } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch({headless: true});
 try {
