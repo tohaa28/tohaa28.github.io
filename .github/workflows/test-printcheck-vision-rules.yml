@@ -37,4 +37,4 @@ jobs:
         with:
           python-version: "3.12"
       - name: Verify private archive inventory utility on synthetic ZIPs
-        run: python -m unittest discover -s tests -p 'printcheck-vision-inventory.test.py' -v
+        run: python -m unittest discover -s tests -p 'test_printcheck_vision_inventory.py' -v
