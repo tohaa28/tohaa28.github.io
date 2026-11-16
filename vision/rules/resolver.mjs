@@ -9,7 +9,8 @@ const MANUAL = (reason, extra = {}) => Object.freeze({status:"MANUAL",reason,...
 const own = (value,key) => Object.prototype.hasOwnProperty.call(value||{},key);
 const finite = n => typeof n==="number" && Number.isFinite(n) && n>=0;
 const norm = value => String(value??"").trim().toUpperCase();
-const isDefined = value => value!==undefined && value!==null && value!=="";
+const isDefined = value => value!==undefined && value!==null && value!=="" &&
+  !(typeof value==="string" && /^(unknown|unspecified|not set|undefined|неизвестно|не указано|\?)$/i.test(value.trim()));
 const supportedTier = {technology:1,constructor:2,order:3};
 
 function matchesRequirement(condition = {}, features = {}) {
@@ -53,6 +54,10 @@ export function resolveRequirement(registry, query = {}) {
   const supported=registry.rules.filter(rule=>Array.isArray(rule.technologies) &&
     rule.technologies.some(code=>norm(code)===technology) &&
     own(rule.measurements,dimension));
+  // A catalogued official-source dispute must be explicit even when no numeric
+  // base rule is published for this metric.
+  const declaredConflict=(registry.source_conflicts||[]).find(x=>
+    x.metric===dimension && x.technologies?.some(code=>norm(code)===technology));
   const providedOverrides=(Array.isArray(query.overrides)?query.overrides:[])
     .filter(rule=>matchingOverride(rule,{...query,technology,dimension}));
   const candidates=[];
@@ -102,7 +107,8 @@ export function resolveRequirement(registry, query = {}) {
     });
   }
   if(!candidates.length) return MANUAL(
-    blockerDetails[0]||"NO_APPLICABLE_RULE",{technology,dimension}
+    blockerDetails[0]||(declaredConflict?"RULE_SOURCE_CONFLICT":"NO_APPLICABLE_RULE"),
+    {technology,dimension,...(declaredConflict?{conflict_id:declaredConflict.id,variants:declaredConflict.variants}:{})}
   );
   const maxTier=Math.max(...candidates.map(x=>x.tier));
   if(unknownAtTier>=maxTier)return MANUAL(blockerDetails[0]||"UNRESOLVED_CONDITION",{technology,dimension});
