@@ -178,6 +178,9 @@ function classifiedError(error,phase,originRelation){
  if(error?.visionCode==='FETCH_TIMEOUT')
    return REFUSE(phase==='order_card'?'ORDER_CARD_TIMEOUT':'ORDER_POPUP_TIMEOUT',
      {...common,failure_class:'timeout'});
+ if(error?.visionCode==='TEST_REDIRECT_DENIED')
+   return REFUSE(phase==='order_card'?'ORDER_CARD_REDIRECT_DENIED':'ORDER_POPUP_REDIRECT_DENIED',
+     {...common,failure_class:'redirect_denied'});
  // A failed browser fetch does NOT identify CORS specifically: it can
  // mean a denied redirect, DNS, offline test host or another network block.
  return REFUSE(phase==='order_card'?'ORDER_CARD_FETCH_REJECTED':'ORDER_POPUP_FETCH_REJECTED',
@@ -194,12 +197,29 @@ async function getText(url,fetcher,listOrigin,phase){
  try{
   res=await fetcher(loc.href,{
    method:"GET",mode:same?"same-origin":"cors",
-   credentials:"include",redirect:"error",cache:"no-store",
+   credentials:"include",redirect:same?"follow":"error",cache:"no-store",
    referrerPolicy:"no-referrer",signal:controller.signal,
    headers:phase==="popup"&&same?
      {accept:"text/html,application/json","x-requested-with":"XMLHttpRequest"}:
      {accept:"text/html,application/json"}
   });
+  // The original Maketnaya follows canonical same-origin redirects and
+  // rejects auth-page landings. Preserve that behavior without allowing
+  // redirected content from unrelated endpoints or an untrusted host.
+  if(res.url){
+   let final;
+   try{final=new URL(res.url)}catch{}
+   const auth=final&&/(?:^|\\/)(?:auth|login|signin)(?:\\/|$)/i.test(final.pathname);
+   const expected=loc.pathname.replace(/\\/$/,'')+loc.search;
+   const actual=final?.pathname.replace(/\\/$/,'')+final?.search;
+   if(auth){const e=Error('TEST_SESSION_AUTH_REQUIRED');
+     e.visionCode='TEST_SESSION_AUTH_REQUIRED';throw e}
+   if(!final||!testUrl(res.url,loc.href)||
+      final.origin!==loc.origin||actual!==expected){
+     const e=Error('TEST_REDIRECT_DENIED');
+     e.visionCode='TEST_REDIRECT_DENIED';throw e;
+   }
+  }
   if(!res.ok){
    const error=Error("RESPONSE_HTTP_STATUS");
    error.visionCode="RESPONSE_HTTP_STATUS";
