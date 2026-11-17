@@ -23,7 +23,7 @@ ol li{margin:8px 0}
 <li>На компьютере, подключённом к тестовой локальной сети, откройте эту страницу установщика.</li>
 <li>Перетащите кнопку <strong>Vision Check — заказы</strong> на панель закладок (Ctrl + Shift + B).</li>
 <li>Откройте тестовую таблицу на <code>psk.testgifts.local/devorders?status=140</code>, при необходимости авторизуйтесь.</li>
-<li>Нажмите закладку. Vision добавит колонку в таблицу. По кнопке «Проверить макеты» он последовательно читает карточку заказа, получает окно «Макеты для заказа» и скачивает именно вложения заказчика. Конструкторы хранятся как ссылки на эталоны, но не включаются в клиентскую обучающую выборку.</li>
+<li>Нажмите закладку. Vision добавит колонку в таблицу. Начните с кнопки «Проверить строку» для одного заказа. Кнопка «Проверить следующие 10 заказов» читает карточки порциями по 10 без повторного сканирования. После 32 загрузок файлов кнопка «Новый лимит файлов» позволяет продолжить, сохранив результаты, включая частично обработанные заказы.</li>
 </ol>
 <a id="ordersBookmarklet" class="action primary" draggable="true" href="javascript:(()=>{if(location.protocol!=='http:'||location.hostname!=='psk.testgifts.local'||!/^\/devorders(?:\/|$)/.test(location.pathname)){alert('Откройте тестовую таблицу на psk.testgifts.local/devorders');return;}const s=document.createElement('script');s.src='https://tohaa28.github.io/gifts-layout-workbench-vision/vision-order-overlay.js?v='+Date.now();s.onerror=()=>alert('Vision не загрузился. Возможна блокировка CSP или отсутствие GitHub Pages.');document.documentElement.appendChild(s)})()">Vision Check — заказы (перетащить)</a>
 <button class="action" type="button" id="copy">Скопировать код закладки</button>
@@ -31,6 +31,7 @@ ol li{margin:8px 0}
 <textarea id="bookmarkletCode" readonly hidden aria-label="Код закладки"></textarea>
 <a class="action" href="http://psk.testgifts.local/devorders?status=140" target="_blank" rel="noopener noreferrer">Открыть тестовые заказы</a>
 <a class="action" href="./index.html">Вернуться к Vision</a>
+<p><strong>Калибровка по анонимной диагностике 17.11.2026:</strong> 61 строка таблицы, 61 прямой переход в карточки, ноль подтверждённых прямых вложений в текущем origin. Семь ссылок-кандидатов из списка не используются для скачивания: клиентские вложения извлекаются только через карточку заказа и окно <code>makets_popup</code>. Это подтверждает маршрутизацию, но не факт доступности самих файлов.</p>
 <h2>Локальный тестовый стенд на диске D:</h2>
 <p>Подготовлен автономный стенд <code>D:\VisionCheckLab</code>: импорт подписанных экспертными метками тестовых ZIP, проверка SHA-256, приватное хранилище оригиналов, SQLite-реестр, журнал ROI и панель только на <code>127.0.0.1</code>. Данные из локальной сети не отправляются в GitHub.</p>
 <a class="action primary" href="./vision-local-lab.zip" download>Скачать установщик стенда для D: (ZIP)</a>
