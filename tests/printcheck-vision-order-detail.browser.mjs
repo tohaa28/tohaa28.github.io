@@ -86,6 +86,7 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('[data-vision-order-cell]')[0]
    ?.querySelector('.vlo-label')?.textContent?.includes('ручной проверки'),null,{timeout:15000});
  assert.match(await first.innerText(),/2 клиентских файлов, 1 конструкторов/);
+ await first.locator('.vlo-files summary').click();
  assert.match(await first.innerText(),/Логотип  клиента №2.svg/);
  assert.match(await first.innerText(),/Исходный  документ.PDF/);
  assert.match(await first.innerText(),/SVG: [1-9]/);
