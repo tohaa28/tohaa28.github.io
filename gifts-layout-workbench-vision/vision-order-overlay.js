@@ -1882,6 +1882,7 @@
     maxFilesPerRow: 8,
     maxFileBytes: 16e6,
     maxBatchFiles: 32,
+    maxOrdersPerClick: 10,
     timeoutMs: 15e3
   });
   var extensions = /\.(?:svg|pdf|png|jpe?g|webp|cdr|ai|eps|zip|tiff?|psd)(?:$|[?#])/i;
@@ -2011,6 +2012,9 @@
       cross_origin_or_unsafe_candidate_count: candidates.length - same3.length,
       recognized_rows: discoverOrderRows(doc).length,
       order_navigation_patterns: rowRoutes,
+      order_detail_first_required: rowRoutes.explicit_order_links > 0 && same3.length === 0,
+      file_attachments_verified: false,
+      test_order_details_access_verified: false,
       data_order_id_elements: doc.querySelectorAll("[data-order-id]").length,
       action_button_count: doc.querySelectorAll('button,[role="button"]').length,
       candidate_url_formats: ext,
