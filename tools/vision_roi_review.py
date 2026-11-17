@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import hashlib
 import math
 from pathlib import Path
 import re
@@ -67,6 +68,24 @@ def ensure_expert(value: str) -> None:
         raise ValueError("EXPERT_ID_INVALID")
 
 
+
+def verify_original(root: Path, relative: str, expected_sha256: str) -> None:
+    """Reject modified or substituted local originals before recording a vote."""
+    base = (root / "samples").resolve()
+    candidate = root / relative
+    actual = candidate.resolve()
+    try:
+        actual.relative_to(base)
+    except ValueError as exc:
+        raise ValueError("SOURCE_PATH_UNSAFE") from exc
+    if any(p.is_symlink() for p in (candidate, *candidate.parents)) or (
+        not actual.is_file() or actual.stat().st_size > lab.MAX_FILE
+    ):
+        raise ValueError("SOURCE_PATH_UNSAFE")
+    if hashlib.sha256(actual.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError("SOURCE_SHA256_MISMATCH")
+
+
 def propose(root: Path, *, sample_id: str, expert: str, kind: str,
             technology: str, units: str, x: float, y: float,
             width: float, height: float, page_number: int | None = None) -> str:
@@ -87,6 +106,7 @@ def propose(root: Path, *, sample_id: str, expert: str, kind: str,
         if not sample:
             raise ValueError("SAMPLE_ID_NOT_FOUND")
         digest, extension, relative = sample
+        verify_original(root, relative, digest)
         if (extension == "pdf") != (units == "pdf_page_pt"):
             raise ValueError("ROI_UNIT_FORMAT_MISMATCH")
         if extension == "svg" and units != "svg_document_mm":
@@ -112,9 +132,12 @@ def vote(root: Path, *, case_id: str, expert: str, verdict: str) -> None:
         raise ValueError("REVIEW_VERDICT_INVALID")
     with lab.open_db(root) as db:
         initialize(db)
-        row = db.execute("SELECT proposer FROM roi_cases WHERE id=?", (case_id,)).fetchone()
+        row = db.execute("""SELECT c.proposer,s.relative_path,c.source_sha256
+                            FROM roi_cases c JOIN samples s ON s.id=c.sample_id
+                            WHERE c.id=?""", (case_id,)).fetchone()
         if row is None:
             raise ValueError("ROI_CASE_NOT_FOUND")
+        verify_original(root, row[1], row[2])
         if row[0] == expert:
             raise ValueError("REVIEWER_MUST_BE_INDEPENDENT")
         count = db.execute("SELECT COUNT(*) FROM roi_votes WHERE case_id=?",
@@ -134,9 +157,12 @@ def adjudicate(root: Path, *, case_id: str, expert: str, verdict: str) -> None:
         raise ValueError("REVIEW_VERDICT_INVALID")
     with lab.open_db(root) as db:
         initialize(db)
-        found = db.execute("SELECT proposer FROM roi_cases WHERE id=?", (case_id,)).fetchone()
+        found = db.execute("""SELECT c.proposer,s.relative_path,c.source_sha256
+                             FROM roi_cases c JOIN samples s ON s.id=c.sample_id
+                             WHERE c.id=?""", (case_id,)).fetchone()
         if not found:
             raise ValueError("ROI_CASE_NOT_FOUND")
+        verify_original(root, found[1], found[2])
         rows = db.execute("SELECT expert,verdict FROM roi_votes WHERE case_id=?",
                           (case_id,)).fetchall()
         if len(rows) != 2 or rows[0][1] == rows[1][1]:
