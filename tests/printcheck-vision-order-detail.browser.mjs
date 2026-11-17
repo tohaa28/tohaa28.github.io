@@ -77,7 +77,7 @@ try{
  assert.equal(requests.length,0,'No order gets fetched automatically');
  await first.locator('button').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-vision-order-cell]')[0]
-   ?.querySelector('.vlo-label')?.textContent?.includes('исследованы'),null,{timeout:15000});
+   ?.querySelector('.vlo-label')?.textContent?.includes('ручной проверки'),null,{timeout:15000});
  assert.match(await first.innerText(),/2 клиентских файлов, 1 конструкторов/);
  assert.match(await first.innerText(),/SVG: [1-9]/);
  assert.match(await first.innerText(),/PDF: ручная проверка/);
