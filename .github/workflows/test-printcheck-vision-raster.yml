@@ -28,4 +28,6 @@ jobs:
       - name: Install pinned research-only SVG and PDF raster engines
         run: npm install --prefix vision/raster --no-audit --no-fund
       - name: Run actual Rust resvg and PDF.js Skia pixel replay
-        run: node tests/printcheck-vision-independent-raster.integration.mjs
+        run: |
+          node tests/printcheck-vision-independent-raster.integration.mjs
+          node tests/printcheck-vision-raster-locked-pilot.integration.mjs
