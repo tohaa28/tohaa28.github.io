@@ -93,8 +93,11 @@ function installPortListener(runtime){
          final.port||final.username||final.password){
         send({op:'error',code:'EXTENSION_REDIRECT_UNTRUSTED_ORIGIN'});return;
       }
-      if(final.pathname!==new URL(target.url).pathname||
-         final.search!==new URL(target.url).search){
+      const original=new URL(target.url);
+      const pathKey=path=>target.kind==='order_card'&&path.endsWith('/')?
+        path.slice(0,-1):path;
+      if(pathKey(final.pathname)!==pathKey(original.pathname)||
+         final.search!==original.search){
         const login=final.pathname.toLowerCase().split('/').some(part=>['auth','login','signin'].includes(part));
         send({op:'error',code:login?'EXTENSION_AUTH_REDIRECT':'EXTENSION_REDIRECT_UNEXPECTED_PATH'});return;
       }
