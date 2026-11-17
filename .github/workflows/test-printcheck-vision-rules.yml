@@ -19,6 +19,7 @@ on:
       - "tests/printcheck-vision-region-methods.test.mjs"
       - "tests/printcheck-vision-compare-reviews.test.mjs"
       - "vision/dataset/pilot-attestation.mjs"
+      - "vision/dataset/prepare-pilot-signoff.mjs"
       - "tests/printcheck-vision-pilot-attestation.test.mjs"
       - "tests/bench-printcheck-vision-spatial.mjs"
       - "tests/bench-printcheck-vision-curved.mjs"
@@ -67,6 +68,7 @@ jobs:
           node --check tests/printcheck-vision-region-methods.test.mjs
           node --check tests/printcheck-vision-compare-reviews.test.mjs
           node --check vision/dataset/pilot-attestation.mjs
+          node --check vision/dataset/prepare-pilot-signoff.mjs
           node --check tests/printcheck-vision-pilot-attestation.test.mjs
           node --check tests/bench-printcheck-vision-spatial.mjs
           node --check tests/bench-printcheck-vision-curved.mjs
