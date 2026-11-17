@@ -121,7 +121,7 @@ async function fixture(){
     predictions_hidden:true,frozen_for_holdout:true,
     sampling_plan_sha256:hash(samplingEvidenceBytes),
     entries:[
-      {image_sha256:h(123),artwork_sha256:h(124),family_sha256:h(125),
+      {image_sha256:hash(oPng),artwork_sha256:h(124),family_sha256:h(125),
        split:'train',technology_code:'UV1',source_type:'svg',fingerprint:O},
       {image_sha256:hash(imageBytes),artwork_sha256:hash(artworkBytes),
        family_sha256:task.context.family_sha256,split:'test',
@@ -203,9 +203,12 @@ test('a signed cohort with forged visual fingerprints is refused even when signa
   const {cohort,pack}=await fixture();
   // Rewrite train fingerprint into a different valid signature. The test
   // signer signs the attacker's rewritten cohort to expose the trust gap.
-  cohort.entries[0].fingerprint=T;
+  const altered=structuredClone(O);
+  altered.orientations[0].gradient=altered.orientations[0].gradient.replace(/^./,
+    altered.orientations[0].gradient[0]==='f'?'0':'f');
+  cohort.entries[0].fingerprint=altered;
   const result=verifyLockedPilot(pack(cohort));
-  assert.equal(result.status,'MANUAL');
+  assert.equal(result.reason,'SIGNED_COHORT_IMAGE_FINGERPRINTS_UNVERIFIED');
   assert.equal(result.evaluation_allowed,false);
 });
 test('a missing or byte-substituted original PNG is refused despite valid signed cohort',async()=>{
