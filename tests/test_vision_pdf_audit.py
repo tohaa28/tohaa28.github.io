@@ -173,6 +173,39 @@ class PDFAuditTests(unittest.TestCase):
         self.assertFalse(out["production_approved"])
         self.assertFalse(out["training_ready"])
 
+    def test_unsupported_pdf_path_structures_fail_closed(self):
+        class BadPage(Page):
+            def __init__(self, drawing):
+                self.drawing = drawing
+            def get_drawings(self):
+                return [self.drawing]
+        class BadEngine:
+            def __init__(self, drawing):
+                self.drawing = drawing
+            def open(self, _):
+                drawing = self.drawing
+                class BadDocument(Document):
+                    def __iter__(self):
+                        return iter([BadPage(drawing)])
+                return BadDocument()
+        source = self.root / lab.list_samples(self.root)[0]['path']
+        for kind in ('unknown', '', None, True, ['s']):
+            with self.subTest(kind=repr(kind)):
+                drawing = {'type': kind, 'width': .2, 'rect': Rect(0, 0, 5, 5), 'items': []}
+                result = pdf.audit_document(source, engine=BadEngine(drawing))
+                self.assertEqual(result['status'], 'MANUAL')
+                self.assertEqual(result['reason'], 'PDF_PATH_TYPE_UNSUPPORTED')
+                self.assertFalse(result['training_ready'])
+                self.assertFalse(result['production_approved'])
+        for items in (None, 'PRIVATE', {}, [None], [()], [[True]], [42]):
+            with self.subTest(items=repr(items)):
+                drawing = {'type': 's', 'width': .2, 'rect': Rect(0, 0, 5, 5), 'items': items}
+                result = pdf.audit_document(source, engine=BadEngine(drawing))
+                self.assertEqual(result['status'], 'MANUAL')
+                self.assertEqual(result['reason'], 'PDF_PATH_ITEMS_UNSUPPORTED')
+                self.assertFalse(result['production_approved'])
+                self.assertNotIn('PRIVATE', json.dumps(result))
+
     def test_narrow_filled_bounding_box_is_only_a_research_candidate(self):
         class FilledPage(Page):
             def get_drawings(self):
