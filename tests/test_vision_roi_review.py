@@ -129,6 +129,30 @@ class ReviewWorkflowTests(unittest.TestCase):
         self.assertNotIn(SVG.decode(), string)
         self.assertIn(case, string)
 
+    def test_active_learning_review_priority_changes_after_independent_votes(self):
+        initial = review.prioritized_review_queue(self.root)
+        self.assertEqual(len(initial), 1)
+        self.assertEqual(initial[0]["reason"], "EXPERT_ROI_PROPOSAL_REQUIRED")
+        self.assertFalse(initial[0]["training_approved"])
+        case = self.proposal()
+        self.assertEqual(review.prioritized_review_queue(self.root)[0]["reason"],
+                         "INDEPENDENT_REVIEWERS_REQUIRED")
+        review.vote(self.root, case_id=case, expert="expert_a",
+                    verdict="confirmed_defect")
+        self.assertEqual(review.prioritized_review_queue(self.root)[0]["reason"],
+                         "SECOND_REVIEW_REQUIRED")
+        review.vote(self.root, case_id=case, expert="expert_b",
+                    verdict="false_positive")
+        priority = review.prioritized_review_queue(self.root)[0]
+        self.assertEqual(priority["priority"], 0)
+        self.assertEqual(priority["reason"], "ADJUDICATOR_REQUIRED")
+        self.assertNotIn("relative_path", priority)
+        self.assertNotIn("original_filename", priority)
+        review.adjudicate(self.root, case_id=case, expert="expert_c",
+                          verdict="uncertain")
+        self.assertEqual(review.prioritized_review_queue(self.root), [])
+        self.assertEqual(review.summary(self.root)["training_approved"], 0)
+
     def test_existing_legacy_annotations_are_preserved(self):
         case = self.proposal()
         with lab.open_db(self.root) as db:
