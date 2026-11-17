@@ -873,3 +873,13 @@ authentication), check first ONE row, return anonymous diagnostic
 JSON. Only actual original client artwork + expert ROI can qualify
 samples for local D lab. Do not confuse green synthetic Chromium with
 real LAN end-to-end acceptance.
+
+
+## C3B.3.M3.1a — malformed manifest fail-closed hardening (2026-11-17)
+
+Pre-change PR #4 DRAFT/unmerged head `65ade5bcecb4b00c4bf0027da8734030e5041a94`. CircleCI `vision-raster` and `vision-contract` SUCCESS; GitHub Actions rules/raster SUCCESS; experimental UI smoke still IN_PROGRESS at inspection time. Existing split gate could throw TypeError when an untrusted JSON manifest supplied an array/object for `split` or `region_role` instead of a string. This is an input validation failure, not evidence of real model performance.
+
+- `901974c`: explicitly type-check both fields before membership checks, preserving MANUAL for unknown inputs.
+- `ba43a54`: synthetic regression cases for array/object values on both fields; assert MANUAL, no production approval, no auto-deploy.
+- No real data, model weights, CI secrets or production Maketnaya code changed. These checks do not validate real-world scale, ICC, independent labels or model accuracy.
+- CI for the new head must be checked separately; no CI pass is claimed in this entry before completion.
