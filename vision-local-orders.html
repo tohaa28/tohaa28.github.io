@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vision Check · запуск над тестовыми заказами</title>
+<style>
+:root{font:15px/1.5 system-ui,sans-serif;color:#344a50;background:#f1f5f3}
+*{box-sizing:border-box}body{margin:0}main{max-width:790px;margin:40px auto;padding:0 16px}
+article{background:#fff;border:1px solid #d9e2dd;border-top:4px solid #84b321;padding:28px;border-radius:8px}
+h1{margin:0 0 10px;font-size:27px}h2{font-size:17px;margin-top:24px}
+p{margin:10px 0}a.action,button.action{font:600 14px system-ui;display:inline-block;text-decoration:none;color:#284248;background:#fff;border:1px solid #a9bdb7;border-radius:6px;padding:12px 15px;margin:7px 8px 7px 0;cursor:pointer}
+a.primary{background:#83b322;border-color:#83b322;color:#fff}
+.notice{background:#fff5e4;border-left:3px solid #b87a2b;padding:12px;margin:16px 0}
+.muted{font-size:13px;color:#667b7e}
+textarea{width:100%;min-height:83px;border:1px solid #cad7d2;border-radius:6px;padding:10px;font:12px/1.4 monospace;overflow-wrap:anywhere}
+ol li{margin:8px 0}
+</style></head>
+<body><main><article>
+<h1>Vision Check · тестовые заказы</h1>
+<p>Изолированный экспериментальный модуль для таблицы <code>http://psk.testgifts.local/devorders?status=140</code>. Запускается поверх открытой страницы в локальной сети и добавляет результаты к строкам заказов.</p>
+<h2>Установка закладки запуска</h2>
+<ol>
+<li>На компьютере, подключённом к тестовой локальной сети, откройте эту страницу установщика.</li>
+<li>Перетащите кнопку <strong>Vision Check — заказы</strong> на панель закладок (Ctrl + Shift + B).</li>
+<li>Откройте тестовую таблицу на <code>psk.testgifts.local/devorders?status=140</code>, при необходимости авторизуйтесь.</li>
+<li>Нажмите созданную закладку. Vision добавит колонку к распознанным строкам. Скачивание макетов начнётся <b>только</b> после нажатия «Проверить макеты» или «Проверить строку».</li>
+</ol>
+<a id="ordersBookmarklet" class="action primary" draggable="true" href="javascript:(()=>{if(location.protocol!=='http:'||location.hostname!=='psk.testgifts.local'||!/^\/devorders(?:\/|$)/.test(location.pathname)){alert('Откройте тестовую таблицу на psk.testgifts.local/devorders');return;}const s=document.createElement('script');s.src='https://tohaa28.github.io/gifts-layout-workbench-vision/vision-order-overlay.js?v='+Date.now();s.onerror=()=>alert('Vision не загрузился. Возможна блокировка CSP или отсутствие GitHub Pages.');document.documentElement.appendChild(s)})()">Vision Check — заказы (перетащить)</a>
+<button class="action" type="button" id="copy">Скопировать код закладки</button>
+<p id="installStatus" role="status"></p>
+<textarea id="bookmarkletCode" readonly hidden aria-label="Код закладки"></textarea>
+<a class="action" href="http://psk.testgifts.local/devorders?status=140" target="_blank" rel="noopener noreferrer">Открыть тестовые заказы</a>
+<a class="action" href="./index.html">Вернуться к Vision</a>
+<h2>Что сейчас проверяется</h2>
+<p>SVG по исходной векторной геометрии, PNG/JPEG/WebP как вспомогательное растровое исследование. PDF скачивается и распознаётся, но до полноценного разбора векторных операций, цветоделения и физического масштаба помечается <b>MANUAL</b>. CDR/AI/EPS/ZIP также требуют отдельного обработчика.</p>
+<p>Можно установить экспертную метку для каждой строки и скачать локальный JSON отчёт. Это пока <b>не полноценный обучающий датасет</b>, поскольку исходные файлы и привязки к заказам в отчёт не включаются.</p>
+<div class="notice"><strong>Без передачи макетов на внешние серверы.</strong> Загруженный из таблицы файл обрабатывается внутри браузера на локальном origin; автоматических POST, телеметрии, загрузки на GitHub или сохранения исходных макетов в репозитории нет. Публично размещается только код. Исходные файлы и пользовательские идентификаторы в JSON отчёт не включены.</div>
+<p class="muted">Для работы необходим браузерный доступ к этой локальной сети. Если реальные ссылки используют другой поддомен или отличаются от тестовых HTML-селекторов, модуль не обходит CORS и не угадывает адреса — потребуется адаптер после осмотра структуры страницы. Политика Content Security Policy тестовой сети также может блокировать запуск внешнего скрипта; в таком случае понадобится локальная установка или расширение браузера.</p>
+</article></main>
+<script>
+(()=>{
+ const a=document.getElementById('ordersBookmarklet');
+ const status=document.getElementById('installStatus');
+ const code=document.getElementById('bookmarkletCode');
+ a.addEventListener('click',event=>{
+   event.preventDefault();
+   status.textContent='Перетащите кнопку в закладки. Запускайте на странице тестовых заказов.';
+ });
+ document.getElementById('copy').addEventListener('click',async()=>{
+   const text=a.getAttribute('href');
+   try{
+     await navigator.clipboard.writeText(text);
+     code.hidden=true;status.textContent='Код скопирован. Вставьте его в URL новой закладки.';
+   }catch{
+     code.hidden=false;code.value=text;code.focus();code.select();
+     status.textContent='Выделенный код можно скопировать Ctrl + C.';
+   }
+ });
+})();
+</script>
+</body></html>
