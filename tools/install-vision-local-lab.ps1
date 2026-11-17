@@ -37,6 +37,13 @@ foreach ($part in $paths) {
 }
 $installedPython = Join-Path $base 'tools\vision_local_lab.py'
 Copy-Item -LiteralPath $source -Destination $installedPython -Force
+foreach ($module in @('vision_roi_review.py', 'vision_pdf_audit.py')) {
+  $moduleSource = Join-Path $PSScriptRoot $module
+  if (-not (Test-Path -LiteralPath $moduleSource)) {
+    throw "Required local review/audit module missing: $module"
+  }
+  Copy-Item -LiteralPath $moduleSource -Destination (Join-Path $base "tools\$module") -Force
+}
 & py -3 $installedPython init --root $base
 if ($LASTEXITCODE -ne 0) {
   throw 'Python lab init failed.'
@@ -50,7 +57,7 @@ pause
 $import = @'
 @echo off
 if "%~1"=="" (
-  echo Drag vision-local-test-labeled-samples.zip onto this file, or pass its path.
+  echo Drag a vision-private-originals-part-0001.zip onto this file, or pass its path.
   pause
   exit /b 2
 )
@@ -74,11 +81,21 @@ Vision Check — локальный исследовательский стен�
 
 1. Откройте http://psk.testgifts.local/devorders?status=140 в локальной сети.
 2. Запустите закладку Vision Check — заказы.
-3. Нажмите «Проверить строку» или «Проверить макеты».
-4. Присвойте строкам экспертные метки, затем «Локальные примеры ZIP».
-5. Перетащите загруженный vision-local-test-labeled-samples.zip на IMPORT-EXPERT-ZIP.cmd.
-6. Запустите START-VISION-LAB.cmd. Ссылка на сводную страницу localhost
-   появится в терминале. Либо REPORT-VISION-LAB.cmd для отчёта.
+3. Нажмите «Проверить все заказы» или «Проверить строку».
+4. Отдельно подтвердите «Локальные примеры ZIP — все»: архивы будут
+   создаваться последовательно по частям и НЕ отправятся в GitHub.
+5. По очереди перетащите каждую загруженную ZIP-часть на IMPORT-EXPERT-ZIP.cmd.
+6. Запустите START-VISION-LAB.cmd; сохранённые оригиналы не выдаются
+   через localhost. Либо REPORT-VISION-LAB.cmd для отчёта.
+7. Исследовательский PDF-аудит (только локально):
+   py -3 tools\vision_pdf_audit.py --root D:\VisionCheckLab --sample-id ID
+   PyMuPDF является НЕОБЯЗАТЕЛЬНОЙ внешней зависимостью, не устанавливается
+   скриптом; проверьте условия AGPL/коммерческой лицензии самостоятельно.
+8. Двойная независимая ROI-разметка:
+   py -3 tools\vision_roi_review.py propose --root D:\VisionCheckLab ...
+   py -3 tools\vision_roi_review.py vote --root D:\VisionCheckLab ...
+   py -3 tools\vision_roi_review.py queue --root D:\VisionCheckLab
+   Разногласия разрешаются третьим независимым экспертом (adjudicate).
 
 Структура:
 incoming/    — файлы, подготовленные вручную
@@ -87,6 +104,8 @@ quarantine/  — промежуточные файлы импорта
 reports/     — локальные отчёты
 visionlab.sqlite3 — учёт SHA-256 и экспертных ROI
 tools/vision_local_lab.py — автономное приложение Python (стандартная библиотека)
+tools/vision_roi_review.py — независимая ROI-разметка, голоса и разбор конфликтов
+tools/vision_pdf_audit.py — опциональный локальный PDF-аудит (без автодопуска)
 
 НЕТ автоматического обучения. Метка строки — не подтверждённый дефект
 конкретного объекта. Для качественного обучения нужны ROI, независимая
