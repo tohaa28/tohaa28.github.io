@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  TEST_HOSTS,testUrl,rowOrderTarget,popupHtml,
- fetchOrderResourceBytes
+ fetchOrderResourceBytes,recheckOrderPopupReferences
 } from '../vision/orders/order-page-discovery.mjs';
 const loc=new URL('http://psk.testgifts.local/devorders?status=140');
 const anchor=href=>({getAttribute:n=>n==='href'?href:null});
@@ -107,4 +107,61 @@ test('customer artwork HTTP failure keeps numeric status, not private body or UR
  assert.equal(out.failure_class,'http_status');
  assert.equal(JSON.stringify(out).includes('secret'),false);
  assert.equal(JSON.stringify(out).includes('Private filename'),false);
+});
+
+
+test('HTTP 404 popup recheck distinguishes still-listed vs stale file reference without retrying file',async()=>{
+ class Parser{
+   parseFromString(html){
+     const anchor={
+       getAttribute:name=>name==='href'?'/cart/act/mda?oid=55&id=42':null,
+       textContent:'Private  original.PDF',parentElement:null
+     };
+     return {querySelectorAll:sel=>sel==='a[data-maket="true"][href]'&&
+       html.includes('id=42')?[anchor]:[]};
+   }
+ }
+ const resource={...valid,originalFilename:'Customer private.pdf'};
+ for(const [body,expected] of [
+   ['<a data-maket="true" href="/cart/act/mda?oid=55&id=42">Private.pdf</a>',true],
+   ['<span>no attachment</span>',false]
+ ]){
+   const requests=[];
+   const out=await recheckOrderPopupReferences([resource],{
+     loc,DOMParserClass:Parser,fetcher:async(url,opts)=>{
+       requests.push({url,opts});
+       return new Response(body,{headers:{'Content-Type':'text/html'}});
+     }
+   });
+   assert.equal(out.status,'REFERENCE_RECHECKED');
+   assert.deepEqual(out.listed,[expected]);
+   assert.equal(requests.length,1);
+   assert.equal(new URL(requests[0].url).pathname,'/ajax/gifts/order');
+   assert.equal(requests[0].opts.method,'GET');
+   assert.equal(JSON.stringify(out).includes('private'),false);
+   assert.equal(JSON.stringify(out).includes('Customer'),false);
+   assert.equal(JSON.stringify(out).includes('oid='),false);
+ }
+});
+test('popup recheck refuses untrusted resource and redacts failures',async()=>{
+ let calls=0;
+ for(const candidate of [
+   {...valid,role:'constructor_template'},
+   {...valid,url:'https://gifts.ru/cart/act/mda?oid=55&id=42'},
+   {...valid,url:'http://psk.testgifts.local/cart/act/mda?oid=66&id=42'},
+   {...valid,id:'99'}
+ ]){
+   const out=await recheckOrderPopupReferences([candidate],{
+     loc,fetcher:async()=>{calls++;throw Error('should not fetch')}
+   });
+   assert.equal(out.reason,'UNTRUSTED_POPUP_RECHECK_LIST');
+ }
+ assert.equal(calls,0);
+ const out=await recheckOrderPopupReferences([valid],{loc,fetcher:async()=>{
+   throw TypeError('private card cookie /cart/act/mda?oid=55&id=42');
+ }});
+ assert.equal(out.reason,'POPUP_REFERENCE_RECHECK_UNAVAILABLE');
+ assert.equal(out.failure_class,'cors_redirect_or_network');
+ assert.equal(JSON.stringify(out).includes('cookie'),false);
+ assert.equal(JSON.stringify(out).includes('oid=55'),false);
 });
