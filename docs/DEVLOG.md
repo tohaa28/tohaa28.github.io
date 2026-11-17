@@ -948,3 +948,12 @@ https://github.com/tohaa28/tohaa28.github.io/actions/runs/44083121486
 просветов не верифицирован; нет независимых ROI с доказанным масштабом
 и семейной контрольной выборки. Никаких обещаний auto-training, метрик
 реальной точности, production OK или автоматического деплоя.
+
+## M3.1c — ROI boolean geometry hardening (2026-11-17)
+
+- Before change: draft PR #4 open/unmerged, HEAD `1c221253cc58013c8ac655a59e5bd866258e4a38`. Three GitHub Actions checks (UI smoke, raster safety, rules/dataset safety) and two CircleCI checks (vision-contract, vision-raster) reported success for that SHA; preview publish was not confirmed.
+- Scope: only `tools/vision_roi_review.py`, `tests/test_vision_roi_review.py`, this devlog. No production Maketnaya changes, no private customer data.
+- Defect: `isinstance(True, (int, float))` returns true, allowing boolean ROI x/y/width/height to be accepted as numeric geometry. Replace with exact `type(n) in (int, float)`; retain finite and positive constraints.
+- Synthetic regression: test both `True` and `False` for each of four coordinate fields, assert `ROI_NONFINITE` and no cases inserted. Existing NaN, infinity, negative and zero tests remain.
+- Commits: `44e521cb8c29da49a341db6807ad0a02f977bbf0` (code), `f5df2a0c749bb054acfee3935a340119f46cd1d6` (tests). CI results for new SHA must be checked independently; no claim of a passing test until confirmed.
+- Pending: three independent two-reviewer/adjudicator regression cycles not yet run in this edit; preview publish not confirmed; real ROI expert agreement, calibrated physical mm, PDF color/ICC/spot, technology specification, independent family holdout and real-world accuracy remain unverified. Training/production approval stays disabled; unknown => MANUAL.
