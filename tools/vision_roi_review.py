@@ -206,9 +206,59 @@ def summary(root: Path) -> dict:
     }
 
 
+
+def prioritized_review_queue(root: Path, limit: int = 200) -> list[dict]:
+    """Active-learning *review selection* only, never model fitting.
+
+    Deterministic ordering: unresolved disagreements, second opinions,
+    proposed regions without votes, then source samples needing proposals.
+    No filenames, image bytes, order IDs or customer URLs are returned.
+    Same-hash duplicates are explicitly flagged for family holdout.
+    """
+    if type(limit) is not int or not 1 <= limit <= 1000:
+        raise ValueError("REVIEW_QUEUE_LIMIT_INVALID")
+    cases = queue(root)
+    priorities = {
+        "DISAGREEMENT_NEEDS_ADJUDICATION": (0, "ADJUDICATOR_REQUIRED"),
+        "NEEDS_SECOND_INDEPENDENT_REVIEW": (1, "SECOND_REVIEW_REQUIRED"),
+        "NEEDS_TWO_INDEPENDENT_REVIEWS": (2, "INDEPENDENT_REVIEWERS_REQUIRED")
+    }
+    tasks = [
+        {"priority": priorities[c["state"]][0],
+         "reason": priorities[c["state"]][1],
+         "case_id": c["case_id"], "sample_id": c["sample_id"],
+         "source_sha256": c["source_sha256"],
+         "training_approved": False}
+        for c in cases if c["state"] in priorities
+    ]
+    existing_samples = {c["sample_id"] for c in cases}
+    with lab.open_db(root) as db:
+        rows = db.execute("""SELECT id,source_sha256,extension,row_label
+                             FROM samples ORDER BY id""").fetchall()
+    from collections import Counter
+    duplicate_counts = Counter(r[1] for r in rows)
+    for sample_id, digest, extension, label in rows:
+        if sample_id in existing_samples:
+            continue
+        reason = ("PDF_VECTOR_AUDIT_REQUIRED" if extension == "pdf"
+                  else "EXPERT_ROI_PROPOSAL_REQUIRED")
+        tasks.append({
+            "priority": 3 if label == "confirmed_defect" else 4,
+            "reason": "ROW_LABEL_NEEDS_OBJECT_ROI" if label == "confirmed_defect"
+                      else reason,
+            "sample_id": sample_id, "case_id": None,
+            "source_sha256": digest,
+            "source_format": extension,
+            "duplicate_sha256_group": duplicate_counts[digest] > 1,
+            "training_approved": False
+        })
+    tasks.sort(key=lambda t: (t["priority"], t["sample_id"], t["case_id"] or ""))
+    return tasks[:limit]
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Vision local independent ROI reviews; no automatic training")
-    p.add_argument("command", choices=("propose", "vote", "adjudicate", "queue", "summary"))
+    p.add_argument("command", choices=("propose", "vote", "adjudicate", "queue", "summary", "prioritize"))
     p.add_argument("--root", default=r"D:\VisionCheckLab")
     p.add_argument("--sample-id")
     p.add_argument("--case-id")
@@ -240,6 +290,8 @@ def main(argv=None):
         print(json.dumps({"status": "RECORDED", "training_approved": False}))
     elif args.command == "queue":
         print(json.dumps(queue(root), ensure_ascii=False, indent=2))
+    elif args.command == "prioritize":
+        print(json.dumps(prioritized_review_queue(root), ensure_ascii=False, indent=2))
     else:
         print(json.dumps(summary(root), ensure_ascii=False, indent=2))
 
