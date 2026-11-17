@@ -1,5 +1,6 @@
 // Real Chromium offline visual ROI geometry and CSP; synthetic SVG only.
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import os from 'node:os';
@@ -9,7 +10,9 @@ const temp=await mkdtemp(path.join(os.tmpdir(),'vision-roi-annotator-'));
 const browser=await chromium.launch({headless:true});
 try{
  const svg=path.join(temp,'synthetic.svg');
- await writeFile(svg,'<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="50mm" viewBox="0 0 100 50"><path d="M10 10h50" stroke="black"/></svg>');
+ const source='<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="50mm" viewBox="0 0 100 50"><path d="M10 10h50" stroke="black"/></svg>';
+ await writeFile(svg,source);
+ const sha256=createHash('sha256').update(source).digest('hex');
  const noScale=path.join(temp,'missing-scale.svg');
  await writeFile(noScale,'<svg xmlns="http://www.w3.org/2000/svg" width="100px" height="50px" viewBox="0 0 100 50"/>');
  const context=await browser.newContext({viewport:{width:1250,height:900}});
@@ -20,6 +23,7 @@ try{
  });
  await page.goto(pathToFileURL(path.resolve('tools/vision-roi-annotator.html')).href);
  await page.locator('#sample').fill('20261117T120000_0123456789:0001');
+ await page.locator('#expectedSha').fill(sha256);
  await page.locator('#expert').fill('tech_01');
  await page.locator('#file').setInputFiles(svg);
  await page.waitForFunction(()=>document.querySelector('#preview')?.naturalWidth>0);
@@ -37,6 +41,10 @@ try{
  assert.ok(Math.abs(Number(command.match(/--y ([\d.]+)/)[1])-10)<.02);
  assert.ok(Math.abs(Number(command.match(/--width ([\d.]+)/)[1])-20)<.02);
  assert.ok(Math.abs(Number(command.match(/--height ([\d.]+)/)[1])-10)<.02);
+ assert.equal(await page.locator('#copy').isEnabled(),true);
+ await page.locator('#expectedSha').fill('0'.repeat(64));
+ assert.equal(await page.locator('#copy').isDisabled(),true,'Wrong source SHA cannot produce an ROI proposal');
+ await page.locator('#expectedSha').fill(sha256);
  assert.equal(await page.locator('#copy').isEnabled(),true);
  await page.locator('#file').setInputFiles(noScale);
  await page.waitForFunction(()=>document.querySelector('#error')?.textContent?.includes('Масштаб SVG недоказан'));
