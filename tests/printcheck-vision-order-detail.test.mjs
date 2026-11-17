@@ -91,3 +91,20 @@ test('test mirror download requires browser CORS; no credential or redirect bypa
  assert.equal(sent.options.credentials,'include');
  assert.equal(sent.options.redirect,'error');
 });
+
+test('customer artwork HTTP failure keeps numeric status, not private body or URL',async()=>{
+ const file={role:'customer_uploaded_artwork',id:'42',internalId:'55',
+  orderNumber:'8000001',detailOrigin:'http://psk.testgifts.local',
+  filename:'Private filename.pdf',
+  url:'http://psk.testgifts.local/cart/act/mda?oid=55&id=42'};
+ const out=await fetchOrderResourceBytes(file,{loc,fetcher:async()=>
+   new Response('secret customer details',{status:403,
+     headers:{'Content-Type':'text/plain'}})});
+ assert.equal(out.status,'MANUAL');
+ assert.equal(out.reason,'ARTWORK_HTTP_ERROR');
+ assert.equal(out.stage,'artwork');
+ assert.equal(out.http_status,403);
+ assert.equal(out.failure_class,'http_status');
+ assert.equal(JSON.stringify(out).includes('secret'),false);
+ assert.equal(JSON.stringify(out).includes('Private filename'),false);
+});
