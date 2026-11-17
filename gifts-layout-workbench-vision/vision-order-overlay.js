@@ -1747,7 +1747,8 @@
     const hinted = extensionType(url.pathname);
     if (/text\/html|application\/json/i.test(contentType))
       return manual("UNEXPECTED_HTML_OR_JSON_RESPONSE", hinted);
-    const trueType = pdf(bytes) ? "pdf" : png(bytes) || jpg(bytes) || webp(bytes) ? "raster" : hinted === "svg" ? "svg" : "unknown";
+    const declaredSvg = /^image\/svg\+xml(?:\s*;|$)/i.test(contentType);
+    const trueType = pdf(bytes) ? "pdf" : png(bytes) || jpg(bytes) || webp(bytes) ? "raster" : hinted === "svg" || hinted === "unknown" && declaredSvg ? "svg" : "unknown";
     if (hinted === "unsupported") return manual("UNSUPPORTED_VECTOR_OR_ARCHIVE_FORMAT", hinted);
     if (hinted !== "unknown" && hinted !== trueType)
       return manual("FILE_SIGNATURE_MISMATCH", hinted);
