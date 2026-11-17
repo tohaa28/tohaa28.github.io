@@ -50,5 +50,6 @@ test('unsupported bytes and missing paint abstain',()=>{
   const b=Buffer.from(makeSyntheticBlackPdf());
   b[80]=0;
   assert.equal(inspectPdfSourceColors(b).status,'MANUAL');
-  assert.equal(inspectPdfSourceColors(makeSyntheticBlackPdf({paint:'0 0 0 rg\nn'})).status,'MANUAL');
+  const noPaint=makeSyntheticBlackPdf().toString('latin1').replace('re\nf\n','re\nn\n');
+  assert.equal(inspectPdfSourceColors(Buffer.from(noPaint,'latin1')).status,'MANUAL');
 });
