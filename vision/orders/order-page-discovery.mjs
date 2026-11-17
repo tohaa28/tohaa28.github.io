@@ -53,7 +53,9 @@ export function rowOrderTarget(row,base){
   if(digits(stated)){
     const url=testUrl("/private/order/"+stated,base);
     return {status:"ORDER_LINK_FOUND",url,number:stated,
-      source:"explicit_row_attribute"};
+      source:row.getAttribute?.("data-order-number")||
+        row.getAttribute?.("data-order")?"explicit_row_attribute":
+        orderInHandler?"static_onclick_url":"numeric_first_cell"};
   }
   return REFUSE("ORDER_DETAIL_LINK_REQUIRED");
 }
