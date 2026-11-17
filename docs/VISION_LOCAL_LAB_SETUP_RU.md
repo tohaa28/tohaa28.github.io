@@ -73,6 +73,12 @@ py -3 D:\VisionCheckLab\tools\vision_roi_review.py vote --root D:\VisionCheckLab
 py -3 D:\VisionCheckLab\tools\vision_roi_review.py summary --root D:\VisionCheckLab
 ```
 
+Для очереди Active Learning (пока **отбор на ручную разметку**, не обучение)
+используйте `py -3 D:\VisionCheckLab\tools\vision_roi_review.py prioritize --root D:\VisionCheckLab`.
+Сначала выдаются спорные решения, затем недостающие независимые голоса,
+после — образцы без размеченных областей. Исходные имена, приватные тексты
+и сами изображения в JSON очереди не передаются.
+
 При расхождении используется `adjudicate` с третьим независимым экспертом.
 Повторное голосование одним экспертом и перезапись вердикта блокируются.
 Ранее внесённые `roi_reviews` не уничтожаются. Новый журнал сохраняет SHA-256
