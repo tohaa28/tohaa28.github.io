@@ -15,6 +15,25 @@ const allowedLabels=new Set([
 const refused=reason=>({status:'MANUAL',reason,production_approved:false});
 const size16=(dv,off,value)=>dv.setUint16(off,value,true);
 const size32=(dv,off,value)=>dv.setUint32(off,value>>>0,true);
+// Exact private filename preservation: no trimming, Unicode normalization,
+// case folding, extension rewriting or collision-prone flat ZIP storage.
+// Windows-unsafe filenames are explicitly refused, not silently renamed.
+const formats=new Set(['svg','pdf','png','jpg','jpeg','webp','cdr','eps','ai']);
+export function exactLocalFilename(value){
+ if(typeof value!=='string'||!value||value.length>200||
+    /[\u0000-\u001f\u007f\/\\:*?"<>|]/.test(value)||
+    /[. ]$/.test(value)||value==='.'||value==='..'||
+    /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(value)||
+    te.encode(value).length>255)return null;
+ const m=/\.([a-z0-9]+)$/i.exec(value);
+ return m&&formats.has(m[1].toLowerCase())?value:null;
+}
+function safeEntryName(name){
+ if(name==='manifest.json')return true;
+ if(/^samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin)$/.test(name))return true;
+ const m=/^samples\/[0-9]{4}\/([^/]+)$/.exec(name);
+ return !!m&&exactLocalFilename(m[1])===m[1];
+}
 function crc32(bytes){
  let n=0xffffffff;
  for(const b of bytes){
@@ -27,12 +46,13 @@ function crc32(bytes){
 export function makeLocalStoredZip(entries){
  if(!Array.isArray(entries)||!entries.length||entries.length>40)
    throw new RangeError('LOCAL_ZIP_ENTRIES_INVALID');
- const data=[],central=[];let offset=0,centralSize=0;
+ const data=[],central=[],used=new Set();let offset=0,centralSize=0;
  for(const {name,bytes} of entries){
-   if(typeof name!=='string'||name.length>100||
-      !/^(?:manifest\.json|samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin))$/.test(name)||
+   if(typeof name!=='string'||te.encode(name).length>300||
+      !safeEntryName(name)||used.has(name)||
       !(bytes instanceof Uint8Array)||bytes.length>5_000_000)
      throw new RangeError('LOCAL_ZIP_ENTRY_INVALID');
+   used.add(name);
    const nameBytes=te.encode(name),crc=crc32(bytes);
    const local=new Uint8Array(30+nameBytes.length),v=new DataView(local.buffer);
    size32(v,0,0x04034b50);size16(v,4,20);size16(v,6,0x800);
@@ -117,13 +137,23 @@ export async function makeLocalExpertDataset(rows,{
        skipped.push({row_index:r.row_index,reason:'EXPERT_EXPORT_TOTAL_LIMIT'});
        break outer;
      }
+     const supplied=a.originalFilename??a.filename??'';
+     const originalName=supplied?exactLocalFilename(supplied):null;
+     if(supplied&&!originalName){
+       skipped.push({row_index:r.row_index,reason:'ORIGINAL_FILENAME_UNSAFE_TO_EXPORT'});
+       continue;
+     }
      id++;
      consumed+=file.bytes.length;
-     const name='samples/'+String(id).padStart(4,'0')+'.'+suffix(file.url,file.bytes,a.filename||'');
+     const slot=String(id).padStart(4,'0');
+     const name=originalName?'samples/'+slot+'/'+originalName:
+       'samples/'+slot+'.'+suffix(file.url,file.bytes,'');
      const sha=await optionalSha256(file.bytes);
      entries.push({name,bytes:file.bytes});
      samples.push({
        sample_name:name,anonymous_row_index:r.row_index,
+       // Sensitive: available only inside this user-downloaded private ZIP.
+       ...(originalName?{original_filename:originalName}:{}),
        expert_label:r.grade.value,
        expert_label_scope:'whole_order_row_not_object_ROI',
        bytes:file.bytes.length,sha256:sha,
