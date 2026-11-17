@@ -112,6 +112,14 @@ class ReviewWorkflowTests(unittest.TestCase):
                          ("x", float("nan")), ("height", float("inf"))):
             with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):
                 self.proposal(**{key: bad})
+        # bool is a subclass of int; reject it for all ROI coordinates.
+        for key in ("x", "y", "width", "height"):
+            for bad in (True, False):
+                with self.subTest(key=key, bad=bad), self.assertRaisesRegex(
+                    ValueError, "ROI_NONFINITE"
+                ):
+                    self.proposal(**{key: bad})
+        self.assertEqual(review.summary(self.root)["total_cases"], 0)
         with self.assertRaisesRegex(ValueError, "ROI_UNIT_FORMAT_MISMATCH"):
             self.proposal(units="pdf_page_pt", page_number=1)
         with self.assertRaisesRegex(ValueError, "PDF_PAGE_NUMBER_REQUIRED"):
