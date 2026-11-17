@@ -62,6 +62,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
 <div class="controls">
 <button id="run" class="primary" type="button" disabled>Запустить AI-анализ</button>
 <button id="export" type="button" disabled>Отчёт JSON</button>
+<button id="exportImage" type="button" disabled>Снимок с подсветкой PNG</button>
 </div>
 <div class="warning"><b>Не является допуском.</b> Отсутствие подсвеченных областей не означает, что макет пригоден. Нейросеть и пороги ещё не проверены на реальных производственных примерах.</div>
 <a class="link" href="./index.html">Вернуться в Vision</a>
@@ -131,7 +132,7 @@ function setImage(data){
  source.width=overlay.width=data.width;source.height=overlay.height=data.height;
  ctx.putImageData(data,0,0);
  overlay.getContext('2d').clearRect(0,0,data.width,data.height);
- $('run').disabled=false;$('export').disabled=true;
+ $('run').disabled=false;$('export').disabled=true;$('exportImage').disabled=true;
  $('thinCount').textContent=$('gapCount').textContent=$('regionCount').textContent='—';
  $('regions').replaceChildren();report=null;
  state('Изображение готово: '+data.width+'×'+data.height+' px. Нажмите «Запустить AI-анализ».');
@@ -148,7 +149,7 @@ $('demo').addEventListener('click',()=>{
 $('imageFile').addEventListener('change',async event=>{
  const file=event.target.files?.[0];
  if(!file)return;
- $('run').disabled=true;$('export').disabled=true;current=null;cancelJob();
+ $('run').disabled=true;$('export').disabled=true;$('exportImage').disabled=true;current=null;cancelJob();
  if(file.size>20_000_000||
     !['image/png','image/jpeg','image/webp'].includes(file.type)){
    state('MANUAL: неподдерживаемый тип или файл более 20 MB.');return;
@@ -197,7 +198,7 @@ $('run').addEventListener('click',async()=>{
  if(current!==imageAtStart)return;
  if(result.status!=='RESEARCH_AI_CANDIDATES_ONLY'){
    state('MANUAL: '+(result.reason||'невозможно разделить изображение'));
-   $('export').disabled=true;return;
+   $('export').disabled=true;$('exportImage').disabled=true;return;
  }
  const img=new ImageData(current.width,current.height),layer=img.data;
  for(let i=0;i<result.flags.length;i++){
@@ -240,7 +241,7 @@ $('run').addEventListener('click',async()=>{
    claimed_width_mm:scaleValid?mm:null,physical_scale_verified:false,
    production_approved:false,real_world_accuracy_verified:false,
    customer_image_bytes_in_report:false};
- $('export').disabled=false;
+ $('export').disabled=false;$('exportImage').disabled=false;
  state('AI-анализ выполнен локально. '+result.regionsTotal+
    ' областей-кандидатов. Синтетическая модель не устанавливает соответствие техническим требованиям.');
  }catch{state('MANUAL: ошибка локального анализа. Производственный вывод не сформирован.');}
@@ -252,6 +253,21 @@ $('export').addEventListener('click',()=>{
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
  a.download='printcheck-vision-ai-research.json';a.click();
  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
+$('exportImage').addEventListener('click',()=>{
+ if(!report||!current)return;
+ const combined=document.createElement('canvas');
+ combined.width=current.width;combined.height=current.height;
+ const context=combined.getContext('2d');
+ context.drawImage(source,0,0);
+ context.drawImage(overlay,0,0);
+ combined.toBlob(blob=>{
+   if(!blob){state('MANUAL: не удалось сохранить PNG.');return}
+   const url=URL.createObjectURL(blob);
+   const a=document.createElement('a');a.href=url;
+   a.download='printcheck-vision-ai-annotated.png';a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+ },'image/png');
 });
 </script>
 </body>
