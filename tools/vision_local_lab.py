@@ -221,6 +221,16 @@ def report(root: Path) -> dict:
                         for ext, status, number in items]}
 
 
+def list_samples(root: Path) -> list[dict]:
+    with open_db(root) as db:
+        rows = db.execute("""SELECT id,relative_path,source_sha256,extension,
+          row_label,research_eligibility FROM samples ORDER BY import_id,id""").fetchall()
+    return [{"sample_id": sample_id, "path": path, "sha256": sha,
+             "format": ext, "row_label": label, "research_status": research_state,
+             "training_approved": False} for
+            sample_id, path, sha, ext, label, research_state in rows]
+
+
 def annotate(root: Path, args):
     import math
     for key in ("x", "y", "width", "height"):
@@ -264,6 +274,11 @@ def serve(root: Path, port: int):
                 "<tr><td>" + html.escape(x["extension"]) + "</td><td>" +
                 html.escape(x["status"]) + "</td><td>" +
                 str(x["count"]) + "</td></tr>" for x in content["formats"])
+            sample_rows = "".join(
+                "<tr><td>" + html.escape(item["sample_id"]) + "</td><td>" +
+                html.escape(item["format"]) + "</td><td>" +
+                html.escape(item["research_status"]) + "</td><td>" +
+                html.escape(item["row_label"]) + "</td></tr>" for item in list_samples(root)[:200])
             body = ("<!doctype html><meta charset=utf-8><title>Vision Lab local</title>"
                     "<style>body{font:16px system-ui;max-width:850px;margin:40px auto}"
                     "td,th{border:1px solid #ddd;padding:9px}table{border-collapse:collapse}</style>"
@@ -273,7 +288,9 @@ def serve(root: Path, port: int):
                     str(content["unreviewed"]) + "</p>"
                     "<p><strong>Training approval: FALSE. Family holdout: not proven.</strong></p>"
                     "<table><tr><th>Format</th><th>Research state</th><th>Count</th></tr>" +
-                    rows + "</table>"
+                    rows + "</table><h2>Research samples</h2><table>"
+                    "<tr><th>Sample ID</th><th>Format</th><th>State</th><th>Expert row label</th></tr>" +
+                    sample_rows + "</table>"
                     "<p>Raw artwork is not served to browser. Use CLI for review/annotation.</p>")
             encoded = body.encode("utf-8")
             self.send_response(200)
@@ -297,7 +314,7 @@ def serve(root: Path, port: int):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Vision Local Research Lab — no network uploads")
-    parser.add_argument("command", choices=["init", "import", "report", "annotate", "serve"])
+    parser.add_argument("command", choices=["init", "import", "report", "list", "annotate", "serve"])
     parser.add_argument("--root", default=r"D:\VisionCheckLab" if os.name == "nt" else "./VisionCheckLab")
     parser.add_argument("--zip")
     parser.add_argument("--sample-id")
@@ -321,6 +338,8 @@ def main(argv=None):
         print(json.dumps(import_zip(root, Path(args.zip)), ensure_ascii=False, indent=2))
     elif args.command == "report":
         print(json.dumps(report(root), ensure_ascii=False, indent=2))
+    elif args.command == "list":
+        print(json.dumps(list_samples(root), ensure_ascii=False, indent=2))
     elif args.command == "annotate":
         if any(getattr(args, name) is None for name in
                ("sample_id", "expert", "kind", "label", "units", "x", "y", "width", "height")):
