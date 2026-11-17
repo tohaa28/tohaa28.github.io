@@ -198,36 +198,30 @@ export function buildAttestedPilot(input={}){
   const regionLabels=checkManifest(attestation,task,fingerprints,
     methods,consensus);
   const byRegion=new Map(regionLabels.map(r=>[r.id,r.label]));
-  const records=[];
-  for(const method of methods){
-    for(const pred of method.predictions){
-      const label=byRegion.get(lower(pred.region_sha256));
-      // An unresolved specialist region must be omitted, NOT marked good.
-      if(label==='manual')continue;
-      records.push({
-        artwork_sha256:task.context.artwork_sha256,
-        family_sha256:task.context.family_sha256,
-        region_sha256:lower(pred.region_sha256),
-        split:attestation.split,
-        technology_code:task.context.technology_code,
-        expert:{
-          state:'verified',label,
-          annotation_sha256:hash(attestationBytes),
-          reviewer_ref_sha256:attestation.adjudicator_ref_sha256
-        },
-        detection:{
-          state:pred.state,revision:method.revision
-        }
-      });
-    }
-  }
-  // The pre-existing evaluate.py handles exactly one prediction per region.
-  // Return separate documents per algorithm; NEVER concatenate them.
+  // Keep algorithm views strictly separate even when revisions coincide.
+  // eval.py expects a single prediction per ROI and rejects duplicates.
   const evaluations=methods.map(method=>({
     algorithm_id:method.algorithm_id,
     document:{
       schema:'printcheck.vision.expert-regions.v1',
-      regions:records.filter(r=>r.detection.revision===method.revision)
+      regions:method.predictions.flatMap(pred=>{
+        const label=byRegion.get(lower(pred.region_sha256));
+        // Unresolved expert regions must be excluded, never marked acceptable.
+        if(label==='manual')return [];
+        return [{
+          artwork_sha256:task.context.artwork_sha256,
+          family_sha256:task.context.family_sha256,
+          region_sha256:lower(pred.region_sha256),
+          split:attestation.split,
+          technology_code:task.context.technology_code,
+          expert:{
+            state:'verified',label,
+            annotation_sha256:hash(attestationBytes),
+            reviewer_ref_sha256:attestation.adjudicator_ref_sha256
+          },
+          detection:{state:pred.state,revision:method.revision}
+        }];
+      })
     }
   }));
   const summary={
