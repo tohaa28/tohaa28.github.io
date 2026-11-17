@@ -90,8 +90,18 @@ const findAll=(doc,selector)=>{
  return out;
 };
 function nameOf(node){
- const value=(node.textContent||"").replace(/\s+/g," ").trim().slice(0,200);
- return value;
+ // The clickable link can expose Gifts' normalized PDF name. Do not alter
+ // Unicode, whitespace or case of the original metadata when it is present.
+ return node?.textContent?.trim()||"";
+}
+function originalNameOf(link){
+ // Same explicit metadata selector as the existing Maketnaya direct-mode.
+ const row=link.closest?.(".flex-item.flex-main,li,tr,.maket-row")||link.parentElement;
+ const label=row?.querySelector?.('[title="Исходное имя закачанного файла"]');
+ // Exact raw textContent: no trimming, Unicode normalization or extension change.
+ // A blank metadata element is not a valid filename; use the link as fallback.
+ const original=label?.textContent;
+ return typeof original==="string"&&original.length>0?original:nameOf(link);
 }
 export function extractOrderResources(doc,base,orderNumber,orderId){
  if(!digits(orderNumber)||!internal(orderId))return REFUSE("ORDER_IDENTIFIERS_INVALID");
@@ -106,12 +116,13 @@ export function extractOrderResources(doc,base,orderNumber,orderId){
   }
   const id=url.searchParams.get("id");
   const filename=nameOf(a);
+  const originalFilename=originalNameOf(a);
   if(!/\.(?:pdf|ai|svg|eps|cdr|png|jpe?g|webp)$/i.test(filename)){
     rejected.push("CUSTOMER_FILE_NAME_UNSUPPORTED");continue;
   }
   // No deletion controls are needed for read-only inspection.
   uploads.set(id,{id,orderNumber,role:"customer_uploaded_artwork",
-    filename,url:url.href,source:"makets_popup"});
+    filename,originalFilename,url:url.href,source:"makets_popup"});
  }
  for(const a of findAll(doc,'a[href*="getOrderItemPdf"],[data-orderitemid],[data-oiid]')){
   const href=a.getAttribute("href")||"";
