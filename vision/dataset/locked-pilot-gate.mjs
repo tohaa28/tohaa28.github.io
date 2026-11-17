@@ -9,6 +9,7 @@
 import {createHash} from 'node:crypto';
 import {verifyFrozenHoldout} from './cohort-leakage-audit.mjs';
 import {buildAttestedPilot} from './pilot-attestation.mjs';
+import {verifyBlindSamplingPlan} from './blind-sampling-plan.mjs';
 
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const refuse=reason=>({
@@ -42,6 +43,12 @@ export function verifyLockedPilot({
   if(sha(samplingEvidenceBytes)!==
       cohort.sampling_plan_sha256.toLowerCase())
     return refuse('COHORT_SAMPLING_PLAN_NOT_PILOT_PLAN');
+  const controls=verifyBlindSamplingPlan({
+    task,planBytes:samplingEvidenceBytes,
+    expectedPlanSha256:cohort.sampling_plan_sha256
+  });
+  if(controls.status!=='PRE_REGISTERED_CONTROLS_VERIFIED')
+    return refuse('BLIND_CONTROL_COVERAGE_NOT_VERIFIED');
   if(task?.schema!=='printcheck.vision.review-task.v1'||
      !task?.source||!task?.context)
     return refuse('PILOT_TASK_INVALID');
@@ -91,6 +98,10 @@ export function verifyLockedPilot({
     method_count:pilot.evaluations.length,
     evaluated_regions:pilot.evaluations.map(x=>x.document.regions.length),
     locked_cohort_count:cohort.entries.length,
+    independently_derived_control_count:controls.independently_derived_control_count,
+    pre_registered_candidate_count:controls.candidate_roi_count,
+    control_fraction:controls.control_fraction,
+    control_seed_timing_proven:false,
     warning:'Independent expert provenance and sampling timing require external audit.'
   };
 }
