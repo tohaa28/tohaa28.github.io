@@ -97,11 +97,14 @@ export function diagnoseTestOrderTable(doc=globalThis.document){
  }));
  const rowRoutes={explicit_order_links:0,static_onclick_urls:0,
    numeric_first_cells:0,explicit_row_attributes:0,ambiguous:0,unresolved:0};
+ const orderOriginCounts={same_origin:0,approved_other_test_origin:0};
  for(const item of discoverOrderRows(doc)){
    const target=rowOrderTarget(item.element,doc.defaultView.location.href);
    if(target.status!=='ORDER_LINK_FOUND'){
      rowRoutes[target.reason==='AMBIGUOUS_ORDER_ROW'?'ambiguous':'unresolved']++;
    }else{
+     orderOriginCounts[target.url.origin===doc.defaultView.location.origin?
+       'same_origin':'approved_other_test_origin']++;
      rowRoutes[target.source==='static_onclick_url'?'static_onclick_urls':
        target.source==='numeric_first_cell'?'numeric_first_cells':
        target.source==='explicit_row_attribute'?'explicit_row_attributes':
@@ -123,6 +126,7 @@ export function diagnoseTestOrderTable(doc=globalThis.document){
    cross_origin_or_unsafe_candidate_count:candidates.length-same.length,
    recognized_rows:discoverOrderRows(doc).length,
    order_navigation_patterns:rowRoutes,
+   order_target_origin_counts:orderOriginCounts,
    order_detail_first_required:rowRoutes.explicit_order_links>0&&same.length===0,
    file_attachments_verified:false,
    test_order_details_access_verified:false,
