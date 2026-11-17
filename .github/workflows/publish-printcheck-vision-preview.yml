@@ -84,6 +84,27 @@ jobs:
           node --check vision/orders/local-training-zip.mjs
           node --check tests/printcheck-vision-training-zip.test.mjs
           node --test tests/printcheck-vision-training-zip.test.mjs
+          # Verify ZIP with an independent Python stdlib decoder, not only
+          # the JavaScript ZIP writer. All bytes are synthetic and ephemeral.
+          node --input-type=module - <<'NODE'
+          import {makeLocalStoredZip} from './vision/orders/local-training-zip.mjs';
+          import {writeFileSync} from 'node:fs';
+          const blob=makeLocalStoredZip([
+            {name:'manifest.json',bytes:new TextEncoder().encode('{"training_ready":false}\n')},
+            {name:'samples/0001.svg',bytes:new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>')}
+          ]);
+          writeFileSync('/tmp/vision-synthetic-training.zip',
+            Buffer.from(await blob.arrayBuffer()));
+          NODE
+          python3 - <<'PY'
+          import json,zipfile
+          with zipfile.ZipFile('/tmp/vision-synthetic-training.zip') as archive:
+              assert archive.testzip() is None
+              assert archive.namelist()==['manifest.json','samples/0001.svg']
+              assert json.loads(archive.read('manifest.json'))['training_ready'] is False
+              assert archive.read('samples/0001.svg').startswith(b'<svg')
+          print('Independent synthetic local-training ZIP decode PASS')
+          PY
           node --check vision/orders/overlay-entry.mjs
           node --check tests/printcheck-vision-local-orders.browser.mjs
           node --test tests/printcheck-vision-local-orders.test.mjs
