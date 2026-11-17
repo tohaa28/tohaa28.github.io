@@ -72,7 +72,8 @@ export function initLocalOrdersOverlay(){
  const stats=node('div','Подготовка поиска строк…','vlo-stats');
  stats.setAttribute('role','status');
  const warning=node('p','Это исследовательский анализ, не допуск к печати. Нет найденных мест ≠ макет годен. PDF и сложные векторы: MANUAL. Локальный ZIP содержит исходные тестовые файлы — не публикуйте его.','vlo-note');
- let rows=[],busy=false,closed=false,fileBudget=LOCAL_ORDERS.maxBatchFiles;
+ let rows=[],busy=false,closed=false,fileBudget=LOCAL_ORDERS.maxBatchFiles,
+   nextRowIndex=0;
  function close(){
    closed=true;panel.remove();style.remove();
    document.querySelectorAll('[data-vision-order-cell]').forEach(n=>n.remove());
@@ -113,7 +114,14 @@ export function initLocalOrdersOverlay(){
    a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
  }
  const refreshBtn=makeButton('Найти строки',refresh);
- const scanBtn=makeButton('Проверить макеты',()=>scanAll());
+ const scanBtn=makeButton('Проверить 10 заказов',()=>scanAll());
+ const renewBtn=makeButton('Новый лимит файлов',()=>{
+   if(busy||closed||fileBudget>0)return;
+   fileBudget=LOCAL_ORDERS.maxBatchFiles;
+   updateBatchControls();
+   renderStats('Новый лимит загрузок разрешён явно. Уже обработанные строки сохранены.');
+ });
+ renewBtn.disabled=true;
  scanBtn.className='vlo-start';
  const exportBtn=makeButton('Отчёт JSON',saveReport);
  const diagnosticBtn=makeButton('Диагностика таблицы',()=>{
@@ -146,27 +154,31 @@ export function initLocalOrdersOverlay(){
      if(!closed)renderStats('Ошибка локального ZIP. Данные наружу не передавались.');
    }finally{
      busy=false;bundleBtn.disabled=false;refreshBtn.disabled=false;
-     scanBtn.disabled=rows.length===0;
+     updateBatchControls();
    }
  });
- actions.append(refreshBtn,scanBtn,exportBtn,diagnosticBtn,bundleBtn,
+ actions.append(refreshBtn,scanBtn,renewBtn,exportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
  document.body.append(panel);
- window.__visionLocalOrderOverlay={close,refresh,version:'C3B.3.O'};
+ window.__visionLocalOrderOverlay={close,refresh,version:'C3B.3.Q'};
  function renderStats(msg){
    const discovered=rows.reduce((n,r)=>n+r.anchors.length,0);
    const local=rows.reduce((n,r)=>
      n+(r.orderUploads?.length??r.files.length),0);
    const completed=rows.reduce((n,r)=>n+(r.results?.length||0),0);
-   stats.textContent='Строк: '+rows.length+' · ссылки: '+discovered+
-     ' · файлы из карточек/строк: '+local+' · проверено: '+completed+'\n'+
+   const scanned=rows.filter(r=>r.scanAttempted).length;
+   const linked=rows.filter(r=>r.hasOrderLink).length;
+   stats.textContent='Строк: '+rows.length+' · карточки: '+linked+
+     ' · обработано строк: '+scanned+' · файлов/отказов: '+completed+
+     ' · вложений найдено: '+local+' · осталось загрузок: '+fileBudget+'\n'+
      (msg||'Нажмите «Проверить макеты».');
  }
  function refresh(){
    if(busy||closed)return;
    document.querySelectorAll('[data-vision-order-cell]').forEach(n=>n.remove());
    rows=discoverOrderRows(document);
+   nextRowIndex=0;
    fileBudget=LOCAL_ORDERS.maxBatchFiles;
    for(const r of rows){
      const cell=node(r.element.tagName==='TR'?'td':'div',undefined,
@@ -201,11 +213,12 @@ export function initLocalOrdersOverlay(){
      r.element.append(cell);
      r.label=label;r.detail=detail;r.button=trigger;
    }
-   scanBtn.disabled=rows.length===0;
-   renderStats(rows.length?'Загрузка начнётся только по нажатию пользователя.':
+   updateBatchControls();
+   renderStats(rows.length?'Карточки читаются порциями по 10 заказов, только по нажатию.':
      'Строки не распознаны. Требуется адаптер к DOM тестовой таблицы; файловые запросы не выполнялись.');
  }
  async function scanRowContents(r){
+   r.scanAttempted=true;
    r.button.disabled=true;
    r.label.textContent='Vision: карточка заказа → макеты…';
    r.results=[];
@@ -288,23 +301,42 @@ export function initLocalOrdersOverlay(){
    if(busy||closed)return;
    busy=true;refreshBtn.disabled=scanBtn.disabled=true;
    try{await scanRowContents(r)}
-   finally{busy=false;refreshBtn.disabled=false;scanBtn.disabled=rows.length===0}
+   finally{busy=false;refreshBtn.disabled=false;updateBatchControls()}
+ }
+ function updateBatchControls(){
+   renewBtn.disabled=busy||closed||fileBudget>0||nextRowIndex>=rows.length;
+   scanBtn.disabled=busy||closed||nextRowIndex>=rows.length||fileBudget<=0;
+   scanBtn.textContent=nextRowIndex>=rows.length?'Все строки обработаны':
+     fileBudget<=0?'Лимит файлов исчерпан':
+     'Проверить следующие '+Math.min(LOCAL_ORDERS.maxOrdersPerClick,
+       rows.length-nextRowIndex)+' заказов';
  }
  async function scanAll(){
    if(busy||closed)return;
    busy=true;refreshBtn.disabled=scanBtn.disabled=true;
+   let examined=0;
    try{
-     for(const r of rows){
-       if(closed)break;
-       if(fileBudget<=0){
-         renderStats('Лимит '+LOCAL_ORDERS.maxBatchFiles+
-           ' файлов. Для нового сеанса нажмите «Найти строки».');break;
-       }
+     while(nextRowIndex<rows.length&&
+       examined<LOCAL_ORDERS.maxOrdersPerClick&&!closed&&fileBudget>0){
+       const r=rows[nextRowIndex++];
+       if(r.scanAttempted)continue;
        await scanRowContents(r);
+       examined++;
        await new Promise(resolve=>setTimeout(resolve,0));
      }
-   }finally{busy=false;refreshBtn.disabled=false;scanBtn.disabled=rows.length===0}
+     if(!closed){
+       const message=fileBudget<=0?
+         'Лимит файлов исчерпан. Нажмите «Новый лимит файлов» для продолжения.':
+         nextRowIndex>=rows.length?
+         'Все обнаруженные строки обработаны. Результаты требуют проверки технологом.':
+         'Обработана следующая порция из '+examined+' заказов. Для продолжения нажмите кнопку снова.';
+       renderStats(message);
+     }
+   }finally{
+     busy=false;refreshBtn.disabled=false;updateBatchControls();
+   }
  }
+
  refresh();
  return true;
 }
