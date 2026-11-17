@@ -20,7 +20,9 @@ const tbody=Array.from({length:61},(_,i)=>{
      ? '<a href="http://untrusted.testgifts.local/bogus.pdf">макет PDF</a>'
      : '<a href="/help/info?item='+i+'&x='+j+'">Информация</a>'
  ).join('');
- const cols=Array.from({length:8},(_,j)=>
+ // Diagnostic is captured with Vision overlay active: 7 source columns +
+ // 1 injected Vision result cell = 8 cells per row, 61×8=488.
+ const cols=Array.from({length:7},(_,j)=>
    '<td>'+(j===0?'<a href="/private/order/'+number+'">'+number+'</a>'+extra:
       j===1?'140':'—')+'</td>').join('');
  return '<tr>'+cols+'</tr>';
@@ -90,24 +92,25 @@ try{
  assert.equal(diag.file_attachments_verified,false);
  assert.ok(!JSON.stringify(diag).includes('8100001'));
  assert.equal(cards,0,'Diagnostics must not open even one order card');
- const clickNext=async()=>{
+ const clickNext=async expected=>{
    await page.locator('#vision-local-order-overlay button')
      .filter({hasText:'Проверить следующие'}).click();
-   await page.waitForFunction(()=>
-     !document.querySelector('#vision-local-order-overlay .vlo-start')?.disabled,
-     null,{timeout:30000});
+   await page.waitForFunction((count)=>
+     [...document.querySelectorAll('[data-vision-order-cell] .vlo-label')]
+       .filter(label=>label.textContent.includes('исследованы')).length>=count,
+     expected,{timeout:30000});
  };
- await clickNext();
+ await clickNext(10);
  assert.equal(cards,10);assert.equal(popups,10);assert.equal(artworks,10);
  assert.equal(await page.locator('[data-vision-order-cell] .vlo-label').allTextContents()
    .then(labels=>labels.filter(x=>x.includes('исследованы')).length),10);
  assert.ok((await page.locator('#vision-local-order-overlay .vlo-stats').innerText())
    .includes('обработано строк: 10'));
- await clickNext();
+ await clickNext(20);
  assert.equal(cards,20);assert.equal(artworks,20);
- await clickNext();
+ await clickNext(30);
  assert.equal(cards,30);assert.equal(artworks,30);
- await clickNext();
+ await clickNext(32);
  assert.equal(cards,32);
  assert.equal(artworks,32);
  assert.equal(await page.locator('#vision-local-order-overlay .vlo-start').isDisabled(),true);
@@ -115,9 +118,9 @@ try{
    .filter({hasText:'Новый лимит файлов'}).isEnabled(),true);
  await page.locator('#vision-local-order-overlay button')
    .filter({hasText:'Новый лимит файлов'}).click();
- await clickNext(); // 42
- await clickNext(); // 52
- await clickNext(); // 61
+ await clickNext(42); // 42
+ await clickNext(52); // 52
+ await clickNext(61); // 61
  assert.equal(cards,61);assert.equal(popups,61);assert.equal(artworks,61);
  assert.ok((await page.locator('#vision-local-order-overlay .vlo-start').innerText())
    .includes('Все строки обработаны'));
