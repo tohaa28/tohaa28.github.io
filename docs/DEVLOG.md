@@ -957,3 +957,14 @@ https://github.com/tohaa28/tohaa28.github.io/actions/runs/44083121486
 - Synthetic regression: test both `True` and `False` for each of four coordinate fields, assert `ROI_NONFINITE` and no cases inserted. Existing NaN, infinity, negative and zero tests remain.
 - Commits: `44e521cb8c29da49a341db6807ad0a02f977bbf0` (code), `f5df2a0c749bb054acfee3935a340119f46cd1d6` (tests). CI results for new SHA must be checked independently; no claim of a passing test until confirmed.
 - Pending: three independent two-reviewer/adjudicator regression cycles not yet run in this edit; preview publish not confirmed; real ROI expert agreement, calibrated physical mm, PDF color/ICC/spot, technology specification, independent family holdout and real-world accuracy remain unverified. Training/production approval stays disabled; unknown => MANUAL.
+
+
+## C3B.3.M3.2a — PDF thin-candidate truncation flag (2026-11-17)
+
+Pre-change HEAD `59bef4d405335c6b2fe0a9c51c83eb886a24b462`; PR #4 open/DRAFT/unmerged. At inspection three GitHub Actions checks (UI smoke, raster safety, rules/dataset safety) and both CircleCI statuses (vision-contract, vision-raster) were SUCCESS on that SHA. Preview publish was not confirmed.
+
+- `88955d0`: fix optional offline `tools/vision_pdf_audit.py` summary: `thin_stroke_candidates_truncated` previously compared all stroke paths with the output cap, so 81 thick strokes incorrectly reported truncation. Now count finite, valid-bbox, positive-width strokes below the exploratory threshold; mark truncated only if more than 80 qualifying candidates exist. Zero-width hairlines remain separate and never certify printed geometry.
+- `2c79b03`: add synthetic regression boundary cases for 81 thick strokes, exactly 80 thin strokes and 81 thin strokes. Assert no training/production approval. No customer PDFs, filenames, ROI labels, secrets, or model weights included.
+- Existing threefold independent two-reviewer/adjudicator workflow is unchanged; not executed locally in this edit. New CI outcomes must be checked on the resulting SHA and not inferred from earlier successes.
+- PDF path audit remains RESEARCH_ONLY, with no certified physical scale, gap, ICC/spot, transparency, or print process. Unknown evidence => MANUAL for production; no automatic training/deployment.
+- Preview publish remains unverified. Rollback: revert only the two isolated PDF/test commits and this devlog entry.
