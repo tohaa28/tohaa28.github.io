@@ -11,6 +11,8 @@ on:
       - vision-review.html
       - vision-ai.html
       - vision/ai/synthetic-feature-model.mjs
+      - vision/ai/scan-worker.mjs
+      - tests/printcheck-vision-worker.test.mjs
       - tests/printcheck-vision-ai.browser.mjs
       - vision/dataset/review-task.mjs
       - tests/printcheck-vision-review.browser.mjs
@@ -55,6 +57,8 @@ jobs:
           node --check tests/printcheck-vision-studio.browser.mjs
           node --check tests/printcheck-vision-review.browser.mjs
           node --check vision/ai/synthetic-feature-model.mjs
+          node --check vision/ai/scan-worker.mjs
+          node --test tests/printcheck-vision-worker.test.mjs
           node --check tests/printcheck-vision-ai.browser.mjs
           node --test tests/printcheck-vision-synthetic-ai.test.mjs
           node --check direct-mode.js
@@ -102,6 +106,7 @@ jobs:
           cp vision-ai.html "$PREVIEW/"
           mkdir -p "$PREVIEW/vision/ai"
           cp vision/ai/synthetic-feature-model.mjs "$PREVIEW/vision/ai/"
+          cp vision/ai/scan-worker.mjs "$PREVIEW/vision/ai/"
           mkdir -p "$PREVIEW/vision/dataset"
           cp vision/dataset/review-task.mjs "$PREVIEW/vision/dataset/"
           cp -R assets vendor "$PREVIEW/"
@@ -113,6 +118,7 @@ jobs:
           test -f "$PREVIEW/assets/printcheck-vision-ui.css"
           test -f "$PREVIEW/launcher.js"
           test -f "$PREVIEW/vision/ai/synthetic-feature-model.mjs"
+          test -f "$PREVIEW/vision/ai/scan-worker.mjs"
           test -f "$PREVIEW/vision-ai.html"
           grep -q 'gifts-layout-workbench-vision' "$PREVIEW/launcher.js"
           echo "Preview isolated at /gifts-layout-workbench-vision/"
