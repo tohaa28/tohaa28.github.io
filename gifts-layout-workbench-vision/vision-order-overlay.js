@@ -2518,6 +2518,8 @@
           discovered_links: r.anchors.length,
           same_origin_files: r.files.length,
           order_card_discovered: r.hasOrderLink,
+          analysis_complete: r.scanAttempted === true,
+          pending_file_count: r.partial ? Math.min(r.partial.candidates.length, LOCAL_ORDERS.maxFilesPerRow) - r.partial.nextIndex : 0,
           customer_uploaded_artworks: r.orderUploads?.length ?? null,
           constructor_template_count: r.orderTemplates ?? null,
           excluded_links: r.local_only_excluded,
@@ -2666,13 +2668,14 @@
       renderStats(rows.length ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0440\u0446\u0438\u044F\u043C\u0438 \u043F\u043E 10 \u0437\u0430\u043A\u0430\u0437\u043E\u0432, \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044E." : "\u0421\u0442\u0440\u043E\u043A\u0438 \u043D\u0435 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u044B. \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0430\u0434\u0430\u043F\u0442\u0435\u0440 \u043A DOM \u0442\u0435\u0441\u0442\u043E\u0432\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B; \u0444\u0430\u0439\u043B\u043E\u0432\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u043B\u0438\u0441\u044C.");
     }
     async function scanRowContents(r) {
-      r.scanAttempted = true;
+      r.scanAttempted = false;
       r.button.disabled = true;
       r.label.textContent = "Vision: \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430 \u2192 \u043C\u0430\u043A\u0435\u0442\u044B\u2026";
-      r.results = [];
-      let manual2 = 0, research = 0, desc = [];
-      let candidates = [], fromOrder = false;
-      if (r.hasOrderLink) {
+      if (!r.partial) r.results = [];
+      let manual2 = r.partial?.manual || 0, research = r.partial?.research || 0, desc = r.partial?.descriptions || [];
+      let candidates = r.partial?.candidates || [], fromOrder = r.partial?.fromOrder || false;
+      if (r.partial) {
+      } else if (r.hasOrderLink) {
         const detail = await inspectOrderPageFromRow(r.element);
         if (closed) return;
         if (detail.status !== "ORDER_DETAIL_DISCOVERED") {
@@ -2683,6 +2686,7 @@
             status: "MANUAL",
             reason: detail.reason || "ORDER_DETAIL_UNAVAILABLE"
           });
+          r.scanAttempted = true;
           r.button.disabled = false;
           renderStats("\u041D\u0443\u0436\u0435\u043D \u0434\u043E\u0441\u0442\u0443\u043F \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u0437\u0430\u043A\u0430\u0437\u0430 \u0438 AJAX \u043E\u043A\u043D\u0443");
           return;
@@ -2698,6 +2702,7 @@
             status: "MANUAL",
             reason: "CUSTOMER_UPLOADS_NOT_FOUND"
           });
+          r.scanAttempted = true;
           r.button.disabled = false;
           renderStats("\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u044B \u043D\u0435 \u044F\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u043C\u0438 \u043C\u0430\u043A\u0435\u0442\u0430\u043C\u0438 \u043A\u043B\u0438\u0435\u043D\u0442\u0430");
           return;
@@ -2714,19 +2719,32 @@
             status: "MANUAL",
             reason: "ORDER_DETAIL_LINK_REQUIRED"
           });
+          r.scanAttempted = true;
           r.button.disabled = false;
           renderStats("\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u043D\u0430 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0437\u0430\u043A\u0430\u0437\u0430");
           return;
         }
       }
       const limit2 = LOCAL_ORDERS.maxFilesPerRow;
-      for (const a of candidates.slice(0, limit2)) {
-        if (closed) break;
+      const total = Math.min(candidates.length, limit2);
+      for (let i = r.partial?.nextIndex || 0; i < total; i++) {
+        if (closed) return;
         if (fileBudget <= 0) {
-          manual2++;
-          desc.push("\u041B\u0438\u043C\u0438\u0442 \u0441\u0435\u0430\u043D\u0441\u0430 \u2014 \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u044B");
-          break;
+          r.partial = {
+            candidates,
+            fromOrder,
+            nextIndex: i,
+            manual: manual2,
+            research,
+            descriptions: desc
+          };
+          r.label.textContent = "Vision: \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u043E, \u043D\u0443\u0436\u0435\u043D \u043D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432";
+          r.detail.textContent = "\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E " + i + " \u0438\u0437 " + total + " \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439. \u0423\u0436\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B; \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u0435 \u043D\u0435 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442 GET.";
+          r.button.disabled = false;
+          renderStats("\u041B\u0438\u043C\u0438\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A. \u041D\u0435\u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430 \u0434\u043B\u044F \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u044F.");
+          return;
         }
+        const a = candidates[i];
         fileBudget--;
         let result;
         if (fromOrder) {
@@ -2749,6 +2767,8 @@
         else research++;
       }
       if (closed) return;
+      r.partial = null;
+      r.scanAttempted = true;
       if (candidates.length > limit2 || r.limited || r.local_only_excluded > 0 && !fromOrder)
         manual2++;
       r.label.textContent = manual2 ? "Vision: " + manual2 + " \u0442\u0440\u0435\u0431\u0443\u044E\u0442 \u0440\u0443\u0447\u043D\u043E\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438" : "Vision: " + research + " \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u044B (\u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A)";
@@ -2786,6 +2806,10 @@
           const r = rows[nextRowIndex++];
           if (r.scanAttempted) continue;
           await scanRowContents(r);
+          if (r.partial) {
+            nextRowIndex--;
+            break;
+          }
           examined++;
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
