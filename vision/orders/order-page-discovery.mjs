@@ -346,7 +346,9 @@ export async function fetchOrderResourceBytes(resource,{
    redirect:"error",cache:"no-store",referrerPolicy:"no-referrer",
    signal:ctrl.signal,headers:{accept:"application/pdf,application/octet-stream,*/*"}
   });
-  if(!res.ok)return REFUSE("ARTWORK_HTTP_ERROR");
+  if(!res.ok)return REFUSE("ARTWORK_HTTP_ERROR",{
+    stage:"artwork",http_status:res.status,failure_class:"http_status"
+  });
   const mime=res.headers.get("content-type")||"";
   if(/(?:text\/html|application\/json)/i.test(mime))
    return REFUSE("ARTWORK_LOGIN_OR_HTML_RESPONSE");
