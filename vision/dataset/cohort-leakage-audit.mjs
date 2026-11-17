@@ -23,7 +23,7 @@ const HEX=/^[0-9a-f]{64}$/i;
 const TECH=/^[A-Z0-9_-]{1,30}$/;
 const SPLITS=new Set(['train','validation','test']);
 const TYPES=new Set(['pdf','svg','raster','other']);
-const MAX_RECORDS=1024,MAX_CANDIDATES=160000;
+const MAX_RECORDS=1024,MAX_CANDIDATES=12000;
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const fail=(reason,counts={})=>({
   schema:'printcheck.vision.cohort-leakage-audit.v1',
