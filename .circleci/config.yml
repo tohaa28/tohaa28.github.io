@@ -84,6 +84,7 @@ jobs:
           command: |
             set -euo pipefail
             node tests/printcheck-vision-independent-raster.integration.mjs
+            node tests/printcheck-vision-raster-locked-pilot.integration.mjs
           no_output_timeout: 5m
 
   vision-browser:
