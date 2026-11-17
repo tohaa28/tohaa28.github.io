@@ -21,6 +21,7 @@ on:
       - "vision/dataset/pilot-attestation.mjs"
       - "vision/dataset/prepare-pilot-signoff.mjs"
       - "tests/printcheck-vision-pilot-attestation.test.mjs"
+      - "tests/printcheck-vision-pilot-python-e2e.mjs"
       - "tests/bench-printcheck-vision-spatial.mjs"
       - "tests/bench-printcheck-vision-curved.mjs"
       - "tests/printcheck-vision-pdf-bridge.test.mjs"
@@ -70,6 +71,7 @@ jobs:
           node --check vision/dataset/pilot-attestation.mjs
           node --check vision/dataset/prepare-pilot-signoff.mjs
           node --check tests/printcheck-vision-pilot-attestation.test.mjs
+          node --check tests/printcheck-vision-pilot-python-e2e.mjs
           node --check tests/bench-printcheck-vision-spatial.mjs
           node --check tests/bench-printcheck-vision-curved.mjs
           node --check vision/geometry/pdfjs-vector-bridge.mjs
@@ -91,3 +93,5 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_printcheck_vision_inventory.py' -v
       - name: Validate private expert-region metrics and grouped holdouts
         run: python -m unittest discover -s tests -p 'test_printcheck_vision_evaluate.py' -v
+      - name: Verify signed pilot through Python evaluator in private synthetic fixture
+        run: node tests/printcheck-vision-pilot-python-e2e.mjs
