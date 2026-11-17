@@ -209,9 +209,9 @@ async function getText(url,fetcher,listOrigin,phase){
   if(res.url){
    let final;
    try{final=new URL(res.url)}catch{}
-   const auth=final&&/(?:^|\\/)(?:auth|login|signin)(?:\\/|$)/i.test(final.pathname);
-   const expected=loc.pathname.replace(/\\/$/,'')+loc.search;
-   const actual=final?.pathname.replace(/\\/$/,'')+final?.search;
+   const auth=final&&final.pathname.toLowerCase().split('/').some(part=>['auth','login','signin'].includes(part));
+   const expected=(loc.pathname.endsWith('/')?loc.pathname.slice(0,-1):loc.pathname)+loc.search;
+   const actual=final&&((final.pathname.endsWith('/')?final.pathname.slice(0,-1):final.pathname)+final.search);
    if(auth){const e=Error('TEST_SESSION_AUTH_REQUIRED');
      e.visionCode='TEST_SESSION_AUTH_REQUIRED';throw e}
    if(!final||!testUrl(res.url,loc.href)||
