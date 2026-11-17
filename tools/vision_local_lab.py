@@ -29,10 +29,10 @@ import zipfile
 
 MAX_ZIP = 32 * 1024 * 1024
 MAX_TOTAL = 24_000_000
-MAX_FILE = 4_000_000
+MAX_FILE = 16_000_000
 MAX_SAMPLES = 16
 SCHEMA = "printcheck.vision.local-test-artwork.v0"
-LABELS = {"confirmed_defect", "false_positive", "missed_defect", "expert_clear"}
+LABELS = {"confirmed_defect", "false_positive", "missed_defect", "expert_clear", "unreviewed"}
 FORMATS = {"svg", "pdf", "png", "jpg", "jpeg", "webp", "cdr", "eps", "ai", "bin"}
 EXT_RE = re.compile(r"^samples/([0-9]{4})(?:\.([a-z]+)|/([^/]+))$")
 WINDOWS_RESERVED = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$", re.I)
