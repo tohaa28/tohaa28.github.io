@@ -4,7 +4,7 @@
  * All reports and expert labels remain in this page until local download.
  */
 import {LOCAL_ORDERS,isAllowedTestOrderPage,discoverOrderRows,
-  inspectSameOriginArtwork} from './row-scanner.mjs';
+  inspectSameOriginArtwork,diagnoseTestOrderTable} from './row-scanner.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
  '#vision-local-order-overlay{position:fixed!important;top:12px!important;right:12px!important;z-index:2147483640!important;width:min(390px,calc(100vw - 24px))!important;max-height:76vh!important;overflow:auto!important;background:#24383c!important;border:1px solid #5c777a!important;border-radius:9px!important;box-shadow:0 8px 35px #101b22a8!important;color:#eef5f2!important;padding:15px!important;text-align:left!important;font:13px/1.45 system-ui,sans-serif!important}',
@@ -103,7 +103,15 @@ export function initLocalOrdersOverlay(){
  const scanBtn=makeButton('Проверить макеты',()=>scanAll());
  scanBtn.className='vlo-start';
  const exportBtn=makeButton('Отчёт JSON',saveReport);
- actions.append(refreshBtn,scanBtn,exportBtn,makeButton('Закрыть',close));
+ const diagnosticBtn=makeButton('Диагностика таблицы',()=>{
+   const report=diagnoseTestOrderTable(document);
+   const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)+'\n'],
+     {type:'application/json'}));
+   const a=node('a');a.href=url;a.download='vision-local-table-diagnostic.json';
+   a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ });
+ actions.append(refreshBtn,scanBtn,exportBtn,diagnosticBtn,
+   makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
  document.body.append(panel);
  window.__visionLocalOrderOverlay={close,refresh,version:'C3B.3.O'};
