@@ -30,6 +30,7 @@ on:
       - docs/VISION_LOCAL_LAB_SETUP_RU.md
       - tests/printcheck-vision-order-detail.test.mjs
       - tests/printcheck-vision-order-detail.browser.mjs
+      - tests/printcheck-vision-order-404.browser.mjs
       - tests/printcheck-vision-61-order-browser.mjs
       - vision/orders/local-training-zip.mjs
       - tests/printcheck-vision-training-zip.test.mjs
@@ -101,6 +102,7 @@ jobs:
           node --check vision/orders/row-scanner.mjs
           node --check vision/orders/order-page-discovery.mjs
           node --check tests/printcheck-vision-order-detail.browser.mjs
+          node --check tests/printcheck-vision-order-404.browser.mjs
           node --check tests/printcheck-vision-61-order-browser.mjs
           node --test tests/printcheck-vision-order-detail.test.mjs
           node --test tests/printcheck-vision-lan-failure-stages.test.mjs
@@ -163,6 +165,7 @@ jobs:
           node tests/printcheck-vision-vector.browser.mjs
           node tests/printcheck-vision-local-orders.browser.mjs
           node tests/printcheck-vision-order-detail.browser.mjs
+          node tests/printcheck-vision-order-404.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
