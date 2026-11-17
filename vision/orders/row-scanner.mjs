@@ -191,10 +191,10 @@ async function examineRaster(bytes,mime){
  }catch{return manual('RASTER_DECODING_FAILED','raster')}
  finally{bitmap?.close()}
 }
-export async function inspectOrderArtworkBytes(bytes,url,contentType=''){
+export async function inspectOrderArtworkBytes(bytes,url,contentType='',filenameHint=''){
  if(!(bytes instanceof Uint8Array)||bytes.length<4)
    return manual('EMPTY_OR_INVALID_FILE');
- const hinted=extensionType(url.pathname);
+ const hinted=extensionType(filenameHint||url.pathname);
  if(/text\/html|application\/json/i.test(contentType))
    return manual('UNEXPECTED_HTML_OR_JSON_RESPONSE',hinted);
  // Attachment endpoints may hide the extension behind a query parameter.
