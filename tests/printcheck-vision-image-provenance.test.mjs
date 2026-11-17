@@ -24,7 +24,7 @@ const FA=calc(A),FB=calc(B);
 const entry=(id,split,image,fingerprint)=>({
   image_sha256:hash(image),artwork_sha256:hx(1000+id),
   family_sha256:hx(2000+id),technology_code:'UV1',
-  source_type:'svg',split,fingerprint
+  source_type:'svg',split,fingerprint:structuredClone(fingerprint)
 });
 const cohort=()=>({
   schema:'printcheck.vision.cohort.v1',
