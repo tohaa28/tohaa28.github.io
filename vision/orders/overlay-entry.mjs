@@ -20,6 +20,8 @@ const CSS=[
  '#vision-local-order-overlay button:disabled{opacity:.5!important;cursor:not-allowed!important}',
  '#vision-local-order-overlay .vlo-start{background:#8fb83f!important;border-color:#8fb83f!important;font-weight:700!important}',
  '#vision-local-order-overlay .vlo-note{font-size:12px!important;line-height:1.4!important}',
+ '.vision-order-result-cell .vlo-files{margin:4px 0!important;max-width:320px!important}',
+ '.vision-order-result-cell .vlo-filename{white-space:pre-wrap!important;overflow-wrap:anywhere!important;margin:3px 0!important}',
  '#vision-local-order-overlay .vlo-stats{white-space:pre-line!important;margin:8px 0!important;color:#cbe3d6!important}',
  '.vision-order-result-cell{min-width:210px!important;font:12px/1.5 system-ui,sans-serif!important;white-space:normal!important;color:#2f4348!important;padding:6px!important;vertical-align:middle!important}',
  '.vision-order-result-cell .vlo-label{font-weight:700!important;color:#36515a!important}',
@@ -212,6 +214,8 @@ export function initLocalOrdersOverlay(){
        r.anchors.length>0?
          'Обнаружены ссылки в строке; проверю резервный маршрут':
          'Не найден переход в карточку заказа','vlo-detail');
+     // Exact private filenames in the local DOM only; never in anonymous JSON.
+     const fileNames=node('details',undefined,'vlo-files');fileNames.hidden=true;
      const trigger=makeButton('Проверить строку',()=>scanRow(r));
      const gradeLabel=node('label','Метка технолога: ');
      gradeLabel.setAttribute('data-vlo-grade','');
@@ -224,9 +228,9 @@ export function initLocalOrdersOverlay(){
        const option=node('option',text);option.value=value;grade.append(option);
      }
      gradeLabel.append(grade);r.grade=grade;
-     cell.append(label,detail,trigger,gradeLabel);
+     cell.append(label,detail,fileNames,trigger,gradeLabel);
      r.element.append(cell);
-     r.label=label;r.detail=detail;r.button=trigger;
+     r.label=label;r.detail=detail;r.button=trigger;r.fileNames=fileNames;
    }
    updateBatchControls();
    renderStats(rows.length?'Карточки читаются порциями по 10 заказов, только по нажатию.':
@@ -275,6 +279,12 @@ export function initLocalOrdersOverlay(){
        return;
      }
      candidates=detail.uploads;
+     r.fileNames.replaceChildren(node('summary','Оригинальные имена ('+detail.uploads.length+')'));
+     for(const upload of detail.uploads){
+       // textContent only: retain exact Unicode, whitespace and case.
+       r.fileNames.append(node('div',upload.originalFilename??upload.filename,'vlo-filename'));
+     }
+     r.fileNames.hidden=false;
      r.detail.textContent='Загружено заказчиком: '+detail.uploads.length+
        '; конструкторов: '+detail.templates.length;
    }else{
