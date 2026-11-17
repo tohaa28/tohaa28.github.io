@@ -742,7 +742,7 @@ CI: проверка новых commit SHA выполняется автомат
 - \`19a1189f\`: overlay button \`Локальные примеры ZIP\` enabled after expert row labels, no automatic upload or training.
 - \`749a4f61\`: Node ZIP writer/guard tests; \`cfaeb47c\`: Chromium synthetic ZIP export with user-confirmed dialog, verifies only the labeled source SVG re-fetched, original SVG included, no external network, \`training_ready:false\`; \`2d86cc4e\`: workflow runs archive safety checks.
 - **CI verified** [publish 44051709907](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44051709907) SUCCESS: all ZIP test suites + browser SVG/PDF/raster/ZIP smoke and bookmarklet.
-- \`7acaf813\`: additional independent Python stdlib ZIP decoder verification in CI (await latest run before marking independently green).
+- \`7acaf813\`: additional independent Python stdlib ZIP decoder verification: [publish 44052018776](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44052018776) **SUCCESS**. Logs confirm independent stdlib ZIP decode, local test orders Chromium smoke and same-origin bookmarklet; preview deployed only to the isolated GitHub Pages folder.
 - \`ab844ca2\`, \`f920c322\`, \`4896b287\`: installer, O2 contract and README extended. Sources only in experimental branch + the separately published isolated preview folder; PR #4 remains DRAFT.
 
 ### Mandatory next steps
