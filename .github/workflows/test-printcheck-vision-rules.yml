@@ -18,6 +18,8 @@ on:
       - "vision/dataset/compare-reviews.mjs"
       - "tests/printcheck-vision-region-methods.test.mjs"
       - "tests/printcheck-vision-compare-reviews.test.mjs"
+      - "vision/dataset/pilot-attestation.mjs"
+      - "tests/printcheck-vision-pilot-attestation.test.mjs"
       - "tests/bench-printcheck-vision-spatial.mjs"
       - "tests/bench-printcheck-vision-curved.mjs"
       - "tests/printcheck-vision-pdf-bridge.test.mjs"
@@ -64,6 +66,8 @@ jobs:
           node --check vision/dataset/compare-reviews.mjs
           node --check tests/printcheck-vision-region-methods.test.mjs
           node --check tests/printcheck-vision-compare-reviews.test.mjs
+          node --check vision/dataset/pilot-attestation.mjs
+          node --check tests/printcheck-vision-pilot-attestation.test.mjs
           node --check tests/bench-printcheck-vision-spatial.mjs
           node --check tests/bench-printcheck-vision-curved.mjs
           node --check vision/geometry/pdfjs-vector-bridge.mjs
@@ -73,7 +77,7 @@ jobs:
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-svg-dom.test.mjs
       - name: Run deterministic rule tests
-        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs tests/printcheck-vision-review-task.test.mjs tests/printcheck-vision-region-methods.test.mjs tests/printcheck-vision-compare-reviews.test.mjs
+        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs tests/printcheck-vision-review-task.test.mjs tests/printcheck-vision-region-methods.test.mjs tests/printcheck-vision-compare-reviews.test.mjs tests/printcheck-vision-pilot-attestation.test.mjs
       - name: Report synthetic CPU performance and exact result parity
         run: node tests/bench-printcheck-vision-spatial.mjs
       - name: Report synthetic curved-boundary CPU scaling
