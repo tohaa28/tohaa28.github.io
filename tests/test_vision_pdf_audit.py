@@ -146,6 +146,33 @@ class PDFAuditTests(unittest.TestCase):
                 self.assertFalse(out["training_ready"])
                 self.assertFalse(out["production_approved"])
 
+    def test_pdf_rect_rejects_boolean_string_and_nonfinite_coordinates(self):
+        for bad in (True, False, "1", None, float("nan"), float("inf")):
+            for index in range(4):
+                values = [0, 0, 10, 10]
+                values[index] = bad
+                with self.subTest(bad=repr(bad), index=index):
+                    self.assertIsNone(pdf.rect_points(Rect(*values)))
+        self.assertEqual(pdf.rect_points(Rect(0, 0, 10, 10)), [0, 0, 10, 10])
+
+    def test_invalid_pdf_page_box_fails_closed(self):
+        class BadPage(Page):
+            rect = Rect(False, 0, 288, 144)
+
+        class BadEngine:
+            def open(self, _):
+                class BadDocument(Document):
+                    def __iter__(self):
+                        return iter([BadPage()])
+                return BadDocument()
+
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        out = pdf.audit_document(source, engine=BadEngine())
+        self.assertEqual(out["status"], "MANUAL")
+        self.assertEqual(out["reason"], "PDF_PAGE_BOX_INVALID")
+        self.assertFalse(out["production_approved"])
+        self.assertFalse(out["training_ready"])
+
     def test_missing_and_tampered_source_fail_closed(self):
         self.assertEqual(pdf.audit_sample(self.root, "invalid", engine=Engine())["reason"],
                          "SAMPLE_ID_INVALID")
