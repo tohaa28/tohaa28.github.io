@@ -100,6 +100,43 @@ export async function rerenderSvgPathOnly({sourceBytes,width,height}={}){
     return result;
   }catch{return no('SVG_REPLAY_ENGINE_FAILED')}
 }
+/**
+ * PDF.js has already normalized CMYK/spot operands to RGB by the time
+ * getOperatorList is returned. Therefore we MUST inspect the raw content
+ * stream as well. This limited inspection is intentionally restrictive:
+ * only a single uncompressed ASCII stream using black DeviceRGB 'rg',
+ * one axis-aligned 're' path and 'f' is eligible. All other PDFs MANUAL.
+ * This is not a general PDF parser; unsupported objects always abstain.
+ */
+export function checkReplayPdfRgbSubset(sourceBytes){
+  if(!(sourceBytes instanceof Uint8Array)||sourceBytes.length>MAX_BYTES||
+     sourceBytes.length<50)return no('PDF_SOURCE_BYTES_INVALID');
+  const text=Buffer.from(sourceBytes).toString('latin1');
+  if(!text.startsWith('%PDF-1.')||
+     !text.includes('xref\n')||!text.includes('startxref')||
+     !/%%EOF\s*$/.test(text)||
+     /[^\x09\x0a\x0d\x20-\x7e]/.test(text))
+    return no('PDF_SOURCE_NOT_SIMPLE_ASCII');
+  if(/\/(?:Filter|DecodeParms|Encrypt|ObjStm|XRefStm|XObject|ColorSpace|Separation|DeviceN|DeviceCMYK|ICCBased|Pattern|ExtGState|SMask|Font|Annots|AcroForm|OutputIntent|OpenAction|JavaScript|JS)\b/.test(text))
+    return no('PDF_UNSUPPORTED_COLOR_OR_OBJECT');
+  const streamCount=[...text.matchAll(/\bstream\b/g)].length;
+  const endCount=[...text.matchAll(/\bendstream\b/g)].length;
+  if(streamCount!==1||endCount!==1)
+    return no('PDF_MULTIPLE_OR_COMPRESSED_STREAMS_UNSUPPORTED');
+  const stream=/\bstream\r?\n([\s\S]*?)endstream\b/.exec(text);
+  if(!stream)return no('PDF_UNCOMPRESSED_PATH_STREAM_REQUIRED');
+  const tokens=stream[1].trim().split(/\s+/);
+  const number=s=>/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(s)&&
+    Number.isFinite(Number(s))&&Number(s)<=50000;
+  if(tokens.length!==10||
+     !tokens.slice(0,3).every(s=>s==='0')||
+     tokens[3]!=='rg'||
+     !tokens.slice(4,8).every(number)||
+     tokens[8]!=='re'||tokens[9]!=='f'||
+     tokens[6]==='0'||tokens[7]==='0')
+    return no('PDF_PAINT_NOT_EXPLICIT_SINGLE_RGB_RECTANGLE');
+  return {status:'PDF_SINGLE_UNCOMPRESSED_RGB_RECTANGLE_ONLY'};
+}
 export async function rerenderPdfSimplePaths({
   sourceBytes,width,height,page_index=0,receipt
 }={}){
@@ -108,6 +145,9 @@ export async function rerenderPdfSimplePaths({
      !goodDim(width,height)||!Number.isSafeInteger(page_index)||
      page_index<0||page_index>50)
     return no('PDF_REPLAY_SOURCE_INVALID');
+  const safePdf=checkReplayPdfRgbSubset(sourceBytes);
+  if(safePdf.status!=='PDF_SINGLE_UNCOMPRESSED_RGB_RECTANGLE_ONLY')
+    return safePdf;
   let pdfjs,canvasLib;
   try{
     canvasLib=await import('@napi-rs/canvas');
