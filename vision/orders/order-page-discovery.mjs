@@ -43,8 +43,13 @@ export function rowOrderTarget(row,base){
   if(ordered.length===1)return {status:"ORDER_LINK_FOUND",...ordered[0]};
   // Fallback only when an unambiguous numeric order ID is actually present
   // as a DOM attribute, NOT extracted from unrelated prices/quantities.
+  const onclick=row.getAttribute?.("onclick")||"";
+  // Static URL extraction only. Do not execute page-provided JS handlers.
+  const orderInHandler=onclick.match(/\/private\/order\/(\d{5,12})(?!\d)/);
+  const firstCell=row.querySelector?.(":scope > td:first-child")?.textContent?.trim()||"";
   const stated=row.getAttribute?.("data-order-number")||
-    row.getAttribute?.("data-order")||"";
+    row.getAttribute?.("data-order")||orderInHandler?.[1]||
+    (/^\d{5,12}$/.test(firstCell)?firstCell:"");
   if(digits(stated)){
     const url=testUrl("/private/order/"+stated,base);
     return {status:"ORDER_LINK_FOUND",url,number:stated,
@@ -191,7 +196,9 @@ export async function inspectOrderPageFromRow(row,{
   if(resources.status!=="ORDER_RESOURCES")return resources;
   return {status:"ORDER_DETAIL_DISCOVERED",orderNumber:target.number,
     internalId:oid,detailOrigin:target.url.origin,
-    uploads:resources.uploads,templates:resources.templates,
+    uploads:resources.uploads.map(x=>({...x,internalId:oid,
+      detailOrigin:target.url.origin})),
+    templates:resources.templates,
     rejected:resources.rejected};
  }catch(error){
   const msg=String(error?.message||"");
@@ -200,4 +207,64 @@ export async function inspectOrderPageFromRow(row,{
     msg.startsWith("HTTP_")?"ORDER_HTTP_ERROR":
     "ORDER_DETAIL_FETCH_OR_CORS_FAILURE");
  }
+}
+
+
+/**
+ * Read customer artwork bytes from a VERIFIED popup descriptor. Download
+ * filenames, template links, arbitrary row hrefs or untrusted URLs are never
+ * independently granted access to this helper.
+ */
+export async function fetchOrderResourceBytes(resource,{
+ fetcher=globalThis.fetch,loc=globalThis.location,timeoutMs=15000,
+ maxBytes=16_000_000
+}={}){
+ if(!loc||loc.protocol!=="http:"||loc.hostname!=="psk.testgifts.local"||
+   !/^\/devorders(?:\/|$)/.test(loc.pathname))
+  return REFUSE("NOT_TEST_ORDER_PAGE");
+ if(resource?.role!=="customer_uploaded_artwork"||
+   !internal(resource.id)||!internal(resource.internalId)||
+   !digits(resource.orderNumber)||!TEST_HOSTS.includes(new URL(loc.href).hostname))
+  return REFUSE("UNTRUSTED_ORDER_RESOURCE");
+ const url=testUrl(resource.url,loc.href);
+ if(!url||url.pathname!=="/cart/act/mda"||
+   url.searchParams.get("id")!==resource.id||
+   url.searchParams.get("oid")!==resource.internalId||
+   url.origin!==resource.detailOrigin)
+  return REFUSE("UNTRUSTED_RESOURCE_URL");
+ if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>16_000_000)
+  return REFUSE("RESOURCE_BYTE_LIMIT_INVALID");
+ const same=url.origin===loc.origin,ctrl=new AbortController();
+ const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+ try{
+  const res=await fetcher(url.href,{
+   method:"GET",mode:same?"same-origin":"cors",credentials:"include",
+   redirect:"error",cache:"no-store",referrerPolicy:"no-referrer",
+   signal:ctrl.signal,headers:{accept:"application/pdf,application/octet-stream,*/*"}
+  });
+  if(!res.ok)return REFUSE("ARTWORK_HTTP_ERROR");
+  const mime=res.headers.get("content-type")||"";
+  if(/(?:text\/html|application\/json)/i.test(mime))
+   return REFUSE("ARTWORK_LOGIN_OR_HTML_RESPONSE");
+  if(Number(res.headers.get("content-length")||0)>maxBytes)
+   return REFUSE("ARTWORK_SIZE_EXCEEDED");
+  const chunks=[];let length=0;
+  const reader=res.body?.getReader();
+  if(!reader)return REFUSE("ARTWORK_STREAM_UNAVAILABLE");
+  try{
+   while(true){
+    const {done,value}=await reader.read();if(done)break;
+    length+=value.byteLength;
+    if(length>maxBytes)return REFUSE("ARTWORK_SIZE_EXCEEDED");
+    chunks.push(value);
+   }
+  }finally{try{reader.releaseLock()}catch{}}
+  const bytes=new Uint8Array(length);let offset=0;
+  for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength}
+  if(bytes.byteLength<8)return REFUSE("ARTWORK_EMPTY");
+  return {status:"LOCAL_BYTES_ONLY",bytes,url,mime};
+ }catch{
+  return REFUSE(ctrl.signal.aborted?"ARTWORK_TIMEOUT":
+    same?"ARTWORK_DOWNLOAD_FAILED":"TEST_SUBDOMAIN_CORS_OR_AUTH_REQUIRED");
+ }finally{clearTimeout(timer)}
 }
