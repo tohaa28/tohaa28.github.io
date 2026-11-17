@@ -32,7 +32,7 @@ function tokensOf(stream){
       while(i<stream.length&&!delim(stream[i]))i++;
       if(i===j)return null;
       const name=decodeName(stream.slice(j,i));
-      if(!name||!/^[-A-Za-z0-9_.+]+$/.test(name))return null;
+      if(!name||/[^\x20-\x7e]/.test(name))return null;
       out.push({kind:'name',value:name});
     }else{
       if(/[<>\[\](){}]/.test(c))return null;
