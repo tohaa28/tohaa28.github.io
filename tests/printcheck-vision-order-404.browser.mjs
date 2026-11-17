@@ -6,8 +6,8 @@ import {chromium} from 'playwright';
 const bundle=await readFile('vision-order-overlay.js','utf8');
 const local='http://psk.testgifts.local';
 const script='https://tohaa28.github.io/gifts-layout-workbench-vision/vision-order-overlay.js';
-const row='<table><thead><tr><th>Заказ</th></tr></thead><tbody>'+
-  '<tr><td><a href="/private/order/8001555">8001555</a></td></tr>'+
+const row='<table><thead><tr><th>Заказ</th><th>Статус</th></tr></thead><tbody>'+
+  '<tr><td><a href="/private/order/8001555">8001555</a></td><td>140</td></tr>'+
   '</tbody></table>';
 const original='<div id="j_cart_host" data-orderid="771"></div>';
 const full='<div><div class="flex-item flex-main"><a data-maket="true" href="/cart/act/mda?oid=771&id=42">a.pdf</a><span title="Исходное имя закачанного файла">Private A.pdf</span></div>'+
