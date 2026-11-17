@@ -702,3 +702,20 @@ CI: проверка новых commit SHA выполняется автомат
 **Safety**: No customer art, order files, confidential keys or learning labels stored in public repository. The full real SVG2 and multi-color PDF are NOT supported; complex constructs and untrusted placement → MANUAL. All print_scale_proven/production_approved remain false, and a list without candidates means nothing about print suitability.
 
 **Next N2/P1**: verified per-color SVG geometry without silently combining inks; independent robust PDF vector extraction including actual multi-paint operators/ColorSpace/CTM and signed order-scale evidence; then blind real-data expert acceptance. Release PR #4 only after full QA.
+
+
+## C3B.3.N2 — safe disjoint colors, published SVG-first inspector (2026-11-17)
+
+**Actual browser-verified publish**: [GitHub Actions 44048194153](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44048194153) SUCCESS for first source-vector SVG inspector after fixing standard namespace filtering. Chromium desktop/mobile: exact 0.12 mm local gap, annotated SVG download, JSON without path bytes, no external requests, synthetic session/bookmarklet passed. HTML and 6 geometry modules published only under \`main/gifts-layout-workbench-vision/\`. The initial failed run was [44047761975](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44047761975); \`2b6a3edd\` corrected overly broad URI guard, \`a3e65488\` made test reason visible.
+
+**N2 independent inking**:
+- \`1cdf4f3a\` — \`vision/geometry/svg-ink-forms.mjs\`: bounded, independent geometric analysis of ≤8 different \`#RRGGBB\` fills only if *all different-color path AABBs are strictly disjoint*. For each ink clone the validated XML tree, select its source paths, and run the known SVG geometry bridge. Never merge different colors in one evenodd fill or infer actual spot/CMYK separation from RGB.
+- \`ce0e3939\` — \`svg-local-vector.mjs\` extends only the exact former multi-ink rejection branch, preserving unsupported-feature refusal and returning source RGB per candidate, group summary and \`inks_verified_as_print_spots:false\`.
+- \`1f1c2424\`, \`47b920ed\` — true Chromium tests assert two different disjoint inks remain independent and overlapping different-color paths => MANUAL, alongside the original thin line/gap and SVG injection/security tests.
+- \`36b4f1e6\` — publication/test workflow copies/validates new module; \`8283c11b\` — interface shows color provenance clearly without treating RGB as printing spot.
+- [GitHub Actions 44048792512](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44048792512) **SUCCESS**: vector+AI browser desktop/mobile smoke and session launcher passed; commit \`c6e879a\` published to isolated GitHub Pages folder, new \`svg-ink-forms.mjs\` and updated \`vision-vector.html\` verified in main.
+- Earlier N2 job failure [44048608420](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44048608420) was because newly imported helper was absent from the old browser test routing. The standalone browser harness and publish workflow were updated before the green run; no test thresholds were weakened.
+
+**No production approval.** Physically authenticated placement is unknown; multi-color overlaps, overprint/knockout, strokes, fonts, external effects and most complex SVG/PDF require MANUAL. Synthetic raster MLP is a separate, secondary path. Real vector PDFs need verified complete paint-operator coverage and source ColorSpace before geometry can be treated as research evidence; do not infer print fitness from a PDF.js image.
+
+**Next vector-first stage P1**: actual PDF object/page/paint interpretation with original source bytes and color spaces; support verified path primitives and transforms without dropping unsupported objects, then connect evidence to order/artwork/field millimeters. Keep PR #4 DRAFT, Issue #5 OPEN until blinded real-data acceptance.
