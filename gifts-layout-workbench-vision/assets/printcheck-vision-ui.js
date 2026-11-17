@@ -127,7 +127,7 @@
             '<div class="gwbv-preview-wrap"><canvas id="gwbVisionCanvas" width="800" height="500" aria-label="Увеличиваемый снимок рабочего поля"></canvas></div>',
             '<div class="gwbv-zoom"><label for="gwbvZoom">Увеличение</label><input id="gwbvZoom" type="range" min="1" max="8" step="1" value="1"><output id="gwbvZoomLabel" for="gwbvZoom">1×</output></div>',
             '<p id="gwbvPreviewStatus" class="gwbv-muted" role="status">Для просмотра откройте шаблон в Макетной.</p>',
-            '<div class="gwbv-actions"><button type="button" id="gwbvCenter" class="gwbv-secondary">По центру</button><button type="button" id="gwbvSnapshot" class="gwbv-secondary">Обновить изображение</button><button type="button" id="gwbvOpenAI" class="gwbv-secondary">AI-анализ локального файла</button></div>',
+            '<div class="gwbv-actions"><button type="button" id="gwbvCenter" class="gwbv-secondary">По центру</button><button type="button" id="gwbvSnapshot" class="gwbv-secondary">Обновить изображение</button><button type="button" id="gwbvOpenAI" class="gwbv-secondary">Проверить вектор SVG</button><button type="button" id="gwbvOpenRaster" class="gwbv-secondary">Растровый AI</button></div>',
           '</div>',
           '<div class="gwbv-status"><span class="gwbv-status-icon" aria-hidden="true">i</span><div>',
             '<strong>Изображение — не результат сегментации ИИ</strong><small>Это локальный предпросмотр уже отрисованного рабочего поля. Нажмите на изображение, чтобы приблизить выбранный участок. Ни один файл не отправляется на сервер.</small>',
@@ -158,6 +158,10 @@
     byId('gwbvSnapshot').addEventListener('click', drawPreview);
     // Explicit user click only: no artwork, cookies or order data transferred.
     byId('gwbvOpenAI').addEventListener('click', () => {
+      window.open('https://tohaa28.github.io/gifts-layout-workbench-vision/vision-vector.html',
+        '_blank', 'noopener,noreferrer');
+    });
+    byId('gwbvOpenRaster').addEventListener('click', () => {
       window.open('https://tohaa28.github.io/gifts-layout-workbench-vision/vision-ai.html',
         '_blank', 'noopener,noreferrer');
     });
