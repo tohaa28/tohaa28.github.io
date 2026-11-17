@@ -168,7 +168,8 @@ export function initLocalOrdersOverlay(){
      cell.setAttribute('data-vision-order-cell','');
      const label=node('span','Vision: не проверено','vlo-label');
      const target=rowOrderTarget(r.element,window.location.href);
-     r.hasOrderLink=target.status==='ORDER_LINK_FOUND';
+     r.hasOrderLink=target.status==='ORDER_LINK_FOUND'&&
+       !(target.source==='numeric_first_cell'&&r.files.length>0);
      const detail=node('span',
        r.hasOrderLink?
          'Загрузка макетов из карточки заказа → «Макеты для заказа»':
