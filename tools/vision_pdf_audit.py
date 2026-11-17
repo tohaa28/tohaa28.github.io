@@ -11,6 +11,10 @@ import argparse
 import hashlib
 import json
 import math
+import os
+import tempfile
+import sys
+from collections import Counter
 from pathlib import Path
 import re
 
@@ -222,17 +226,92 @@ def audit_sample(root: Path, sample_id: str, *, engine=None,
     return out
 
 
+def audit_all_samples(root: Path, *, engine=None,
+                      exploratory_stroke_mm: float = 0.1,
+                      exploratory_fill_bbox_mm: float = 0.15,
+                      on_progress=None) -> dict:
+    """Process ALL local imported PDFs sequentially, without a file-count cap.
+
+    Each result is atomically written to a private report filename based on a
+    SHA256 of its local sample ID. Reports contain no PDF text, source filename,
+    order URL, cookies or raw file bytes. Not a model-training pipeline.
+    """
+    root = root.resolve()
+    report_dir = root / "reports" / "pdf-audits"
+    if (report_dir.is_symlink() or
+        any(p.is_symlink() for p in (root / "reports", root))):
+        return manual("REPORT_DIRECTORY_SYMLINK_DENIED")
+    report_dir.mkdir(parents=True, exist_ok=True)
+    with lab.open_db(root) as db:
+        samples = db.execute("SELECT id,source_sha256 FROM samples "
+                             "WHERE extension='pdf' ORDER BY id").fetchall()
+    stats = Counter()
+    processed = 0
+    total = len(samples)
+    for sample_id, source_sha in samples:
+        try:
+            result = audit_sample(root, sample_id, engine=engine,
+                exploratory_stroke_mm=exploratory_stroke_mm,
+                exploratory_fill_bbox_mm=exploratory_fill_bbox_mm)
+        except Exception:
+            # No path, source content or backend error text may escape.
+            result = manual("PDF_LOCAL_SOURCE_READ_ERROR")
+            result["sample_id"] = sample_id
+        result["source_sha256"] = source_sha
+        result["local_report_schema"] = "printcheck.vision.local-batch-pdf.v1"
+        name = hashlib.sha256(sample_id.encode("utf-8")).hexdigest() + ".json"
+        dest = report_dir / name
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w",encoding="utf-8",
+                    dir=report_dir,prefix="audit-",suffix=".tmp",
+                    delete=False) as stream:
+                tmp_path = Path(stream.name)
+                json.dump(result, stream, ensure_ascii=False, indent=2,
+                          allow_nan=False)
+                stream.write("\n")
+            os.replace(tmp_path, dest)
+        finally:
+            if tmp_path is not None and tmp_path.exists():
+                tmp_path.unlink()
+        processed += 1
+        stats[result.get("reason") or result["status"]] += 1
+        if on_progress is not None:
+            on_progress(processed,total,result["status"])
+    return {
+        "schema":"printcheck.vision.local-pdf-batch-summary.v1",
+        "total_pdf_samples":total, "processed":processed,
+        "status_counts":dict(sorted(stats.items())),
+        "production_approved":False,
+        "training_ready":False,
+        "remote_uploads":False
+    }
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Optional local PDF vector path audit — never an approval")
     p.add_argument("--root", default=r"D:\VisionCheckLab")
-    p.add_argument("--sample-id", required=True)
+    p.add_argument("--sample-id")
+    p.add_argument("--all",action="store_true",
+                   help="Audit all imported local PDFs sequentially")
     p.add_argument("--exploratory-stroke-mm", type=float, default=.1)
     p.add_argument("--exploratory-fill-bbox-mm", type=float, default=.15)
     args = p.parse_args(argv)
-    print(json.dumps(audit_sample(Path(args.root), args.sample_id,
-        exploratory_stroke_mm=args.exploratory_stroke_mm,
-        exploratory_fill_bbox_mm=args.exploratory_fill_bbox_mm),
-        ensure_ascii=False, indent=2))
+    if args.all:
+        if args.sample_id:
+            p.error("--all and --sample-id cannot be combined")
+        result = audit_all_samples(Path(args.root),
+            exploratory_stroke_mm=args.exploratory_stroke_mm,
+            exploratory_fill_bbox_mm=args.exploratory_fill_bbox_mm,
+            on_progress=lambda index,total,status:
+                print(f"PDF audit {index}/{total}: {status}",file=sys.stderr))
+    else:
+        if not args.sample_id:
+            p.error("--sample-id is required unless --all is used")
+        result = audit_sample(Path(args.root), args.sample_id,
+            exploratory_stroke_mm=args.exploratory_stroke_mm,
+            exploratory_fill_bbox_mm=args.exploratory_fill_bbox_mm)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
