@@ -117,10 +117,11 @@ export function auditCohort(manifest={}){
     const s=visualDistance(records[i].fingerprint,records[j].fingerprint);
     if(s.status!=='ADVISORY_SIMILARITY_ONLY')
       return fail('FINGERPRINT_COMPARISON_UNRELIABLE');
-    if(s.silhouette_bits<=15&&s.gradient_bits<=20)
+    if(s.screening_match===true)
       conflicts.push({
         left_index:i,right_index:j,
-        silhouette_bits:s.silhouette_bits,gradient_bits:s.gradient_bits,
+        silhouette_bits:s.screening_pair.silhouette_bits,
+        gradient_bits:s.screening_pair.gradient_bits,
         kind:'POTENTIAL_VISUAL_DUPLICATE_REQUIRES_HUMAN_REVIEW'
       });
   }
