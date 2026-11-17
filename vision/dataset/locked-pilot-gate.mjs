@@ -8,6 +8,7 @@
  */
 import {createHash} from 'node:crypto';
 import {verifyFrozenHoldout} from './cohort-leakage-audit.mjs';
+import {buildAttestedPilot} from './pilot-attestation.mjs';
 
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const refuse=reason=>({
@@ -18,7 +19,7 @@ const refuse=reason=>({
 export function verifyLockedPilot({
   cohortManifestBytes,cohortSignatureBytes,
   cohortPublicKeyPem,cohortSpkiSha256,
-  taskBytes,samplingEvidenceBytes,pilot
+  pilotInput
 }={}){
   const lock=verifyFrozenHoldout({
     manifestBytes:cohortManifestBytes,
@@ -28,10 +29,11 @@ export function verifyLockedPilot({
   });
   if(lock.status!=='SCREENED_COHORT_ONLY')
     return refuse('SIGNED_COHORT_NOT_CLEAN_OR_NOT_VERIFIED');
-  if(!(Buffer.isBuffer(taskBytes)||taskBytes instanceof Uint8Array)||
-     !(Buffer.isBuffer(samplingEvidenceBytes)||
-       samplingEvidenceBytes instanceof Uint8Array))
-    return refuse('PILOT_PROVENANCE_BYTES_REQUIRED');
+  let pilot;
+  try{pilot=buildAttestedPilot(pilotInput)}
+  catch{return refuse('SIGNED_PILOT_REQUIRED')}
+  const taskBytes=pilotInput.taskBytes;
+  const samplingEvidenceBytes=pilotInput.samplingEvidenceBytes;
   let task,cohort;
   try{
     task=JSON.parse(Buffer.from(taskBytes).toString('utf8'));
