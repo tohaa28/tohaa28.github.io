@@ -83,13 +83,50 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
 </section>
 </main>
 <script type="module">
-import {analyzeSyntheticThinRegions,MODEL_INFO} from './vision/ai/synthetic-feature-model.mjs';
+import {MODEL_INFO} from './vision/ai/synthetic-feature-model.mjs';
 const $=id=>document.getElementById(id);
 const source=$('source'),overlay=$('overlay'),ctx=source.getContext('2d',{willReadFrequently:true});
-let current=null,sample=null,report=null;
+let current=null,sample=null,report=null,job=null,nextJobId=1;
+function cancelJob(){
+ if(!job)return;
+ const old=job;job=null;clearTimeout(old.timer);
+ old.worker.terminate();old.resolve({status:'MANUAL',reason:'AI_WORKER_CANCELLED'});
+}
+function scanInWorker(picture,options){
+ cancelJob();
+ return new Promise(resolve=>{
+   let worker;
+   try{worker=new Worker('./vision/ai/scan-worker.mjs',{type:'module'});}
+   catch{resolve({status:'MANUAL',reason:'AI_WORKER_UNAVAILABLE'});return}
+   const currentJob={id:nextJobId++,worker,resolve,timer:null};
+   job=currentJob;
+   const finish=result=>{
+     if(job!==currentJob)return;
+     clearTimeout(currentJob.timer);
+     job=null;worker.terminate();resolve(result);
+   };
+   currentJob.timer=setTimeout(()=>
+     finish({status:'MANUAL',reason:'AI_WORKER_TIMEOUT'}),15000);
+   worker.onerror=()=>finish({status:'MANUAL',reason:'AI_WORKER_FAILED'});
+   worker.onmessage=event=>{
+     const answer=event.data;
+     if(answer?.id!==currentJob.id)return;
+     if(answer.status!=='RESEARCH_AI_CANDIDATES_ONLY')
+       return finish({status:'MANUAL',reason:answer.reason||'AI_WORKER_MANUAL'});
+     const {flagsBuffer,...rest}=answer.result;
+     finish({...rest,flags:new Uint8Array(flagsBuffer)});
+   };
+   const pixels=new Uint8ClampedArray(picture.data).buffer;
+   worker.postMessage({
+     id:currentJob.id,width:picture.width,height:picture.height,
+     pixels,options
+   },[pixels]);
+ });
+}
+
 const state=t=>{$('status').textContent=t};
 function setImage(data){
- current=data;sample=null;$('sampleText').textContent='автоматически';
+ cancelJob();current=data;sample=null;$('sampleText').textContent='автоматически';
  $('sampleColor').style.background='transparent';
  source.width=overlay.width=data.width;source.height=overlay.height=data.height;
  ctx.putImageData(data,0,0);
@@ -111,7 +148,7 @@ $('demo').addEventListener('click',()=>{
 $('imageFile').addEventListener('change',async event=>{
  const file=event.target.files?.[0];
  if(!file)return;
- $('run').disabled=true;$('export').disabled=true;current=null;
+ $('run').disabled=true;$('export').disabled=true;current=null;cancelJob();
  if(file.size>20_000_000||
     !['image/png','image/jpeg','image/webp'].includes(file.type)){
    state('MANUAL: неподдерживаемый тип или файл более 20 MB.');return;
@@ -151,12 +188,13 @@ $('clearSample').addEventListener('click',()=>{
 });
 $('run').addEventListener('click',async()=>{
  if(!current)return;
- $('run').disabled=true;state('Выполняется локальная нейросетевая оценка…');
- await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+ const imageAtStart=current;
+ $('run').disabled=true;state('Выполняется AI-инференс в отдельном Worker…');
  try{
- const result=analyzeSyntheticThinRegions(current,{
+ const result=await scanInWorker(imageAtStart,{
    inkColor:sample,tolerance:Number($('tolerance').value)
  });
+ if(current!==imageAtStart)return;
  if(result.status!=='RESEARCH_AI_CANDIDATES_ONLY'){
    state('MANUAL: '+(result.reason||'невозможно разделить изображение'));
    $('export').disabled=true;return;
@@ -206,7 +244,7 @@ $('run').addEventListener('click',async()=>{
  state('AI-анализ выполнен локально. '+result.regionsTotal+
    ' областей-кандидатов. Синтетическая модель не устанавливает соответствие техническим требованиям.');
  }catch{state('MANUAL: ошибка локального анализа. Производственный вывод не сформирован.');}
- finally{$('run').disabled=false}
+ finally{if(current===imageAtStart)$('run').disabled=false}
 });
 $('export').addEventListener('click',()=>{
  if(!report)return;
