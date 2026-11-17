@@ -6,6 +6,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createReviewTask,createReviewSubmission} from '../vision/dataset/review-task.mjs';
 import {buildAttestedPilot,exportPilotEvaluations} from '../vision/dataset/pilot-attestation.mjs';
+import {prepareUnsignedPilot} from '../vision/dataset/prepare-pilot-signoff.mjs';
 
 const hash=data=>createHash('sha256').update(data).digest('hex');
 const syntheticHash=n=>n.toString(16).padStart(64,'0');
@@ -285,4 +286,45 @@ test('source snapshot, calibration and sampling evidence bytes must match audito
     const bad={...input,[key]:Buffer.from('modified private proof')};
     expectedErr(()=>buildAttestedPilot(bad),/ADJUDICATION_INPUT_DIGEST_MISMATCH/);
   }
+});
+
+test('draft never silently self-certifies and requires the real adjudicator to close disputes',async()=>{
+  const {assemble,att}=await fixture(),input=assemble();
+  const draft=prepareUnsignedPilot(input);
+  assert.equal(draft.status,'UNSIGNED_AUDIT_DRAFT_ONLY');
+  assert.equal(draft.summary.conflicts_needing_adjudication,2);
+  for(const key of ['reviewer_identities_verified','source_identity_verified',
+                    'scale_evidence_checked','sampling_plan_checked'])
+    assert.equal(draft.manifest[key],false,key);
+  assert.equal(draft.manifest.adjudicator_ref_sha256,null);
+  assert.equal(draft.manifest.regions[0].decision,'acceptable');
+  assert.equal(draft.manifest.regions[0].adjudicated,false);
+  assert.equal(draft.manifest.regions[1].decision,'manual');
+  assert.equal(draft.manifest.regions[1].adjudicated,false);
+  // A draft remains invalid even if someone blindly signs it without review.
+  expectedErr(()=>buildAttestedPilot(assemble({att:draft.manifest})),
+    /ADJUDICATION_SCHEMA_INVALID/);
+  const approved=structuredClone(draft.manifest);
+  for(const key of ['reviewer_identities_verified','source_identity_verified',
+                    'scale_evidence_checked','sampling_plan_checked'])
+    approved[key]=true;
+  approved.adjudicator_ref_sha256=att.adjudicator_ref_sha256;
+  approved.regions[0].evidence_sha256=att.regions[0].evidence_sha256;
+  for(const i of [1,2]){
+    approved.regions[i].decision=att.regions[i].decision;
+    approved.regions[i].adjudicated=true;
+    approved.regions[i].evidence_sha256=att.regions[i].evidence_sha256;
+  }
+  const signed=buildAttestedPilot(assemble({att:approved}));
+  assert.equal(signed.summary.status,'ATTESTED_RESEARCH_LABELS_ONLY');
+  assert.equal(signed.summary.included_regions,2);
+});
+test('draft refuse missing original source provenance before an auditor review',async()=>{
+  const {assemble}=await fixture(),input=assemble();
+  assert.throws(()=>prepareUnsignedPilot({
+    ...input,artworkBytes:Buffer.from('different artwork')
+  }),/SOURCE_BYTES_DIGEST_MISMATCH/);
+  assert.throws(()=>prepareUnsignedPilot({
+    ...input,sourceEvidenceBytes:Buffer.alloc(0)
+  }),/SOURCE_BYTES_INVALID/);
 });
