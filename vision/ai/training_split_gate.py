@@ -23,7 +23,7 @@ def audit_split_manifest(records):
         if not isinstance(item, dict):
             return _manual("INVALID_RECORD", counts)
         split = item.get("split")
-        if split not in SPLITS:
+        if not isinstance(split, str) or split not in SPLITS:
             return _manual("INVALID_SPLIT", counts)
         counts[split] += 1
         family = item.get("source_family")
@@ -37,7 +37,7 @@ def audit_split_manifest(records):
             return _manual("UNVERIFIED_SOURCE_HASH", counts)
         if not isinstance(roi, str) or not SHA256.fullmatch(roi):
             return _manual("UNVERIFIED_ROI_HASH", counts)
-        if role not in ROLES:
+        if not isinstance(role, str) or role not in ROLES:
             return _manual("UNVERIFIED_REGION_ROLE", counts)
         if item.get("expert_consensus") is not True:
             return _manual("EXPERT_CONSENSUS_REQUIRED", counts)
