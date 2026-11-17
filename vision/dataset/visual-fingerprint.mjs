@@ -10,6 +10,7 @@
 const refuse=(reason)=>({status:'MANUAL',reason});
 const isFiniteNumber=x=>typeof x==='number'&&Number.isFinite(x);
 const DIM=16,MAX_PIXELS=12_000_000;
+export const ADVISORY_SHAPE_BITS=15,ADVISORY_GRADIENT_BITS=20;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function sample(data,w,h,x,y,bg){
   const p=4*(y*w+x),alpha=data[p+3]/255;
@@ -132,6 +133,7 @@ export function visualDistance(first,second){
     return refuse('FINGERPRINT_INVALID');
   let best={silhouette_bits:256,gradient_bits:64,
     orientation_a:null,orientation_b:null};
+  let screeningPair=null;
   for(let i=0;i<8;i++)for(let j=0;j<8;j++){
     const a=first.orientations[i],b=second.orientations[j];
     const shape=distanceHex(a.silhouette,b.silhouette);
@@ -140,6 +142,15 @@ export function visualDistance(first,second){
        (shape===best.silhouette_bits&&grad<best.gradient_bits))
       best={silhouette_bits:shape,gradient_bits:grad,
         orientation_a:i,orientation_b:j};
+    // Check ALL D4 orientation pairs. A smallest-silhouette pair may have
+    // an unsuitable gradient while another near-silhouette pair qualifies.
+    if(shape<=ADVISORY_SHAPE_BITS&&grad<=ADVISORY_GRADIENT_BITS&&
+       (!screeningPair||shape+grad<screeningPair.silhouette_bits+
+         screeningPair.gradient_bits))
+      screeningPair={silhouette_bits:shape,gradient_bits:grad,
+        orientation_a:i,orientation_b:j};
   }
-  return {status:'ADVISORY_SIMILARITY_ONLY',...best};
+  return {status:'ADVISORY_SIMILARITY_ONLY',...best,
+    screening_match:screeningPair!==null,
+    screening_pair:screeningPair};
 }
