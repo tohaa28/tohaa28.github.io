@@ -108,6 +108,20 @@ class VisionLabTest(unittest.TestCase):
                     lab.import_zip(self.root, self.write_archive(payload))
         self.assertEqual(lab.report(self.root)["samples"], 0)
 
+    def test_unreviewed_original_from_sequential_export_imports_but_never_trains(self):
+        original = "Неразмеченный  макет.SVG"
+        src = self.write_archive(archive_data([
+            ("samples/0001/" + original, svg, "unreviewed")
+        ]))
+        imported = lab.import_zip(self.root, src)
+        self.assertEqual(imported["source_files"], 1)
+        with lab.open_db(self.root) as db:
+            row = db.execute("SELECT relative_path,row_label,approved_for_training FROM samples").fetchone()
+        self.assertEqual(Path(row[0]).name, original)
+        self.assertEqual(row[1], "unreviewed")
+        self.assertEqual(row[2], 0)
+        self.assertEqual(lab.report(self.root)["auto_approved_training_samples"], 0)
+
     def test_pdf_is_not_automatically_deemed_suitable_for_vector_training(self):
         pdf = b"%PDF-1.7\n" + b"A" * 100
         result = lab.import_zip(self.root, self.write_archive(archive_data(
