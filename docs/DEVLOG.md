@@ -776,3 +776,15 @@ Do not merge experimental PR #4 or deploy production checking logic based on the
 **Data-quality gate:** Test order attachments may be suitable for expert ROI annotation but no real sample has been inspected from the LAN. Raw customer art and verified label evidence remain unavailable to cloud CI. A row-level assessment cannot train an object-level defect detector. Physical placement, source family holdout, independent two-expert labels and real PDF/source ink parsing must come before production acceptance.
 
 **HARD constraints going forward:** vector-first, keep genuine source Bezier/PDF/spot geometry, never substitute low-resolution raster for original contours, preserve template/client distinction, no writes to test orders, no public art uploads, no production Maketnaya modifications; PR #4 DRAFT. Next necessary step: user-run LAN integration check and test sample import into D, then review on actual test data.
+
+
+### C3B.3.P acceptance gate — green
+
+[GitHub Actions 44055649722](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44055649722) **SUCCESS** on code commit \`1370f4cf\`:
+- Source-order Browser smoke: \`Order-detail first: row -> Maketnaya internal-id/popup -> original customer files, skip constructor, CORS MANUAL, private ZIP PASS\`.
+- Legacy direct-row and old Vision UI smoke PASS; SVG original geometry, synthetic raster AI, reviewer UI, session launcher PASS.
+- Node order-detail + local-only security tests and Python ZIP import tests all passed.
+- Independent Python stdlib ZIP round-trip passed and \`vision-local-lab.zip\` packaging independently validated.
+- Publish to **only** \`main/gifts-layout-workbench-vision/\` success (commit \`000cc6b\`). GitHub contents verified public \`vision-local-lab.zip\` 11,480 bytes, \`vision-local-orders.html\` 10,068 bytes, \`vision-order-overlay.js\` 130,333 bytes. No original test files in any public artifact.
+- On latest documentation HEAD \`64c798fc\`, CircleCI \`vision-raster\` and \`vision-contract\` both SUCCESS; PR #4 remains DRAFT and unmerged.
+- Not real LAN acceptance: live test page, internal CORS/CSP, authenticated attachment endpoints and user's real D: drive still unverified/unavailable to current cloud environment. Never claim installed on D from CI alone. Next user action: run published installer ZIP locally on Windows, run bookmarklet on test order page, inspect anonymous structure diagnostic and import sample ZIP on D; then calibrate URL/DOM and evaluate real training suitability.
