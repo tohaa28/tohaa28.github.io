@@ -38,3 +38,42 @@ test('damaged/absent raw PDF and binary content are never classified as safe RGB
   pdf[20]=0;
   assert.equal(checkReplayPdfRgbSubset(pdf).status,'MANUAL');
 });
+
+test('C3B.3.L1: hex-escaped PDF resource and color-space names cannot bypass raw denylist',()=>{
+  const original=makeSyntheticBlackPdf().toString('latin1');
+  for(const masked of [
+    '/Color#53pace << /C0 /DeviceCM#59K >>',
+    '/ExtG#53tate << /G0 9 0 R >>',
+    '/ICCB#61sed 99 0 R'
+  ]){
+    const text=original.replace('/Resources << >>',
+      '/Resources << '+masked+' >>');
+    const out=checkReplayPdfRgbSubset(Buffer.from(text,'latin1'));
+    assert.equal(out.status,'MANUAL',masked);
+    assert.equal(out.reason,'PDF_HEX_ESCAPED_NAMES_UNSUPPORTED',masked);
+  }
+});
+test('C3B.3.L1: alternate xref revisions and an appended second EOF are manual',()=>{
+  const original=makeSyntheticBlackPdf().toString('latin1');
+  for(const changed of [
+    original.replace('startxref\n','startxref\nstartxref\n'),
+    original+'\n%%EOF\n',
+    original.replace('xref\n0 5\n','xref\n0 5\nxref\n')
+  ]){
+    const out=checkReplayPdfRgbSubset(Buffer.from(changed,'latin1'));
+    assert.equal(out.status,'MANUAL');
+  }
+});
+test('C3B.3.L1: incorrect stream length and unexpected page resources refuse',()=>{
+  const original=makeSyntheticBlackPdf().toString('latin1');
+  const withBadLength=original.replace(/\/Length\s+(\d+)/,(_,x)=>
+    '/Length '+(Number(x)+1));
+  const withResources=original.replace('/Resources << >>',
+    '/Resources << /ProcSet [/PDF] >>');
+  assert.equal(checkReplayPdfRgbSubset(
+    Buffer.from(withBadLength,'latin1')).reason,
+    'PDF_STREAM_LENGTH_MISMATCH');
+  assert.equal(checkReplayPdfRgbSubset(
+    Buffer.from(withResources,'latin1')).reason,
+    'PDF_PAGE_STRUCTURE_UNSUPPORTED');
+});
