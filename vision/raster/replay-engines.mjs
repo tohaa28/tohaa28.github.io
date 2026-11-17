@@ -117,6 +117,18 @@ export function checkReplayPdfRgbSubset(sourceBytes){
      !/%%EOF\s*$/.test(text)||
      /[^\x09\x0a\x0d\x20-\x7e]/.test(text))
     return no('PDF_SOURCE_NOT_SIMPLE_ASCII');
+  // C3B.3.L1: PDF names may contain #XX hex escapes. A raw /ColorSpace
+  // regex alone misses /Color#53pace (and /DeviceCM#59K). Until a full
+  // independently validated PDF parser exists, any escaped name is MANUAL.
+  const pdfNames=[...text.matchAll(/\/([^\s<>\[\](){}\/%]+)/g)];
+  if(pdfNames.some(([,name])=>/#[0-9a-fA-F]{2}/.test(name)))
+    return no('PDF_HEX_ESCAPED_NAMES_UNSUPPORTED');
+  // Do not mistake an incremental update or alternate xref revision
+  // for one authenticated source page/paint stream.
+  if((text.match(/\bstartxref\b/g)||[]).length!==1||
+     (text.match(/(?:^|\r?\n)xref\r?\n/g)||[]).length!==1||
+     (text.match(/%%EOF\b/g)||[]).length!==1)
+    return no('PDF_MULTIPLE_REVISIONS_OR_XREF_UNSUPPORTED');
   if(/\/(?:Filter|DecodeParms|Encrypt|ObjStm|XRefStm|XObject|ColorSpace|Separation|DeviceN|DeviceCMYK|ICCBased|Pattern|ExtGState|SMask|Font|Annots|AcroForm|OutputIntent|OpenAction|JavaScript|JS)\b/.test(text))
     return no('PDF_UNSUPPORTED_COLOR_OR_OBJECT');
   const streamCount=[...text.matchAll(/\bstream\b/g)].length;
@@ -125,6 +137,16 @@ export function checkReplayPdfRgbSubset(sourceBytes){
     return no('PDF_MULTIPLE_OR_COMPRESSED_STREAMS_UNSUPPORTED');
   const stream=/\bstream\r?\n([\s\S]*?)endstream\b/.exec(text);
   if(!stream)return no('PDF_UNCOMPRESSED_PATH_STREAM_REQUIRED');
+  // A single opaque page with no resource dictionary is the only safe
+  // auto-rerender subset in K/L1. This is intentionally NOT a PDF parser.
+  if((text.match(/\/Type\s*\/Page\b/g)||[]).length!==1||
+     !/\/Count\s+1\b/.test(text)||
+     !/\/Resources\s*<<\s*>>/.test(text))
+    return no('PDF_PAGE_STRUCTURE_UNSUPPORTED');
+  const lengths=[...text.matchAll(/\/Length\s+(\d+)\b/g)];
+  if(lengths.length!==1||
+     Number(lengths[0][1])!==Buffer.byteLength(stream[1],'latin1'))
+    return no('PDF_STREAM_LENGTH_MISMATCH');
   const tokens=stream[1].trim().split(/\s+/);
   const number=s=>/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(s)&&
     Number.isFinite(Number(s))&&Number(s)<=50000;
