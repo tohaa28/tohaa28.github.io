@@ -11,6 +11,7 @@ import {verifyFrozenHoldout} from './cohort-leakage-audit.mjs';
 import {buildAttestedPilot} from './pilot-attestation.mjs';
 import {verifyBlindSamplingPlan} from './blind-sampling-plan.mjs';
 import {verifyCohortImageBindings} from './cohort-image-provenance.mjs';
+import {verifySignedRenderCalibration} from './render-calibration-attestation.mjs';
 
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const refuse=reason=>({
@@ -22,7 +23,7 @@ export function verifyLockedPilot({
   cohortManifestBytes,cohortSignatureBytes,
   cohortPublicKeyPem,cohortSpkiSha256,
   cohortImageBytes,
-  pilotInput
+  pilotInput,renderCalibrationInput
 }={}){
   const lock=verifyFrozenHoldout({
     manifestBytes:cohortManifestBytes,
@@ -42,6 +43,26 @@ export function verifyLockedPilot({
   let pilot;
   try{pilot=buildAttestedPilot(pilotInput)}
   catch{return refuse('SIGNED_PILOT_REQUIRED')}
+  // Never accept a separately signed render receipt for DIFFERENT bytes.
+  // An auditor's assertion is not proof of true pixel-for-pixel rendering;
+  // it still must be bound to this very source, preview and order evidence.
+  if(!renderCalibrationInput||!pilotInput||
+     !(Buffer.isBuffer(renderCalibrationInput.sourceBytes)||
+       renderCalibrationInput.sourceBytes instanceof Uint8Array)||
+     !(Buffer.isBuffer(renderCalibrationInput.previewPngBytes)||
+       renderCalibrationInput.previewPngBytes instanceof Uint8Array)||
+     !(Buffer.isBuffer(renderCalibrationInput.orderEvidenceBytes)||
+       renderCalibrationInput.orderEvidenceBytes instanceof Uint8Array))
+    return refuse('SIGNED_RENDER_CALIBRATION_REQUIRED');
+  if(sha(renderCalibrationInput.sourceBytes)!==sha(pilotInput.artworkBytes)||
+     sha(renderCalibrationInput.previewPngBytes)!==sha(pilotInput.imageBytes)||
+     sha(renderCalibrationInput.orderEvidenceBytes)!==
+       sha(pilotInput.sourceEvidenceBytes))
+    return refuse('RENDER_RECEIPT_NOT_BOUND_TO_PILOT');
+  const renderCheck=verifySignedRenderCalibration(renderCalibrationInput);
+  if(renderCheck.status!==
+      'SIGNED_SOURCE_PREVIEW_AND_MM_AFFINE_CONSISTENT_ONLY')
+    return refuse('SIGNED_RENDER_CALIBRATION_INCOMPLETE');
   const taskBytes=pilotInput.taskBytes;
   const samplingEvidenceBytes=pilotInput.samplingEvidenceBytes;
   let task,cohort;
@@ -109,6 +130,9 @@ export function verifyLockedPilot({
     locked_cohort_count:cohort.entries.length,
     fingerprint_source_images_redecoded:imageBinding.verified_image_count,
     preview_sha256_cryptographically_bound:true,
+    source_preview_mm_receipt_signed:true,
+    independent_visual_render_equivalence_proven:false,
+    physical_print_scale_proven:false,
     independently_derived_control_count:controls.independently_derived_control_count,
     pre_registered_candidate_count:controls.candidate_roi_count,
     control_fraction:controls.control_fraction,
