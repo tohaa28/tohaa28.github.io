@@ -26,11 +26,14 @@ def archive_data(files=None, extra=None, compression=zipfile.ZIP_STORED):
     with zipfile.ZipFile(out, "w", compression=compression) as z:
         for idx, (name, content, label) in enumerate(files, 1):
             z.writestr(name, content)
-            samples.append({
+            metadata = {
                 "sample_name": name, "anonymous_row_index": idx,
                 "expert_label": label, "bytes": len(content),
                 "sha256": hashlib.sha256(content).hexdigest(),
-            })
+            }
+            if "/" in name[len("samples/"):]:
+                metadata["original_filename"] = Path(name).name
+            samples.append(metadata)
         manifest = {
             "schema": lab.SCHEMA, "training_ready": False,
             "public_upload_permitted": False,
@@ -76,6 +79,34 @@ class VisionLabTest(unittest.TestCase):
         self.assertEqual(row[3], 0)
         self.assertFalse((self.root / "config.json").read_text(encoding="utf-8")
                          .find('"automatic_training_enabled": false') == -1)
+
+    def test_original_filenames_survive_import_even_with_duplicate_basenames(self):
+        same = "Клиентский  оригинал.PDF"
+        pdf = b"%PDF-1.7\\n" + b"A" * 100
+        filenames = [f"samples/0001/{same}", f"samples/0002/{same}"]
+        archive = archive_data([(name, pdf, "expert_clear") for name in filenames])
+        result = lab.import_zip(self.root, self.write_archive(archive))
+        self.assertEqual(result["source_files"], 2)
+        with lab.open_db(self.root) as db:
+            rows = db.execute("SELECT relative_path FROM samples ORDER BY id").fetchall()
+        self.assertEqual(len(rows), 2)
+        self.assertNotEqual(rows[0][0], rows[1][0])
+        for (rel,) in rows:
+            self.assertEqual(Path(rel).name, same)
+            self.assertEqual((self.root / rel).read_bytes(), pdf)
+        # No private original filenames in aggregate report.
+        self.assertNotIn(same, json.dumps(lab.report(self.root), ensure_ascii=False))
+
+    def test_original_filename_directory_escape_and_invalid_name_are_rejected(self):
+        for member in ["samples/0001/../outside.pdf",
+                       "samples/0001/CON.pdf", "samples/0001/bad:name.pdf",
+                       "samples/0001/notes.pdf "]:
+            with self.subTest(member=member):
+                payload = archive_data([(member, b"%PDF-1.4\\n" + b"x"*64,
+                                         "expert_clear")])
+                with self.assertRaises(ValueError):
+                    lab.import_zip(self.root, self.write_archive(payload))
+        self.assertEqual(lab.report(self.root)["samples"], 0)
 
     def test_pdf_is_not_automatically_deemed_suitable_for_vector_training(self):
         pdf = b"%PDF-1.7\n" + b"A" * 100
