@@ -1780,6 +1780,24 @@
         phase === "order_card" ? "ORDER_CARD_REDIRECT_DENIED" : "ORDER_POPUP_REDIRECT_DENIED",
         { ...common, failure_class: "redirect_denied" }
       );
+    const mv3FailureClasses = {
+      EXTENSION_AUTH_REDIRECT: "login_redirect",
+      EXTENSION_REDIRECT_UNTRUSTED_ORIGIN: "untrusted_redirect_origin",
+      EXTENSION_REDIRECT_UNEXPECTED_PATH: "unexpected_redirect_path",
+      EXTENSION_FETCH_REJECTED: "extension_network_rejected",
+      EXTENSION_SERVICE_DISCONNECTED: "extension_disconnected",
+      EXTENSION_FETCH_TIMEOUT: "timeout"
+    };
+    if (Object.prototype.hasOwnProperty.call(mv3FailureClasses, message))
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_FETCH_REJECTED" : "ORDER_POPUP_FETCH_REJECTED",
+        {
+          ...common,
+          failure_class: mv3FailureClasses[message],
+          transport_error: message,
+          fetch_exception_family: "TypeError"
+        }
+      );
     return REFUSE(
       phase === "order_card" ? "ORDER_CARD_FETCH_REJECTED" : "ORDER_POPUP_FETCH_REJECTED",
       {
@@ -2611,6 +2629,7 @@
         scope: "anonymous_local_test_only",
         created_at: (/* @__PURE__ */ new Date()).toISOString(),
         host: LOCAL_ORDERS.host,
+        transport_kind: typeof globalThis.__visionLocalTrustedTransport === "function" ? "mv3_background" : "browser_fetch",
         source_artwork_included: false,
         order_urls_included: false,
         raw_artwork_bytes_included: false,
@@ -2637,6 +2656,7 @@
             failure_class: result.failure_class || null,
             http_status: result.http_status ?? null,
             fetch_exception_family: result.fetch_exception_family || null,
+            transport_error: result.transport_error || null,
             detected_regions: result.detected_regions ?? null,
             source_shape_count: result.source_shape_count ?? null,
             min_line_document_mm: Number.isFinite(result.min_line_document_mm) ? result.min_line_document_mm : null,
@@ -2724,7 +2744,7 @@
       const completed = rows.reduce((n, r) => n + (r.results?.length || 0), 0);
       const scanned = rows.filter((r) => r.scanAttempted).length;
       const linked = rows.filter((r) => r.hasOrderLink).length;
-      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438: " + linked + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E \u0441\u0442\u0440\u043E\u043A: " + scanned + " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432/\u043E\u0442\u043A\u0430\u0437\u043E\u0432: " + completed + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439 \u043D\u0430\u0439\u0434\u0435\u043D\u043E: " + local + " \xB7 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A: " + fileBudget + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
+      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438: " + linked + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E \u0441\u0442\u0440\u043E\u043A: " + scanned + " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432/\u043E\u0442\u043A\u0430\u0437\u043E\u0432: " + completed + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439 \u043D\u0430\u0439\u0434\u0435\u043D\u043E: " + local + " \xB7 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A: " + fileBudget + "\n\u0422\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442: " + (typeof globalThis.__visionLocalTrustedTransport === "function" ? "\u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 MV3 (\u0434\u0432\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0445\u043E\u0441\u0442\u0430)" : "\u043E\u0431\u044B\u0447\u043D\u044B\u0439 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043D\u044B\u0439 fetch; \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u043D\u0430 \u0434\u0440\u0443\u0433\u043E\u0439 \u0445\u043E\u0441\u0442 \u043C\u043E\u0436\u0435\u0442 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C\u0441\u044F") + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
     }
     function refresh() {
       if (busy || closed) return;
