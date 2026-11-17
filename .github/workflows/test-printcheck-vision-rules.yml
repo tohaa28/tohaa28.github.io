@@ -65,6 +65,7 @@ on:
       - "tests/printcheck-vision-svg-dom.test.mjs"
       - "tests/printcheck-vision-inventory.test.py"
       - "tests/test_printcheck_vision_evaluate.py"
+      - "tests/test_printcheck_vision_training_split.py"
       - "docs/DEVLOG.md"
       - ".github/workflows/test-printcheck-vision-rules.yml"
   pull_request:
