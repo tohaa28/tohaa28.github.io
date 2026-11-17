@@ -4,6 +4,8 @@ import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {createReviewTask,createReviewSubmission} from '../vision/dataset/review-task.mjs';
 import {fingerprintRgba} from '../vision/dataset/visual-fingerprint.mjs';
 import {verifyLockedPilot} from '../vision/dataset/locked-pilot-gate.mjs';
+import {decodeTrustedPngBytes} from '../vision/dataset/strict-png-decoder.mjs';
+import {makeSyntheticPng,syntheticT,syntheticO} from './helpers/synthetic-png.mjs';
 import {deriveBlindControlRegions} from '../vision/dataset/blind-sampling-plan.mjs';
 
 const hash=b=>createHash('sha256').update(b).digest('hex');
@@ -19,13 +21,18 @@ function fp(pattern){
   }
   return fingerprintRgba({data,width:n,height:n});
 }
-const T=fp((x,y)=>x>.45&&x<.55&&y>.2&&y<.82||
-                       x>.2&&x<.8&&y>.18&&y<.28);
-const O=fp((x,y)=>{const r=Math.hypot(x-.5,y-.5);return r>.22&&r<.36});
+const tPng=makeSyntheticPng(192,192,syntheticT);
+const oPng=makeSyntheticPng(192,192,syntheticO);
+const fromPng=bytes=>{
+  const decoded=decodeTrustedPngBytes(bytes);
+  assert.equal(decoded.status,'DECODED_STRICT_PNG_ONLY');
+  return fingerprintRgba(decoded);
+};
+const T=fromPng(tPng),O=fromPng(oPng);
 assert.equal(T.status,'ADVISORY_SIGNATURE_ONLY');
 assert.equal(O.status,'ADVISORY_SIGNATURE_ONLY');
 async function fixture(){
-  const imageBytes=Buffer.from('synthetic source-image bytes');
+  const imageBytes=tPng;
   const artworkBytes=Buffer.from('synthetic original artwork bytes');
   const sourceEvidenceBytes=Buffer.from('synthetic official Gifts order evidence');
   const calibrationEvidenceBytes=Buffer.from('synthetic official mm calibration evidence');
@@ -129,6 +136,7 @@ async function fixture(){
       cohortSignatureBytes:sign(null,cohortManifestBytes,signer.privateKey),
       cohortPublicKeyPem:signer.publicKey.export({type:'spki',format:'pem'}),
       cohortSpkiSha256:hash(signer.publicKey.export({type:'spki',format:'der'})),
+      cohortImageBytes:[oPng,tPng],
       pilotInput
     };
   };
@@ -146,6 +154,8 @@ test('separately signed and perceptually screened holdout matches attested pilot
   assert.equal(r.control_seed_timing_proven,false);
   assert.equal(r.production_approved,false);
   assert.equal(r.lock_signed_before_tuning_independently_proven,false);
+  assert.equal(r.fingerprint_source_images_redecoded,2);
+  assert.equal(r.preview_sha256_cryptographically_bound,true);
 });
 test('known near duplicate across train/test blocks even when different SHA/family',async()=>{
   const {cohort,pack}=await fixture();
@@ -187,4 +197,23 @@ test('changing the frozen cohort signature or its independent pin is fatal',asyn
   assert.equal(verifyLockedPilot({
     ...a,cohortSpkiSha256:h(88)
   }).status,'MANUAL');
+});
+
+test('a signed cohort with forged visual fingerprints is refused even when signatures are valid',async()=>{
+  const {cohort,pack}=await fixture();
+  // Rewrite train fingerprint into a different valid signature. The test
+  // signer signs the attacker's rewritten cohort to expose the trust gap.
+  cohort.entries[0].fingerprint=T;
+  const result=verifyLockedPilot(pack(cohort));
+  assert.equal(result.status,'MANUAL');
+  assert.equal(result.evaluation_allowed,false);
+});
+test('a missing or byte-substituted original PNG is refused despite valid signed cohort',async()=>{
+  const {pack}=await fixture(),packageData=pack();
+  const missing=verifyLockedPilot({...packageData,cohortImageBytes:undefined});
+  assert.equal(missing.reason,'SIGNED_COHORT_IMAGE_FINGERPRINTS_UNVERIFIED');
+  const replaced=verifyLockedPilot({
+    ...packageData,cohortImageBytes:[tPng,tPng]
+  });
+  assert.equal(replaced.reason,'SIGNED_COHORT_IMAGE_FINGERPRINTS_UNVERIFIED');
 });
