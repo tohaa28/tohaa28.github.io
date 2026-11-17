@@ -79,8 +79,13 @@ export function inspectLocalSvgVector(source,{
 }={}){
   if(typeof source!=='string'||!source.trim()||
       source.length>256_000)return failure('SVG_SOURCE_SIZE_UNSUPPORTED');
+  // The mandatory SVG xmlns URI is a safe identifier, not a fetch.
+  // Never scan for 'http:' until the canonical XML namespace is removed;
+  // all other URL-bearing attributes are still refused by the DOM bridge.
+  const withoutSvgNamespace=source.replace(
+    /xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/g,'');
   if(/<!|<\?|&|[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(source)||
-     /(?:https?:|file:|data:|javascript:)/i.test(source))
+     /(?:https?:|file:|data:|javascript:)/i.test(withoutSvgNamespace))
     return failure('SVG_XML_OR_EXTERNAL_FEATURE_UNSUPPORTED');
   if(typeof DOMParserClass!=='function')return failure('XML_PARSER_UNAVAILABLE');
   if(typeof maxCandidateMm!=='number'||!Number.isFinite(maxCandidateMm)||
