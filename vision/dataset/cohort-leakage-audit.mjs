@@ -12,7 +12,7 @@
  * "Clean" only means this specific screening found no leak, never no leak.
  *
  * Complete candidate generation: 16 exact 16-bit chunks per 256-bit shape
- * signature. Any pair with <=12 shape-bit differences MUST share at least
+ * signature. Any pair with <=15 shape-bit differences MUST share at least
  * one exact chunk (pigeonhole). D4 gives eight signatures per image.
  * Dense inputs exceed budget -> MANUAL rather than silently dropping pairs.
  */
@@ -84,7 +84,7 @@ export function auditCohort(manifest={}){
     check(familyMap,r.family_sha256,r.split,i,'same_family');
   }
   // Perceptual short-list with *exact* pigeonhole guarantee for all shape
-  // distances <= 12 bits; arbitrary near duplicates can still be missed.
+  // distances <= 15 bits; arbitrary near duplicates can still be missed.
   const buckets=new Map(),pairs=new Set();
   for(let i=0;i<records.length;i++){
     const fp=records[i].fingerprint;
@@ -117,7 +117,7 @@ export function auditCohort(manifest={}){
     const s=visualDistance(records[i].fingerprint,records[j].fingerprint);
     if(s.status!=='ADVISORY_SIMILARITY_ONLY')
       return fail('FINGERPRINT_COMPARISON_UNRELIABLE');
-    if(s.silhouette_bits<=12&&s.gradient_bits<=20)
+    if(s.silhouette_bits<=15&&s.gradient_bits<=20)
       conflicts.push({
         left_index:i,right_index:j,
         silhouette_bits:s.silhouette_bits,gradient_bits:s.gradient_bits,
