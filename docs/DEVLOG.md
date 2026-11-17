@@ -521,3 +521,37 @@ Rollback: изменения только в экспериментальной 
 
 ### Следующая задача C3B.3.I
 Сверять извлечённые visual fingerprints signed cohort с **самими локальными байтами исходных превью**, учитывать разрешение, сложные фоны и цвет, блокировать подмену самоутверждённого fingerprint, затем провести закрытый pilot с двумя реальными экспертами и подтверждённой физической шкалой заказа.
+
+
+## C3B.3.I — перестать доверять визуальным отпечаткам без исходных пикселей PNG
+
+Дата: **2026-11-17**, PR #4 DRAFT, Issue #5 OPEN. Ветка feature/printcheck-vision-copy-v01. Отдельная работа над проверкой byte provenance signed cohort; production Макетная не менялась.
+
+### Проблема
+Предыдущие C3B.3.G/H проверяли SHA, подпись Ed25519 frozen cohort и cross-split perceptual-distance, но **visual fingerprints внутри подписанного JSON не пересчитывались из оригинальных PNG**. Подписанное необоснованное значение могло изменить screening или дать ложную «чистоту». Также не был доступен защищённый локальный инструмент, который проверял бы большой подписанный cohort по файлам последовательно.
+
+### Реализованные изменения
+1. **a1dd0105a3b5de1a4e5e9f7be27415b2b4c6d3bc** — vision/dataset/strict-png-decoder.mjs. Строгое subset PNG с полной CRC-32 проверкой chunk, обязательными IHDR/IDAT/IEND, порядком данных, фильтрами PNG 0–4, пределами размера и декомпрессии через Node zlib maxOutputLength. Вход 8-bit noninterlaced RGB/RGBA/gray/gray+alpha, без цветового управления. Неизвестное/неподдерживаемое — MANUAL, никакой автоматической «коррекции».
+2. **49680b66513708ad36e6284c507a9239b5e9e88e** — vision/dataset/cohort-image-provenance.mjs: проверка полной coverage всех entries signed cohort, SHA исходных compressed PNG, пересчёт fingerprintRgba из независимого decoded RGBA, сравнение всей детерминированной структуры (bbox, dims, ink_fraction, 8× silhouette+gradient). Одного SHA изображения или подписанного JSON недостаточно.
+3. **ff422dcd188ca3f6c274e10508749e1f8b00e678** — vision/dataset/locked-pilot-gate.mjs: обязательный cohortImageBytes со всеми исходными изображениями; только после независимой проверки PNG допускает исследования по подписанному двум экспертам pilot и control sampling plan; без PNG — MANUAL/evaluation_allowed=false.
+4. **44a79dc603ca00f5e7f4092abc689a364013c211** — тестовый генератор PNG, строгие binary-only synthetic fixtures (не пользовательские файлы).
+5. **605aebfccab189f539d1ed9616df686c8ad7dfc5** — 10 PNG тестов: все пять W3C scanline filters, grayscale/RGB/RGBA, split IDAT, CRC corruption, palette/profile/APNG, interlace, oversize, decompression bomb, CRITICAL-chunk и trailing bytes.
+6. **2591380b76d05c8d90d5c6fc6d79c3ee3c197684** — 8 security проверок подмены signed fingerprint при действительной подписи, перестановки оригинальных PNG, JPEG и повреждённых источников; также явная граница доверия SVG/physical mm.
+7. **178f7b6c4dadce653c4436d07b5c87a72ba00508**, **8e8da9b27ebc6d07e6d514e46762ada5a67b929c** — интеграционные signed locked-pilot тесты переведены на настоящие искусственные PNG и пересчёт каждого fingerprint; доказано, что отсутствие PNG или подмена gradient отказывают даже при переподписанном JSON.
+8. **752f96aa129e056dfc22ce46fc49faf8ebfa4545** — новые тесты и syntax подключены в GitHub Actions; CircleCI исполняет все tests/printcheck-vision-*.test.mjs автоматически. Первый прогон обнаружил ровно 1 ошибку **в тестовой фикстуре**, не в декодере: один adversarial-тест добавлял extra поле к разделяемому объекту fingerprints, загрязняя следующий testcase. GitHub Actions run 44027780474: 216 PASS / 1 FAIL.
+9. **8d45d7a4176a123ef8b2be0904b107ca027241fa** — исправлен shared object test mutation через structuredClone() на каждом entry. CircleCI vision-contract снова SUCCESS, отдельная успешная GitHub Actions rules проверка.
+10. **99b07c998387933ab984723fd487ce9ce5a709e9** — vision/dataset/verify-cohort-images.mjs: локальная проверка signed cohort по файлам последовательно, с lstat, запретом symlinks и byte SHA, повторным PNG-декодированием, fingerprint rebuild и полностью обезличенным stdout. Предусмотрен закрытый список файлов, упорядоченный точно как cohort.entries. Никакой передачи байтов заказа или имён в CI/GitHub.
+11. **734015d41d39cc0fbc705483d8ab20653a30a780** — 8 тестов последовательного signed cohort audit, permuted files, source modification, manually altered fingerprint, invalid JPG, отсутствия файлов/symlink, cross-split family и подписи.
+12. **b433c85444a1587dbbb03b7251d26c1ba2f9969a** — CLI-тесты в GitHub Actions gate. GitHub Actions [run 44028315663](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44028315663): **225/225 Node tests**, **6/6 ZIP Python**, **11/11 Python evaluation** = **242/242**, плюс отдельный signed synthetic Node→Python E2E **PASS**. CircleCI [vision-contract run 872a295f](https://app.circleci.com/workflow/872a295f-7eb8-4121-9540-507afdc63a2d/job/489d6def-f752-4310-b3c5-4586dbb16ed4) **SUCCESS**.
+13. **2b0f186307ad5d391e70bc11e4420bccf8b5b395** — docs/C3B3_I_IMAGE_BYTE_PROVENANCE.md: полный private CLI операторский протокол с exact trust pin, JSON paths, ограничениями PNG и различением изначального PDF и предпросмотра.
+14. **fe3cc232a0d6c1f1c5c67351f1dd26864642bf99** — VISION_COPY_README.md: краткая инструкция по исходным PNG, ручным сложным форматам и private audit. CircleCI [run 4b078072](https://app.circleci.com/workflow/4b078072-c8d3-4483-8266-928d7ac0187b/job/b9f5dae8-150c-4e0b-8982-3a67bed8ecfd) — **SUCCESS**.
+
+### Границы приёмки
+- На данном этапе криптографически и численно подтверждается целостность **конкретных PNG байтов** относительно подписанного cohort. Это не независимая проверка первичного происхождения заказа Gifts.ru: оба исходника могут быть сфабрикованы до подписи. Авторизованный источник заказа и physical mm должны подписываться отдельным аудитором по C3B.3.F.
+- Strict decoder поддерживает только заданное subset PNG; JPEG/WEBP и profiled/interlaced/indexed PNG → MANUAL до внедрения единой цветоуправляемой raster pipeline. В реальных макетах таких случаев много.
+- Перцептивные distance по силуэту и градиентам — эвристика для candidate near-duplicates, не доказательство, что два разных изображения идентичны или уникальны. Логотипы с произвольными поворотами/фоном/плохим разрешением всё ещё требуют экспертного аудита.
+- Полный signed locked-pilot принимает in-memory cohortImageBytes; отдельный private sequential CLI позволяет проверить большой подписанный архив без удержания всех PNG одновременно в RAM. Тот же upstream file binding и privilege containment должны учитываться при реальном пилоте.
+- Внешний CircleCI выполнил тесты без реальных клиентских данных. Новые public previews и production код Gifts.ru не публиковались. Путь отката — только экспериментальные коммиты и отдельные изолированные modules.
+
+### Следующий цикл C3B.3.J
+Единый доверенный rasterizer для PDF/SVG/PNG/JPEG с Color Management и доказательством origin PDF/SVG → preview, калибровка фактического размещения на изделии (mm), независимая двухэкспертная разметка на закрытом реальном пилоте и group-aware test holdout. Без этих этапов real-data precision/recall и production OK/ERROR **не заявлять**.
