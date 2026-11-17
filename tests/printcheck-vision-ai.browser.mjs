@@ -5,6 +5,7 @@ import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const html=await readFile('vision-ai.html','utf8');
 const model=await readFile('vision/ai/synthetic-feature-model.mjs','utf8');
+const worker=await readFile('vision/ai/scan-worker.mjs','utf8');
 const browser=await chromium.launch({headless:true});
 let outside=0;
 async function pageFor(viewport){
@@ -14,6 +15,8 @@ async function pageFor(viewport){
    const url=route.request().url();
    if(url==='https://vision.local/vision-ai.html')
      return route.fulfill({status:200,contentType:'text/html;charset=utf-8',body:html});
+   if(url==='https://vision.local/vision/ai/scan-worker.mjs')
+     return route.fulfill({status:200,contentType:'text/javascript;charset=utf-8',body:worker});
    if(url==='https://vision.local/vision/ai/synthetic-feature-model.mjs')
      return route.fulfill({status:200,contentType:'text/javascript;charset=utf-8',body:model});
    outside++;return route.abort();
