@@ -2374,6 +2374,18 @@
   var refused2 = (reason) => ({ status: "MANUAL", reason, production_approved: false });
   var size16 = (dv, off, value) => dv.setUint16(off, value, true);
   var size32 = (dv, off, value) => dv.setUint32(off, value >>> 0, true);
+  var formats = /* @__PURE__ */ new Set(["svg", "pdf", "png", "jpg", "jpeg", "webp", "cdr", "eps", "ai"]);
+  function exactLocalFilename(value) {
+    if (typeof value !== "string" || !value || value.length > 200 || /[\u0000-\u001f\u007f\/\\:*?"<>|]/.test(value) || /[. ]$/.test(value) || value === "." || value === ".." || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(value) || te.encode(value).length > 255) return null;
+    const m = /\.([a-z0-9]+)$/i.exec(value);
+    return m && formats.has(m[1].toLowerCase()) ? value : null;
+  }
+  function safeEntryName(name) {
+    if (name === "manifest.json") return true;
+    if (/^samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin)$/.test(name)) return true;
+    const m = /^samples\/[0-9]{4}\/([^/]+)$/.exec(name);
+    return !!m && exactLocalFilename(m[1]) === m[1];
+  }
   function crc32(bytes) {
     let n = 4294967295;
     for (const b of bytes) {
@@ -2386,11 +2398,12 @@
   function makeLocalStoredZip(entries) {
     if (!Array.isArray(entries) || !entries.length || entries.length > 40)
       throw new RangeError("LOCAL_ZIP_ENTRIES_INVALID");
-    const data = [], central = [];
+    const data = [], central = [], used = /* @__PURE__ */ new Set();
     let offset = 0, centralSize = 0;
     for (const { name, bytes } of entries) {
-      if (typeof name !== "string" || name.length > 100 || !/^(?:manifest\.json|samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin))$/.test(name) || !(bytes instanceof Uint8Array) || bytes.length > 5e6)
+      if (typeof name !== "string" || te.encode(name).length > 300 || !safeEntryName(name) || used.has(name) || !(bytes instanceof Uint8Array) || bytes.length > 5e6)
         throw new RangeError("LOCAL_ZIP_ENTRY_INVALID");
+      used.add(name);
       const nameBytes = te.encode(name), crc = crc32(bytes);
       const local = new Uint8Array(30 + nameBytes.length), v = new DataView(local.buffer);
       size32(v, 0, 67324752);
@@ -2472,7 +2485,7 @@
   }
   async function makeLocalExpertDataset(rows, {
     loc = globalThis.location,
-    fetcher = globalThis.fetch,
+    fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
     maxFiles = 16,
     maxPerFile = 4e6,
     maxTotal = 24e6
@@ -2505,14 +2518,23 @@
           skipped.push({ row_index: r.row_index, reason: "EXPERT_EXPORT_TOTAL_LIMIT" });
           break outer;
         }
+        const supplied = a.originalFilename ?? a.filename ?? "";
+        const originalName = supplied ? exactLocalFilename(supplied) : null;
+        if (supplied && !originalName) {
+          skipped.push({ row_index: r.row_index, reason: "ORIGINAL_FILENAME_UNSAFE_TO_EXPORT" });
+          continue;
+        }
         id++;
         consumed += file.bytes.length;
-        const name = "samples/" + String(id).padStart(4, "0") + "." + suffix(file.url, file.bytes, a.filename || "");
+        const slot = String(id).padStart(4, "0");
+        const name = originalName ? "samples/" + slot + "/" + originalName : "samples/" + slot + "." + suffix(file.url, file.bytes, "");
         const sha = await optionalSha256(file.bytes);
         entries.push({ name, bytes: file.bytes });
         samples.push({
           sample_name: name,
           anonymous_row_index: r.row_index,
+          // Sensitive: available only inside this user-downloaded private ZIP.
+          ...originalName ? { original_filename: originalName } : {},
           expert_label: r.grade.value,
           expert_label_scope: "whole_order_row_not_object_ROI",
           bytes: file.bytes.length,
@@ -2562,6 +2584,8 @@
     "#vision-local-order-overlay button:disabled{opacity:.5!important;cursor:not-allowed!important}",
     "#vision-local-order-overlay .vlo-start{background:#8fb83f!important;border-color:#8fb83f!important;font-weight:700!important}",
     "#vision-local-order-overlay .vlo-note{font-size:12px!important;line-height:1.4!important}",
+    ".vision-order-result-cell .vlo-files{margin:4px 0!important;max-width:320px!important}",
+    ".vision-order-result-cell .vlo-filename{white-space:pre-wrap!important;overflow-wrap:anywhere!important;margin:3px 0!important}",
     "#vision-local-order-overlay .vlo-stats{white-space:pre-line!important;margin:8px 0!important;color:#cbe3d6!important}",
     ".vision-order-result-cell{min-width:210px!important;font:12px/1.5 system-ui,sans-serif!important;white-space:normal!important;color:#2f4348!important;padding:6px!important;vertical-align:middle!important}",
     ".vision-order-result-cell .vlo-label{font-weight:700!important;color:#36515a!important}",
@@ -2776,6 +2800,8 @@
           r.hasOrderLink ? "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043C\u0430\u043A\u0435\u0442\u043E\u0432 \u0438\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0437\u0430\u043A\u0430\u0437\u0430 \u2192 \xAB\u041C\u0430\u043A\u0435\u0442\u044B \u0434\u043B\u044F \u0437\u0430\u043A\u0430\u0437\u0430\xBB" : r.anchors.length > 0 ? "\u041E\u0431\u043D\u0430\u0440\u0443\u0436\u0435\u043D\u044B \u0441\u0441\u044B\u043B\u043A\u0438 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435; \u043F\u0440\u043E\u0432\u0435\u0440\u044E \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0439 \u043C\u0430\u0440\u0448\u0440\u0443\u0442" : "\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u0432 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0437\u0430\u043A\u0430\u0437\u0430",
           "vlo-detail"
         );
+        const fileNames = node("details", void 0, "vlo-files");
+        fileNames.hidden = true;
         const trigger = makeButton("\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u0442\u0440\u043E\u043A\u0443", () => scanRow(r));
         const gradeLabel = node("label", "\u041C\u0435\u0442\u043A\u0430 \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u0430: ");
         gradeLabel.setAttribute("data-vlo-grade", "");
@@ -2793,11 +2819,12 @@
         }
         gradeLabel.append(grade);
         r.grade = grade;
-        cell.append(label, detail, trigger, gradeLabel);
+        cell.append(label, detail, fileNames, trigger, gradeLabel);
         r.element.append(cell);
         r.label = label;
         r.detail = detail;
         r.button = trigger;
+        r.fileNames = fileNames;
       }
       updateBatchControls();
       renderStats(rows.length ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0440\u0446\u0438\u044F\u043C\u0438 \u043F\u043E 10 \u0437\u0430\u043A\u0430\u0437\u043E\u0432, \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044E." : "\u0421\u0442\u0440\u043E\u043A\u0438 \u043D\u0435 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u044B. \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0430\u0434\u0430\u043F\u0442\u0435\u0440 \u043A DOM \u0442\u0435\u0441\u0442\u043E\u0432\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B; \u0444\u0430\u0439\u043B\u043E\u0432\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u043B\u0438\u0441\u044C.");
@@ -2848,6 +2875,11 @@
           return;
         }
         candidates = detail.uploads;
+        r.fileNames.replaceChildren(node("summary", "\u041E\u0440\u0438\u0433\u0438\u043D\u0430\u043B\u044C\u043D\u044B\u0435 \u0438\u043C\u0435\u043D\u0430 (" + detail.uploads.length + ")"));
+        for (const upload of detail.uploads) {
+          r.fileNames.append(node("div", upload.originalFilename ?? upload.filename, "vlo-filename"));
+        }
+        r.fileNames.hidden = false;
         r.detail.textContent = "\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E \u0437\u0430\u043A\u0430\u0437\u0447\u0438\u043A\u043E\u043C: " + detail.uploads.length + "; \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u043E\u0432: " + detail.templates.length;
       } else {
         candidates = r.files;
