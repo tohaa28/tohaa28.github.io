@@ -125,6 +125,18 @@ node tests/printcheck-vision-ui.browser.mjs
 
 Проверено: GitHub Actions `PrintCheck Vision experimental UI smoke`, run `43919116958` — **success**, включая браузерные тесты студии. Отдельный workflow публикует только папку `gifts-layout-workbench-vision` в `main`.
 
+## Рабочая исследовательская AI-страница (M0–M2, 2026-11-17)
+
+**Прямая ссылка:** https://tohaa28.github.io/gifts-layout-workbench-vision/vision-ai.html
+
+Это отдельный публично доступный, но полностью локально исполняемый браузерный исследовательский инструмент. Он **не использует** Gifts.ru cookies, не передаёт изображения заказов, а обрабатывает только выбранный пользователем PNG/JPEG/WEBP. Для быстрого тестирования предусмотрена кнопка синтетического примера.
+
+Синтетически обученная MLP (8→12→1) в независимом Worker находит кандидатов на тонкие линии/узкие пробелы и выделяет их красным/жёлтым. Можно выбрать цвет пипеткой, регулировать допуск цвета, скачать координаты в JSON и локальный PNG с подсветкой. Формальная область поддержки ограничена 700 px по большей стороне, не поддерживает доверенный PDF/SVG, Spot/ICC или подтверждённые mm. **Нулевая подсветка не означает «годен»**.
+
+Контракты: \`vision/ai/synthetic-feature-model.mjs\`, \`vision/ai/scan-worker.mjs\`; тесты \`tests/printcheck-vision-synthetic-ai.test.mjs\`, \`tests/printcheck-vision-worker.test.mjs\`, \`tests/printcheck-vision-ai.browser.mjs\`. Отдельный \`vision/ai/train_synthetic_reference.py\` создаёт только неутверждённые candidate веса, не запускает обучение на пользовательских логотипах.
+
+Публикация проверена: GitHub Actions [run 44045300377](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44045300377) SUCCESS; рабочая «Макетная» и PR #4 не объединены. Полный протокол: \`docs/C3B3_L2_M_AI_RESEARCH.md\`.
+
 ## Что пока не реализовано
 
 - Визуальный кодировщик Tiny U-Net, микрозрение, обученная топологическая модель.
