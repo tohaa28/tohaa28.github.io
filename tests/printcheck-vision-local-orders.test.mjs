@@ -17,7 +17,10 @@ test('LAN overlay is locked to exact host, protocol and orders route',()=>{
   'http://psk.testgifts.local/admin',
   'http://psk.testgifts.local.evil.tld/devorders'
  ])assert.equal(isAllowedTestOrderPage(new URL(x)),false,x);
- assert.equal(LOCAL_ORDERS.maxBatchFiles<=40,true);
+ assert.equal('maxBatchFiles' in LOCAL_ORDERS,false);
+ assert.equal('maxFilesPerRow' in LOCAL_ORDERS,false);
+ assert.equal('maxRows' in LOCAL_ORDERS,false);
+ assert.equal(LOCAL_ORDERS.maxFileBytes,16_000_000);
 });
 test('same-origin artwork links never accept data, script, credentials, cross subdomain or order table itself',()=>{
  for(const x of [
