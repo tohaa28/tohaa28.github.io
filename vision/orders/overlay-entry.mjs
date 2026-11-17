@@ -8,7 +8,7 @@ import {LOCAL_ORDERS,isAllowedTestOrderPage,discoverOrderRows,
   diagnoseTestOrderTable} from './row-scanner.mjs';
 import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes}
   from './order-page-discovery.mjs';
-import {makeLocalExpertDataset} from './local-training-zip.mjs';
+import {makeLocalExpertDataset,exportLocalDatasetParts} from './local-training-zip.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
  '#vision-local-order-overlay{position:fixed!important;top:12px!important;right:12px!important;z-index:2147483640!important;width:min(390px,calc(100vw - 24px))!important;max-height:76vh!important;overflow:auto!important;background:#24383c!important;border:1px solid #5c777a!important;border-radius:9px!important;box-shadow:0 8px 35px #101b22a8!important;color:#eef5f2!important;padding:15px!important;text-align:left!important;font:13px/1.45 system-ui,sans-serif!important}',
@@ -74,10 +74,9 @@ export function initLocalOrdersOverlay(){
  const stats=node('div','Подготовка поиска строк…','vlo-stats');
  stats.setAttribute('role','status');
  const warning=node('p','Это исследовательский анализ, не допуск к печати. Нет найденных мест ≠ макет годен. PDF и сложные векторы: MANUAL. Локальный ZIP содержит исходные тестовые файлы — не публикуйте его.','vlo-note');
- let rows=[],busy=false,closed=false,fileBudget=LOCAL_ORDERS.maxBatchFiles,
-   nextRowIndex=0;
+ let rows=[],busy=false,closed=false,pauseRequested=false,nextRowIndex=0;
  function close(){
-   closed=true;panel.remove();style.remove();
+   closed=true;pauseRequested=true;panel.remove();style.remove();
    document.querySelectorAll('[data-vision-order-cell]').forEach(n=>n.remove());
    if(window.__visionLocalOrderOverlay?.close===close)
      delete window.__visionLocalOrderOverlay;
@@ -97,8 +96,7 @@ export function initLocalOrdersOverlay(){
        order_card_discovered:r.hasOrderLink,
        analysis_complete:r.scanAttempted===true,
        pending_file_count:r.partial?
-         Math.min(r.partial.candidates.length,LOCAL_ORDERS.maxFilesPerRow)-
-           r.partial.nextIndex:0,
+         Math.max(0,r.partial.candidates.length-r.partial.nextIndex):0,
        customer_uploaded_artworks:r.orderUploads?.length??null,
        constructor_template_count:r.orderTemplates??null,
        excluded_links:r.local_only_excluded,
@@ -129,14 +127,14 @@ export function initLocalOrdersOverlay(){
    a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
  }
  const refreshBtn=makeButton('Найти строки',refresh);
- const scanBtn=makeButton('Проверить 10 заказов',()=>scanAll());
- const renewBtn=makeButton('Новый лимит файлов',()=>{
-   if(busy||closed||fileBudget>0)return;
-   fileBudget=LOCAL_ORDERS.maxBatchFiles;
-   updateBatchControls();
-   renderStats('Новый лимит загрузок разрешён явно. Уже обработанные строки сохранены.');
+ const scanBtn=makeButton('Проверить все заказы',()=>scanAll());
+ const pauseBtn=makeButton('Остановить после файла',()=>{
+   if(!busy||closed)return;
+   pauseRequested=true;
+   pauseBtn.disabled=true;
+   renderStats('Остановка запрошена: текущий файл завершится, остальные останутся в очереди.');
  });
- renewBtn.disabled=true;
+ pauseBtn.disabled=true;
  scanBtn.className='vlo-start';
  const exportBtn=makeButton('Отчёт JSON',saveReport);
  const diagnosticBtn=makeButton('Диагностика таблицы',()=>{
@@ -172,7 +170,7 @@ export function initLocalOrdersOverlay(){
      updateBatchControls();
    }
  });
- actions.append(refreshBtn,scanBtn,renewBtn,exportBtn,diagnosticBtn,bundleBtn,
+ actions.append(refreshBtn,scanBtn,pauseBtn,exportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
  document.body.append(panel);
@@ -186,7 +184,7 @@ export function initLocalOrdersOverlay(){
    const linked=rows.filter(r=>r.hasOrderLink).length;
    stats.textContent='Строк: '+rows.length+' · карточки: '+linked+
      ' · обработано строк: '+scanned+' · файлов/отказов: '+completed+
-     ' · вложений найдено: '+local+' · осталось загрузок: '+fileBudget+'\n'+
+     ' · вложений найдено: '+local+' · очередь без лимита файлов\n'+
      'Транспорт: '+(typeof globalThis.__visionLocalTrustedTransport==='function'?
        'локальный MV3 (два тестовых хоста)':'обычный браузерный fetch; переход на другой хост может блокироваться')+'\n'+
      (msg||'Нажмите «Проверить макеты».');
@@ -196,7 +194,7 @@ export function initLocalOrdersOverlay(){
    document.querySelectorAll('[data-vision-order-cell]').forEach(n=>n.remove());
    rows=discoverOrderRows(document);
    nextRowIndex=0;
-   fileBudget=LOCAL_ORDERS.maxBatchFiles;
+   pauseRequested=false;
    for(const r of rows){
      const cell=node(r.element.tagName==='TR'?'td':'div',undefined,
        'vision-order-result-cell');
@@ -233,7 +231,7 @@ export function initLocalOrdersOverlay(){
      r.label=label;r.detail=detail;r.button=trigger;r.fileNames=fileNames;
    }
    updateBatchControls();
-   renderStats(rows.length?'Карточки читаются порциями по 10 заказов, только по нажатию.':
+   renderStats(rows.length?'Очередь всех заказов запускается вручную, файлы проверяются строго по одному.':
      'Строки не распознаны. Требуется адаптер к DOM тестовой таблицы; файловые запросы не выполнялись.');
  }
  async function scanRowContents(r){
@@ -301,90 +299,95 @@ export function initLocalOrdersOverlay(){
        return;
      }
    }
-   const limit=LOCAL_ORDERS.maxFilesPerRow;
-   const total=Math.min(candidates.length,limit);
+   const total=candidates.length;
    for(let i=r.partial?.nextIndex||0;i<total;i++){
      if(closed)return;
-     if(fileBudget<=0){
+     if(pauseRequested){
        r.partial={candidates,fromOrder,nextIndex:i,manual,research,
          descriptions:desc};
-       r.label.textContent='Vision: частично, нужен новый лимит файлов';
+       r.label.textContent='Vision: очередь остановлена, можно продолжить';
        r.detail.textContent='Проверено '+i+' из '+total+
-         ' вложений. Уже проверенные файлы сохранены; продолжение не повторит GET.';
+         ' вложений. При продолжении уже обработанные файлы не скачиваются повторно.';
        r.button.disabled=false;
-       renderStats('Лимит загрузок. Незавершённая строка сохранена для продолжения.');
+       renderStats('Очередь остановлена. Состояние текущего заказа сохранено в памяти страницы.');
        return;
      }
      const a=candidates[i];
-     fileBudget--;
      let result;
-     if(fromOrder){
-       const artifact=await fetchOrderResourceBytes(a);
-       result=artifact.status==='LOCAL_BYTES_ONLY'?
-         await inspectOrderArtworkBytes(artifact.bytes,artifact.url,
-           artifact.mime,a.filename):
-         {status:'MANUAL',type:'order_artwork',
-           reason:artifact.reason||'ARTWORK_DOWNLOAD_FAILED'};
-     }else result=await inspectSameOriginArtwork(a);
+     try{
+       if(fromOrder){
+         const artifact=await fetchOrderResourceBytes(a);
+         result=artifact.status==='LOCAL_BYTES_ONLY'?
+           await inspectOrderArtworkBytes(artifact.bytes,artifact.url,
+             artifact.mime,a.filename):
+           {status:'MANUAL',type:'order_artwork',
+             reason:artifact.reason||'ARTWORK_DOWNLOAD_FAILED'};
+       }else result=await inspectSameOriginArtwork(a);
+     }catch{
+       // One unreadable file never stops the rest of the sequential queue.
+       result={status:'MANUAL',type:'order_artwork',reason:'ARTWORK_INSPECTION_FAILED'};
+     }
      if(closed)return;
      r.results.push(result);
      desc.push(summarize(result));
      if(result.status==='MANUAL')manual++;else research++;
+     renderStats('Проверено файлов в текущем заказе: '+(i+1)+'/'+total);
+     // Small inter-request pause limits stress on the internal test server.
+     if(i+1<total)await new Promise(resolve=>
+       setTimeout(resolve,LOCAL_ORDERS.fetchPaceMs));
    }
    if(closed)return;
    r.partial=null;
    r.scanAttempted=true;
-   if(candidates.length>limit||r.limited||r.local_only_excluded>0&&!fromOrder)
+   if(r.local_only_excluded>0&&!fromOrder)
      manual++;
    r.label.textContent=manual?
      'Vision: '+manual+' требуют ручной проверки':
      'Vision: '+research+' исследованы (не допуск)';
    r.detail.textContent=(fromOrder?'Карточка заказа: '+candidates.length+
      ' клиентских файлов, '+r.orderTemplates+' конструкторов. ':'')+
-     desc.join(' | ').slice(0,520)+
-     (candidates.length>limit?' · часть файлов пропущена по лимиту':'');
+     desc.join(' | ').slice(0,520);
    r.button.disabled=false;
    renderStats('Проверено по карточкам заказов. Вывод не является допуском.');
  }
  async function scanRow(r){
    if(busy||closed)return;
-   busy=true;refreshBtn.disabled=scanBtn.disabled=true;
+   busy=true;pauseRequested=false;refreshBtn.disabled=scanBtn.disabled=true;
+   pauseBtn.disabled=false;
    try{await scanRowContents(r)}
    finally{busy=false;refreshBtn.disabled=false;updateBatchControls()}
  }
  function updateBatchControls(){
-   renewBtn.disabled=busy||closed||fileBudget>0||nextRowIndex>=rows.length;
-   scanBtn.disabled=busy||closed||nextRowIndex>=rows.length||fileBudget<=0;
+   pauseBtn.disabled=!busy||closed||pauseRequested;
+   scanBtn.disabled=busy||closed||nextRowIndex>=rows.length;
    scanBtn.textContent=nextRowIndex>=rows.length?'Все строки обработаны':
-     fileBudget<=0?'Лимит файлов исчерпан':
-     'Проверить следующие '+Math.min(LOCAL_ORDERS.maxOrdersPerClick,
-       rows.length-nextRowIndex)+' заказов';
+     pauseRequested?'Продолжить очередь ('+(rows.length-nextRowIndex)+')':
+     'Проверить все заказы ('+(rows.length-nextRowIndex)+')';
  }
  async function scanAll(){
    if(busy||closed)return;
-   busy=true;refreshBtn.disabled=scanBtn.disabled=true;
+   busy=true;pauseRequested=false;refreshBtn.disabled=scanBtn.disabled=true;
+   pauseBtn.disabled=false;
    let examined=0;
    try{
-     while(nextRowIndex<rows.length&&
-       examined<LOCAL_ORDERS.maxOrdersPerClick&&!closed&&fileBudget>0){
+     while(nextRowIndex<rows.length&&!closed&&!pauseRequested){
        const r=rows[nextRowIndex++];
        if(r.scanAttempted)continue;
-       await scanRowContents(r);
-       if(r.partial){
-         nextRowIndex--;
-         break;
+       try{await scanRowContents(r)}
+       catch{
+         r.results=[{type:'order',status:'MANUAL',reason:'ORDER_INSPECTION_FAILED'}];
+         r.scanAttempted=true;
+         r.button.disabled=false;
        }
+       if(r.partial){nextRowIndex--;break}
        examined++;
-       await new Promise(resolve=>setTimeout(resolve,0));
+       renderStats('Очередь: обработано '+examined+
+         ' заказов с момента запуска, следующий '+(nextRowIndex+1)+'/'+rows.length);
+       await new Promise(resolve=>setTimeout(resolve,LOCAL_ORDERS.fetchPaceMs));
      }
-     if(!closed){
-       const message=fileBudget<=0?
-         'Лимит файлов исчерпан. Нажмите «Новый лимит файлов» для продолжения.':
-         nextRowIndex>=rows.length?
-         'Все обнаруженные строки обработаны. Результаты требуют проверки технологом.':
-         'Обработана следующая порция из '+examined+' заказов. Для продолжения нажмите кнопку снова.';
-       renderStats(message);
-     }
+     if(!closed)renderStats(nextRowIndex>=rows.length?
+       'Очередь завершена. Все найденные файлы проверены или помечены для ручной проверки.':
+       'Очередь остановлена после текущего файла. Нажмите «Продолжить очередь».');
    }finally{
      busy=false;refreshBtn.disabled=false;updateBatchControls();
    }
