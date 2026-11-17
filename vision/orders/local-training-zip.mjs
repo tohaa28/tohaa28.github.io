@@ -7,6 +7,7 @@
  */
 import {LOCAL_ORDERS,isAllowedTestOrderPage,fetchSameOriginArtworkBytes}
   from './row-scanner.mjs';
+import {fetchOrderResourceBytes} from './order-page-discovery.mjs';
 const te=new TextEncoder();
 const allowedLabels=new Set([
  'confirmed_defect','false_positive','missed_defect','expert_clear'
@@ -58,8 +59,8 @@ export function makeLocalStoredZip(entries){
  size32(e,12,centralSize);size32(e,16,offset);size16(e,20,0);
  return new Blob([...data,...central,end],{type:'application/zip'});
 }
-function suffix(url,bytes){
- const match=/\.([a-z0-9]+)$/i.exec(url.pathname);
+function suffix(url,bytes,filenameHint=''){
+ const match=/\.([a-z0-9]+)$/i.exec(filenameHint||url.pathname);
  const ext=match?.[1]?.toLowerCase();
  if(['svg','pdf','png','jpg','jpeg','webp','cdr','eps','ai'].includes(ext))
    return ext;
@@ -98,11 +99,16 @@ export async function makeLocalExpertDataset(rows,{
  const entries=[],samples=[],skipped=[];
  let consumed=0,id=0;
  outer:for(const r of picked){
-   for(const a of (r.files||[]).slice(0,4)){
+   const source=r.orderUploads?.length?r.orderUploads:r.files||[];
+   for(const a of source.slice(0,4)){
      if(id>=maxFiles)break outer;
-     const file=await fetchSameOriginArtworkBytes(a,{
-       fetcher,loc,maxFileBytes:maxPerFile
-     });
+     const file=a.role==='customer_uploaded_artwork'?
+       await fetchOrderResourceBytes(a,{
+         fetcher,loc,maxBytes:maxPerFile
+       }):
+       await fetchSameOriginArtworkBytes(a,{
+         fetcher,loc,maxFileBytes:maxPerFile
+       });
      if(file.status!=='LOCAL_BYTES_ONLY'){
        skipped.push({row_index:r.row_index,reason:file.reason});
        continue;
@@ -113,7 +119,7 @@ export async function makeLocalExpertDataset(rows,{
      }
      id++;
      consumed+=file.bytes.length;
-     const name='samples/'+String(id).padStart(4,'0')+'.'+suffix(file.url,file.bytes);
+     const name='samples/'+String(id).padStart(4,'0')+'.'+suffix(file.url,file.bytes,a.filename||'');
      const sha=await optionalSha256(file.bytes);
      entries.push({name,bytes:file.bytes});
      samples.push({
