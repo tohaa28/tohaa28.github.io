@@ -37,8 +37,9 @@ try{
    assert.equal(await page.locator('#run').isDisabled(),true);
    await page.locator('#demo').click();
    await page.locator('#run').click();
-   await page.waitForFunction(()=>document.querySelector('#status')?.textContent
-     .includes('Вектор обработан'),{timeout:12000});
+   const inspectionStatus=await page.locator('#status').textContent();
+   assert.match(inspectionStatus,/Вектор обработан/,
+     'Vector geometry should complete synchronously: '+inspectionStatus);
    const stats=await page.evaluate(()=>({
      paths:document.querySelector('#paths').textContent,
      points:document.querySelector('#points').textContent,
