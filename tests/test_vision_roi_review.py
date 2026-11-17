@@ -121,6 +121,18 @@ class ReviewWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "EXPERT_ID_INVALID"):
             self.proposal(expert="<html>")
 
+    def test_modified_original_cannot_be_used_for_new_or_existing_roi_votes(self):
+        case = self.proposal()
+        item = lab.list_samples(self.root)[0]
+        original = self.root / item["path"]
+        original.write_bytes(SVG + b"tampered")
+        with self.assertRaisesRegex(ValueError, "SOURCE_SHA256_MISMATCH"):
+            self.proposal()
+        with self.assertRaisesRegex(ValueError, "SOURCE_SHA256_MISMATCH"):
+            review.vote(self.root, case_id=case, expert="expert_a",
+                        verdict="confirmed_defect")
+        self.assertEqual(review.queue(self.root)[0]["review_count"], 0)
+
     def test_local_queue_does_not_expose_original_filenames_or_file_bytes(self):
         case = self.proposal()
         string = json.dumps(review.queue(self.root), ensure_ascii=False)
