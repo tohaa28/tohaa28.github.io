@@ -1644,8 +1644,13 @@
     return out;
   };
   function nameOf(node2) {
-    const value = (node2.textContent || "").replace(/\s+/g, " ").trim().slice(0, 200);
-    return value;
+    return node2?.textContent?.trim() || "";
+  }
+  function originalNameOf(link) {
+    const row = link.closest?.(".flex-item.flex-main,li,tr,.maket-row") || link.parentElement;
+    const label = row?.querySelector?.('[title="\u0418\u0441\u0445\u043E\u0434\u043D\u043E\u0435 \u0438\u043C\u044F \u0437\u0430\u043A\u0430\u0447\u0430\u043D\u043D\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430"]');
+    const original = label?.textContent;
+    return typeof original === "string" && original.length > 0 ? original : nameOf(link);
   }
   function extractOrderResources(doc, base, orderNumber, orderId) {
     if (!digits(orderNumber) || !internal(orderId)) return REFUSE("ORDER_IDENTIFIERS_INVALID");
@@ -1659,6 +1664,7 @@
       }
       const id = url.searchParams.get("id");
       const filename = nameOf(a);
+      const originalFilename = originalNameOf(a);
       if (!/\.(?:pdf|ai|svg|eps|cdr|png|jpe?g|webp)$/i.test(filename)) {
         rejected.push("CUSTOMER_FILE_NAME_UNSUPPORTED");
         continue;
@@ -1668,6 +1674,7 @@
         orderNumber,
         role: "customer_uploaded_artwork",
         filename,
+        originalFilename,
         url: url.href,
         source: "makets_popup"
       });
