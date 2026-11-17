@@ -4,6 +4,7 @@ import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {createReviewTask,createReviewSubmission} from '../vision/dataset/review-task.mjs';
 import {fingerprintRgba} from '../vision/dataset/visual-fingerprint.mjs';
 import {verifyLockedPilot} from '../vision/dataset/locked-pilot-gate.mjs';
+import {deriveBlindControlRegions} from '../vision/dataset/blind-sampling-plan.mjs';
 
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const h=n=>n.toString(16).padStart(64,'0');
@@ -28,16 +29,34 @@ async function fixture(){
   const artworkBytes=Buffer.from('synthetic original artwork bytes');
   const sourceEvidenceBytes=Buffer.from('synthetic official Gifts order evidence');
   const calibrationEvidenceBytes=Buffer.from('synthetic official mm calibration evidence');
-  const samplingEvidenceBytes=Buffer.from('synthetic sampling plan LOCK BEFORE TUNING');
+  const controlOptions={
+    source_image_sha256:hash(imageBytes),seed_hex:h(773),
+    grid_rows:4,grid_columns:4,control_count:1
+  };
+  const controls=deriveBlindControlRegions(controlOptions);
+  assert.equal(controls.status,'DETERMINISTIC_CONTROLS_ONLY');
   const task=await createReviewTask({
     image_sha256:hash(imageBytes),width_px:200,height_px:200,
     artwork_sha256:hash(artworkBytes),family_sha256:h(12),
     technology_code:'UV1',
     annotations:[
       {type:'positive_thin',x:.1,y:.1,w:.2,h:.2},
-      {type:'negative_gap',x:.65,y:.6,w:.2,h:.2}
+      {type:'other',...controls.regions[0].rect}
     ]
   });
+  const samplingPlan={
+    schema:'printcheck.vision.blind-sampling-plan.v1',
+    source_image_sha256:hash(imageBytes),
+    artwork_sha256:hash(artworkBytes),
+    family_sha256:task.context.family_sha256,
+    technology_code:'UV1',
+    seed_hex:controlOptions.seed_hex,
+    grid_rows:controlOptions.grid_rows,
+    grid_columns:controlOptions.grid_columns,
+    control_count:controlOptions.control_count,
+    candidate_region_sha256:[task.regions[0].region_sha256]
+  };
+  const samplingEvidenceBytes=json(samplingPlan);
   const taskBytes=json(task),taskSha=hash(taskBytes);
   const labels=Object.fromEntries(task.regions.map((x,i)=>
     [x.region_sha256,i?'acceptable':'defect']));
@@ -121,6 +140,10 @@ test('separately signed and perceptually screened holdout matches attested pilot
   assert.equal(r.evaluation_allowed,true);
   assert.equal(r.method_count,2);
   assert.deepEqual(r.evaluated_regions,[2,2]);
+  assert.equal(r.independently_derived_control_count,1);
+  assert.equal(r.pre_registered_candidate_count,1);
+  assert.equal(r.control_fraction,0.5);
+  assert.equal(r.control_seed_timing_proven,false);
   assert.equal(r.production_approved,false);
   assert.equal(r.lock_signed_before_tuning_independently_proven,false);
 });
