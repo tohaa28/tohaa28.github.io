@@ -1564,7 +1564,7 @@
 
   // vision/orders/order-page-discovery.mjs
   var TEST_HOSTS = Object.freeze(["psk.testgifts.local", "testgifts.local"]);
-  var REFUSE = (reason) => ({ status: "MANUAL", reason, production_approved: false });
+  var REFUSE = (reason, extra = {}) => ({ status: "MANUAL", reason, production_approved: false, ...extra });
   var digits = (s) => /^\d{5,12}$/.test(String(s || ""));
   var internal = (s) => /^\d{1,20}$/.test(String(s || ""));
   var allowed = (url) => url?.protocol === "http:" && TEST_HOSTS.includes(url.hostname) && !url.username && !url.password;
@@ -1742,34 +1742,107 @@
     }
     return new TextDecoder("utf-8").decode(buf);
   }
-  async function getText(url, fetcher, listOrigin) {
+  function classifiedError(error, phase, originRelation) {
+    const message = String(error?.message || "");
+    const common = {
+      stage: phase,
+      origin_relation: originRelation,
+      network_attempted: true,
+      http_status: null
+    };
+    if (error?.visionCode === "RESPONSE_HTTP_STATUS")
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_HTTP_ERROR" : "ORDER_POPUP_HTTP_ERROR",
+        { ...common, failure_class: "http_status", http_status: error.status }
+      );
+    if (error?.visionCode === "TEST_SESSION_AUTH_REQUIRED")
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_AUTH_REQUIRED" : "ORDER_POPUP_AUTH_REQUIRED",
+        { ...common, failure_class: "login_html" }
+      );
+    if (error?.visionCode === "DOCUMENT_TOO_LARGE")
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_TOO_LARGE" : "ORDER_POPUP_TOO_LARGE",
+        { ...common, failure_class: "response_limit" }
+      );
+    if (error?.visionCode === "UNEXPECTED_DOCUMENT_CONTENT_TYPE")
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_UNEXPECTED_TYPE" : "ORDER_POPUP_UNEXPECTED_TYPE",
+        { ...common, failure_class: "content_type" }
+      );
+    if (error?.visionCode === "FETCH_TIMEOUT")
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_TIMEOUT" : "ORDER_POPUP_TIMEOUT",
+        { ...common, failure_class: "timeout" }
+      );
+    return REFUSE(
+      phase === "order_card" ? "ORDER_CARD_FETCH_REJECTED" : "ORDER_POPUP_FETCH_REJECTED",
+      {
+        ...common,
+        failure_class: "cors_redirect_or_network",
+        fetch_exception_family: error?.name === "TypeError" ? "TypeError" : "other"
+      }
+    );
+  }
+  async function getText(url, fetcher, listOrigin, phase) {
     const loc = new URL(url);
     if (!allowed(loc)) throw Error("UNTRUSTED_TEST_HOST");
     const same3 = loc.origin === listOrigin;
-    const res = await fetcher(loc.href, {
-      method: "GET",
-      mode: same3 ? "same-origin" : "cors",
-      credentials: "include",
-      redirect: "error",
-      cache: "no-store",
-      referrerPolicy: "no-referrer",
-      headers: { accept: "text/html,application/json" }
-    });
-    const text = await boundedText(res);
-    if (isAuthHtml(text)) throw Error("TEST_SESSION_AUTH_REQUIRED");
-    return text;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15e3);
+    let res;
+    try {
+      res = await fetcher(loc.href, {
+        method: "GET",
+        mode: same3 ? "same-origin" : "cors",
+        credentials: "include",
+        redirect: "error",
+        cache: "no-store",
+        referrerPolicy: "no-referrer",
+        signal: controller.signal,
+        headers: phase === "popup" && same3 ? { accept: "text/html,application/json", "x-requested-with": "XMLHttpRequest" } : { accept: "text/html,application/json" }
+      });
+      if (!res.ok) {
+        const error = Error("RESPONSE_HTTP_STATUS");
+        error.visionCode = "RESPONSE_HTTP_STATUS";
+        error.status = res.status;
+        throw error;
+      }
+      let text;
+      try {
+        text = await boundedText(res);
+      } catch (error) {
+        if (error.message === "DOCUMENT_TOO_LARGE") error.visionCode = "DOCUMENT_TOO_LARGE";
+        if (error.message === "UNEXPECTED_DOCUMENT_CONTENT_TYPE")
+          error.visionCode = "UNEXPECTED_DOCUMENT_CONTENT_TYPE";
+        throw error;
+      }
+      if (isAuthHtml(text)) {
+        const error = Error("TEST_SESSION_AUTH_REQUIRED");
+        error.visionCode = "TEST_SESSION_AUTH_REQUIRED";
+        throw error;
+      }
+      return text;
+    } catch (error) {
+      if (controller.signal.aborted) error.visionCode = "FETCH_TIMEOUT";
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
   async function inspectOrderPageFromRow(row, {
     loc = globalThis.location,
-    fetcher = globalThis.fetch,
+    fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
     DOMParserClass = globalThis.DOMParser
   } = {}) {
     if (!loc || loc.protocol !== "http:" || loc.hostname !== "psk.testgifts.local" || !/^\/devorders(?:\/|$)/.test(loc.pathname))
       return REFUSE("NOT_TEST_ORDER_PAGE");
     const target = rowOrderTarget(row, loc.href);
     if (target.status !== "ORDER_LINK_FOUND") return target;
+    const originRelation = target.url.origin === loc.origin ? "same_origin" : "approved_other_test_origin";
+    let phase = "order_card";
     try {
-      const source = await getText(target.url.href, fetcher, loc.origin);
+      const source = await getText(target.url.href, fetcher, loc.origin, phase);
       const doc = parse(source, DOMParserClass);
       const oid = extractOrderInternalId(doc);
       if (!oid) return REFUSE("ORDER_INTERNAL_ID_NOT_FOUND");
@@ -1777,7 +1850,8 @@
         "/ajax/gifts/order?action=makets_popup&oid=" + oid,
         target.url.origin
       );
-      const raw = await getText(popupUrl.href, fetcher, loc.origin);
+      phase = "popup";
+      const raw = await getText(popupUrl.href, fetcher, loc.origin, phase);
       const parsed = popupHtml(raw);
       if (parsed.status !== "POPUP_HTML") return parsed;
       const popupDoc = parse(parsed.html, DOMParserClass);
@@ -1800,15 +1874,16 @@
           detailOrigin: target.url.origin
         })),
         templates: resources.templates,
-        rejected: resources.rejected
+        rejected: resources.rejected,
+        stage: "resources",
+        origin_relation: originRelation
       };
     } catch (error) {
-      const msg = String(error?.message || "");
-      return REFUSE(msg === "TEST_SESSION_AUTH_REQUIRED" ? "TEST_SESSION_AUTH_REQUIRED" : msg === "DOCUMENT_TOO_LARGE" ? "ORDER_DOCUMENT_TOO_LARGE" : msg.startsWith("HTTP_") ? "ORDER_HTTP_ERROR" : "ORDER_DETAIL_FETCH_OR_CORS_FAILURE");
+      return classifiedError(error, phase, originRelation);
     }
   }
   async function fetchOrderResourceBytes(resource, {
-    fetcher = globalThis.fetch,
+    fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
     loc = globalThis.location,
     timeoutMs = 15e3,
     maxBytes = 16e6
@@ -1981,11 +2056,13 @@
       ambiguous: 0,
       unresolved: 0
     };
+    const orderOriginCounts = { same_origin: 0, approved_other_test_origin: 0 };
     for (const item of discoverOrderRows(doc)) {
       const target = rowOrderTarget(item.element, doc.defaultView.location.href);
       if (target.status !== "ORDER_LINK_FOUND") {
         rowRoutes[target.reason === "AMBIGUOUS_ORDER_ROW" ? "ambiguous" : "unresolved"]++;
       } else {
+        orderOriginCounts[target.url.origin === doc.defaultView.location.origin ? "same_origin" : "approved_other_test_origin"]++;
         rowRoutes[target.source === "static_onclick_url" ? "static_onclick_urls" : target.source === "numeric_first_cell" ? "numeric_first_cells" : target.source === "explicit_row_attribute" ? "explicit_row_attributes" : "explicit_order_links"]++;
       }
     }
@@ -2012,6 +2089,7 @@
       cross_origin_or_unsafe_candidate_count: candidates.length - same3.length,
       recognized_rows: discoverOrderRows(doc).length,
       order_navigation_patterns: rowRoutes,
+      order_target_origin_counts: orderOriginCounts,
       order_detail_first_required: rowRoutes.explicit_order_links > 0 && same3.length === 0,
       file_attachments_verified: false,
       test_order_details_access_verified: false,
@@ -2529,6 +2607,11 @@
             type: result.type,
             status: result.status,
             reason: result.reason || null,
+            stage: result.stage || null,
+            origin_relation: result.origin_relation || null,
+            failure_class: result.failure_class || null,
+            http_status: result.http_status ?? null,
+            fetch_exception_family: result.fetch_exception_family || null,
             detected_regions: result.detected_regions ?? null,
             source_shape_count: result.source_shape_count ?? null,
             min_line_document_mm: Number.isFinite(result.min_line_document_mm) ? result.min_line_document_mm : null,
@@ -2609,7 +2692,7 @@
     );
     panel.append(title, description, actions, stats, warning);
     document.body.append(panel);
-    window.__visionLocalOrderOverlay = { close: close2, refresh, version: "C3B.3.Q" };
+    window.__visionLocalOrderOverlay = { close: close2, refresh, version: "C3B.3.R" };
     function renderStats(msg) {
       const discovered = rows.reduce((n, r) => n + r.anchors.length, 0);
       const local = rows.reduce((n, r) => n + (r.orderUploads?.length ?? r.files.length), 0);
@@ -2680,11 +2763,16 @@
         if (closed) return;
         if (detail.status !== "ORDER_DETAIL_DISCOVERED") {
           r.label.textContent = "Vision: \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430";
-          r.detail.textContent = "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430 / \u043E\u043A\u043D\u043E \u043C\u0430\u043A\u0435\u0442\u043E\u0432: " + String(detail.reason || "\u043D\u0435 \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E").slice(0, 120);
+          r.detail.textContent = "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430 / \u043E\u043A\u043D\u043E \u043C\u0430\u043A\u0435\u0442\u043E\u0432: " + String(detail.reason || "\u043D\u0435 \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E").slice(0, 120) + (detail.stage ? " \xB7 \u044D\u0442\u0430\u043F " + detail.stage : "") + (detail.origin_relation ? " \xB7 " + detail.origin_relation : "");
           r.results.push({
             type: "order",
             status: "MANUAL",
-            reason: detail.reason || "ORDER_DETAIL_UNAVAILABLE"
+            reason: detail.reason || "ORDER_DETAIL_UNAVAILABLE",
+            stage: detail.stage || null,
+            origin_relation: detail.origin_relation || null,
+            failure_class: detail.failure_class || null,
+            http_status: detail.http_status ?? null,
+            fetch_exception_family: detail.fetch_exception_family || null
           });
           r.scanAttempted = true;
           r.button.disabled = false;
