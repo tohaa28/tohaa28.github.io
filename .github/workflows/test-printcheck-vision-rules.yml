@@ -68,6 +68,20 @@ permissions:
   contents: read
 
 jobs:
+  independent-raster-diagnostics:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned isolated PDF/SVG replay engines
+        run: npm install --prefix vision/raster --no-audit --no-fund
+      - name: Execute real Rust resvg and PDF.js Skia pixel replay
+        run: node tests/printcheck-vision-independent-raster.integration.mjs
+
   rule-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 10
