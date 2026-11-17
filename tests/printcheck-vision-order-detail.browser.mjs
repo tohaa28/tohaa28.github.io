@@ -100,6 +100,7 @@ try{
  assert.equal(page.url(),local+'/devorders?status=140',
    'Vision inline controls must not bubble to order row navigation');
  await first.locator('select').selectOption('confirmed_defect');
+ const beforeLocalZip=requests.length;
  page.once('dialog',async d=>d.accept());
  const pending=page.waitForEvent('download');
  await page.locator('#vision-local-order-overlay button')
@@ -111,7 +112,7 @@ try{
  assert.ok(!zip.includes(Buffer.from('template.pdf')));
  assert.deepEqual(forbiddenUrls,[],
    'No cross-site request, untrusted upload or production Gifts URL');
- const late=requests.slice(4);
+ const late=requests.slice(beforeLocalZip);
  assert.ok(late.every(r=>r.method==='GET'&&r.u.includes('/cart/act/mda?oid=771&id=')));
  await context.close();
  console.log('Order-detail first: row -> Maketnaya internal-id/popup -> original customer files, skip constructor, CORS MANUAL, private ZIP PASS');
