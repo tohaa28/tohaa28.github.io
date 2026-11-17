@@ -81,6 +81,7 @@ def audit_document(pdf_path: Path, *, engine=None,
             if len(drawings) > MAX_DRAWINGS_PER_PAGE:
                 return manual("PDF_DRAWING_COMPLEXITY_LIMIT")
             thin = []
+            thin_candidates_total = 0
             stroke_paths = 0
             filled_paths = 0
             hairlines = 0
@@ -98,11 +99,12 @@ def audit_document(pdf_path: Path, *, engine=None,
                         return manual("PDF_STROKE_WIDTH_INVALID")
                     if stroke == 0:
                         hairlines += 1
-                    elif (stroke * POINT_MM < exploratory_stroke_mm and
-                          len(thin) < MAX_CANDIDATES_PER_PAGE):
+                    elif stroke * POINT_MM < exploratory_stroke_mm:
                         bbox = rect_points(path.get("rect"))
                         if bbox is not None:
-                            thin.append({
+                            thin_candidates_total += 1
+                            if len(thin) < MAX_CANDIDATES_PER_PAGE:
+                                thin.append({
                                 "page_number": page_num,
                                 "bbox_page_pt": [round(v, 4) for v in bbox],
                                 "nominal_stroke_mm": round(stroke * POINT_MM, 5),
@@ -129,7 +131,7 @@ def audit_document(pdf_path: Path, *, engine=None,
                 "text_block_count": sum(b.get("type") == 0 for b in text_blocks
                                         if isinstance(b, dict)),
                 "thin_stroke_candidates": thin,
-                "thin_stroke_candidates_truncated": stroke_paths > MAX_CANDIDATES_PER_PAGE,
+                "thin_stroke_candidates_truncated": thin_candidates_total > MAX_CANDIDATES_PER_PAGE,
                 "unit_for_boxes": "pdf_page_pt"
             })
         return {"schema": SCHEMA, "status": "RESEARCH_ONLY",
