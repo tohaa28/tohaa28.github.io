@@ -165,3 +165,35 @@ test('popup recheck refuses untrusted resource and redacts failures',async()=>{
  assert.equal(JSON.stringify(out).includes('cookie'),false);
  assert.equal(JSON.stringify(out).includes('oid=55'),false);
 });
+
+
+test('test-subdomain errors preserve exact MV3 auth/network class but never private exception strings',async()=>{
+ const resource={...valid,detailOrigin:'http://testgifts.local',
+   url:'http://testgifts.local/cart/act/mda?oid=55&id=42'};
+ const cases=[
+  ['EXTENSION_AUTH_REDIRECT','ARTWORK_AUTH_REDIRECT','login_redirect'],
+  ['EXTENSION_REDIRECT_UNTRUSTED_ORIGIN','ARTWORK_REDIRECT_UNTRUSTED_ORIGIN','untrusted_redirect_origin'],
+  ['EXTENSION_REDIRECT_UNEXPECTED_PATH','ARTWORK_REDIRECT_UNEXPECTED_PATH','unexpected_redirect_path'],
+  ['EXTENSION_FETCH_REJECTED','ARTWORK_EXTENSION_NETWORK_REJECTED','extension_network_rejected'],
+  ['EXTENSION_SERVICE_DISCONNECTED','ARTWORK_EXTENSION_DISCONNECTED','extension_disconnected'],
+  ['EXTENSION_FETCH_TIMEOUT','ARTWORK_TIMEOUT','timeout']
+ ];
+ for(const [code,reason,failure] of cases){
+   const out=await fetchOrderResourceBytes(resource,{loc,
+     fetcher:async()=>{throw new TypeError(code)}
+   });
+   assert.equal(out.reason,reason,code);
+   assert.equal(out.failure_class,failure,code);
+   assert.equal(out.stage,'artwork',code);
+   assert.equal(out.transport_error,code);
+   assert.equal(JSON.stringify(out).includes('testgifts.local'),false);
+   assert.equal(JSON.stringify(out).includes('Customer.pdf'),false);
+ }
+ const generic=await fetchOrderResourceBytes(resource,{loc,
+   fetcher:async()=>{throw new TypeError('Private cookie and /cart/act/mda?oid=55&id=42')}
+ });
+ assert.equal(generic.reason,'TEST_SUBDOMAIN_CORS_OR_AUTH_REQUIRED');
+ assert.equal(generic.failure_class,'cors_redirect_or_network');
+ assert.equal(JSON.stringify(generic).includes('cookie'),false);
+ assert.equal(JSON.stringify(generic).includes('oid='),false);
+});
