@@ -71,6 +71,51 @@ export function discoverOrderRows(doc=globalThis.document){
  }
  return rows;
 }
+/**
+ * Export safe counts only, not the local table HTML, order IDs, anchors,
+ * attachment URLs, cookies, customer text or class names.
+ */
+export function diagnoseTestOrderTable(doc=globalThis.document){
+ if(!doc||!isAllowedTestOrderPage(doc.defaultView?.location))
+   return {schema:'printcheck.vision.local-order-dom-diagnostic.v1',
+     status:'MANUAL',reason:'NOT_TEST_ORDER_PAGE'};
+ const links=[...doc.querySelectorAll('a[href]')].filter(a=>
+   !a.closest('#vision-local-order-overlay'));
+ const candidates=links.filter(isCandidateArtworkLink);
+ const same=candidates.filter(a=>sameOriginArtifactUrl(
+   a.getAttribute('href'),doc.defaultView.location));
+ const tables=[...doc.querySelectorAll('table')].slice(0,20).map((table,i)=>({
+   table_index:i,
+   body_row_count:table.querySelectorAll('tbody tr').length,
+   direct_row_count:table.querySelectorAll('tr').length,
+   cell_count:table.querySelectorAll('td').length,
+   anchor_count:table.querySelectorAll('a[href]').length,
+   recognized_artwork_links:[...table.querySelectorAll('a[href]')]
+     .filter(isCandidateArtworkLink).length,
+   action_button_count:table.querySelectorAll('button,[role="button"]').length
+ }));
+ const ext={svg:0,pdf:0,raster:0,other:0,unknown:0};
+ for(const a of candidates){
+   const url=sameOriginArtifactUrl(a.getAttribute('href'),doc.defaultView.location);
+   if(!url){ext.other++;continue}
+   const fmt=extensionType(url.pathname);
+   ext[Object.hasOwn(ext,fmt)?fmt:'unknown']++;
+ }
+ return {schema:'printcheck.vision.local-order-dom-diagnostic.v1',
+   status:'ANONYMOUS_STRUCTURE_ONLY',captured_at:new Date().toISOString(),
+   script_scope:'psk_local_devorders',table_count:doc.querySelectorAll('table').length,
+   tables,all_anchor_count:links.length,candidate_anchor_count:candidates.length,
+   same_origin_candidate_count:same.length,
+   cross_origin_or_unsafe_candidate_count:candidates.length-same.length,
+   recognized_rows:discoverOrderRows(doc).length,
+   data_order_id_elements:doc.querySelectorAll('[data-order-id]').length,
+   action_button_count:doc.querySelectorAll('button,[role="button"]').length,
+   candidate_url_formats:ext,
+   contains_order_ids:false,contains_order_urls:false,
+   contains_attachment_urls:false,contains_user_text:false,
+   raw_artwork_bytes_included:false};
+}
+
 function extensionType(pathname){
  const ext=formatFromPath(pathname);
  if(ext==='svg')return 'svg';
