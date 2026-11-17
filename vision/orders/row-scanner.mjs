@@ -10,7 +10,7 @@ import {rowOrderTarget} from './order-page-discovery.mjs';
 export const LOCAL_ORDERS=Object.freeze({
  host:'psk.testgifts.local',route:'/devorders',
  maxRows:80,maxFilesPerRow:8,maxFileBytes:16_000_000,
- maxBatchFiles:32,timeoutMs:15000
+ maxBatchFiles:32,maxOrdersPerClick:10,timeoutMs:15000
 });
 const extensions=/\.(?:svg|pdf|png|jpe?g|webp|cdr|ai|eps|zip|tiff?|psd)(?:$|[?#])/i;
 const downloadWords=/(?:макет|скачать\s*(?:файл|вложен)|artwork|download\s*(?:artwork|file)|приложени[ея])/i;
@@ -123,6 +123,9 @@ export function diagnoseTestOrderTable(doc=globalThis.document){
    cross_origin_or_unsafe_candidate_count:candidates.length-same.length,
    recognized_rows:discoverOrderRows(doc).length,
    order_navigation_patterns:rowRoutes,
+   order_detail_first_required:rowRoutes.explicit_order_links>0&&same.length===0,
+   file_attachments_verified:false,
+   test_order_details_access_verified:false,
    data_order_id_elements:doc.querySelectorAll('[data-order-id]').length,
    action_button_count:doc.querySelectorAll('button,[role="button"]').length,
    candidate_url_formats:ext,
