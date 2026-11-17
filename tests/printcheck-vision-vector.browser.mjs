@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 const files=new Map();
 for(const file of [
  'vision-vector.html','vision/geometry/svg-local-vector.mjs',
+ 'vision/geometry/svg-ink-forms.mjs',
  'vision/geometry/svg-dom-vector-bridge.mjs',
  'vision/geometry/svg-viewport.mjs',
  'vision/geometry/svg-path-subset.mjs',
