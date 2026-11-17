@@ -819,3 +819,57 @@ Initial branch HEAD before changes: `473773380cd526860bc42cef6ca06f994e675c7e`, 
 **Tests:** `tests/test_printcheck_vision_training_split.py` (synthetic-only) exercises cross-split family/source/ROI leakage, missing independent expert consensus, unknown scale/ICC, invalid provenance, empty split, privacy of output, and explicit refusal to approve a structurally clean synthetic split. Included in existing CircleCI `python -m unittest discover -s tests -p 'test_printcheck_vision_*.py' -v`. GitHub rules workflow paths updated to trigger on this test. Neither public CI nor repository contains real customer originals, annotations, hashes from actual customer artwork, credentials, or private order identifiers. This gate does NOT train a model, independently verify real expert signatures, confirm ICC transformation or calibrate physical millimetres. The existing frozen browser MLP and `train_synthetic_reference.py` are untouched; no new checkpoint is deployed.
 
 **Next:** read CI for exact new SHA, fix only isolated code/tests if red; then consider a separate offline manifest exporter from `D:\VisionCheckLab` with independently signed expert ROI records, true family provenance, physically verified mm and ICC/spot evidence. Any unknown => MANUAL.
+
+
+## C3B.3.R — ten LAN card fetch failures; MV3 isolated test-host transport (2026-11-17)
+
+**Real user evidence**: attached anonymous \`vision-local-test-order-review.json\`
+(2026-11-17T10:46:19.507Z), 61 order row links, first 10 checked,
+**10/10 MANUAL ORDER_DETAIL_FETCH_OR_CORS_FAILURE**, and **0 client
+artwork bytes/filenames/constructors verified**. The separate anonymous
+\`vision-local-table-diagnostic (3).json\` confirms all 61 explicit
+order links, 0 ambiguous, 0 same-origin direct artwork candidates,
+7 unrelated cross-origin/unsafe candidates. This does **not** prove CORS:
+the original code collapsed both card and popup/network/redirect errors.
+Full analysis: \`docs/C3B3_R_LAN_FETCH_AND_MV3.md\`.
+
+**Changes and tests:**
+
+- \`4f4d8a2e\`: precise fail-closed stages \`order_card\` and \`popup\`
+  with anonymous origin relation, HTTP status, login/timeout/type and
+  generic \`cors_redirect_or_network\` category without blaming CORS
+  when browser error is ambiguous; same-origin popup now matches native
+  Maketnaya \`x-requested-with: XMLHttpRequest\`.
+- \`5d48b2d8\`: anonymous stage/phase/reason in row UI and local JSON
+  without any order IDs/URLs/response bytes.
+- \`914034f5\`: aggregate allowed order target origin counts in
+  \`Диагностика таблицы\` (same_origin versus other_approved_test_origin).
+- \`3c5afd0c\`, \`ee861e90\`, \`0ad3ea9a\`: opt-in Chrome MV3 local
+  extension, strictly two test HTTP hosts, background GET-only
+  allowlist, 3MB HTML / 16MB original, 15sec timeout and chunked
+  content script transport; no remote script or telemetry; code
+  content script \`vision-order-overlay.js\` bundled at CI.
+- \`abce8074\`, \`95db8f40\`, \`638f5b40\`: Node phase and
+  security tests, source-specific CORS error regression.
+- \`d4882b4a\`, \`cda5eed5\`: Windows Chrome unpacked extension
+  installation instructions and visible installer link.
+- \`7f700811\`, \`a5ac89d2\`: full headless Chromium persistent-context
+  real MV3 background test. Simulated page-origin CORS-unfriendly
+  test host redirects via background worker to order card ->
+  \`makets_popup\` -> SVG original, with no external network, no
+  templates downloaded, no automatic GET, anon JSON.
+- **Verified green** [GitHub Actions run 44069420844](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44069420844).
+  All earlier 61-order, raster/vector, ZIP/privacy and local-lab
+  tests still PASS. Isolated public \`vision-local-lan-extension.zip\`
+  verified on \`main/gifts-layout-workbench-vision/\` (size 42,506B).
+  Production Maketnaya/branch untouched; PR #4 remains DRAFT.
+
+**Critical remaining test**: This extension is NOT installed on
+user's PC by ChatGPT. Real local test domain server authentication,
+cookies/session restrictions, source-file access and actual training
+sample suitability are still unverified. User needs to install the
+published ZIP locally in Chrome (same profile used for LAN test
+authentication), check first ONE row, return anonymous diagnostic
+JSON. Only actual original client artwork + expert ROI can qualify
+samples for local D lab. Do not confuse green synthetic Chromium with
+real LAN end-to-end acceptance.
