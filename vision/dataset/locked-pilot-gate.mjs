@@ -12,6 +12,7 @@ import {buildAttestedPilot} from './pilot-attestation.mjs';
 import {verifyBlindSamplingPlan} from './blind-sampling-plan.mjs';
 import {verifyCohortImageBindings} from './cohort-image-provenance.mjs';
 import {verifySignedRenderCalibration} from './render-calibration-attestation.mjs';
+import {verifyIndependentRasterReplay} from '../raster/verify-independent-replay.mjs';
 
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const refuse=reason=>({
@@ -118,9 +119,10 @@ export function verifyLockedPilot({
   }
   return {
     schema:'printcheck.vision.locked-pilot-gate.v1',
-    status:'SIGNED_HOLDOUT_SCREENED_FOR_RESEARCH_ONLY',
+    status:'SIGNED_HOLDOUT_SCREENED_PENDING_RASTER_REPLAY',
     production_approved:false,
-    evaluation_allowed:true,
+    evaluation_allowed:false,
+    independent_pixel_rerender_required:true,
     source_original_cryptographically_proven:false,
     lock_signed_before_tuning_independently_proven:false,
     no_undetected_near_duplicates_guaranteed:false,
@@ -138,5 +140,32 @@ export function verifyLockedPilot({
     control_fraction:controls.control_fraction,
     control_seed_timing_proven:false,
     warning:'Independent expert provenance and sampling timing require external audit.'
+  };
+}
+
+/**
+ * Only this ASYNC entry point permits research metrics after independently
+ * re-rendering actual source bytes with resvg or PDF.js. The old synchronous
+ * receipt + holdout cross-check is deliberately insufficient.
+ */
+export async function verifyLockedPilotWithReplay(input={}){
+  const preliminary=verifyLockedPilot(input);
+  if(preliminary.status!=='SIGNED_HOLDOUT_SCREENED_PENDING_RASTER_REPLAY')
+    return preliminary;
+  const independent=await verifyIndependentRasterReplay(
+    input.renderCalibrationInput
+  );
+  if(independent.status!=='EXACT_INDEPENDENT_RGBA_REPLAY_RESEARCH_ONLY')
+    return refuse('INDEPENDENT_RASTER_REPLAY_NOT_PROVEN');
+  return {
+    ...preliminary,
+    schema:'printcheck.vision.locked-pilot-gate.v2',
+    status:'REPLAY_VERIFIED_RESEARCH_HOLDOUT_ONLY',
+    evaluation_allowed:true,
+    independent_pixel_rerender_required:false,
+    independent_exact_rgba_replay_proven:true,
+    replay_engine:independent.replay_engine,
+    icc_color_proven:false,spot_color_separations_proven:false,
+    production_approved:false
   };
 }
