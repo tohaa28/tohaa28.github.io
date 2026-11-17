@@ -1932,6 +1932,56 @@
       return classifiedError(error, phase, originRelation);
     }
   }
+  async function recheckOrderPopupReferences(resources, {
+    loc = globalThis.location,
+    fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
+    DOMParserClass = globalThis.DOMParser
+  } = {}) {
+    if (!loc || loc.protocol !== "http:" || loc.hostname !== "psk.testgifts.local" || !/^\/devorders(?:\/|$)/.test(loc.pathname))
+      return REFUSE("NOT_TEST_ORDER_PAGE");
+    if (!Array.isArray(resources) || resources.length < 1 || resources.length > 1e4)
+      return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+    const first = resources[0];
+    if (!internal(first?.internalId) || !digits(first?.orderNumber) || !testUrl(first?.detailOrigin, loc.href))
+      return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+    const validate = (r) => {
+      if (r?.role !== "customer_uploaded_artwork" || !internal(r.id) || r.internalId !== first.internalId || r.orderNumber !== first.orderNumber || r.detailOrigin !== first.detailOrigin) return false;
+      const u = testUrl(r.url, loc.href);
+      return Boolean(u && u.pathname === "/cart/act/mda" && u.origin === r.detailOrigin && u.searchParams.get("oid") === r.internalId && u.searchParams.get("id") === r.id);
+    };
+    if (!resources.every(validate)) return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+    const popupUrl = testUrl("/ajax/gifts/order?action=makets_popup&oid=" + first.internalId, first.detailOrigin);
+    if (!popupUrl) return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+    try {
+      const raw = await getText(popupUrl.href, fetcher, loc.origin, "popup");
+      const html = popupHtml(raw);
+      if (html.status !== "POPUP_HTML")
+        return REFUSE("POPUP_REFERENCE_RECHECK_MALFORMED");
+      const parsed = parse(html.html, DOMParserClass);
+      if (!parsed) return REFUSE("POPUP_REFERENCE_RECHECK_MALFORMED");
+      const discovered = extractOrderResources(
+        parsed,
+        popupUrl.origin,
+        first.orderNumber,
+        first.internalId
+      );
+      if (discovered.status !== "ORDER_RESOURCES")
+        return REFUSE("POPUP_REFERENCE_RECHECK_MALFORMED");
+      const exact = new Set(discovered.uploads.map((x) => x.url));
+      return {
+        status: "REFERENCE_RECHECKED",
+        listed: resources.map((x) => exact.has(x.url)),
+        production_approved: false
+      };
+    } catch (error) {
+      const reason = classifiedError(error, "popup", first.detailOrigin === loc.origin ? "same_origin" : "approved_other_test_origin");
+      return REFUSE("POPUP_REFERENCE_RECHECK_UNAVAILABLE", {
+        failure_class: reason.failure_class || null,
+        http_status: reason.http_status ?? null,
+        transport_error: reason.transport_error || null
+      });
+    }
+  }
   async function fetchOrderResourceBytes(resource, {
     fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
     loc = globalThis.location,
@@ -2623,7 +2673,7 @@
   var safeNumber = (n) => Number.isFinite(n) ? n.toFixed(3) + " \u043C\u043C" : "\u043D\u0435 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043E";
   function summarize(res) {
     if (res.status !== "RESEARCH_ONLY")
-      return (res.type || "\u0444\u0430\u0439\u043B").toUpperCase() + ": \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u2014 " + String(res.reason || "\u043D\u0435 \u043E\u043F\u0440\u0435\u0434\u0435\u043B\u0435\u043D\u043E").slice(0, 80);
+      return (res.type || "\u0444\u0430\u0439\u043B").toUpperCase() + ": \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u2014 " + String(res.reason || "\u043D\u0435 \u043E\u043F\u0440\u0435\u0434\u0435\u043B\u0435\u043D\u043E").slice(0, 80) + (res.reference_state ? " \xB7 " + res.reference_state : "");
     if (res.type === "svg")
       return "SVG: " + res.detected_regions + " \u043C\u0435\u0441\u0442; \u043B\u0438\u043D\u0438\u044F " + safeNumber(res.min_line_document_mm) + ", \u043F\u0440\u043E\u0431\u0435\u043B " + safeNumber(res.min_gap_document_mm) + " (\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D \u043C\u0430\u0441\u0448\u0442\u0430\u0431 \u0437\u0430\u043A\u0430\u0437\u0430)";
     return "\u0420\u0430\u0441\u0442\u0440: " + res.detected_regions + " \u043A\u0430\u043D\u0434\u0438\u0434\u0430\u0442\u043E\u0432 (\u0441\u0438\u043D\u0442\u0435\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0439 MLP; \u043C\u0430\u0441\u0448\u0442\u0430\u0431 \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u0435\u043D)";
@@ -2708,6 +2758,8 @@
             origin_relation: result.origin_relation || null,
             failure_class: result.failure_class || null,
             http_status: result.http_status ?? null,
+            reference_state: result.reference_state || null,
+            reference_recheck_failure_class: result.reference_recheck_failure_class || null,
             fetch_exception_family: result.fetch_exception_family || null,
             transport_error: result.transport_error || null,
             detected_regions: result.detected_regions ?? null,
@@ -2932,6 +2984,7 @@
         }
       }
       const total = candidates.length;
+      let popup404Recheck = null;
       for (let i = r.partial?.nextIndex || 0; i < total; i++) {
         if (closed) return;
         if (pauseRequested) {
@@ -2970,6 +3023,13 @@
           } else result = await inspectSameOriginArtwork(a);
         } catch {
           result = { status: "MANUAL", type: "order_artwork", reason: "ARTWORK_INSPECTION_FAILED" };
+        }
+        if (fromOrder && result.reason === "ARTWORK_HTTP_ERROR" && result.http_status === 404) {
+          if (!popup404Recheck)
+            popup404Recheck = await recheckOrderPopupReferences(candidates);
+          result.reference_state = popup404Recheck.status === "REFERENCE_RECHECKED" ? popup404Recheck.listed[i] ? "STILL_LISTED_IN_POPUP" : "MISSING_FROM_POPUP" : "POPUP_RECHECK_UNAVAILABLE";
+          if (result.reference_state === "POPUP_RECHECK_UNAVAILABLE")
+            result.reference_recheck_failure_class = popup404Recheck.failure_class || null;
         }
         if (closed) return;
         r.results.push(result);
