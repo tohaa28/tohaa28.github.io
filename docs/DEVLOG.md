@@ -968,3 +968,10 @@ Pre-change HEAD `59bef4d405335c6b2fe0a9c51c83eb886a24b462`; PR #4 open/DRAFT/unm
 - Existing threefold independent two-reviewer/adjudicator workflow is unchanged; not executed locally in this edit. New CI outcomes must be checked on the resulting SHA and not inferred from earlier successes.
 - PDF path audit remains RESEARCH_ONLY, with no certified physical scale, gap, ICC/spot, transparency, or print process. Unknown evidence => MANUAL for production; no automatic training/deployment.
 - Preview publish remains unverified. Rollback: revert only the two isolated PDF/test commits and this devlog entry.
+
+## C3B.3.M3.2b — strict PDF rectangle coordinate types (2026-11-17)
+
+- Pre-change experimental HEAD: `52e408c85b23526b41d71ad82471618fe2940f62`; PR #4 open/DRAFT/unmerged. Three GitHub Actions workflows and CircleCI vision-contract/vision-raster were successful for this **pre-change SHA**; preview publish was not confirmed.
+- In optional offline `tools/vision_pdf_audit.py`, `rect_points` now rejects booleans, numeric strings and non-finite coordinates instead of silently coercing values with `float()`. Added synthetic rectangle and page-box fail-closed regression tests in `tests/test_vision_pdf_audit.py`.
+- No customer PDFs, paths, secrets or private expert labels committed. No production files modified. New SHA CI and threefold reviewer/adjudication regression remain to be independently verified; no passing claim is made for this change until checks complete.
+- Unresolved: preview publish; real independent ROI evidence, proven physical mm, ICC/spot, PDF paint/transparency, technology-specific gaps, independent family holdout and real-world accuracy. Unknown => MANUAL; training/production approval disabled.
