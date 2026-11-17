@@ -122,7 +122,7 @@ test('CMYK fill operator in PDF refuses independent color approval',async()=>{
     sourceBytes:cmyk,width:144,height:72,page_index:0,receipt
   });
   assert.equal(result.status,'MANUAL');
-  assert.equal(result.reason,'PDF_COMPLEX_PAINT_OR_COLORSPACE_UNSUPPORTED');
+  assert.equal(result.reason,'PDF_PAINT_NOT_EXPLICIT_SINGLE_RGB_RECTANGLE');
 });
 test('a PDF page box claimed falsely in a valid signature cannot pass independent PDF parser',async()=>{
   const input=signedInput('pdf',pdf);
