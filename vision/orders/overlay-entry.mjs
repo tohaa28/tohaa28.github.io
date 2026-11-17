@@ -84,7 +84,9 @@ export function initLocalOrdersOverlay(){
    return {
      schema:'printcheck.vision.local-order-feedback.v1',
      scope:'anonymous_local_test_only',created_at:new Date().toISOString(),
-     host:LOCAL_ORDERS.host,source_artwork_included:false,
+     host:LOCAL_ORDERS.host,
+     transport_kind:typeof globalThis.__visionLocalTrustedTransport==='function'?'mv3_background':'browser_fetch',
+     source_artwork_included:false,
      order_urls_included:false,raw_artwork_bytes_included:false,
      production_approved:false,real_world_accuracy_verified:false,
      rows:rows.map(r=>({
@@ -107,6 +109,7 @@ export function initLocalOrdersOverlay(){
          failure_class:result.failure_class||null,
          http_status:result.http_status??null,
          fetch_exception_family:result.fetch_exception_family||null,
+         transport_error:result.transport_error||null,
          detected_regions:result.detected_regions??null,
          source_shape_count:result.source_shape_count??null,
          min_line_document_mm:Number.isFinite(result.min_line_document_mm)?
@@ -182,6 +185,8 @@ export function initLocalOrdersOverlay(){
    stats.textContent='Строк: '+rows.length+' · карточки: '+linked+
      ' · обработано строк: '+scanned+' · файлов/отказов: '+completed+
      ' · вложений найдено: '+local+' · осталось загрузок: '+fileBudget+'\n'+
+     'Транспорт: '+(typeof globalThis.__visionLocalTrustedTransport==='function'?
+       'локальный MV3 (два тестовых хоста)':'обычный браузерный fetch; переход на другой хост может блокироваться')+'\n'+
      (msg||'Нажмите «Проверить макеты».');
  }
  function refresh(){
