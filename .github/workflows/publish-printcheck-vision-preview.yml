@@ -19,6 +19,10 @@ on:
       - tests/printcheck-vision-extension-worker.test.mjs
       - tests/printcheck-vision-lan-extension.browser.mjs
       - tools/vision_local_lab.py
+      - tools/vision_roi_review.py
+      - tools/vision_pdf_audit.py
+      - tests/test_vision_roi_review.py
+      - tests/test_vision_pdf_audit.py
       - tools/install-vision-local-lab.ps1
       - tests/test_vision_local_lab.py
       - docs/VISION_LOCAL_LAB_SETUP_RU.md
@@ -102,8 +106,14 @@ jobs:
           node --check vision/orders/extension/service-worker.js
           node --test tests/printcheck-vision-extension-worker.test.mjs
           node --check tests/printcheck-vision-lan-extension.browser.mjs
-          python3 -m py_compile tools/vision_local_lab.py
+          python3 -m py_compile tools/vision_local_lab.py tools/vision_roi_review.py tools/vision_pdf_audit.py
           python3 tests/test_vision_local_lab.py
+          # Three consecutive independent ROI/PDF regression cycles.
+          for cycle in 1 2 3; do
+            echo "Vision ROI/PDF safety cycle $cycle/3"
+            python3 tests/test_vision_roi_review.py
+            python3 tests/test_vision_pdf_audit.py
+          done
           node --check vision/orders/local-training-zip.mjs
           node --check tests/printcheck-vision-training-zip.test.mjs
           node --test tests/printcheck-vision-training-zip.test.mjs
@@ -210,14 +220,15 @@ jobs:
           cp vision-local-lan-extension.zip "$PREVIEW/"
           python3 - <<'PY'
           import zipfile
-          paths=['tools/vision_local_lab.py','tools/install-vision-local-lab.ps1',
+          paths=['tools/vision_local_lab.py','tools/vision_roi_review.py',
+                 'tools/vision_pdf_audit.py','tools/install-vision-local-lab.ps1',
                  'docs/VISION_LOCAL_LAB_SETUP_RU.md']
           with zipfile.ZipFile('vision-local-lab.zip','w',
                compression=zipfile.ZIP_DEFLATED) as z:
               for path in paths:z.write(path)
           with zipfile.ZipFile('vision-local-lab.zip') as z:
               assert z.testzip() is None
-              assert len(z.namelist())==3
+              assert len(z.namelist())==5
           print('Offline Windows D: lab package verified')
           PY
           cp vision-local-lab.zip "$PREVIEW/"
