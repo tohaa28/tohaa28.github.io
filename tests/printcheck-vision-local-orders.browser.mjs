@@ -76,7 +76,7 @@ try{
   assert.equal(JSON.stringify(diagnostic).includes('/files/a.svg'),false);
   assert.equal(artworkFetches,0,'DOM diagnostics must not fetch any order file');
   assert.equal(await page.locator('#unmodified').innerText(),'ORIGINAL SITE DATA');
-  await page.locator('#vision-local-order-overlay button').filter({hasText:'Проверить макеты'}).click();
+  await page.locator('#vision-local-order-overlay button').filter({hasText:'Проверить следующие'}).click();
   await page.waitForFunction(()=>
     document.querySelectorAll('[data-vision-order-cell]')[3]?.textContent
       .includes('Растр:'),null,{timeout:20000});
