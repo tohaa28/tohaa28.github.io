@@ -109,6 +109,43 @@ class PDFAuditTests(unittest.TestCase):
         self.assertNotIn("image-secret", serialized)
         self.assertNotIn(str(self.root), serialized)
 
+    def test_thin_candidate_truncation_counts_only_valid_thin_boxes(self):
+        class ManyPage(Page):
+            def __init__(self, count, width):
+                self.count, self.width = count, width
+
+            def get_drawings(self):
+                return [{"type": "s", "width": self.width,
+                         "rect": Rect(0, 0, 5, 5), "items": []}
+                        for _ in range(self.count)]
+
+        class ManyEngine:
+            def __init__(self, count, width):
+                self.page = ManyPage(count, width)
+
+            def open(self, _):
+                page = self.page
+
+                class OnePageDocument(Document):
+                    def __iter__(self):
+                        return iter([page])
+                return OnePageDocument()
+
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        for count, width, expected_count, truncated in (
+            (81, 2.0, 0, False),
+            (80, .2, 80, False),
+            (81, .2, 80, True),
+        ):
+            with self.subTest(count=count, width=width):
+                out = pdf.audit_document(source, engine=ManyEngine(count, width))
+                self.assertEqual(out["status"], "RESEARCH_ONLY")
+                page = out["pages"][0]
+                self.assertEqual(len(page["thin_stroke_candidates"]), expected_count)
+                self.assertEqual(page["thin_stroke_candidates_truncated"], truncated)
+                self.assertFalse(out["training_ready"])
+                self.assertFalse(out["production_approved"])
+
     def test_missing_and_tampered_source_fail_closed(self):
         self.assertEqual(pdf.audit_sample(self.root, "invalid", engine=Engine())["reason"],
                          "SAMPLE_ID_INVALID")
