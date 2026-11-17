@@ -555,3 +555,41 @@ Rollback: изменения только в экспериментальной 
 
 ### Следующий цикл C3B.3.J
 Единый доверенный rasterizer для PDF/SVG/PNG/JPEG с Color Management и доказательством origin PDF/SVG → preview, калибровка фактического размещения на изделии (mm), независимая двухэкспертная разметка на закрытом реальном пилоте и group-aware test holdout. Без этих этапов real-data precision/recall и production OK/ERROR **не заявлять**.
+
+
+## C3B.3.J — подписная проверка исходного PDF/SVG → PNG → мм
+
+Дата: **2026-11-17**. Рабочая ветка feature/printcheck-vision-copy-v01, PR #4 DRAFT / Issue #5 OPEN. Production Макетная, исходная ветка gifts-layout-workbench-mockups-source и публичные страницы не изменены.
+
+### Проблема
+Предыдущий цикл C3B.3.I независимо пересчитывал подписанные PNG fingerprints из локальных байтов и проверял train/test leakage, но ещё **не требовал** точного соответствия подписанного renderer receipt исходному PDF/SVG, PNG, доказательствам заказа и координатам мм. Достаточно было самостоятельных утверждений о масштабе. Это опасно для вывода о минимальных толщине/пробелах.
+
+### Реализовано и опубликовано в экспериментальной ветке
+
+1. **35cbee9e98a7afb338951a2bdf4e3049a8f6415e** — vision/dataset/render-calibration-attestation.mjs. Отдельная криптографическая Ed25519 проверка receipt со строго закреплённым SHA-256 DER SPKI доверенного ключа. Требует настоящие sourceBytes PDF/SVG, previewPngBytes, orderEvidenceBytes, signed JSON и signature. Валидирует SHA exact bytes, строгий PNG, заявленные renderer/ICC metadata, SVG root viewBox + physical units из исходника, PDF viewport/rotation/UserUnit из метаданных отчёта, 2 матрицы, >=5 контрольных точек, площади охвата, no shear/nonuniform/mirror without authorization и вписывание 4 углов страницы в физическое поле.
+2. **d1ce82e522c91895306837c3d41e9c14007b7c76** — tests/printcheck-vision-render-calibration.test.mjs: 12 synthetic тестов с позитивными PDF/SVG, повреждением подписи, SHA оригиналов, подменой поля, UserUnit, rotated viewport, зеркалированием, масштабом, погрешностью контрольных точек и unsupported PNG/color.
+3. **f8d809411221a6a02701977fab32bd13e1f62743** — Node/GitHub Actions gates обновлены; baseline CircleCI [vision-contract 1195a6ee](https://app.circleci.com/workflow/1195a6ee-8e95-4570-be2c-3a098d66bebe/job/37313010-cbac-4a05-a3a1-1e8cc958fa5c) SUCCESS.
+4. **d286e348d37846e892ece11873860b1a8b74acc5** — vision/dataset/locked-pilot-gate.mjs: новый обязательный renderCalibrationInput; он не должен ссылаться на другие source/preview/order байты, чем подписанный pilotInput. Отсутствует подписной receipt или получены чужие байты — MANUAL/evaluation_allowed=false.
+5. **534adead4b0c114e637c136afc4ae4b28a4faa61** — изменён интеграционный fixture tests/printcheck-vision-locked-pilot.test.mjs, добавлена третья Ed25519 подпись renderer-аудитора и 3 отрицательных теста на отсутствующий receipt, иной PNG и неверную подпись. После commit GitHub Actions [rules 44030661190](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44030661190) SUCCESS; UI smoke [44030661208](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44030661208) SUCCESS. CircleCI [vision-contract 3f55edad](https://app.circleci.com/workflow/3f55edad-a729-4af2-a35b-e5c37d3fe23c/job/8ded45dc-81d4-4770-bb7e-a05873222169) SUCCESS.
+6. **dd11d35b7b5bb793f181eaa33c76be799d36300b** — vision/dataset/verify-render-files.mjs: локальный private CLI для 6 источников без сетевых запросов, с запретом symlink, ограничениями размеров и redacted stdout/stderr.
+7. **a3fbd90b492e392d3d0d71a79591055189900011** — tests/printcheck-vision-render-files.test.mjs: 5 E2E тестов локальных файлов, подписи, изменённого order evidence, неверного pin, symlink, отсутствующих и больших файлов; секретные пути не попадают в stdout.
+8. **57a9c15de3be561c79d8d8c1c9f9512cb6811822** — новый CLI зарегистрирован в тестовом GH workflow; [rules 44030835058](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44030835058) SUCCESS, **245/245 JavaScript tests + 6/6 ZIP Python + 11/11 Python evaluation = 262/262**, также синтетический signed Node→Python pilot PASS. [UI smoke 44030835054](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44030835054) SUCCESS. Резервный [CircleCI vision-contract 4e775485](https://app.circleci.com/workflow/4e775485-c601-408b-bbd2-e593235bad04/job/364f892e-8d6e-4ff4-af38-91bd96f65e51) SUCCESS.
+9. **0215edd80116c7d1ccb492ba7c195562dd349921** — operator manual docs/C3B3_J_RENDER_CALIBRATION.md с требованиями источника, криптографической подписью, геометрическими допусками и строгой границей color management.
+10. **e9c356d48b1a8f63bf1340fadd154c13822114cf** — VISION_COPY_README.md расширен указанием подписной цепочки source/PNG/field mm.
+
+### Вывод и границы безопасности
+
+Успех новой функции называется SIGNED_SOURCE_PREVIEW_AND_MM_AFFINE_CONSISTENT_ONLY, не «полностью доказанный рендер». Код не реализует independent rasterizer/PDF painter, не парсит полный PDF page dictionary и не удостоверяет полномочия сервиса Gifts.ru; поэтому поля print_scale_proven, visual_render_equivalence_proven, gifts_order_evidence_authenticity_proven, production_approved ВСЕГДА false. Заявленный ICC/CMYK/spot profile digest подписан, но настоящая цветовая конверсия и декомпозиция спотов не проверяются.
+
+Необходимо сохранить fail-closed поведение на PDF transparency, сложных SVG/CSS, профилированных PNG, неизвестных координатах полей, реальных заказах без независимых evidence; не заявлять production OK или real-data precision/recall.
+
+### Источники алгоритма
+
+- W3C SVG2 viewport/viewBox: https://www.w3.org/TR/SVG/coords.html
+- W3C PNG 3 color spaces: https://www.w3.org/TR/png-3/
+- Mozilla PDF.js viewport and page rotation: https://mozilla.github.io/pdf.js/examples/
+- PDF Reference 1.7 CropBox/UserUnit: https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf
+
+### Следующая задача C3B.3.K
+
+Настоящий независимо закреплённый offline renderer (MuPDF/PDF.js/Resvg) с повторным рендером и pixel-domain comparison; независимое ICC (LittleCMS) / DeviceCMYK/spot-проверка и доверенная авторизованная привязка геометрии к заказу. Затем закрытый пилот двух технологов на реальных макетах без перемешивания семей исходников между train/test. GitHub PR #4 оставить черновым; Issue #5 открытым.
