@@ -106,6 +106,21 @@ try{
   const serialized=JSON.stringify(saved);
   assert.ok(!serialized.includes('/files/a.svg'));
   assert.ok(!serialized.includes('10001'),'No private order identifiers in exported report');
+  // Opt-in artifact ZIP re-fetches ONLY the expert-labeled same-origin file.
+  // Unlike the anonymous diagnostics, this explicitly downloaded ZIP
+  // contains original test artwork; it is never uploaded by the code.
+  page.once('dialog',async dialog=>dialog.accept());
+  const zipDownload=page.waitForEvent('download');
+  await page.locator('#vision-local-order-overlay button')
+    .filter({hasText:'Локальные примеры ZIP'}).click();
+  const zip=await readFile(await (await zipDownload).path());
+  assert.equal(zip.readUInt32LE(0),0x04034b50);
+  assert.equal(zip.readUInt32LE(zip.length-22),0x06054b50);
+  assert.ok(zip.includes(Buffer.from('samples/0001.svg')));
+  assert.ok(zip.includes(Buffer.from('"training_ready": false')));
+  assert.ok(zip.includes(Buffer.from('confirmed_defect')));
+  assert.equal(artworkFetches,4,'Only one labeled SVG is locally re-fetched');
+  assert.equal(foreign,0,'Expert ZIP must not upload to an external server');
   assert.deepEqual(errors,[]);
   await page.locator('#vision-local-order-overlay button').filter({hasText:'Закрыть'}).click();
   assert.equal(await page.locator('[data-vision-order-cell]').count(),0);
