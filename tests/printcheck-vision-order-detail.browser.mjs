@@ -57,10 +57,15 @@ try{
      body:'%PDF-1.4\n'+('0'.repeat(125))});
   }
   if(u===other+'/private/order/8002222'){
-   // Real cross-subdomain CORS failure simulated: no ACAO/ACAC headers.
+   // Cross-host detail may be readable in same-site test mirrors.
+   // Deliberately block the follow-up popup to test conservative failure.
    requests.push({u,method:route.request().method()});
    return route.fulfill({status:200,contentType:'text/html;charset=utf-8',
      body:order});
+  }
+  if(u===other+'/ajax/gifts/order?action=makets_popup&oid=771'){
+   requests.push({u,method:route.request().method()});
+   return route.abort('failed');
   }
   if(u===local+'/private/order/8003333'){
    requests.push({u,method:route.request().method()});
@@ -111,7 +116,7 @@ try{
  assert.ok(!zip.includes(Buffer.from('wrong-order.pdf')));
  assert.ok(!zip.includes(Buffer.from('template.pdf')));
  assert.deepEqual(forbiddenUrls,[],
-   'No cross-site request, untrusted upload or production Gifts URL');
+   'No requests outside the two approved test origins and read-only endpoints');
  const late=requests.slice(beforeLocalZip);
  assert.ok(late.every(r=>r.method==='GET'&&r.u.includes('/cart/act/mda?oid=771&id=')));
  await context.close();
