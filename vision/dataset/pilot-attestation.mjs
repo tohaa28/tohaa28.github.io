@@ -103,7 +103,7 @@ function validateComparison(task,comparison){
   }
   return comparison.results;
 }
-function checkManifest(att,task,raw,comparisonMethods,consensus){
+function checkManifest(att,task,raw,consensus){
   const keys=['schema','task_sha256','image_sha256','artwork_sha256',
     'family_sha256','technology_code','split','review_a_sha256',
     'review_b_sha256','comparison_sha256','source_evidence_sha256',
@@ -122,7 +122,10 @@ function checkManifest(att,task,raw,comparisonMethods,consensus){
     artwork_sha256:raw.artwork,
     review_a_sha256:raw.reviewA,
     review_b_sha256:raw.reviewB,
-    comparison_sha256:raw.comparison
+    comparison_sha256:raw.comparison,
+    source_evidence_sha256:raw.sourceEvidence,
+    calibration_evidence_sha256:raw.calibrationEvidence,
+    sampling_evidence_sha256:raw.samplingEvidence
   };
   for(const [key,expected] of Object.entries(checks)){
     if(!isHash(att[key])||lower(att[key])!==expected)
@@ -132,10 +135,6 @@ function checkManifest(att,task,raw,comparisonMethods,consensus){
      lower(att.family_sha256)!==lower(task.context.family_sha256)||
      att.technology_code!==task.context.technology_code)
     reject('ADJUDICATION_ARTWORK_TECHNOLOGY_MISMATCH');
-  for(const key of ['source_evidence_sha256','calibration_evidence_sha256',
-                   'sampling_evidence_sha256']){
-    if(!isHash(att[key]))reject('AUDIT_EVIDENCE_DIGEST_REQUIRED');
-  }
   // These are accountable attestations signed by a trusted external auditor,
   // not independently verified facts of the physical manufacturing process.
   for(const key of ['reviewer_identities_verified','source_identity_verified',
@@ -169,12 +168,17 @@ function checkManifest(att,task,raw,comparisonMethods,consensus){
 }
 export function buildAttestedPilot(input={}){
   const {
-    taskBytes,imageBytes,artworkBytes,reviewABytes,reviewBBytes,
+    taskBytes,imageBytes,artworkBytes,
+    sourceEvidenceBytes,calibrationEvidenceBytes,samplingEvidenceBytes,
+    reviewABytes,reviewBBytes,
     comparisonBytes,attestationBytes,signatureBytes,
     trustedPublicKeyPem,trustedSpkiSha256
   }=input;
   const task=parse(taskBytes,'TASK'),image=parseBinary(imageBytes,'IMAGE'),
     artwork=parseBinary(artworkBytes,'ARTWORK'),
+    sourceEvidence=parseBinary(sourceEvidenceBytes,'SOURCE_EVIDENCE'),
+    calibrationEvidence=parseBinary(calibrationEvidenceBytes,'CALIBRATION_EVIDENCE'),
+    samplingEvidence=parseBinary(samplingEvidenceBytes,'SAMPLING_EVIDENCE'),
     reviewA=parse(reviewABytes,'REVIEW_A'),
     reviewB=parse(reviewBBytes,'REVIEW_B'),
     comparison=parse(comparisonBytes,'COMPARISON'),
@@ -190,14 +194,15 @@ export function buildAttestedPilot(input={}){
   const methods=validateComparison(task,comparison);
   const fingerprints={
     task:taskDigest,image:hash(image),artwork:hash(artwork),
+    sourceEvidence:hash(sourceEvidence),calibrationEvidence:hash(calibrationEvidence),
+    samplingEvidence:hash(samplingEvidence),
     reviewA:hash(reviewABytes),reviewB:hash(reviewBBytes),
     comparison:hash(comparisonBytes)
   };
   // Validate signed bytes BEFORE trusting any asserted audit state.
   const signerKeySha=verifier(Buffer.from(attestationBytes),
     signatureBytes,trustedPublicKeyPem,trustedSpkiSha256);
-  const regionLabels=checkManifest(attestation,task,fingerprints,
-    methods,consensus);
+  const regionLabels=checkManifest(attestation,task,fingerprints,consensus);
   const byRegion=new Map(regionLabels.map(r=>[r.id,r.label]));
   // Keep algorithm views strictly separate even when revisions coincide.
   // eval.py expects a single prediction per ROI and rejects duplicates.
@@ -290,24 +295,29 @@ const direct=process.argv[1]&&pathToFileURL(process.argv[1]).href===import.meta.
 if(direct){
   try{
     const args=process.argv.slice(2);
-    if(args.length!==10&&args.length!==11)reject('ARGS_INVALID');
-    const [taskPath,imagePath,artworkPath,reviewAPath,reviewBPath,
-      comparisonPath,attPath,sigPath,pubPath,spkiPin,privateOutputDir]=args;
+    if(args.length!==13&&args.length!==14)reject('ARGS_INVALID');
+    const [taskPath,imagePath,artworkPath,
+      sourceEvidencePath,calibrationEvidencePath,samplingEvidencePath,
+      reviewAPath,reviewBPath,comparisonPath,attPath,sigPath,pubPath,
+      spkiPin,privateOutputDir]=args;
     // Input files are local and limited before reading into process memory.
-    const paths=[taskPath,imagePath,artworkPath,reviewAPath,reviewBPath,
-                 comparisonPath,attPath,sigPath,pubPath];
+    const paths=[taskPath,imagePath,artworkPath,
+      sourceEvidencePath,calibrationEvidencePath,samplingEvidencePath,
+      reviewAPath,reviewBPath,comparisonPath,attPath,sigPath,pubPath];
     const bytes=await Promise.all(paths.map(async(p,i)=>{
-      const s=await stat(p),max=(i===1||i===2)?MAX_SOURCE:MAX_JSON;
+      const s=await stat(p),max=(i>=1&&i<=5)?MAX_SOURCE:MAX_JSON;
       if(!s.isFile()||s.size===0||s.size>max)
         reject('PILOT_INPUT_INVALID');
       return readFile(p);
     }));
     const result=buildAttestedPilot({
       taskBytes:bytes[0],imageBytes:bytes[1],artworkBytes:bytes[2],
-      reviewABytes:bytes[3],reviewBBytes:bytes[4],
-      comparisonBytes:bytes[5],attestationBytes:bytes[6],
-      signatureBytes:bytes[7],
-      trustedPublicKeyPem:bytes[8].toString('utf8'),
+      sourceEvidenceBytes:bytes[3],calibrationEvidenceBytes:bytes[4],
+      samplingEvidenceBytes:bytes[5],
+      reviewABytes:bytes[6],reviewBBytes:bytes[7],
+      comparisonBytes:bytes[8],attestationBytes:bytes[9],
+      signatureBytes:bytes[10],
+      trustedPublicKeyPem:bytes[11].toString('utf8'),
       trustedSpkiSha256:spkiPin
     });
     // Verified datasets are written only when a PRIVATE output directory
