@@ -101,7 +101,13 @@ export function initLocalOrdersOverlay(){
        expert_label:r.grade?.value||'unreviewed',
        artifacts:(r.results||[]).map((result,i)=>({
          file_index:i+1,type:result.type,status:result.status,
-         reason:result.reason||null,detected_regions:result.detected_regions??null,
+         reason:result.reason||null,
+         stage:result.stage||null,
+         origin_relation:result.origin_relation||null,
+         failure_class:result.failure_class||null,
+         http_status:result.http_status??null,
+         fetch_exception_family:result.fetch_exception_family||null,
+         detected_regions:result.detected_regions??null,
          source_shape_count:result.source_shape_count??null,
          min_line_document_mm:Number.isFinite(result.min_line_document_mm)?
            result.min_line_document_mm:null,
@@ -165,7 +171,7 @@ export function initLocalOrdersOverlay(){
    makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
  document.body.append(panel);
- window.__visionLocalOrderOverlay={close,refresh,version:'C3B.3.Q'};
+ window.__visionLocalOrderOverlay={close,refresh,version:'C3B.3.R'};
  function renderStats(msg){
    const discovered=rows.reduce((n,r)=>n+r.anchors.length,0);
    const local=rows.reduce((n,r)=>
@@ -238,9 +244,15 @@ export function initLocalOrdersOverlay(){
      if(detail.status!=='ORDER_DETAIL_DISCOVERED'){
        r.label.textContent='Vision: ручная проверка';
        r.detail.textContent='Карточка заказа / окно макетов: '+
-         String(detail.reason||'не прочитано').slice(0,120);
+         String(detail.reason||'не прочитано').slice(0,120)+
+         (detail.stage?' · этап '+detail.stage:'')+
+         (detail.origin_relation?' · '+detail.origin_relation:'');
        r.results.push({type:'order',status:'MANUAL',
-         reason:detail.reason||'ORDER_DETAIL_UNAVAILABLE'});
+         reason:detail.reason||'ORDER_DETAIL_UNAVAILABLE',
+         stage:detail.stage||null,origin_relation:detail.origin_relation||null,
+         failure_class:detail.failure_class||null,
+         http_status:detail.http_status??null,
+         fetch_exception_family:detail.fetch_exception_family||null});
        r.scanAttempted=true;
        r.button.disabled=false;renderStats('Нужен доступ к карточке заказа и AJAX окну');
        return;
