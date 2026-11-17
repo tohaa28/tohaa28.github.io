@@ -109,12 +109,15 @@ function show(answer){
  $('paths').textContent=r.paths_count;$('points').textContent=r.vertex_count;
  $('count').textContent=all.length;
  $('dimensions').textContent='Документ: '+r.width_document_mm.toFixed(2)+' × '+
-   r.height_document_mm.toFixed(2)+' мм. Размещение в заказе не подтверждено.';
+   r.height_document_mm.toFixed(2)+' мм. Цветов RGB: '+
+   r.source_colors_rgb.length+
+   ' (НЕ подтверждённые spot/Pantone). Размещение в заказе не подтверждено.';
  for(const c of all.slice(0,50)){
    const li=document.createElement('li');
    li.textContent=(c.kind==='positive_width_mm'?'Линия':'Пробел')+': '+
      c.measured_mm.toFixed(3)+' ± '+(c.uncertainty_mm??0).toFixed(3)+
-     ' мм · x='+c.at_mm?.x?.toFixed(2)+', y='+c.at_mm?.y?.toFixed(2);
+     ' мм'+(c.source_rgb_ink?' · RGB '+c.source_rgb_ink:'')+
+     ' · x='+c.at_mm?.x?.toFixed(2)+', y='+c.at_mm?.y?.toFixed(2);
    $('candidates').append(li);
  }
  if(!all.length){const li=document.createElement('li');li.textContent=
