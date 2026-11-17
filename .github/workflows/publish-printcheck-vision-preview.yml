@@ -11,6 +11,11 @@ on:
       - vision-review.html
       - vision-ai.html
       - vision-vector.html
+      - vision-local-orders.html
+      - vision/orders/row-scanner.mjs
+      - vision/orders/overlay-entry.mjs
+      - tests/printcheck-vision-local-orders.test.mjs
+      - tests/printcheck-vision-local-orders.browser.mjs
       - vision/geometry/svg-local-vector.mjs
       - vision/geometry/svg-ink-forms.mjs
       - vision/geometry/svg-dom-vector-bridge.mjs
@@ -73,6 +78,10 @@ jobs:
           node --check vision/geometry/svg-ink-forms.mjs
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-vector.browser.mjs
+          node --check vision/orders/row-scanner.mjs
+          node --check vision/orders/overlay-entry.mjs
+          node --check tests/printcheck-vision-local-orders.browser.mjs
+          node --test tests/printcheck-vision-local-orders.test.mjs
           node --test tests/printcheck-vision-synthetic-ai.test.mjs
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
@@ -80,13 +89,17 @@ jobs:
       - name: Browser smoke test (no customer data)
         run: |
           set -euo pipefail
-          npm install --no-save playwright
+          npm install --no-save playwright esbuild@0.25.12
+          npx esbuild vision/orders/overlay-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=vision-order-overlay.js
+          test -s vision-order-overlay.js
+          node --check vision-order-overlay.js
           npx playwright install --with-deps chromium
           node tests/printcheck-vision-ui.browser.mjs
           node tests/printcheck-vision-studio.browser.mjs
           node tests/printcheck-vision-review.browser.mjs
           node tests/printcheck-vision-ai.browser.mjs
           node tests/printcheck-vision-vector.browser.mjs
+          node tests/printcheck-vision-local-orders.browser.mjs
 
       - name: Build isolated bookmarklet launcher
         env:
@@ -119,6 +132,7 @@ jobs:
           cp vision-review.html "$PREVIEW/"
           cp vision-ai.html "$PREVIEW/"
           cp vision-vector.html "$PREVIEW/"
+          cp vision-local-orders.html vision-order-overlay.js "$PREVIEW/"
           mkdir -p "$PREVIEW/vision/geometry"
           for module in svg-local-vector svg-ink-forms svg-dom-vector-bridge svg-viewport svg-path-subset vector-corridors curved-normal-probes; do
             cp "vision/geometry/$module.mjs" "$PREVIEW/vision/geometry/"
@@ -140,6 +154,8 @@ jobs:
           test -f "$PREVIEW/vision/ai/scan-worker.mjs"
           test -f "$PREVIEW/vision-ai.html"
           test -f "$PREVIEW/vision-vector.html"
+          test -f "$PREVIEW/vision-local-orders.html"
+          test -s "$PREVIEW/vision-order-overlay.js"
           test -f "$PREVIEW/vision/geometry/svg-local-vector.mjs"
           test -f "$PREVIEW/vision/geometry/svg-ink-forms.mjs"
           test -f "$PREVIEW/vision/geometry/vector-corridors.mjs"
