@@ -184,8 +184,9 @@ async function fixture(){
 }
 test('separately signed and perceptually screened holdout matches attested pilot',async()=>{
   const {pack}=await fixture(),r=verifyLockedPilot(pack());
-  assert.equal(r.status,'SIGNED_HOLDOUT_SCREENED_FOR_RESEARCH_ONLY',r.reason);
-  assert.equal(r.evaluation_allowed,true);
+  assert.equal(r.status,'SIGNED_HOLDOUT_SCREENED_PENDING_RASTER_REPLAY',r.reason);
+  assert.equal(r.evaluation_allowed,false);
+  assert.equal(r.independent_pixel_rerender_required,true);
   assert.equal(r.method_count,2);
   assert.deepEqual(r.evaluated_regions,[2,2]);
   assert.equal(r.independently_derived_control_count,1);
