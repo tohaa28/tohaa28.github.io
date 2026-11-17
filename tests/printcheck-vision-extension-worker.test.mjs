@@ -128,7 +128,7 @@ test('follow a safe redirect between the two pinned LAN hosts without changing t
   const r=new Response('<html>synthetic card</html>',{
    headers:{'Content-Type':'text/html'}
   });
-  Object.defineProperty(r,'url',{value:'http://psk.testgifts.local/private/order/8000001'});
+  Object.defineProperty(r,'url',{value:'http://psk.testgifts.local/private/order/8000001/'});
   return r;
  }});
  const m=await h.invoke({op:'fetch',method:'GET',
