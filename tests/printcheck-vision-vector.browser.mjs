@@ -83,6 +83,36 @@ try{
      assert.match(await page.locator('#status').textContent(),/MANUAL:/);
      assert.equal(await page.locator('#json').isDisabled(),true);
    }
+   // Same-shape RGB solids may be inspected independently only when
+   // their source geometry is completely disjoint (no compositing guesses).
+   const red='<path d="M10 20 H13 V65 H10 Z" fill="#ff1122"/>';
+   const blue='<path d="M30 20 H30.16 V65 H30 Z" fill="#2255cc"/>';
+   await page.locator('#vectorFile').setInputFiles({
+     name:'two-inks.svg',mimeType:'image/svg+xml',
+     buffer:Buffer.from(svg(red+blue))
+   });
+   await page.locator('#run').click();
+   assert.match(await page.locator('#status').textContent(),/Вектор обработан/);
+   dl=page.waitForEvent('download');
+   await page.locator('#json').click();
+   const separated=JSON.parse(await readFile(await (await dl).path(),'utf8'));
+   assert.equal(separated.ink_forms?.length,2);
+   assert.deepEqual(separated.source_colors_rgb,['#ff1122','#2255cc']);
+   assert.equal(separated.inks_verified_as_print_spots,false);
+   assert.equal(separated.production_approved,false);
+   assert.ok(separated.candidates.some(x=>
+     x.source_rgb_ink==='#2255cc'&&x.kind==='positive_width_mm'&&
+       Math.abs(x.measured_mm-.16)<.02));
+   // An overlapping different ink must NOT be silently split and accepted.
+   await page.locator('#vectorFile').setInputFiles({
+     name:'overprint.svg',mimeType:'image/svg+xml',
+     buffer:Buffer.from(svg(red+
+       '<path d="M12 25 H15 V50 H12 Z" fill="#2255cc"/>'))
+   });
+   await page.locator('#run').click();
+   assert.match(await page.locator('#status').textContent(),
+     /MANUAL: SVG_INK_SEPARATIONS_UNSUPPORTED/);
+   assert.equal(await page.locator('#json').isDisabled(),true);
    assert.deepEqual(errors,[]);
    await page.close();
  }
