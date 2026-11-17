@@ -22,8 +22,10 @@ const order='<html><body><section id="j_cart_host" data-orderid="771">'+
  '</section></body></html>';
 const popup='<div id="maketsPopup">'+
  '<h2>Загрузка макетов</h2>'+
- '<a data-maket="true" href="/cart/act/mda?oid=771&id=42">client-logo.svg</a>'+
- '<a data-maket="true" href="/cart/act/mda?oid=771&id=43">second.pdf</a>'+
+ '<div class="flex-item flex-main"><a data-maket="true" href="/cart/act/mda?oid=771&id=42">client-logo.svg</a>'+
+ '<span title="Исходное имя закачанного файла">Логотип  клиента №2.svg</span></div>'+
+ '<div class="flex-item flex-main"><a data-maket="true" href="/cart/act/mda?oid=771&id=43">second.pdf</a>'+
+ '<span title="Исходное имя закачанного файла">Исходный  документ.PDF</span></div>'+
  '<a data-maket="true" href="/cart/act/mda?oid=999&id=44">wrong-order.pdf</a>'+
  '<h2>Шаблоны макетов для выбранных нанесений</h2>'+
  '<a href="/drawing?action=getOrderItemPdf&orderitemid=909">template.pdf</a>'+
@@ -84,6 +86,8 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('[data-vision-order-cell]')[0]
    ?.querySelector('.vlo-label')?.textContent?.includes('ручной проверки'),null,{timeout:15000});
  assert.match(await first.innerText(),/2 клиентских файлов, 1 конструкторов/);
+ assert.match(await first.innerText(),/Логотип  клиента №2.svg/);
+ assert.match(await first.innerText(),/Исходный  документ.PDF/);
  assert.match(await first.innerText(),/SVG: [1-9]/);
  assert.match(await first.innerText(),/PDF: ручная проверка/);
  assert.equal(requests.length,4);
@@ -111,10 +115,18 @@ try{
  await page.locator('#vision-local-order-overlay button')
    .filter({hasText:'Локальные примеры ZIP'}).click();
  const zip=await readFile(await (await pending).path());
- assert.ok(zip.includes(Buffer.from('samples/0001.svg')));
- assert.ok(zip.includes(Buffer.from('samples/0002.pdf')));
+ assert.ok(zip.includes(Buffer.from('samples/0001/Логотип  клиента №2.svg','utf8')));
+ assert.ok(zip.includes(Buffer.from('samples/0002/Исходный  документ.PDF','utf8')));
  assert.ok(!zip.includes(Buffer.from('wrong-order.pdf')));
  assert.ok(!zip.includes(Buffer.from('template.pdf')));
+ // Original client filenames exist in the local ZIP, never anonymous report.
+ const reportPromise=page.waitForEvent('download');
+ await page.locator('#vision-local-order-overlay button')
+  .filter({hasText:'Отчёт JSON'}).click();
+ const review=JSON.parse(await readFile(await (await reportPromise).path(),'utf8'));
+ assert.equal(JSON.stringify(review).includes('Логотип  клиента №2.svg'),false);
+ assert.equal(JSON.stringify(review).includes('Исходный  документ.PDF'),false);
+ assert.equal(review.rows[0].customer_uploaded_artworks,2);
  assert.deepEqual(forbiddenUrls,[],
    'No requests outside the two approved test origins and read-only endpoints');
  const late=requests.slice(beforeLocalZip);
