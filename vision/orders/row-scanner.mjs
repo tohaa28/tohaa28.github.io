@@ -5,6 +5,7 @@
  */
 import {inspectLocalSvgVector} from '../geometry/svg-local-vector.mjs';
 import {analyzeSyntheticThinRegions} from '../ai/synthetic-feature-model.mjs';
+import {rowOrderTarget} from './order-page-discovery.mjs';
 
 export const LOCAL_ORDERS=Object.freeze({
  host:'psk.testgifts.local',route:'/devorders',
@@ -94,6 +95,19 @@ export function diagnoseTestOrderTable(doc=globalThis.document){
      .filter(isCandidateArtworkLink).length,
    action_button_count:table.querySelectorAll('button,[role="button"]').length
  }));
+ const rowRoutes={explicit_order_links:0,static_onclick_urls:0,
+   numeric_first_cells:0,explicit_row_attributes:0,ambiguous:0,unresolved:0};
+ for(const item of discoverOrderRows(doc)){
+   const target=rowOrderTarget(item.element,doc.defaultView.location.href);
+   if(target.status!=='ORDER_LINK_FOUND'){
+     rowRoutes[target.reason==='AMBIGUOUS_ORDER_ROW'?'ambiguous':'unresolved']++;
+   }else{
+     rowRoutes[target.source==='static_onclick_url'?'static_onclick_urls':
+       target.source==='numeric_first_cell'?'numeric_first_cells':
+       target.source==='explicit_row_attribute'?'explicit_row_attributes':
+       'explicit_order_links']++;
+   }
+ }
  const ext={svg:0,pdf:0,raster:0,other:0,unknown:0};
  for(const a of candidates){
    const url=sameOriginArtifactUrl(a.getAttribute('href'),doc.defaultView.location);
@@ -108,6 +122,7 @@ export function diagnoseTestOrderTable(doc=globalThis.document){
    same_origin_candidate_count:same.length,
    cross_origin_or_unsafe_candidate_count:candidates.length-same.length,
    recognized_rows:discoverOrderRows(doc).length,
+   order_navigation_patterns:rowRoutes,
    data_order_id_elements:doc.querySelectorAll('[data-order-id]').length,
    action_button_count:doc.querySelectorAll('button,[role="button"]').length,
    candidate_url_formats:ext,
