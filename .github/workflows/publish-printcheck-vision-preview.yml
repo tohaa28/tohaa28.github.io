@@ -14,6 +14,10 @@ on:
       - vision-local-orders.html
       - vision/orders/row-scanner.mjs
       - vision/orders/order-page-discovery.mjs
+      - tools/vision_local_lab.py
+      - tools/install-vision-local-lab.ps1
+      - tests/test_vision_local_lab.py
+      - docs/VISION_LOCAL_LAB_SETUP_RU.md
       - tests/printcheck-vision-order-detail.test.mjs
       - tests/printcheck-vision-order-detail.browser.mjs
       - vision/orders/local-training-zip.mjs
@@ -87,6 +91,8 @@ jobs:
           node --check vision/orders/order-page-discovery.mjs
           node --check tests/printcheck-vision-order-detail.browser.mjs
           node --test tests/printcheck-vision-order-detail.test.mjs
+          python3 -m py_compile tools/vision_local_lab.py
+          python3 tests/test_vision_local_lab.py
           node --check vision/orders/local-training-zip.mjs
           node --check tests/printcheck-vision-training-zip.test.mjs
           node --test tests/printcheck-vision-training-zip.test.mjs
@@ -166,6 +172,19 @@ jobs:
           cp vision-ai.html "$PREVIEW/"
           cp vision-vector.html "$PREVIEW/"
           cp vision-local-orders.html vision-order-overlay.js "$PREVIEW/"
+          python3 - <<'PY'
+          import zipfile
+          paths=['tools/vision_local_lab.py','tools/install-vision-local-lab.ps1',
+                 'docs/VISION_LOCAL_LAB_SETUP_RU.md']
+          with zipfile.ZipFile('vision-local-lab.zip','w',
+               compression=zipfile.ZIP_DEFLATED) as z:
+              for path in paths:z.write(path)
+          with zipfile.ZipFile('vision-local-lab.zip') as z:
+              assert z.testzip() is None
+              assert len(z.namelist())==3
+          print('Offline Windows D: lab package verified')
+          PY
+          cp vision-local-lab.zip "$PREVIEW/"
           mkdir -p "$PREVIEW/vision/geometry"
           for module in svg-local-vector svg-ink-forms svg-dom-vector-bridge svg-viewport svg-path-subset vector-corridors curved-normal-probes; do
             cp "vision/geometry/$module.mjs" "$PREVIEW/vision/geometry/"
@@ -189,6 +208,7 @@ jobs:
           test -f "$PREVIEW/vision-vector.html"
           test -f "$PREVIEW/vision-local-orders.html"
           test -s "$PREVIEW/vision-order-overlay.js"
+          test -s "$PREVIEW/vision-local-lab.zip"
           test -f "$PREVIEW/vision/geometry/svg-local-vector.mjs"
           test -f "$PREVIEW/vision/geometry/svg-ink-forms.mjs"
           test -f "$PREVIEW/vision/geometry/vector-corridors.mjs"
