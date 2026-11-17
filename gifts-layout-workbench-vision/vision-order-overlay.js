@@ -898,9 +898,9 @@
   var allowedRoot = /* @__PURE__ */ new Set(["width", "height", "viewBox", "preserveAspectRatio", "xmlns", "version", "id"]);
   var allowedGroup = /* @__PURE__ */ new Set(["transform", "fill", "fill-rule", "stroke", "id"]);
   var allowedPath = /* @__PURE__ */ new Set(["d", "transform", "fill", "fill-rule", "stroke", "id"]);
-  function attrsAllowed(element, allowed) {
+  function attrsAllowed(element, allowed2) {
     const names = typeof element.getAttributeNames === "function" ? element.getAttributeNames() : null;
-    return Array.isArray(names) && names.every((name) => allowed.has(name));
+    return Array.isArray(names) && names.every((name) => allowed2.has(name));
   }
   function parseSvgAffineTransform(value) {
     if (value === null || value === void 0) return identity.slice();
@@ -1562,6 +1562,318 @@
     };
   }
 
+  // vision/orders/order-page-discovery.mjs
+  var TEST_HOSTS = Object.freeze(["psk.testgifts.local", "testgifts.local"]);
+  var REFUSE = (reason) => ({ status: "MANUAL", reason, production_approved: false });
+  var digits = (s) => /^\d{5,12}$/.test(String(s || ""));
+  var internal = (s) => /^\d{1,20}$/.test(String(s || ""));
+  var allowed = (url) => url?.protocol === "http:" && TEST_HOSTS.includes(url.hostname) && !url.username && !url.password;
+  function testUrl(input, base) {
+    try {
+      const u = new URL(input, base);
+      if (!allowed(u) || u.port && u.port !== "80") return null;
+      if (/\/(?:delete|remove|upload|logout)(?:\/|$)/i.test(u.pathname)) return null;
+      return u;
+    } catch {
+      return null;
+    }
+  }
+  function rowOrderTarget(row, base) {
+    if (!row || !allowed(new URL(base))) return REFUSE("UNTRUSTED_LIST_ORIGIN");
+    const choices = [];
+    for (const a of row.querySelectorAll("a[href]")) {
+      const href = a.getAttribute("href");
+      const url = testUrl(href, base);
+      if (!url) continue;
+      const found = /^\/private\/order\/(\d{5,12})\/?$/.exec(url.pathname);
+      if (found) choices.push({ url, number: found[1] });
+    }
+    for (const attr of ["data-href", "data-url"]) {
+      const url = testUrl(row.getAttribute?.(attr) || "", base);
+      const found = url && /^\/private\/order\/(\d{5,12})\/?$/.exec(url.pathname);
+      if (found) choices.push({ url, number: found[1] });
+    }
+    const ordered = [...new Map(choices.map((x) => [x.number, x])).values()];
+    if (ordered.length > 1) return REFUSE("AMBIGUOUS_ORDER_ROW");
+    if (ordered.length === 1) return { status: "ORDER_LINK_FOUND", ...ordered[0] };
+    const onclick = row.getAttribute?.("onclick") || "";
+    const orderInHandler = onclick.match(/\/private\/order\/(\d{5,12})(?!\d)/);
+    const firstCell = row.querySelector?.(":scope > td:first-child")?.textContent?.trim() || "";
+    const stated = row.getAttribute?.("data-order-number") || row.getAttribute?.("data-order") || orderInHandler?.[1] || (/^\d{5,12}$/.test(firstCell) ? firstCell : "");
+    if (digits(stated)) {
+      const url = testUrl("/private/order/" + stated, base);
+      return {
+        status: "ORDER_LINK_FOUND",
+        url,
+        number: stated,
+        source: row.getAttribute?.("data-order-number") || row.getAttribute?.("data-order") ? "explicit_row_attribute" : orderInHandler ? "static_onclick_url" : "numeric_first_cell"
+      };
+    }
+    return REFUSE("ORDER_DETAIL_LINK_REQUIRED");
+  }
+  function extractOrderInternalId(doc) {
+    const ids = [
+      doc.querySelector("#j_cart_host[data-orderid]"),
+      doc.querySelector(".cart-order[data-orderid]"),
+      doc.querySelector(".j_add_maket[data-orderid]")
+    ].map((n) => n?.getAttribute("data-orderid")).filter(Boolean);
+    const unique = [...new Set(ids)];
+    return unique.length === 1 && internal(unique[0]) ? unique[0] : null;
+  }
+  function popupHtml(text) {
+    if (typeof text !== "string" || !text.trim() || text.length > 3e6)
+      return REFUSE("POPUP_BODY_INVALID");
+    try {
+      if (text.trimStart().startsWith("{")) {
+        const data = JSON.parse(text);
+        if (typeof data?.html !== "string") return REFUSE("POPUP_JSON_MISSING_HTML");
+        return { status: "POPUP_HTML", html: data.html };
+      }
+    } catch {
+      return REFUSE("POPUP_JSON_INVALID");
+    }
+    return { status: "POPUP_HTML", html: text };
+  }
+  var findAll = (doc, selector) => {
+    const out = [];
+    const scan = (root) => {
+      out.push(...root.querySelectorAll(selector));
+      for (const t of root.querySelectorAll("template")) if (t.content) scan(t.content);
+    };
+    scan(doc);
+    return out;
+  };
+  function nameOf(node2) {
+    const value = (node2.textContent || "").replace(/\s+/g, " ").trim().slice(0, 200);
+    return value;
+  }
+  function extractOrderResources(doc, base, orderNumber, orderId) {
+    if (!digits(orderNumber) || !internal(orderId)) return REFUSE("ORDER_IDENTIFIERS_INVALID");
+    if (!doc?.querySelectorAll) return REFUSE("ORDER_DOCUMENT_INVALID");
+    const uploads = /* @__PURE__ */ new Map(), templates = /* @__PURE__ */ new Map(), rejected = [];
+    for (const a of findAll(doc, 'a[data-maket="true"][href]')) {
+      const url = testUrl(a.getAttribute("href"), base);
+      if (!url || url.pathname !== "/cart/act/mda" || url.searchParams.get("oid") !== orderId || !internal(url.searchParams.get("id"))) {
+        rejected.push("UNTRUSTED_CUSTOMER_FILE_LINK");
+        continue;
+      }
+      const id = url.searchParams.get("id");
+      const filename = nameOf(a);
+      if (!/\.(?:pdf|ai|svg|eps|cdr|png|jpe?g|webp)$/i.test(filename)) {
+        rejected.push("CUSTOMER_FILE_NAME_UNSUPPORTED");
+        continue;
+      }
+      uploads.set(id, {
+        id,
+        orderNumber,
+        role: "customer_uploaded_artwork",
+        filename,
+        url: url.href,
+        source: "makets_popup"
+      });
+    }
+    for (const a of findAll(doc, 'a[href*="getOrderItemPdf"],[data-orderitemid],[data-oiid]')) {
+      const href = a.getAttribute("href") || "";
+      let itemId = a.getAttribute("data-orderitemid") || a.getAttribute("data-oiid") || "";
+      const link = href ? testUrl(href, base) : null;
+      if (!itemId) itemId = link?.searchParams.get("orderitemid") || "";
+      if (!internal(itemId)) continue;
+      const endpoint = testUrl("/drawing?action=getOrderItemPdf&orderitemid=" + encodeURIComponent(itemId), base);
+      templates.set(itemId, {
+        itemId,
+        role: "constructor_template",
+        url: endpoint.href,
+        source: "makets_popup"
+      });
+    }
+    return {
+      status: "ORDER_RESOURCES",
+      uploads: [...uploads.values()],
+      templates: [...templates.values()],
+      rejected
+    };
+  }
+  function parse(docText, parser = globalThis.DOMParser) {
+    if (typeof docText !== "string" || docText.length > 3e6 || typeof parser !== "function") return null;
+    try {
+      return new parser().parseFromString(docText, "text/html");
+    } catch {
+      return null;
+    }
+  }
+  function isAuthHtml(text) {
+    return /<form[^>]+name=["']authform["']/i.test(text) || /Авторизация\s*-\s*Проект\s*111/i.test(text);
+  }
+  async function boundedText(response, limit2 = 3e6) {
+    if (!response.ok) throw Error("HTTP_" + response.status);
+    const type = response.headers.get("content-type") || "";
+    if (!/(?:html|json|text)/i.test(type)) throw Error("UNEXPECTED_DOCUMENT_CONTENT_TYPE");
+    const length2 = response.headers.get("content-length");
+    if (length2 && Number(length2) > limit2) throw Error("DOCUMENT_TOO_LARGE");
+    const reader = response.body?.getReader();
+    if (!reader) {
+      const s = await response.text();
+      if (s.length > limit2) throw Error("DOCUMENT_TOO_LARGE");
+      return s;
+    }
+    const parts = [];
+    let count = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        count += value.length;
+        if (count > limit2) throw Error("DOCUMENT_TOO_LARGE");
+        parts.push(value);
+      }
+    } catch (err) {
+      try {
+        await reader.cancel();
+      } catch {
+      }
+      ;
+      throw err;
+    }
+    const buf = new Uint8Array(count);
+    let offset = 0;
+    for (const part of parts) {
+      buf.set(part, offset);
+      offset += part.length;
+    }
+    return new TextDecoder("utf-8").decode(buf);
+  }
+  async function getText(url, fetcher, listOrigin) {
+    const loc = new URL(url);
+    if (!allowed(loc)) throw Error("UNTRUSTED_TEST_HOST");
+    const same3 = loc.origin === listOrigin;
+    const res = await fetcher(loc.href, {
+      method: "GET",
+      mode: same3 ? "same-origin" : "cors",
+      credentials: "include",
+      redirect: "error",
+      cache: "no-store",
+      referrerPolicy: "no-referrer",
+      headers: { accept: "text/html,application/json" }
+    });
+    const text = await boundedText(res);
+    if (isAuthHtml(text)) throw Error("TEST_SESSION_AUTH_REQUIRED");
+    return text;
+  }
+  async function inspectOrderPageFromRow(row, {
+    loc = globalThis.location,
+    fetcher = globalThis.fetch,
+    DOMParserClass = globalThis.DOMParser
+  } = {}) {
+    if (!loc || loc.protocol !== "http:" || loc.hostname !== "psk.testgifts.local" || !/^\/devorders(?:\/|$)/.test(loc.pathname))
+      return REFUSE("NOT_TEST_ORDER_PAGE");
+    const target = rowOrderTarget(row, loc.href);
+    if (target.status !== "ORDER_LINK_FOUND") return target;
+    try {
+      const source = await getText(target.url.href, fetcher, loc.origin);
+      const doc = parse(source, DOMParserClass);
+      const oid = extractOrderInternalId(doc);
+      if (!oid) return REFUSE("ORDER_INTERNAL_ID_NOT_FOUND");
+      const popupUrl = testUrl(
+        "/ajax/gifts/order?action=makets_popup&oid=" + oid,
+        target.url.origin
+      );
+      const raw = await getText(popupUrl.href, fetcher, loc.origin);
+      const parsed = popupHtml(raw);
+      if (parsed.status !== "POPUP_HTML") return parsed;
+      const popupDoc = parse(parsed.html, DOMParserClass);
+      if (!popupDoc) return REFUSE("POPUP_HTML_UNREADABLE");
+      const resources = extractOrderResources(
+        popupDoc,
+        popupUrl.origin,
+        target.number,
+        oid
+      );
+      if (resources.status !== "ORDER_RESOURCES") return resources;
+      return {
+        status: "ORDER_DETAIL_DISCOVERED",
+        orderNumber: target.number,
+        internalId: oid,
+        detailOrigin: target.url.origin,
+        uploads: resources.uploads.map((x) => ({
+          ...x,
+          internalId: oid,
+          detailOrigin: target.url.origin
+        })),
+        templates: resources.templates,
+        rejected: resources.rejected
+      };
+    } catch (error) {
+      const msg = String(error?.message || "");
+      return REFUSE(msg === "TEST_SESSION_AUTH_REQUIRED" ? "TEST_SESSION_AUTH_REQUIRED" : msg === "DOCUMENT_TOO_LARGE" ? "ORDER_DOCUMENT_TOO_LARGE" : msg.startsWith("HTTP_") ? "ORDER_HTTP_ERROR" : "ORDER_DETAIL_FETCH_OR_CORS_FAILURE");
+    }
+  }
+  async function fetchOrderResourceBytes(resource, {
+    fetcher = globalThis.fetch,
+    loc = globalThis.location,
+    timeoutMs = 15e3,
+    maxBytes = 16e6
+  } = {}) {
+    if (!loc || loc.protocol !== "http:" || loc.hostname !== "psk.testgifts.local" || !/^\/devorders(?:\/|$)/.test(loc.pathname))
+      return REFUSE("NOT_TEST_ORDER_PAGE");
+    if (resource?.role !== "customer_uploaded_artwork" || !internal(resource.id) || !internal(resource.internalId) || !digits(resource.orderNumber) || !TEST_HOSTS.includes(new URL(loc.href).hostname))
+      return REFUSE("UNTRUSTED_ORDER_RESOURCE");
+    const url = testUrl(resource.url, loc.href);
+    if (!url || url.pathname !== "/cart/act/mda" || url.searchParams.get("id") !== resource.id || url.searchParams.get("oid") !== resource.internalId || url.origin !== resource.detailOrigin)
+      return REFUSE("UNTRUSTED_RESOURCE_URL");
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 16e6)
+      return REFUSE("RESOURCE_BYTE_LIMIT_INVALID");
+    const same3 = url.origin === loc.origin, ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetcher(url.href, {
+        method: "GET",
+        mode: same3 ? "same-origin" : "cors",
+        credentials: "include",
+        redirect: "error",
+        cache: "no-store",
+        referrerPolicy: "no-referrer",
+        signal: ctrl.signal,
+        headers: { accept: "application/pdf,application/octet-stream,*/*" }
+      });
+      if (!res.ok) return REFUSE("ARTWORK_HTTP_ERROR");
+      const mime = res.headers.get("content-type") || "";
+      if (/(?:text\/html|application\/json)/i.test(mime))
+        return REFUSE("ARTWORK_LOGIN_OR_HTML_RESPONSE");
+      if (Number(res.headers.get("content-length") || 0) > maxBytes)
+        return REFUSE("ARTWORK_SIZE_EXCEEDED");
+      const chunks = [];
+      let length2 = 0;
+      const reader = res.body?.getReader();
+      if (!reader) return REFUSE("ARTWORK_STREAM_UNAVAILABLE");
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          length2 += value.byteLength;
+          if (length2 > maxBytes) return REFUSE("ARTWORK_SIZE_EXCEEDED");
+          chunks.push(value);
+        }
+      } finally {
+        try {
+          reader.releaseLock();
+        } catch {
+        }
+      }
+      const bytes = new Uint8Array(length2);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      if (bytes.byteLength < 8) return REFUSE("ARTWORK_EMPTY");
+      return { status: "LOCAL_BYTES_ONLY", bytes, url, mime };
+    } catch {
+      return REFUSE(ctrl.signal.aborted ? "ARTWORK_TIMEOUT" : same3 ? "ARTWORK_DOWNLOAD_FAILED" : "TEST_SUBDOMAIN_CORS_OR_AUTH_REQUIRED");
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // vision/orders/row-scanner.mjs
   var LOCAL_ORDERS = Object.freeze({
     host: "psk.testgifts.local",
@@ -1660,6 +1972,22 @@
       recognized_artwork_links: [...table.querySelectorAll("a[href]")].filter(isCandidateArtworkLink).length,
       action_button_count: table.querySelectorAll('button,[role="button"]').length
     }));
+    const rowRoutes = {
+      explicit_order_links: 0,
+      static_onclick_urls: 0,
+      numeric_first_cells: 0,
+      explicit_row_attributes: 0,
+      ambiguous: 0,
+      unresolved: 0
+    };
+    for (const item of discoverOrderRows(doc)) {
+      const target = rowOrderTarget(item.element, doc.defaultView.location.href);
+      if (target.status !== "ORDER_LINK_FOUND") {
+        rowRoutes[target.reason === "AMBIGUOUS_ORDER_ROW" ? "ambiguous" : "unresolved"]++;
+      } else {
+        rowRoutes[target.source === "static_onclick_url" ? "static_onclick_urls" : target.source === "numeric_first_cell" ? "numeric_first_cells" : target.source === "explicit_row_attribute" ? "explicit_row_attributes" : "explicit_order_links"]++;
+      }
+    }
     const ext = { svg: 0, pdf: 0, raster: 0, other: 0, unknown: 0 };
     for (const a of candidates) {
       const url = sameOriginArtifactUrl(a.getAttribute("href"), doc.defaultView.location);
@@ -1682,6 +2010,7 @@
       same_origin_candidate_count: same3.length,
       cross_origin_or_unsafe_candidate_count: candidates.length - same3.length,
       recognized_rows: discoverOrderRows(doc).length,
+      order_navigation_patterns: rowRoutes,
       data_order_id_elements: doc.querySelectorAll("[data-order-id]").length,
       action_button_count: doc.querySelectorAll('button,[role="button"]').length,
       candidate_url_formats: ext,
@@ -1980,8 +2309,8 @@
     size16(e, 20, 0);
     return new Blob([...data, ...central, end], { type: "application/zip" });
   }
-  function suffix(url, bytes) {
-    const match = /\.([a-z0-9]+)$/i.exec(url.pathname);
+  function suffix(url, bytes, filenameHint = "") {
+    const match = /\.([a-z0-9]+)$/i.exec(filenameHint || url.pathname);
     const ext = match?.[1]?.toLowerCase();
     if (["svg", "pdf", "png", "jpg", "jpeg", "webp", "cdr", "eps", "ai"].includes(ext))
       return ext;
@@ -2024,9 +2353,14 @@
     const entries = [], samples = [], skipped = [];
     let consumed = 0, id = 0;
     outer: for (const r of picked) {
-      for (const a of (r.files || []).slice(0, 4)) {
+      const source = r.orderUploads?.length ? r.orderUploads : r.files || [];
+      for (const a of source.slice(0, 4)) {
         if (id >= maxFiles) break outer;
-        const file = await fetchSameOriginArtworkBytes(a, {
+        const file = a.role === "customer_uploaded_artwork" ? await fetchOrderResourceBytes(a, {
+          fetcher,
+          loc,
+          maxBytes: maxPerFile
+        }) : await fetchSameOriginArtworkBytes(a, {
           fetcher,
           loc,
           maxFileBytes: maxPerFile
@@ -2041,7 +2375,7 @@
         }
         id++;
         consumed += file.bytes.length;
-        const name = "samples/" + String(id).padStart(4, "0") + "." + suffix(file.url, file.bytes);
+        const name = "samples/" + String(id).padStart(4, "0") + "." + suffix(file.url, file.bytes, a.filename || "");
         const sha = await optionalSha256(file.bytes);
         entries.push({ name, bytes: file.bytes });
         samples.push({
@@ -2120,7 +2454,11 @@
   var makeButton = (text, fn) => {
     const b = node("button", text);
     b.type = "button";
-    b.addEventListener("click", fn);
+    b.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      fn(event);
+    });
     return b;
   };
   function initLocalOrdersOverlay() {
@@ -2175,6 +2513,9 @@
           row_index: r.row_index,
           discovered_links: r.anchors.length,
           same_origin_files: r.files.length,
+          order_card_discovered: r.hasOrderLink,
+          customer_uploaded_artworks: r.orderUploads?.length ?? null,
+          constructor_template_count: r.orderTemplates ?? null,
           excluded_links: r.local_only_excluded,
           expert_label: r.grade?.value || "unreviewed",
           artifacts: (r.results || []).map((result, i) => ({
@@ -2257,9 +2598,9 @@
     window.__visionLocalOrderOverlay = { close: close2, refresh, version: "C3B.3.O" };
     function renderStats(msg) {
       const discovered = rows.reduce((n, r) => n + r.anchors.length, 0);
-      const local = rows.reduce((n, r) => n + r.files.length, 0);
+      const local = rows.reduce((n, r) => n + (r.orderUploads?.length ?? r.files.length), 0);
       const completed = rows.reduce((n, r) => n + (r.results?.length || 0), 0);
-      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u0441\u0441\u044B\u043B\u043A\u0438: " + discovered + " \xB7 \u0444\u0430\u0439\u043B\u044B \u044D\u0442\u043E\u0433\u043E origin: " + local + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E: " + completed + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
+      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u0441\u0441\u044B\u043B\u043A\u0438: " + discovered + " \xB7 \u0444\u0430\u0439\u043B\u044B \u0438\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A/\u0441\u0442\u0440\u043E\u043A: " + local + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E: " + completed + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
     }
     function refresh() {
       if (busy || closed) return;
@@ -2273,10 +2614,14 @@
           "vision-order-result-cell"
         );
         cell.setAttribute("data-vision-order-cell", "");
+        for (const eventName of ["click", "dblclick", "pointerdown", "mousedown", "keydown"])
+          cell.addEventListener(eventName, (event) => event.stopPropagation());
         const label = node("span", "Vision: \u043D\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E", "vlo-label");
+        const target = rowOrderTarget(r.element, window.location.href);
+        r.hasOrderLink = target.status === "ORDER_LINK_FOUND" && !(target.source === "numeric_first_cell" && r.anchors.length > 0);
         const detail = node(
           "span",
-          r.anchors.length === 0 ? "\u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u044B" : r.local_only_excluded > 0 ? "\u0415\u0441\u0442\u044C \u0441\u0441\u044B\u043B\u043A\u0438 \u0432\u043D\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E origin" : r.files.length + " \u0444\u0430\u0439\u043B\u043E\u0432 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B \u0434\u043B\u044F \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438",
+          r.hasOrderLink ? "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043C\u0430\u043A\u0435\u0442\u043E\u0432 \u0438\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0437\u0430\u043A\u0430\u0437\u0430 \u2192 \xAB\u041C\u0430\u043A\u0435\u0442\u044B \u0434\u043B\u044F \u0437\u0430\u043A\u0430\u0437\u0430\xBB" : r.anchors.length > 0 ? "\u041E\u0431\u043D\u0430\u0440\u0443\u0436\u0435\u043D\u044B \u0441\u0441\u044B\u043B\u043A\u0438 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435; \u043F\u0440\u043E\u0432\u0435\u0440\u044E \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0439 \u043C\u0430\u0440\u0448\u0440\u0443\u0442" : "\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u0432 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0437\u0430\u043A\u0430\u0437\u0430",
           "vlo-detail"
         );
         const trigger = makeButton("\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u0442\u0440\u043E\u043A\u0443", () => scanRow(r));
@@ -2307,42 +2652,93 @@
     }
     async function scanRowContents(r) {
       r.button.disabled = true;
-      r.label.textContent = "Vision: \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0438 \u0430\u043D\u0430\u043B\u0438\u0437\u2026";
+      r.label.textContent = "Vision: \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430 \u2192 \u043C\u0430\u043A\u0435\u0442\u044B\u2026";
       r.results = [];
-      if (!r.anchors.length) {
-        r.label.textContent = "Vision: \u043C\u0430\u043A\u0435\u0442\u044B \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u044B";
-        r.detail.textContent = "\u041D\u0435\u0442 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u043D\u044B\u0445 \u0441\u0441\u044B\u043B\u043E\u043A \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B";
-        r.button.disabled = false;
-        return;
-      }
-      if (!r.files.length) {
-        r.label.textContent = "Vision: \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430";
-        r.detail.textContent = "\u0421\u0441\u044B\u043B\u043A\u0438 \u0432\u043D\u0435 \u044D\u0442\u043E\u0433\u043E origin; \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0437\u0430\u043F\u0440\u0435\u0449\u0435\u043D\u0430";
-        r.button.disabled = false;
-        return;
-      }
       let manual2 = 0, research = 0, desc = [];
-      for (const a of r.files) {
+      let candidates = [], fromOrder = false;
+      if (r.hasOrderLink) {
+        const detail = await inspectOrderPageFromRow(r.element);
+        if (closed) return;
+        if (detail.status !== "ORDER_DETAIL_DISCOVERED") {
+          r.label.textContent = "Vision: \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430";
+          r.detail.textContent = "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430 / \u043E\u043A\u043D\u043E \u043C\u0430\u043A\u0435\u0442\u043E\u0432: " + String(detail.reason || "\u043D\u0435 \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E").slice(0, 120);
+          r.results.push({
+            type: "order",
+            status: "MANUAL",
+            reason: detail.reason || "ORDER_DETAIL_UNAVAILABLE"
+          });
+          r.button.disabled = false;
+          renderStats("\u041D\u0443\u0436\u0435\u043D \u0434\u043E\u0441\u0442\u0443\u043F \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u0437\u0430\u043A\u0430\u0437\u0430 \u0438 AJAX \u043E\u043A\u043D\u0443");
+          return;
+        }
+        fromOrder = true;
+        r.orderUploads = detail.uploads;
+        r.orderTemplates = detail.templates.length;
+        if (!detail.uploads.length) {
+          r.label.textContent = "Vision: \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430";
+          r.detail.textContent = "\u0412 \u043E\u043A\u043D\u0435 \xAB\u041C\u0430\u043A\u0435\u0442\u044B \u0434\u043B\u044F \u0437\u0430\u043A\u0430\u0437\u0430\xBB \u043E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u044E\u0442 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043A\u043B\u0438\u0435\u043D\u0442\u0430; \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u043E\u0432: " + detail.templates.length;
+          r.results.push({
+            type: "order",
+            status: "MANUAL",
+            reason: "CUSTOMER_UPLOADS_NOT_FOUND"
+          });
+          r.button.disabled = false;
+          renderStats("\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u044B \u043D\u0435 \u044F\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u043C\u0438 \u043C\u0430\u043A\u0435\u0442\u0430\u043C\u0438 \u043A\u043B\u0438\u0435\u043D\u0442\u0430");
+          return;
+        }
+        candidates = detail.uploads;
+        r.detail.textContent = "\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E \u0437\u0430\u043A\u0430\u0437\u0447\u0438\u043A\u043E\u043C: " + detail.uploads.length + "; \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u043E\u0432: " + detail.templates.length;
+      } else {
+        candidates = r.files;
+        if (!candidates.length) {
+          r.label.textContent = "Vision: \u0440\u0443\u0447\u043D\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430";
+          r.detail.textContent = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043D\u0430\u0439\u0442\u0438 \u0431\u0435\u0437\u043E\u043F\u0430\u0441\u043D\u0443\u044E \u0441\u0441\u044B\u043B\u043A\u0443 \u043D\u0430 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0437\u0430\u043A\u0430\u0437\u0430";
+          r.results.push({
+            type: "order",
+            status: "MANUAL",
+            reason: "ORDER_DETAIL_LINK_REQUIRED"
+          });
+          r.button.disabled = false;
+          renderStats("\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u043D\u0430 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0437\u0430\u043A\u0430\u0437\u0430");
+          return;
+        }
+      }
+      const limit2 = LOCAL_ORDERS.maxFilesPerRow;
+      for (const a of candidates.slice(0, limit2)) {
         if (closed) break;
         if (fileBudget <= 0) {
           manual2++;
-          desc.push("\u041B\u0438\u043C\u0438\u0442 \u0441\u0435\u0430\u043D\u0441\u0430 \u2014 \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u043D\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u044B");
+          desc.push("\u041B\u0438\u043C\u0438\u0442 \u0441\u0435\u0430\u043D\u0441\u0430 \u2014 \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u044B");
           break;
         }
         fileBudget--;
-        const result = await inspectSameOriginArtwork(a);
-        if (closed) break;
+        let result;
+        if (fromOrder) {
+          const artifact = await fetchOrderResourceBytes(a);
+          result = artifact.status === "LOCAL_BYTES_ONLY" ? await inspectOrderArtworkBytes(
+            artifact.bytes,
+            artifact.url,
+            artifact.mime,
+            a.filename
+          ) : {
+            status: "MANUAL",
+            type: "order_artwork",
+            reason: artifact.reason || "ARTWORK_DOWNLOAD_FAILED"
+          };
+        } else result = await inspectSameOriginArtwork(a);
+        if (closed) return;
         r.results.push(result);
         desc.push(summarize(result));
         if (result.status === "MANUAL") manual2++;
         else research++;
       }
       if (closed) return;
-      if (r.limited || r.local_only_excluded) manual2++;
+      if (candidates.length > limit2 || r.limited || r.local_only_excluded > 0 && !fromOrder)
+        manual2++;
       r.label.textContent = manual2 ? "Vision: " + manual2 + " \u0442\u0440\u0435\u0431\u0443\u044E\u0442 \u0440\u0443\u0447\u043D\u043E\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438" : "Vision: " + research + " \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u044B (\u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A)";
-      r.detail.textContent = desc.join(" | ").slice(0, 600) + (r.limited ? " \xB7 \u0447\u0430\u0441\u0442\u044C \u0444\u0430\u0439\u043B\u043E\u0432 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u0430 \u043F\u043E \u043B\u0438\u043C\u0438\u0442\u0443" : "");
+      r.detail.textContent = (fromOrder ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430: " + candidates.length + " \u043A\u043B\u0438\u0435\u043D\u0442\u0441\u043A\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432, " + r.orderTemplates + " \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u043E\u0432. " : "") + desc.join(" | ").slice(0, 520) + (candidates.length > limit2 ? " \xB7 \u0447\u0430\u0441\u0442\u044C \u0444\u0430\u0439\u043B\u043E\u0432 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u0430 \u043F\u043E \u043B\u0438\u043C\u0438\u0442\u0443" : "");
       r.button.disabled = false;
-      renderStats("\u0420\u0435\u0437\u0443\u043B\u044C\u0442\u0430\u0442\u044B \u0442\u0440\u0435\u0431\u0443\u044E\u0442 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u043E\u043C.");
+      renderStats("\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430\u043C \u0437\u0430\u043A\u0430\u0437\u043E\u0432. \u0412\u044B\u0432\u043E\u0434 \u043D\u0435 \u044F\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u0434\u043E\u043F\u0443\u0441\u043A\u043E\u043C.");
     }
     async function scanRow(r) {
       if (busy || closed) return;
