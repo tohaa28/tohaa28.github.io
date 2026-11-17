@@ -302,6 +302,12 @@ def serve(root: Path, port: int):
                 self.send_error(404)
                 return
             content = report(root)
+            try:
+                from vision_roi_review import summary as roi_summary
+                review = roi_summary(root)
+            except ImportError:
+                review = {"total_cases": 0, "needs_review": 0, "disagreements": 0,
+                          "consensus_research_only": 0, "adjudicated_research_only": 0}
             rows = "".join(
                 "<tr><td>" + html.escape(x["extension"]) + "</td><td>" +
                 html.escape(x["status"]) + "</td><td>" +
@@ -319,6 +325,14 @@ def serve(root: Path, port: int):
                     str(content["with_expert_roi"]) + " | unreviewed: " +
                     str(content["unreviewed"]) + "</p>"
                     "<p><strong>Training approval: FALSE. Family holdout: not proven.</strong></p>"
+                    "<h2>Independent ROI review queue</h2><p>"
+                    "Proposed: " + str(review["total_cases"]) +
+                    " | awaiting reviewers: " + str(review["needs_review"]) +
+                    " | disagreements: " + str(review["disagreements"]) +
+                    " | consensus research-only: " + str(review["consensus_research_only"]) +
+                    " | adjudicated research-only: " + str(review["adjudicated_research_only"]) +
+                    "</p><p>Use OPEN-ROI-ANNOTATOR.cmd and local CLI to propose/vote/adjudicate; "
+                    "no artwork is served through localhost.</p>"
                     "<table><tr><th>Format</th><th>Research state</th><th>Count</th></tr>" +
                     rows + "</table><h2>Research samples</h2><table>"
                     "<tr><th>Sample ID</th><th>Format</th><th>State</th><th>Expert row label</th></tr>" +
