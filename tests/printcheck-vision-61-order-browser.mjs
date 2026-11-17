@@ -129,6 +129,12 @@ try{
  assert.equal(cards,61);
  assert.equal(popups,61);
  assert.equal(artworks,73,'All 12 files in the first order and all 61 orders fetched once');
+ // Row labels settle before the queue's finally block updates the start
+ // button. Await the completed scheduler state rather than racing it.
+ await page.waitForFunction(()=>
+   document.querySelector('#vision-local-order-overlay .vlo-start')
+     ?.textContent?.includes('Все строки обработаны'),
+   null,{timeout:15000});
  assert.ok((await scan.innerText()).includes('Все строки обработаны'));
  assert.equal(await page.locator('[data-vision-order-cell] .vlo-label').allTextContents()
    .then(labels=>labels.filter(x=>x.includes('исследованы')).length),61);
