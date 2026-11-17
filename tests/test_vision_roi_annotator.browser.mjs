@@ -1,0 +1,47 @@
+// Real Chromium offline visual ROI geometry and CSP; synthetic SVG only.
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+const temp=await mkdtemp(path.join(os.tmpdir(),'vision-roi-annotator-'));
+const browser=await chromium.launch({headless:true});
+try{
+ const svg=path.join(temp,'synthetic.svg');
+ await writeFile(svg,'<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="50mm" viewBox="0 0 100 50"><path d="M10 10h50" stroke="black"/></svg>');
+ const noScale=path.join(temp,'missing-scale.svg');
+ await writeFile(noScale,'<svg xmlns="http://www.w3.org/2000/svg" width="100px" height="50px" viewBox="0 0 100 50"/>');
+ const context=await browser.newContext({viewport:{width:1250,height:900}});
+ const page=await context.newPage();
+ const network=[];
+ page.on('request',req=>{
+   if(req.url().startsWith('http'))network.push(req.url());
+ });
+ await page.goto(pathToFileURL(path.resolve('tools/vision-roi-annotator.html')).href);
+ await page.locator('#sample').fill('20261117T120000_0123456789:0001');
+ await page.locator('#expert').fill('tech_01');
+ await page.locator('#file').setInputFiles(svg);
+ await page.waitForFunction(()=>document.querySelector('#preview')?.naturalWidth>0);
+ const box=await page.locator('#layer').boundingBox();
+ assert.ok(box.width>50&&box.height>25);
+ await page.mouse.move(box.x+box.width*.10,box.y+box.height*.20);
+ await page.mouse.down();
+ await page.mouse.move(box.x+box.width*.30,box.y+box.height*.40,{steps:5});
+ await page.mouse.up();
+ const command=await page.locator('#result').innerText();
+ assert.match(command,/vision_roi_review\.py propose/);
+ assert.match(command,/--units svg_document_mm/);
+ assert.match(command,/--kind thin_line/);
+ assert.ok(Math.abs(Number(command.match(/--x ([\d.]+)/)[1])-10)<.02);
+ assert.ok(Math.abs(Number(command.match(/--y ([\d.]+)/)[1])-10)<.02);
+ assert.ok(Math.abs(Number(command.match(/--width ([\d.]+)/)[1])-20)<.02);
+ assert.ok(Math.abs(Number(command.match(/--height ([\d.]+)/)[1])-10)<.02);
+ assert.equal(await page.locator('#copy').isEnabled(),true);
+ await page.locator('#file').setInputFiles(noScale);
+ await page.waitForFunction(()=>document.querySelector('#error')?.textContent?.includes('Масштаб SVG недоказан'));
+ assert.equal(await page.locator('#copy').isDisabled(),true);
+ assert.equal(network.length,0,'No customer file or network requests from local annotator');
+ await context.close();
+ console.log('Vision Lab local ROI selection: mm coordinate mapping, scale refusal, offline CSP PASS');
+}finally{await browser.close();await rm(temp,{recursive:true,force:true})}
