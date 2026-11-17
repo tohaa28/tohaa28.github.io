@@ -12,6 +12,7 @@ on:
       - vision-ai.html
       - vision-vector.html
       - vision/geometry/svg-local-vector.mjs
+      - vision/geometry/svg-ink-forms.mjs
       - vision/geometry/svg-dom-vector-bridge.mjs
       - vision/geometry/svg-viewport.mjs
       - vision/geometry/svg-path-subset.mjs
@@ -69,6 +70,7 @@ jobs:
           node --test tests/printcheck-vision-worker.test.mjs
           node --check tests/printcheck-vision-ai.browser.mjs
           node --check vision/geometry/svg-local-vector.mjs
+          node --check vision/geometry/svg-ink-forms.mjs
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-vector.browser.mjs
           node --test tests/printcheck-vision-synthetic-ai.test.mjs
@@ -118,7 +120,7 @@ jobs:
           cp vision-ai.html "$PREVIEW/"
           cp vision-vector.html "$PREVIEW/"
           mkdir -p "$PREVIEW/vision/geometry"
-          for module in svg-local-vector svg-dom-vector-bridge svg-viewport svg-path-subset vector-corridors curved-normal-probes; do
+          for module in svg-local-vector svg-ink-forms svg-dom-vector-bridge svg-viewport svg-path-subset vector-corridors curved-normal-probes; do
             cp "vision/geometry/$module.mjs" "$PREVIEW/vision/geometry/"
           done
           mkdir -p "$PREVIEW/vision/ai"
@@ -139,6 +141,7 @@ jobs:
           test -f "$PREVIEW/vision-ai.html"
           test -f "$PREVIEW/vision-vector.html"
           test -f "$PREVIEW/vision/geometry/svg-local-vector.mjs"
+          test -f "$PREVIEW/vision/geometry/svg-ink-forms.mjs"
           test -f "$PREVIEW/vision/geometry/vector-corridors.mjs"
           grep -q 'gifts-layout-workbench-vision' "$PREVIEW/launcher.js"
           echo "Preview isolated at /gifts-layout-workbench-vision/"
