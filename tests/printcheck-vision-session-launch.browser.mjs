@@ -33,7 +33,7 @@ try{
       const url=route.request().url();
       if(url===PREVIEW+'launcher.js' || url.startsWith(PREVIEW+'launcher.js?v=')){
         launcherRequests++;
-        return route.fulfill({status:200,contentType:'application/javascript',body:launcher});
+        return route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:launcher});
       }
       if(url===GIFT || url==='https://gifts.ru'){
         return route.fulfill({status:200,contentType:'text/html',
@@ -112,7 +112,7 @@ try{
       body:'<html><body><div id="gifts-layout-workbench-host" data-gwb-variant="mockups">'+
       '<button class="gwb-close" id="prodClose">×</button></div></body></html>'});
     if(url.startsWith(PREVIEW+'launcher.js'))
-      return route.fulfill({status:200,contentType:'application/javascript',body:launcher});
+      return route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:launcher});
     return route.abort();
   });
   const page=await context.newPage();
