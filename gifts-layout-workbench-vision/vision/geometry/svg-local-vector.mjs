@@ -8,6 +8,7 @@
  */
 import {inspectSvgTree,parseSvgAffineTransform} from './svg-dom-vector-bridge.mjs';
 import {inspectSvgDocumentViewport} from './svg-viewport.mjs';
+import {inspectDisjointSvgInkForms} from './svg-ink-forms.mjs';
 
 const SVG_NS='http://www.w3.org/2000/svg';
 const failure=(reason,detail)=>({
@@ -101,26 +102,36 @@ export function inspectLocalSvgVector(source,{
     return failure('SVG_DOCUMENT_VIEWPORT_UNSUPPORTED',viewport.reason);
   // Identity means "document mm"; NOT proof that the logo was placed at
   // 100% in the actual Gifts order. This never grants production approval.
-  const measured=inspectSvgTree({
+  let measured=inspectSvgTree({
     root:doc.documentElement,
     matrix_document_mm_to_print_mm:[1,0,0,1,0,0],
     include_curved_probes:includeCurvedProbes,
     max_candidate_mm:maxCandidateMm,curve_flatness_mm:0.002
   });
-  if(measured.status!=='RESEARCH_CANDIDATES_ONLY')
+  if(measured.status!=='RESEARCH_CANDIDATES_ONLY'&&
+     measured.reason!=='SVG_DIFFERENT_INKS_REQUIRE_SEPARATION')
     return failure('SVG_VECTOR_GEOMETRY_UNSUPPORTED',measured.reason);
   let paths;
   try{paths=previewPaths(doc.documentElement,
     viewport.svg_units_to_mm,viewport.viewBox)}
   catch{return failure('SVG_PREVIEW_COORDINATES_UNSUPPORTED')}
+  if(measured.status!=='RESEARCH_CANDIDATES_ONLY'){
+    measured=inspectDisjointSvgInkForms(doc.documentElement,paths,{
+      maxCandidateMm,includeCurvedProbes
+    });
+    if(measured.status!=='RESEARCH_CANDIDATES_ONLY')
+      return failure('SVG_INK_SEPARATIONS_UNSUPPORTED',measured.reason);
+  }
   const c=measured.candidates.map(({kind,measured_mm,uncertainty_mm,
-    at_mm,local_support_mm,method})=>({
-      kind,measured_mm,uncertainty_mm,at_mm,local_support_mm,method
+    at_mm,local_support_mm,method,source_rgb_ink})=>({
+      kind,measured_mm,uncertainty_mm,at_mm,local_support_mm,method,
+      ...(source_rgb_ink?{source_rgb_ink}:{})
     }));
   const curved=measured.curved_probes?.candidates?.map(x=>({
     kind:x.kind,measured_mm:x.measured_mm,
     uncertainty_mm:x.uncertainty_mm,at_mm:x.at_mm,
-    local_support_mm:x.local_support_mm,method:x.method
+    local_support_mm:x.local_support_mm,method:x.method,
+    ...(x.source_rgb_ink?{source_rgb_ink:x.source_rgb_ink}:{})
   }))??[];
   const report={
     schema:'printcheck.vision.local-svg-vector.v1',
@@ -130,6 +141,9 @@ export function inspectLocalSvgVector(source,{
     paths_count:measured.paths_count,groups_count:measured.groups_count,
     curve_segments:measured.curve_segments,vertex_count:measured.vertex_count,
     candidate_count:c.length,candidates:c,
+    source_colors_rgb:[...new Set(paths.map(p=>p.fill.toLowerCase()))],
+    ink_forms:measured.separated_ink_forms??null,
+    inks_verified_as_print_spots:false,
     curved_candidates:curved,include_curved_probes:includeCurvedProbes,
     max_candidate_mm:maxCandidateMm,
     source_document_scale_declared:true,
