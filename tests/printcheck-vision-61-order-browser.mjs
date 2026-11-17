@@ -146,7 +146,7 @@ try{
  const exported=JSON.parse(await readFile(await (await save).path(),'utf8'));
  assert.equal(exported.rows.length,61);
  assert.equal(exported.rows.every(x=>x.order_card_discovered===true),true);
- assert.equal(exported.rows.every((x,i)=>x.artifacts.length===(i===31?2:1)),true);
+ assert.equal(exported.rows.every((x,i)=>x.artifacts.length===(i===0?12:i===31?2:1)),true);
  assert.equal(exported.rows.every(x=>x.analysis_complete===true),true);
  assert.equal(exported.rows[31].pending_file_count,0);
  assert.equal(exported.rows.every(x=>x.artifacts[0].production_approved===false),true);
