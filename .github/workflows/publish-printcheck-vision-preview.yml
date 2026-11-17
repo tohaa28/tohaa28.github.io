@@ -10,6 +10,14 @@ on:
       - vision-studio.html
       - vision-review.html
       - vision-ai.html
+      - vision-vector.html
+      - vision/geometry/svg-local-vector.mjs
+      - vision/geometry/svg-dom-vector-bridge.mjs
+      - vision/geometry/svg-viewport.mjs
+      - vision/geometry/svg-path-subset.mjs
+      - vision/geometry/vector-corridors.mjs
+      - vision/geometry/curved-normal-probes.mjs
+      - tests/printcheck-vision-vector.browser.mjs
       - vision/ai/synthetic-feature-model.mjs
       - vision/ai/scan-worker.mjs
       - tests/printcheck-vision-worker.test.mjs
@@ -60,6 +68,9 @@ jobs:
           node --check vision/ai/scan-worker.mjs
           node --test tests/printcheck-vision-worker.test.mjs
           node --check tests/printcheck-vision-ai.browser.mjs
+          node --check vision/geometry/svg-local-vector.mjs
+          node --check vision/geometry/svg-dom-vector-bridge.mjs
+          node --check tests/printcheck-vision-vector.browser.mjs
           node --test tests/printcheck-vision-synthetic-ai.test.mjs
           node --check direct-mode.js
           node --check assets/index-BpU9kvz8.js
@@ -73,6 +84,7 @@ jobs:
           node tests/printcheck-vision-studio.browser.mjs
           node tests/printcheck-vision-review.browser.mjs
           node tests/printcheck-vision-ai.browser.mjs
+          node tests/printcheck-vision-vector.browser.mjs
 
       - name: Build isolated bookmarklet launcher
         env:
@@ -104,6 +116,11 @@ jobs:
           cp vision-studio.html "$PREVIEW/"
           cp vision-review.html "$PREVIEW/"
           cp vision-ai.html "$PREVIEW/"
+          cp vision-vector.html "$PREVIEW/"
+          mkdir -p "$PREVIEW/vision/geometry"
+          for module in svg-local-vector svg-dom-vector-bridge svg-viewport svg-path-subset vector-corridors curved-normal-probes; do
+            cp "vision/geometry/$module.mjs" "$PREVIEW/vision/geometry/"
+          done
           mkdir -p "$PREVIEW/vision/ai"
           cp vision/ai/synthetic-feature-model.mjs "$PREVIEW/vision/ai/"
           cp vision/ai/scan-worker.mjs "$PREVIEW/vision/ai/"
@@ -120,6 +137,9 @@ jobs:
           test -f "$PREVIEW/vision/ai/synthetic-feature-model.mjs"
           test -f "$PREVIEW/vision/ai/scan-worker.mjs"
           test -f "$PREVIEW/vision-ai.html"
+          test -f "$PREVIEW/vision-vector.html"
+          test -f "$PREVIEW/vision/geometry/svg-local-vector.mjs"
+          test -f "$PREVIEW/vision/geometry/vector-corridors.mjs"
           grep -q 'gifts-layout-workbench-vision' "$PREVIEW/launcher.js"
           echo "Preview isolated at /gifts-layout-workbench-vision/"
 
