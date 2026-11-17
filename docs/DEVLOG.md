@@ -683,3 +683,22 @@ CI: проверка новых commit SHA выполняется автомат
 - Дальше: signed expert ROI dataset от двух технологов на реальных разрешённых макетах, исключить family leakage, выверить mm/placement/ICC/spot и потребовать независимую quality gate. Держать PR #4 в DRAFT до завершения real-data QA. Скриншоты, оригиналы заказов и приватные ключи не коммитить.
 
 Граница доверия: эта работа даёт **работающий исследовательский neural inference**, но НЕ обученную на реальных заказах и НЕ производственно утверждённую нейросетевую систему. Любое пустое сканирование не является признаком годности. Пользовательский отчёт — candidates only.
+
+
+## C3B.3.N — vector-first SVG research (2026-11-17)
+
+**User priority**: print artwork is mainly vector SVG/PDF; raster is supported but secondary. Therefore do NOT downsample vector art to 700 px for physical thickness/gap measurements. Geometric candidates must be computed from source paths and transformations in document mm; only then may an optional raster ML complement the result. This rule must survive every following task/automation.
+
+**Committed to isolated branch only:**
+- \`8f56de23\`: \`vision/geometry/svg-local-vector.mjs\`, strictly validated local SVG XML -> existing SVG tree/Bezier/arc corridor analysis, document-mm candidate report. Identity document→mm transform is a diagnostic assumption, **not authenticated placement into the actual order**. Unsupported SVG components refuse as MANUAL.
+- \`cf2b0207\`: \`vision-vector.html\` with local SVG input, demo, vector Path2D preview, list of local thickness/gap candidates and two downloads: a JSON report with NO raw path bytes and an annotated SVG copy that DOES contain original vector geometry.
+- \`68dbb0e7\`: actual Chromium desktop/mobile regression test, 0.12 mm synthetic vector gap, image-free report, editable SVG output, script/DOCTYPE/external-image/stroke/CSS/font hard-refusals, zero external network requests.
+- \`f1ef2f63\`, \`3df0c3a8\`, \`9729a516\`: landing and Vision panel navigation prioritizes vector-first; raster MLP remains accessible separately.
+- \`2686ee4c\`: experimental-only preview workflow copies all required geometry modules and runs new browser test.
+- \`c1169375\`: \`docs/C3B3_N_VECTOR_FIRST.md\` full scope, trust boundary and next PDF/multicolor tasks.
+- Initial publish run [44047761975](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44047761975) discovered that a URL-blocking preflight rejected the *mandatory* SVG \`http://www.w3.org/2000/svg\` namespace URI. Not a renderer issue, but incorrect allowlist preflight.
+- \`2b6a3edd\`: permit only the exact canonical XML namespace attribute while preserving refusal of any other external URL; \`a3e65488\`: browser smoke now reports exact MANUAL reason rather than timing out. Re-evaluate latest CI; do not claim PASS until an actual successful workflow is seen.
+
+**Safety**: No customer art, order files, confidential keys or learning labels stored in public repository. The full real SVG2 and multi-color PDF are NOT supported; complex constructs and untrusted placement → MANUAL. All print_scale_proven/production_approved remain false, and a list without candidates means nothing about print suitability.
+
+**Next N2/P1**: verified per-color SVG geometry without silently combining inks; independent robust PDF vector extraction including actual multi-paint operators/ColorSpace/CTM and signed order-scale evidence; then blind real-data expert acceptance. Release PR #4 only after full QA.
