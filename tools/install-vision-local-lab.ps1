@@ -80,6 +80,14 @@ pause
   [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path $base 'REPORT-VISION-LAB.cmd'),$report,
   [System.Text.UTF8Encoding]::new($false))
+$auditAll = @'
+@echo off
+cd /d "%~dp0"
+py -3 "%~dp0tools\vision_pdf_audit.py" --root "%~dp0" --all
+pause
+'@
+[System.IO.File]::WriteAllText((Join-Path $base 'AUDIT-ALL-PDFS.cmd'),$auditAll,
+  [System.Text.UTF8Encoding]::new($false))
 $openAnnotator = @'
 @echo off
 start "" "%~dp0tools\vision-roi-annotator.html"
@@ -99,6 +107,8 @@ Vision Check — локальный исследовательский стен�
 6. Запустите START-VISION-LAB.cmd; сохранённые оригиналы не выдаются
    через localhost. Либо REPORT-VISION-LAB.cmd для отчёта.
 7. Исследовательский PDF-аудит (только локально):
+   AUDIT-ALL-PDFS.cmd — последовательно проверяет ВСЕ импортированные PDF
+   и записывает приватный JSON для каждого в reports\pdf-audits\.
    py -3 tools\vision_pdf_audit.py --root D:\VisionCheckLab --sample-id ID
    PyMuPDF является НЕОБЯЗАТЕЛЬНОЙ внешней зависимостью, не устанавливается
    скриптом; проверьте условия AGPL/коммерческой лицензии самостоятельно.
