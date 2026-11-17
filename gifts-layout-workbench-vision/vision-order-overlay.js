@@ -1775,6 +1775,11 @@
         phase === "order_card" ? "ORDER_CARD_TIMEOUT" : "ORDER_POPUP_TIMEOUT",
         { ...common, failure_class: "timeout" }
       );
+    if (error?.visionCode === "TEST_REDIRECT_DENIED")
+      return REFUSE(
+        phase === "order_card" ? "ORDER_CARD_REDIRECT_DENIED" : "ORDER_POPUP_REDIRECT_DENIED",
+        { ...common, failure_class: "redirect_denied" }
+      );
     return REFUSE(
       phase === "order_card" ? "ORDER_CARD_FETCH_REJECTED" : "ORDER_POPUP_FETCH_REJECTED",
       {
@@ -1796,12 +1801,32 @@
         method: "GET",
         mode: same3 ? "same-origin" : "cors",
         credentials: "include",
-        redirect: "error",
+        redirect: same3 ? "follow" : "error",
         cache: "no-store",
         referrerPolicy: "no-referrer",
         signal: controller.signal,
         headers: phase === "popup" && same3 ? { accept: "text/html,application/json", "x-requested-with": "XMLHttpRequest" } : { accept: "text/html,application/json" }
       });
+      if (res.url) {
+        let final;
+        try {
+          final = new URL(res.url);
+        } catch {
+        }
+        const auth = final && final.pathname.toLowerCase().split("/").some((part) => ["auth", "login", "signin"].includes(part));
+        const expected = (loc.pathname.endsWith("/") ? loc.pathname.slice(0, -1) : loc.pathname) + loc.search;
+        const actual = final && (final.pathname.endsWith("/") ? final.pathname.slice(0, -1) : final.pathname) + final.search;
+        if (auth) {
+          const e = Error("TEST_SESSION_AUTH_REQUIRED");
+          e.visionCode = "TEST_SESSION_AUTH_REQUIRED";
+          throw e;
+        }
+        if (!final || !testUrl(res.url, loc.href) || final.origin !== loc.origin || actual !== expected) {
+          const e = Error("TEST_REDIRECT_DENIED");
+          e.visionCode = "TEST_REDIRECT_DENIED";
+          throw e;
+        }
+      }
       if (!res.ok) {
         const error = Error("RESPONSE_HTTP_STATUS");
         error.visionCode = "RESPONSE_HTTP_STATUS";
