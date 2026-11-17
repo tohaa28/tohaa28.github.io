@@ -72,6 +72,13 @@ function verifier(attBytes,signature,spkiPem,pin){
     reject('ADJUDICATION_SIGNATURE_INVALID');
   return keyHash;
 }
+function validateBlindReviewShape(review){
+  const fields=['schema','task_sha256','reviewer_ref_sha256',
+                'review_state','blinded_to_predictions','results'];
+  if(!fixedKeys(review,fields)||!Array.isArray(review.results)||
+     review.results.some(row=>!fixedKeys(row,['region_sha256','label'])))
+    reject('REVIEW_UNEXPECTED_HINT_FIELDS');
+}
 function validateComparison(task,comparison){
   if(!comparison||comparison.schema!=='printcheck.vision.region-method-comparison.v1'||
      comparison.status!=='RESEARCH_PREDICTIONS_ONLY'||
@@ -188,6 +195,8 @@ export function buildAttestedPilot(input={}){
      !digestMatches(task.context.artwork_sha256,artwork))
     reject('ORIGINAL_SOURCE_BYTES_MISMATCH');
   const taskDigest=hash(taskBytes);
+  validateBlindReviewShape(reviewA);
+  validateBlindReviewShape(reviewB);
   const consensus=compareIndependentReviews(task,taskDigest,reviewA,reviewB);
   if(consensus.status!=='PROVISIONAL_CONSENSUS_ONLY')
     reject('TWO_INDEPENDENT_REVIEWS_REQUIRED');
