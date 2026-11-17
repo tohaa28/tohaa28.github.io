@@ -69,7 +69,7 @@ jobs:
           command: |
             set -euo pipefail
             node --version
-            npm install --prefix vision/raster --no-audit --no-fund
+            npm ci --prefix vision/raster --no-audit --no-fund
           no_output_timeout: 10m
       - run:
           name: Check independent renderer source and pixel comparator
