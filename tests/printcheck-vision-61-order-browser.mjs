@@ -60,11 +60,15 @@ try{
      return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
        html:'<div><h2>Загрузка макетов</h2>'+
         '<a data-maket="true" href="/cart/act/mda?oid='+oid+'&id=42">client-art.svg</a>'+
+        (oid==='8100132'?
+          '<a data-maket="true" href="/cart/act/mda?oid='+oid+'&id=43">second-art.svg</a>':'')+
         '<h2>Шаблоны макетов для выбранных нанесений</h2>'+
         '<a href="/drawing?action=getOrderItemPdf&orderitemid=909">constructor.pdf</a></div>'
      })});
    }
-   if(url.pathname==='/cart/act/mda'&&url.searchParams.get('id')==='42'){
+   if(url.pathname==='/cart/act/mda'&&(
+     url.searchParams.get('id')==='42'||
+     (url.searchParams.get('id')==='43'&&url.searchParams.get('oid')==='8100132'))){
      artworks++;return route.fulfill({status:200,contentType:'application/octet-stream',body:vector});
    }
    unexpected.push(method+' '+u);return route.abort();
@@ -110,18 +114,20 @@ try{
  assert.equal(cards,20);assert.equal(artworks,20);
  await clickNext(30);
  assert.equal(cards,30);assert.equal(artworks,30);
- await clickNext(32);
+ await clickNext(31);
  assert.equal(cards,32);
  assert.equal(artworks,32);
+ assert.match(await page.locator('[data-vision-order-cell]').nth(31).innerText(),
+   /частично, нужен новый лимит файлов/);
  assert.equal(await page.locator('#vision-local-order-overlay .vlo-start').isDisabled(),true);
  assert.equal(await page.locator('#vision-local-order-overlay button')
    .filter({hasText:'Новый лимит файлов'}).isEnabled(),true);
  await page.locator('#vision-local-order-overlay button')
    .filter({hasText:'Новый лимит файлов'}).click();
- await clickNext(42); // 42
- await clickNext(52); // 52
- await clickNext(61); // 61
- assert.equal(cards,61);assert.equal(popups,61);assert.equal(artworks,61);
+ await clickNext(41); // resumes order 32 + 9 new orders without refetching its first attachment
+ await clickNext(51);
+ await clickNext(61);
+ assert.equal(cards,61);assert.equal(popups,61);assert.equal(artworks,62);
  assert.ok((await page.locator('#vision-local-order-overlay .vlo-start').innerText())
    .includes('Все строки обработаны'));
  assert.equal(await page.locator('[data-vision-order-cell] .vlo-label').allTextContents()
@@ -134,9 +140,11 @@ try{
  const exported=JSON.parse(await readFile(await (await save).path(),'utf8'));
  assert.equal(exported.rows.length,61);
  assert.equal(exported.rows.every(x=>x.order_card_discovered===true),true);
- assert.equal(exported.rows.every(x=>x.artifacts.length===1),true);
+ assert.equal(exported.rows.every((x,i)=>x.artifacts.length===(i===31?2:1)),true);
+ assert.equal(exported.rows.every(x=>x.analysis_complete===true),true);
+ assert.equal(exported.rows[31].pending_file_count,0);
  assert.equal(exported.rows.every(x=>x.artifacts[0].production_approved===false),true);
  assert.ok(!JSON.stringify(exported).includes('8100001'));
  await context.close();
- console.log('61-order anonymous DOM fixture: 61 explicit links, 7 offsite candidates ignored, 10-order chunks, 32-file renewal, no repeat GET, JSON privacy PASS');
+ console.log('61-order anonymous DOM fixture: 61 explicit links, 7 offsite candidates ignored, 10-order chunks, partial-file resume across 32-file renewal without duplicate GET, JSON privacy PASS');
 }finally{await browser.close()}
