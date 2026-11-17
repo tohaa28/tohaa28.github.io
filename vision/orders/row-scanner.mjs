@@ -9,8 +9,9 @@ import {rowOrderTarget} from './order-page-discovery.mjs';
 
 export const LOCAL_ORDERS=Object.freeze({
  host:'psk.testgifts.local',route:'/devorders',
- maxRows:80,maxFilesPerRow:8,maxFileBytes:16_000_000,
- maxBatchFiles:32,maxOrdersPerClick:10,timeoutMs:15000
+ // No row or file-count quota: read and inspect sequentially on user action.
+ // The per-file size and network timeout guards remain mandatory.
+ maxFileBytes:16_000_000,timeoutMs:15000,fetchPaceMs:30
 });
 const extensions=/\.(?:svg|pdf|png|jpe?g|webp|cdr|ai|eps|zip|tiff?|psd)(?:$|[?#])/i;
 const downloadWords=/(?:макет|скачать\s*(?:файл|вложен)|artwork|download\s*(?:artwork|file)|приложени[ея])/i;
@@ -65,10 +66,9 @@ export function discoverOrderRows(doc=globalThis.document){
      doc.defaultView.location));
    if(!anchors.length && node.tagName==='TR' &&
       node.querySelectorAll(':scope > td').length<2)continue;
-   rows.push({element:node,anchors,files:files.slice(0,LOCAL_ORDERS.maxFilesPerRow),
+   rows.push({element:node,anchors,files,
      local_only_excluded:anchors.length-files.length,
-     row_index:rows.length+1,limited:files.length>LOCAL_ORDERS.maxFilesPerRow});
-   if(rows.length>=LOCAL_ORDERS.maxRows)break;
+     row_index:rows.length+1,limited:false});
  }
  return rows;
 }
