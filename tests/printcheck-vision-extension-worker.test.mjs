@@ -81,7 +81,7 @@ test('permitted cross-origin popup is fetched from extension worker, session cre
  assert.equal(h.requests.length,1);
  assert.equal(h.requests[0].options.credentials,'include');
  assert.equal(h.requests[0].options.method,'GET');
- assert.equal(h.requests[0].options.redirect,'error');
+ assert.equal(h.requests[0].options.redirect,'follow');
  assert.equal(h.requests[0].options.headers['x-requested-with'],'XMLHttpRequest');
 });
 test('bounded artwork is transmitted in chunks; no constructor or other URL touched',async()=>{
@@ -119,4 +119,46 @@ test('403 denial reports status, never returns denial body or URL',async()=>{
  assert.equal(m.some(x=>x.op==='chunk'),false);
  assert.equal(JSON.stringify(m).includes('customer'),false);
  assert.equal(JSON.stringify(m).includes('8000001'),false);
+});
+
+// A legitimate canonical-host redirect is equivalent to Maketnaya's
+// credentialed redirect-follow read, provided the final path is identical.
+test('follow a safe redirect between the two pinned LAN hosts without changing the resource',async()=>{
+ const h=harness({fetcher:async()=>{
+  const r=new Response('<html>synthetic card</html>',{
+   headers:{'Content-Type':'text/html'}
+  });
+  Object.defineProperty(r,'url',{value:'http://psk.testgifts.local/private/order/8000001'});
+  return r;
+ }});
+ const m=await h.invoke({op:'fetch',method:'GET',
+  url:'http://testgifts.local/private/order/8000001'});
+ assert.equal(m[0]?.op,'meta');
+ assert.equal(m.at(-1)?.op,'end');
+ assert.equal(h.requests[0].options.redirect,'follow');
+ assert.equal(Buffer.concat(m.filter(x=>x.op==='chunk').map(x=>Buffer.from(x.bytes))).toString(),
+  '<html>synthetic card</html>');
+});
+test('refuse a redirect to an external host or login without returning its body',async()=>{
+ for(const [finalUrl,code] of [
+  ['http://untrusted.local/private/order/8000001','EXTENSION_REDIRECT_UNTRUSTED_ORIGIN'],
+  ['https://gifts.ru/private/order/8000001','EXTENSION_REDIRECT_UNTRUSTED_ORIGIN'],
+  ['http://testgifts.local/auth','EXTENSION_AUTH_REDIRECT'],
+  ['http://testgifts.local/admin','EXTENSION_REDIRECT_UNEXPECTED_PATH'],
+  ['http://testgifts.local/private/order/8000002','EXTENSION_REDIRECT_UNEXPECTED_PATH']
+ ]){
+  const h=harness({fetcher:async()=>{
+    const r=new Response('PRIVATE SYNTHETIC BODY',{
+      headers:{'Content-Type':'text/html'}
+    });
+    Object.defineProperty(r,'url',{value:finalUrl});
+    return r;
+  }});
+  const m=await h.invoke({op:'fetch',method:'GET',
+   url:'http://testgifts.local/private/order/8000001'});
+  assert.deepEqual(m.map(x=>x.op),['error'],finalUrl);
+  assert.equal(m[0].code,code,finalUrl);
+  assert.equal(JSON.stringify(m).includes('PRIVATE'),false);
+  assert.equal(JSON.stringify(m).includes(finalUrl),false);
+ }
 });
