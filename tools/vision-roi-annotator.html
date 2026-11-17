@@ -27,6 +27,7 @@ button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
 <div class="controls">
 <label>Локальный файл (SVG/PNG/JPEG/WebP)<input id="file" type="file" accept=".svg,.png,.jpg,.jpeg,.webp"></label>
 <label>Идентификатор образца из команды list<input id="sample" placeholder="20261117T120000_0123456789:0001" autocomplete="off"></label>
+<label>SHA-256 образца из команды list<input id="expectedSha" placeholder="64 символа SHA-256" maxlength="64" autocomplete="off"></label>
 <label>Эксперт<input id="expert" value="tech_01" maxlength="36"></label>
 <label>Технология<input id="technology" value="screen_print" maxlength="64"></label>
 <label>Тип области<select id="kind"><option value="thin_line">Тонкая линия</option><option value="narrow_gap">Узкий просвет</option><option value="tiny_object">Мелкий объект</option><option value="overprint">Перекрытие</option><option value="other">Другое</option></select></label>
@@ -45,7 +46,7 @@ button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
 const $=id=>document.getElementById(id),file=$("file"),image=$("preview"),
       layer=$("layer"),region=$("rect"),error=$("error"),
       result=$("result"),measure=$("measure"),copy=$("copy");
-let blobUrl=null,unit=null,fullWidth=0,fullHeight=0,start=null,selection=null;
+let blobUrl=null,unit=null,fullWidth=0,fullHeight=0,start=null,selection=null,actualSha=null;
 const idPattern=/^\d{8}T\d{6}_[0-9a-f]{10}:\d{4}$/;
 const safeId=/^[A-Za-z0-9_-]{2,36}$/;
 const safeTechnology=/^[A-Za-z0-9_-]{2,64}$/;
@@ -71,6 +72,11 @@ function render(){
  measure.textContent="ROI: x="+values[0].toFixed(4)+", y="+values[1].toFixed(4)+
    ", ширина="+values[2].toFixed(4)+", высота="+values[3].toFixed(4)+" ("+unit+")";
  if(!idPattern.test($("sample").value.trim())){result.textContent="Введите точный sample-id из локального списка образцов.";return}
+ if(!actualSha||!(/^[0-9a-f]{64}$/i.test($("expectedSha").value.trim()))||
+    actualSha!==$("expectedSha").value.trim().toLowerCase()){
+    result.textContent="SHA-256 выбранного файла не совпадает с образцом из локальной лаборатории. Проверьте файл и sample-id.";
+    return;
+ }
  if(!safeId.test($("expert").value.trim())||!safeTechnology.test($("technology").value.trim())){
    result.textContent="Проверьте код эксперта и название технологии (буквы латиницы, цифры, _ и -).";
    return;
@@ -82,7 +88,7 @@ function render(){
    ' --units '+unit+args;
  copy.disabled=false;
 }
-for(const name of ["sample","expert","technology","kind"])$(name).addEventListener("input",render);
+for(const name of ["sample","expectedSha","expert","technology","kind"])$(name).addEventListener("input",render);
 layer.addEventListener("pointerdown",e=>{
  if(!unit)return;
  start=coords(e);selection=null;layer.setPointerCapture(e.pointerId);
@@ -104,7 +110,7 @@ layer.addEventListener("pointerup",e=>{
 });
 async function load(){
  error.textContent="";selection=start=null;region.style.display="none";
- unit=null;copy.disabled=true;result.textContent="Нет размеченной области.";
+ unit=null;actualSha=null;copy.disabled=true;result.textContent="Нет размеченной области.";
  if(blobUrl){URL.revokeObjectURL(blobUrl);blobUrl=null}
  const src=file.files?.[0];
  if(!src)return;
@@ -147,6 +153,11 @@ async function load(){
  }else{
    unit="raster_pixel";
  }
+ // Bind the selected local bytes to their imported sample; wrong-file
+ // coordinates must never be attributed to another customer's artwork.
+ if(!globalThis.crypto?.subtle){fail("SHA-256 недоступен в текущем локальном браузере.");return}
+ const digest=await crypto.subtle.digest("SHA-256",await src.arrayBuffer());
+ actualSha=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
  blobUrl=URL.createObjectURL(src);
  image.onload=()=>{
    if(unit==="raster_pixel"){
