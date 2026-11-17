@@ -128,6 +128,11 @@ export async function rerenderPdfSimplePaths({
     class CanvasFactory {
       create(w,h){const canvas=canvasLib.createCanvas(w,h);
         return {canvas,context:canvas.getContext('2d')};}
+      getNoAlphaContext(canvas){
+        // Added to the PDF.js BaseCanvasFactory contract in v6.5.
+        // Required for raster worker and main-thread drawing buffers.
+        return canvas.getContext('2d',{alpha:false});
+      }
       reset(x,w,h){x.canvas.width=w;x.canvas.height=h;}
       destroy(x){x.canvas.width=0;x.canvas.height=0;
         x.canvas=null;x.context=null;}
