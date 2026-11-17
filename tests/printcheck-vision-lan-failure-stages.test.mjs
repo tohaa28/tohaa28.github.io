@@ -109,3 +109,48 @@ test('same-origin AJAX popup uses header from original Maketnaya API',async()=>{
  assert.equal(x.reason,'ORDER_POPUP_FETCH_REJECTED');
  assert.equal(ajaxHeaders['x-requested-with'],'XMLHttpRequest');
 });
+
+// Maketnaya's same-origin direct-mode uses redirect:follow, but treats
+// an authorization or unrelated landing page as a failure, not an order.
+function responseWithFinalUrl(body,finalUrl){
+ const r=new Response(body,{headers:{'Content-Type':'text/html'}});
+ Object.defineProperty(r,'url',{value:finalUrl});
+ return r;
+}
+test('same-origin direct-mode follows canonical order-card redirect before popup',async()=>{
+ const seen=[];
+ class Parser{parseFromString(){return {querySelector:selector=>
+   selector==='#j_cart_host[data-orderid]'?{getAttribute:()=> '55'}:null}}}
+ const x=await inspectOrderPageFromRow(row('/private/order/8000001'),{
+  ...options,DOMParserClass:Parser,
+  fetcher:async(url,opts)=>{
+   seen.push({url,opts});
+   if(url.includes('makets_popup'))throw TypeError('synthetic stop at popup');
+   return responseWithFinalUrl('<div id="j_cart_host" data-orderid="55"></div>',
+     'http://psk.testgifts.local/private/order/8000001/');
+  }
+ });
+ assert.equal(x.stage,'popup');
+ assert.equal(x.reason,'ORDER_POPUP_FETCH_REJECTED');
+ assert.equal(seen.length,2);
+ assert.ok(seen.every(x=>x.opts.redirect==='follow'));
+ assert.ok(seen.every(x=>x.opts.credentials==='include'));
+});
+test('same-origin auth redirect never exposes HTML or permits false success',async()=>{
+ const x=await inspectOrderPageFromRow(row('/private/order/8000001'),{
+  ...options,fetcher:async()=>responseWithFinalUrl('<h1>secret</h1>',
+   'http://psk.testgifts.local/auth')
+ });
+ assert.equal(x.reason,'ORDER_CARD_AUTH_REQUIRED');
+ assert.equal(x.failure_class,'login_html');
+ assert.equal(JSON.stringify(x).includes('secret'),false);
+});
+test('unrelated redirect never becomes an order document',async()=>{
+ const x=await inspectOrderPageFromRow(row('/private/order/8000001'),{
+  ...options,fetcher:async()=>responseWithFinalUrl('<h1>secret</h1>',
+   'http://psk.testgifts.local/admin')
+ });
+ assert.equal(x.reason,'ORDER_CARD_REDIRECT_DENIED');
+ assert.equal(x.failure_class,'redirect_denied');
+ assert.equal(JSON.stringify(x).includes('secret'),false);
+});
