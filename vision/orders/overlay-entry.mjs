@@ -4,7 +4,10 @@
  * All reports and expert labels remain in this page until local download.
  */
 import {LOCAL_ORDERS,isAllowedTestOrderPage,discoverOrderRows,
-  inspectSameOriginArtwork,diagnoseTestOrderTable} from './row-scanner.mjs';
+  inspectSameOriginArtwork,inspectOrderArtworkBytes,
+  diagnoseTestOrderTable} from './row-scanner.mjs';
+import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes}
+  from './order-page-discovery.mjs';
 import {makeLocalExpertDataset} from './local-training-zip.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
@@ -80,6 +83,9 @@ export function initLocalOrdersOverlay(){
      rows:rows.map(r=>({
        row_index:r.row_index,discovered_links:r.anchors.length,
        same_origin_files:r.files.length,
+       order_card_discovered:r.hasOrderLink,
+       customer_uploaded_artworks:r.orderUploads?.length??null,
+       constructor_template_count:r.orderTemplates??null,
        excluded_links:r.local_only_excluded,
        expert_label:r.grade?.value||'unreviewed',
        artifacts:(r.results||[]).map((result,i)=>({
@@ -144,10 +150,11 @@ export function initLocalOrdersOverlay(){
  window.__visionLocalOrderOverlay={close,refresh,version:'C3B.3.O'};
  function renderStats(msg){
    const discovered=rows.reduce((n,r)=>n+r.anchors.length,0);
-   const local=rows.reduce((n,r)=>n+r.files.length,0);
+   const local=rows.reduce((n,r)=>
+     n+(r.orderUploads?.length??r.files.length),0);
    const completed=rows.reduce((n,r)=>n+(r.results?.length||0),0);
    stats.textContent='Строк: '+rows.length+' · ссылки: '+discovered+
-     ' · файлы этого origin: '+local+' · проверено: '+completed+'\n'+
+     ' · файлы из карточек/строк: '+local+' · проверено: '+completed+'\n'+
      (msg||'Нажмите «Проверить макеты».');
  }
  function refresh(){
@@ -160,10 +167,14 @@ export function initLocalOrdersOverlay(){
        'vision-order-result-cell');
      cell.setAttribute('data-vision-order-cell','');
      const label=node('span','Vision: не проверено','vlo-label');
+     const target=rowOrderTarget(r.element,window.location.href);
+     r.hasOrderLink=target.status==='ORDER_LINK_FOUND';
      const detail=node('span',
-       r.anchors.length===0?'Ссылки на макеты не найдены':
-       r.local_only_excluded>0?'Есть ссылки вне текущего origin':
-       r.files.length+' файлов доступны для локальной проверки','vlo-detail');
+       r.hasOrderLink?
+         'Загрузка макетов из карточки заказа → «Макеты для заказа»':
+       r.anchors.length>0?
+         'Обнаружены ссылки в строке; проверю резервный маршрут':
+         'Не найден переход в карточку заказа','vlo-detail');
      const trigger=makeButton('Проверить строку',()=>scanRow(r));
      const gradeLabel=node('label','Метка технолога: ');
      gradeLabel.setAttribute('data-vlo-grade','');
@@ -185,38 +196,83 @@ export function initLocalOrdersOverlay(){
      'Строки не распознаны. Требуется адаптер к DOM тестовой таблицы; файловые запросы не выполнялись.');
  }
  async function scanRowContents(r){
-   r.button.disabled=true;r.label.textContent='Vision: загрузка и анализ…';
+   r.button.disabled=true;
+   r.label.textContent='Vision: карточка заказа → макеты…';
    r.results=[];
-   if(!r.anchors.length){
-     r.label.textContent='Vision: макеты не найдены';
-     r.detail.textContent='Нет распознанных ссылок на макеты';
-     r.button.disabled=false;return;
-   }
-   if(!r.files.length){
-     r.label.textContent='Vision: ручная проверка';
-     r.detail.textContent='Ссылки вне этого origin; автоматическая загрузка запрещена';
-     r.button.disabled=false;return;
-   }
    let manual=0,research=0,desc=[];
-   for(const a of r.files){
+   let candidates=[],fromOrder=false;
+   if(r.hasOrderLink){
+     const detail=await inspectOrderPageFromRow(r.element);
+     if(closed)return;
+     if(detail.status!=='ORDER_DETAIL_DISCOVERED'){
+       r.label.textContent='Vision: ручная проверка';
+       r.detail.textContent='Карточка заказа / окно макетов: '+
+         String(detail.reason||'не прочитано').slice(0,120);
+       r.results.push({type:'order',status:'MANUAL',
+         reason:detail.reason||'ORDER_DETAIL_UNAVAILABLE'});
+       r.button.disabled=false;renderStats('Нужен доступ к карточке заказа и AJAX окну');
+       return;
+     }
+     fromOrder=true;r.orderUploads=detail.uploads;
+     r.orderTemplates=detail.templates.length;
+     if(!detail.uploads.length){
+       r.label.textContent='Vision: ручная проверка';
+       r.detail.textContent='В окне «Макеты для заказа» отсутствуют подтверждённые загрузки клиента; '+
+         'найдено конструкторов: '+detail.templates.length;
+       r.results.push({type:'order',status:'MANUAL',
+         reason:'CUSTOMER_UPLOADS_NOT_FOUND'});
+       r.button.disabled=false;renderStats('Конструкторы не являются исходными макетами клиента');
+       return;
+     }
+     candidates=detail.uploads;
+     r.detail.textContent='Загружено заказчиком: '+detail.uploads.length+
+       '; конструкторов: '+detail.templates.length;
+   }else{
+     // Explicit legacy fallback only when the list itself actually exposes
+     // download links. No synthetic order URL guessing or DOM click execution.
+     candidates=r.files;
+     if(!candidates.length){
+       r.label.textContent='Vision: ручная проверка';
+       r.detail.textContent='Не удалось найти безопасную ссылку на карточку заказа';
+       r.results.push({type:'order',status:'MANUAL',
+         reason:'ORDER_DETAIL_LINK_REQUIRED'});
+       r.button.disabled=false;renderStats('Не найден переход на страницу заказа');
+       return;
+     }
+   }
+   const limit=LOCAL_ORDERS.maxFilesPerRow;
+   for(const a of candidates.slice(0,limit)){
      if(closed)break;
      if(fileBudget<=0){
-       manual++;desc.push('Лимит сеанса — остальные не проверены');break;
+       manual++;desc.push('Лимит сеанса — остальные файлы не проверены');break;
      }
      fileBudget--;
-     const result=await inspectSameOriginArtwork(a);
-     if(closed)break;
-     r.results.push(result);desc.push(summarize(result));
+     let result;
+     if(fromOrder){
+       const artifact=await fetchOrderResourceBytes(a);
+       result=artifact.status==='LOCAL_BYTES_ONLY'?
+         await inspectOrderArtworkBytes(artifact.bytes,artifact.url,
+           artifact.mime,a.filename):
+         {status:'MANUAL',type:'order_artwork',
+           reason:artifact.reason||'ARTWORK_DOWNLOAD_FAILED'};
+     }else result=await inspectSameOriginArtwork(a);
+     if(closed)return;
+     r.results.push(result);
+     desc.push(summarize(result));
      if(result.status==='MANUAL')manual++;else research++;
    }
    if(closed)return;
-   if(r.limited||r.local_only_excluded)manual++;
-   r.label.textContent=manual?'Vision: '+manual+' требуют ручной проверки':
+   if(candidates.length>limit||r.limited||r.local_only_excluded>0&&!fromOrder)
+     manual++;
+   r.label.textContent=manual?
+     'Vision: '+manual+' требуют ручной проверки':
      'Vision: '+research+' исследованы (не допуск)';
-   r.detail.textContent=desc.join(' | ').slice(0,600)+
-     (r.limited?' · часть файлов пропущена по лимиту':'');
+   r.detail.textContent=(fromOrder?'Карточка заказа: '+candidates.length+
+     ' клиентских файлов, '+r.orderTemplates+' конструкторов. ':'')+
+     desc.join(' | ').slice(0,520)+
+     (candidates.length>limit?' · часть файлов пропущена по лимиту':'');
    r.button.disabled=false;
-   renderStats('Результаты требуют подтверждения технологом.');
+   renderStats('Проверено по карточкам заказов. Вывод не является допуском.');
  }
  async function scanRow(r){
    if(busy||closed)return;
