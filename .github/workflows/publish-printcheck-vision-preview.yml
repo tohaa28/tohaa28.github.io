@@ -21,6 +21,8 @@ on:
       - tools/vision_local_lab.py
       - tools/vision_roi_review.py
       - tools/vision_pdf_audit.py
+      - tools/vision-roi-annotator.html
+      - tests/test_vision_roi_annotator.browser.mjs
       - tests/test_vision_roi_review.py
       - tests/test_vision_pdf_audit.py
       - tools/install-vision-local-lab.ps1
@@ -155,6 +157,7 @@ jobs:
           npx playwright install --with-deps chromium
           node tests/printcheck-vision-ui.browser.mjs
           node tests/printcheck-vision-studio.browser.mjs
+          node tests/test_vision_roi_annotator.browser.mjs
           node tests/printcheck-vision-review.browser.mjs
           node tests/printcheck-vision-ai.browser.mjs
           node tests/printcheck-vision-vector.browser.mjs
@@ -221,14 +224,15 @@ jobs:
           python3 - <<'PY'
           import zipfile
           paths=['tools/vision_local_lab.py','tools/vision_roi_review.py',
-                 'tools/vision_pdf_audit.py','tools/install-vision-local-lab.ps1',
+                 'tools/vision_pdf_audit.py','tools/vision-roi-annotator.html',
+                 'tools/install-vision-local-lab.ps1',
                  'docs/VISION_LOCAL_LAB_SETUP_RU.md']
           with zipfile.ZipFile('vision-local-lab.zip','w',
                compression=zipfile.ZIP_DEFLATED) as z:
               for path in paths:z.write(path)
           with zipfile.ZipFile('vision-local-lab.zip') as z:
               assert z.testzip() is None
-              assert len(z.namelist())==5
+              assert len(z.namelist())==6
           print('Offline Windows D: lab package verified')
           PY
           cp vision-local-lab.zip "$PREVIEW/"
