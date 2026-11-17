@@ -1960,7 +1960,11 @@
         signal: ctrl.signal,
         headers: { accept: "application/pdf,application/octet-stream,*/*" }
       });
-      if (!res.ok) return REFUSE("ARTWORK_HTTP_ERROR");
+      if (!res.ok) return REFUSE("ARTWORK_HTTP_ERROR", {
+        stage: "artwork",
+        http_status: res.status,
+        failure_class: "http_status"
+      });
       const mime = res.headers.get("content-type") || "";
       if (/(?:text\/html|application\/json)/i.test(mime))
         return REFUSE("ARTWORK_LOGIN_OR_HTML_RESPONSE");
@@ -2003,12 +2007,11 @@
   var LOCAL_ORDERS = Object.freeze({
     host: "psk.testgifts.local",
     route: "/devorders",
-    maxRows: 80,
-    maxFilesPerRow: 8,
+    // No row or file-count quota: read and inspect sequentially on user action.
+    // The per-file size and network timeout guards remain mandatory.
     maxFileBytes: 16e6,
-    maxBatchFiles: 32,
-    maxOrdersPerClick: 10,
-    timeoutMs: 15e3
+    timeoutMs: 15e3,
+    fetchPaceMs: 30
   });
   var extensions = /\.(?:svg|pdf|png|jpe?g|webp|cdr|ai|eps|zip|tiff?|psd)(?:$|[?#])/i;
   var downloadWords = /(?:макет|скачать\s*(?:файл|вложен)|artwork|download\s*(?:artwork|file)|приложени[ея])/i;
@@ -2067,12 +2070,11 @@
       rows.push({
         element: node2,
         anchors,
-        files: files.slice(0, LOCAL_ORDERS.maxFilesPerRow),
+        files,
         local_only_excluded: anchors.length - files.length,
         row_index: rows.length + 1,
-        limited: files.length > LOCAL_ORDERS.maxFilesPerRow
+        limited: false
       });
-      if (rows.length >= LOCAL_ORDERS.maxRows) break;
     }
     return rows;
   }
@@ -2401,7 +2403,7 @@
     const data = [], central = [], used = /* @__PURE__ */ new Set();
     let offset = 0, centralSize = 0;
     for (const { name, bytes } of entries) {
-      if (typeof name !== "string" || te.encode(name).length > 300 || !safeEntryName(name) || used.has(name) || !(bytes instanceof Uint8Array) || bytes.length > 5e6)
+      if (typeof name !== "string" || te.encode(name).length > 300 || !safeEntryName(name) || used.has(name) || !(bytes instanceof Uint8Array) || bytes.length > 16e6)
         throw new RangeError("LOCAL_ZIP_ENTRY_INVALID");
       used.add(name);
       const nameBytes = te.encode(name), crc = crc32(bytes);
@@ -2483,92 +2485,111 @@
       return null;
     }
   }
-  async function makeLocalExpertDataset(rows, {
+  async function* exportLocalDatasetParts(rows, {
     loc = globalThis.location,
     fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
-    maxFiles = 16,
-    maxPerFile = 4e6,
-    maxTotal = 24e6
+    onProgress = () => {
+    },
+    maxPerFile = 16e6,
+    maxPartBytes = 24e6,
+    maxFilesPerPart = 16
   } = {}) {
-    if (!isAllowedTestOrderPage(loc)) return refused2("NOT_TEST_ORDER_PAGE");
-    if (!Array.isArray(rows) || rows.length > LOCAL_ORDERS.maxRows || !Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 16 || !Number.isSafeInteger(maxPerFile) || maxPerFile < 1 || maxPerFile > 4e6 || !Number.isSafeInteger(maxTotal) || maxTotal < 1 || maxTotal > 24e6)
-      return refused2("EXPERT_EXPORT_LIMITS_INVALID");
-    const picked = rows.filter((r) => allowedLabels.has(r.grade?.value));
-    if (!picked.length) return refused2("EXPERT_LABELS_REQUIRED");
-    const entries = [], samples = [], skipped = [];
-    let consumed = 0, id = 0;
-    outer: for (const r of picked) {
-      const source = r.orderUploads?.length ? r.orderUploads : r.files || [];
-      for (const a of source.slice(0, 4)) {
-        if (id >= maxFiles) break outer;
-        const file = a.role === "customer_uploaded_artwork" ? await fetchOrderResourceBytes(a, {
-          fetcher,
-          loc,
-          maxBytes: maxPerFile
-        }) : await fetchSameOriginArtworkBytes(a, {
-          fetcher,
-          loc,
-          maxFileBytes: maxPerFile
-        });
-        if (file.status !== "LOCAL_BYTES_ONLY") {
-          skipped.push({ row_index: r.row_index, reason: file.reason });
-          continue;
-        }
-        if (consumed + file.bytes.length > maxTotal) {
-          skipped.push({ row_index: r.row_index, reason: "EXPERT_EXPORT_TOTAL_LIMIT" });
-          break outer;
-        }
-        const supplied = a.originalFilename ?? a.filename ?? "";
-        const originalName = supplied ? exactLocalFilename(supplied) : null;
-        if (supplied && !originalName) {
-          skipped.push({ row_index: r.row_index, reason: "ORIGINAL_FILENAME_UNSAFE_TO_EXPORT" });
-          continue;
-        }
-        id++;
-        consumed += file.bytes.length;
-        const slot = String(id).padStart(4, "0");
-        const name = originalName ? "samples/" + slot + "/" + originalName : "samples/" + slot + "." + suffix(file.url, file.bytes, "");
-        const sha = await optionalSha256(file.bytes);
-        entries.push({ name, bytes: file.bytes });
-        samples.push({
-          sample_name: name,
-          anonymous_row_index: r.row_index,
-          // Sensitive: available only inside this user-downloaded private ZIP.
-          ...originalName ? { original_filename: originalName } : {},
-          expert_label: r.grade.value,
-          expert_label_scope: "whole_order_row_not_object_ROI",
-          bytes: file.bytes.length,
-          sha256: sha,
-          source_size_and_placement_proven: false,
-          trusted_artwork_provenance_proven: false
-        });
+    if (!isAllowedTestOrderPage(loc)) {
+      yield refused2("NOT_TEST_ORDER_PAGE");
+      return;
+    }
+    if (!Array.isArray(rows) || maxPerFile < 1 || maxPerFile > 16e6 || maxPartBytes < maxPerFile || maxPartBytes > 24e6 || maxFilesPerPart < 1 || maxFilesPerPart > 16) {
+      yield refused2("LOCAL_EXPORT_SETTINGS_INVALID");
+      return;
+    }
+    const all = rows.flatMap((r) => (r.orderUploads?.length ? r.orderUploads : r.files || []).map((a) => ({ file: a, row: r })));
+    if (!all.length) {
+      yield refused2("NO_SOURCE_ARTWORK");
+      return;
+    }
+    let part = 0, saved = 0, processed = 0, entries = [], samples = [], skipped = [], bytes = 0;
+    const buildPart = () => {
+      if (!samples.length) return null;
+      part++;
+      const manifest = {
+        schema: "printcheck.vision.local-test-artwork.v0",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        source: "local_test_orders",
+        training_ready: false,
+        roi_annotations_verified: false,
+        held_out_families_verified: false,
+        source_order_ids_included: false,
+        source_urls_included: false,
+        public_upload_permitted: false,
+        contains_original_filenames: true,
+        warning: "PRIVATE local archive. Unreviewed and row-only labels are NOT verified ROI training annotations.",
+        samples,
+        skipped
+      };
+      const parts = [{
+        name: "manifest.json",
+        bytes: te.encode(JSON.stringify(manifest, null, 2) + "\n")
+      }, ...entries];
+      const output = {
+        status: "LOCAL_ZIP_READY",
+        part,
+        zip: makeLocalStoredZip(parts),
+        manifest,
+        sample_count: samples.length,
+        skipped_count: skipped.length,
+        processed_files: processed,
+        total_files: all.length
+      };
+      entries = [];
+      samples = [];
+      skipped = [];
+      bytes = 0;
+      return output;
+    };
+    for (const { file: a, row: r } of all) {
+      processed++;
+      onProgress({ processed, total: all.length, saved, part: part + 1 });
+      const response = a.role === "customer_uploaded_artwork" ? await fetchOrderResourceBytes(a, { fetcher, loc, maxBytes: maxPerFile }) : await fetchSameOriginArtworkBytes(a, { fetcher, loc, maxFileBytes: maxPerFile });
+      if (response.status !== "LOCAL_BYTES_ONLY") {
+        skipped.push({ row_index: r.row_index, reason: response.reason || "FILE_UNAVAILABLE" });
+        continue;
+      }
+      const supplied = a.originalFilename ?? a.filename ?? "";
+      const originalName = supplied ? exactLocalFilename(supplied) : null;
+      if (supplied && !originalName) {
+        skipped.push({ row_index: r.row_index, reason: "ORIGINAL_FILENAME_UNSAFE_TO_EXPORT" });
+        continue;
+      }
+      if (samples.length >= maxFilesPerPart || bytes + response.bytes.length > maxPartBytes) {
+        const batch = buildPart();
+        if (batch) yield batch;
+      }
+      const slot = String(samples.length + 1).padStart(4, "0");
+      const name = originalName ? "samples/" + slot + "/" + originalName : "samples/" + slot + "." + suffix(response.url, response.bytes, "");
+      const label = r.grade?.value || "unreviewed";
+      const sha = await optionalSha256(response.bytes);
+      samples.push({
+        sample_name: name,
+        anonymous_row_index: r.row_index,
+        ...originalName ? { original_filename: originalName } : {},
+        expert_label: allowedLabels.has(label) ? label : "unreviewed",
+        expert_label_scope: allowedLabels.has(label) ? "whole_order_row_not_object_ROI" : "not_yet_expert_labeled",
+        bytes: response.bytes.length,
+        sha256: sha,
+        source_size_and_placement_proven: false,
+        trusted_artwork_provenance_proven: false
+      });
+      entries.push({ name, bytes: response.bytes });
+      bytes += response.bytes.length;
+      saved++;
+      if (samples.length >= maxFilesPerPart) {
+        const batch = buildPart();
+        if (batch) yield batch;
       }
     }
-    if (!samples.length) return refused2("NO_EXPORTABLE_LABELED_ARTWORK");
-    const manifest = {
-      schema: "printcheck.vision.local-test-artwork.v0",
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      source: "local_test_orders",
-      training_ready: false,
-      roi_annotations_verified: false,
-      held_out_families_verified: false,
-      source_order_ids_included: false,
-      source_urls_included: false,
-      public_upload_permitted: false,
-      warning: "Contains original test-only files and row-level opinions, NOT a verified training dataset. Store and annotate locally.",
-      samples,
-      skipped
-    };
-    entries.unshift({ name: "manifest.json", bytes: te.encode(JSON.stringify(manifest, null, 2) + "\n") });
-    const zip = makeLocalStoredZip(entries);
-    return {
-      status: "LOCAL_ZIP_READY",
-      zip,
-      manifest,
-      sample_count: samples.length,
-      skipped_count: skipped.length,
-      exported_bytes: consumed
-    };
+    const tail = buildPart();
+    if (tail) yield tail;
+    if (saved === 0) yield refused2("NO_EXPORTABLE_ARTWORK");
   }
 
   // vision/orders/overlay-entry.mjs
@@ -2645,9 +2666,10 @@
     const stats = node("div", "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043F\u043E\u0438\u0441\u043A\u0430 \u0441\u0442\u0440\u043E\u043A\u2026", "vlo-stats");
     stats.setAttribute("role", "status");
     const warning = node("p", "\u042D\u0442\u043E \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u0441\u043A\u0438\u0439 \u0430\u043D\u0430\u043B\u0438\u0437, \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A \u043A \u043F\u0435\u0447\u0430\u0442\u0438. \u041D\u0435\u0442 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0445 \u043C\u0435\u0441\u0442 \u2260 \u043C\u0430\u043A\u0435\u0442 \u0433\u043E\u0434\u0435\u043D. PDF \u0438 \u0441\u043B\u043E\u0436\u043D\u044B\u0435 \u0432\u0435\u043A\u0442\u043E\u0440\u044B: MANUAL. \u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 ZIP \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u2014 \u043D\u0435 \u043F\u0443\u0431\u043B\u0438\u043A\u0443\u0439\u0442\u0435 \u0435\u0433\u043E.", "vlo-note");
-    let rows = [], busy = false, closed = false, fileBudget = LOCAL_ORDERS.maxBatchFiles, nextRowIndex = 0;
+    let rows = [], busy = false, closed = false, pauseRequested = false, nextRowIndex = 0;
     function close2() {
       closed = true;
+      pauseRequested = true;
       panel.remove();
       style.remove();
       document.querySelectorAll("[data-vision-order-cell]").forEach((n) => n.remove());
@@ -2672,7 +2694,7 @@
           same_origin_files: r.files.length,
           order_card_discovered: r.hasOrderLink,
           analysis_complete: r.scanAttempted === true,
-          pending_file_count: r.partial ? Math.min(r.partial.candidates.length, LOCAL_ORDERS.maxFilesPerRow) - r.partial.nextIndex : 0,
+          pending_file_count: r.partial ? Math.max(0, r.partial.candidates.length - r.partial.nextIndex) : 0,
           customer_uploaded_artworks: r.orderUploads?.length ?? null,
           constructor_template_count: r.orderTemplates ?? null,
           excluded_links: r.local_only_excluded,
@@ -2706,14 +2728,14 @@
       setTimeout(() => URL.revokeObjectURL(u), 1e3);
     }
     const refreshBtn = makeButton("\u041D\u0430\u0439\u0442\u0438 \u0441\u0442\u0440\u043E\u043A\u0438", refresh);
-    const scanBtn = makeButton("\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C 10 \u0437\u0430\u043A\u0430\u0437\u043E\u0432", () => scanAll());
-    const renewBtn = makeButton("\u041D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432", () => {
-      if (busy || closed || fileBudget > 0) return;
-      fileBudget = LOCAL_ORDERS.maxBatchFiles;
-      updateBatchControls();
-      renderStats("\u041D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A \u0440\u0430\u0437\u0440\u0435\u0448\u0451\u043D \u044F\u0432\u043D\u043E. \u0423\u0436\u0435 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043D\u044B\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
+    const scanBtn = makeButton("\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0432\u0441\u0435 \u0437\u0430\u043A\u0430\u0437\u044B", () => scanAll());
+    const pauseBtn = makeButton("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u043F\u043E\u0441\u043B\u0435 \u0444\u0430\u0439\u043B\u0430", () => {
+      if (!busy || closed) return;
+      pauseRequested = true;
+      pauseBtn.disabled = true;
+      renderStats("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u0437\u0430\u043F\u0440\u043E\u0448\u0435\u043D\u0430: \u0442\u0435\u043A\u0443\u0449\u0438\u0439 \u0444\u0430\u0439\u043B \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u0441\u044F, \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u0432 \u043E\u0447\u0435\u0440\u0435\u0434\u0438.");
     });
-    renewBtn.disabled = true;
+    pauseBtn.disabled = true;
     scanBtn.className = "vlo-start";
     const exportBtn = makeButton("\u041E\u0442\u0447\u0451\u0442 JSON", saveReport);
     const diagnosticBtn = makeButton("\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430 \u0442\u0430\u0431\u043B\u0438\u0446\u044B", () => {
@@ -2728,28 +2750,40 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1e3);
     });
-    const bundleBtn = makeButton("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u0440\u0438\u043C\u0435\u0440\u044B ZIP", async () => {
+    const bundleBtn = makeButton("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u0440\u0438\u043C\u0435\u0440\u044B ZIP \u2014 \u0432\u0441\u0435", async () => {
       if (busy || closed) return;
-      if (!window.confirm("\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 ZIP \u0441 \u041E\u0420\u0418\u0413\u0418\u041D\u0410\u041B\u0410\u041C\u0418 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u043C\u0430\u043A\u0435\u0442\u043E\u0432 \u0438\u0437 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0445 \u0441\u0442\u0440\u043E\u043A? \u0424\u0430\u0439\u043B\u044B \u043C\u043E\u0433\u0443\u0442 \u0441\u043E\u0434\u0435\u0440\u0436\u0430\u0442\u044C \u043A\u043E\u043D\u0444\u0438\u0434\u0435\u043D\u0446\u0438\u0430\u043B\u044C\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435. \u041D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0439\u0442\u0435 ZIP \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.")) return;
+      if (!window.confirm("\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u0412\u0421\u0415 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0435 \u043E\u0440\u0438\u0433\u0438\u043D\u0430\u043B\u044B \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u043C\u0430\u043A\u0435\u0442\u043E\u0432 \u0432 \u043F\u043E\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 ZIP-\u0447\u0430\u0441\u0442\u0438? \u0418\u043C\u0435\u043D\u0430 \u0438 \u0444\u0430\u0439\u043B\u044B \u043A\u043E\u043D\u0444\u0438\u0434\u0435\u043D\u0446\u0438\u0430\u043B\u044C\u043D\u044B; \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A. \u0412 \u0430\u0440\u0445\u0438\u0432\u0430\u0445 \u043D\u0435\u0442 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 ROI \u0434\u043B\u044F \u043E\u0431\u0443\u0447\u0435\u043D\u0438\u044F. \u041D\u0415 \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0439\u0442\u0435 \u0438\u0445 \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.")) return;
       busy = true;
       bundleBtn.disabled = true;
       refreshBtn.disabled = scanBtn.disabled = true;
-      stats.textContent = "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043D\u044B\u0445 \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u043E\u043C \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0444\u0430\u0439\u043B\u043E\u0432\u2026";
+      let saved = 0, parts = 0, unavailable = 0;
+      stats.textContent = "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u043F\u043E\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u0447\u0442\u0435\u043D\u0438\u0435 \u0432\u0441\u0435\u0445 \u0444\u0430\u0439\u043B\u043E\u0432. \u041A\u0430\u0436\u0434\u044B\u0439 \u0430\u0440\u0445\u0438\u0432 \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D \u0440\u0430\u0437\u043C\u0435\u0440\u043E\u043C, \u0430 \u043D\u0435 \u043E\u0431\u0449\u0438\u043C \u043A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E\u043C \u0444\u0430\u0439\u043B\u043E\u0432.";
       try {
-        const exported = await makeLocalExpertDataset(rows);
-        if (closed) return;
-        if (exported.status !== "LOCAL_ZIP_READY") {
-          renderStats("ZIP \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D: " + String(exported.reason).slice(0, 90) + ". \u041F\u043E\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u044D\u043A\u0441\u043F\u0435\u0440\u0442\u043D\u0443\u044E \u043C\u0435\u0442\u043A\u0443 \u0445\u043E\u0442\u044F \u0431\u044B \u043E\u0434\u043D\u043E\u0439 \u0441\u0442\u0440\u043E\u043A\u0435.");
-          return;
+        for await (const part of exportLocalDatasetParts(rows, {
+          onProgress: (progress) => {
+            if (!closed) stats.textContent = "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 " + progress.processed + "/" + progress.total + " \xB7 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E " + progress.saved + " \xB7 \u0447\u0430\u0441\u0442\u044C " + progress.part;
+          }
+        })) {
+          if (closed) break;
+          if (part.status !== "LOCAL_ZIP_READY") {
+            if (!saved) renderStats("ZIP \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D: " + String(part.reason).slice(0, 90));
+            continue;
+          }
+          const u = URL.createObjectURL(part.zip), a = node("a");
+          a.href = u;
+          a.download = "vision-private-originals-part-" + String(part.part).padStart(4, "0") + ".zip";
+          document.body.append(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(u), 4e3);
+          saved += part.sample_count;
+          parts++;
+          unavailable += part.skipped_count;
+          await new Promise((resolve) => setTimeout(resolve, 180));
         }
-        const u = URL.createObjectURL(exported.zip), a = node("a");
-        a.href = u;
-        a.download = "vision-local-test-labeled-samples.zip";
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(u), 1500);
-        renderStats("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E " + exported.sample_count + " \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u043F\u0440\u0438\u043C\u0435\u0440\u043E\u0432. \u041D\u0443\u0436\u043D\u044B \u044D\u043A\u0441\u043F\u0435\u0440\u0442\u043D\u044B\u0435 ROI \u0438 \u043D\u0435\u0437\u0430\u0432\u0438\u0441\u0438\u043C\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u043F\u0435\u0440\u0435\u0434 \u043E\u0431\u0443\u0447\u0435\u043D\u0438\u0435\u043C.");
+        if (!closed && saved) renderStats("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E \u0432\u044B\u0433\u0440\u0443\u0436\u0435\u043D\u043E " + saved + " \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0445 \u0444\u0430\u0439\u043B\u043E\u0432 \u0432 " + parts + " ZIP-\u0447\u0430\u0441\u0442\u044F\u0445. \u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u044B\u0433\u0440\u0443\u0437\u0438\u0442\u044C: " + unavailable + ". \u0411\u0440\u0430\u0443\u0437\u0435\u0440 \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043C\u043D\u043E\u0433\u043E\u043A\u0440\u0430\u0442\u043D\u043E\u0435 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435. \u0411\u0435\u0437 \u044D\u043A\u0441\u043F\u0435\u0440\u0442\u043D\u044B\u0445 ROI \u043C\u043E\u0434\u0435\u043B\u044C \u043D\u0435 \u0434\u043E\u043E\u0431\u0443\u0447\u0430\u0435\u0442\u0441\u044F.");
       } catch {
-        if (!closed) renderStats("\u041E\u0448\u0438\u0431\u043A\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0433\u043E ZIP. \u0414\u0430\u043D\u043D\u044B\u0435 \u043D\u0430\u0440\u0443\u0436\u0443 \u043D\u0435 \u043F\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043B\u0438\u0441\u044C.");
+        if (!closed) renderStats("\u0421\u0431\u043E\u0439 \u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F ZIP. \u0423\u0436\u0435 \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u0447\u0430\u0441\u0442\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B; \u0434\u0430\u043D\u043D\u044B\u0435 \u043D\u0430\u0440\u0443\u0436\u0443 \u043D\u0435 \u043F\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043B\u0438\u0441\u044C.");
       } finally {
         busy = false;
         bundleBtn.disabled = false;
@@ -2760,7 +2794,7 @@
     actions.append(
       refreshBtn,
       scanBtn,
-      renewBtn,
+      pauseBtn,
       exportBtn,
       diagnosticBtn,
       bundleBtn,
@@ -2775,14 +2809,14 @@
       const completed = rows.reduce((n, r) => n + (r.results?.length || 0), 0);
       const scanned = rows.filter((r) => r.scanAttempted).length;
       const linked = rows.filter((r) => r.hasOrderLink).length;
-      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438: " + linked + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E \u0441\u0442\u0440\u043E\u043A: " + scanned + " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432/\u043E\u0442\u043A\u0430\u0437\u043E\u0432: " + completed + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439 \u043D\u0430\u0439\u0434\u0435\u043D\u043E: " + local + " \xB7 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A: " + fileBudget + "\n\u0422\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442: " + (typeof globalThis.__visionLocalTrustedTransport === "function" ? "\u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 MV3 (\u0434\u0432\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0445\u043E\u0441\u0442\u0430)" : "\u043E\u0431\u044B\u0447\u043D\u044B\u0439 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043D\u044B\u0439 fetch; \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u043D\u0430 \u0434\u0440\u0443\u0433\u043E\u0439 \u0445\u043E\u0441\u0442 \u043C\u043E\u0436\u0435\u0442 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C\u0441\u044F") + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
+      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438: " + linked + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E \u0441\u0442\u0440\u043E\u043A: " + scanned + " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432/\u043E\u0442\u043A\u0430\u0437\u043E\u0432: " + completed + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439 \u043D\u0430\u0439\u0434\u0435\u043D\u043E: " + local + " \xB7 \u043E\u0447\u0435\u0440\u0435\u0434\u044C \u0431\u0435\u0437 \u043B\u0438\u043C\u0438\u0442\u0430 \u0444\u0430\u0439\u043B\u043E\u0432\n\u0422\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442: " + (typeof globalThis.__visionLocalTrustedTransport === "function" ? "\u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 MV3 (\u0434\u0432\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0445\u043E\u0441\u0442\u0430)" : "\u043E\u0431\u044B\u0447\u043D\u044B\u0439 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043D\u044B\u0439 fetch; \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u043D\u0430 \u0434\u0440\u0443\u0433\u043E\u0439 \u0445\u043E\u0441\u0442 \u043C\u043E\u0436\u0435\u0442 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C\u0441\u044F") + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
     }
     function refresh() {
       if (busy || closed) return;
       document.querySelectorAll("[data-vision-order-cell]").forEach((n) => n.remove());
       rows = discoverOrderRows(document);
       nextRowIndex = 0;
-      fileBudget = LOCAL_ORDERS.maxBatchFiles;
+      pauseRequested = false;
       for (const r of rows) {
         const cell = node(
           r.element.tagName === "TR" ? "td" : "div",
@@ -2827,7 +2861,7 @@
         r.fileNames = fileNames;
       }
       updateBatchControls();
-      renderStats(rows.length ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0440\u0446\u0438\u044F\u043C\u0438 \u043F\u043E 10 \u0437\u0430\u043A\u0430\u0437\u043E\u0432, \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044E." : "\u0421\u0442\u0440\u043E\u043A\u0438 \u043D\u0435 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u044B. \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0430\u0434\u0430\u043F\u0442\u0435\u0440 \u043A DOM \u0442\u0435\u0441\u0442\u043E\u0432\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B; \u0444\u0430\u0439\u043B\u043E\u0432\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u043B\u0438\u0441\u044C.");
+      renderStats(rows.length ? "\u041E\u0447\u0435\u0440\u0435\u0434\u044C \u0432\u0441\u0435\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0437\u0430\u043F\u0443\u0441\u043A\u0430\u0435\u0442\u0441\u044F \u0432\u0440\u0443\u0447\u043D\u0443\u044E, \u0444\u0430\u0439\u043B\u044B \u043F\u0440\u043E\u0432\u0435\u0440\u044F\u044E\u0442\u0441\u044F \u0441\u0442\u0440\u043E\u0433\u043E \u043F\u043E \u043E\u0434\u043D\u043E\u043C\u0443." : "\u0421\u0442\u0440\u043E\u043A\u0438 \u043D\u0435 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u044B. \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0430\u0434\u0430\u043F\u0442\u0435\u0440 \u043A DOM \u0442\u0435\u0441\u0442\u043E\u0432\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B; \u0444\u0430\u0439\u043B\u043E\u0432\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u043B\u0438\u0441\u044C.");
     }
     async function scanRowContents(r) {
       r.scanAttempted = false;
@@ -2897,11 +2931,10 @@
           return;
         }
       }
-      const limit2 = LOCAL_ORDERS.maxFilesPerRow;
-      const total = Math.min(candidates.length, limit2);
+      const total = candidates.length;
       for (let i = r.partial?.nextIndex || 0; i < total; i++) {
         if (closed) return;
-        if (fileBudget <= 0) {
+        if (pauseRequested) {
           r.partial = {
             candidates,
             fromOrder,
@@ -2910,48 +2943,58 @@
             research,
             descriptions: desc
           };
-          r.label.textContent = "Vision: \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u043E, \u043D\u0443\u0436\u0435\u043D \u043D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432";
-          r.detail.textContent = "\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E " + i + " \u0438\u0437 " + total + " \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439. \u0423\u0436\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B; \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u0435 \u043D\u0435 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442 GET.";
+          r.label.textContent = "Vision: \u043E\u0447\u0435\u0440\u0435\u0434\u044C \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430, \u043C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C";
+          r.detail.textContent = "\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E " + i + " \u0438\u0437 " + total + " \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439. \u041F\u0440\u0438 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u0438 \u0443\u0436\u0435 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043D\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E.";
           r.button.disabled = false;
-          renderStats("\u041B\u0438\u043C\u0438\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A. \u041D\u0435\u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430 \u0434\u043B\u044F \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u044F.");
+          renderStats("\u041E\u0447\u0435\u0440\u0435\u0434\u044C \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430. \u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \u0432 \u043F\u0430\u043C\u044F\u0442\u0438 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B.");
           return;
         }
         const a = candidates[i];
-        fileBudget--;
         let result;
-        if (fromOrder) {
-          const artifact = await fetchOrderResourceBytes(a);
-          result = artifact.status === "LOCAL_BYTES_ONLY" ? await inspectOrderArtworkBytes(
-            artifact.bytes,
-            artifact.url,
-            artifact.mime,
-            a.filename
-          ) : {
-            status: "MANUAL",
-            type: "order_artwork",
-            reason: artifact.reason || "ARTWORK_DOWNLOAD_FAILED"
-          };
-        } else result = await inspectSameOriginArtwork(a);
+        try {
+          if (fromOrder) {
+            const artifact = await fetchOrderResourceBytes(a);
+            result = artifact.status === "LOCAL_BYTES_ONLY" ? await inspectOrderArtworkBytes(
+              artifact.bytes,
+              artifact.url,
+              artifact.mime,
+              a.filename
+            ) : {
+              status: "MANUAL",
+              type: "order_artwork",
+              reason: artifact.reason || "ARTWORK_DOWNLOAD_FAILED",
+              stage: artifact.stage || "artwork",
+              http_status: artifact.http_status ?? null,
+              failure_class: artifact.failure_class || null
+            };
+          } else result = await inspectSameOriginArtwork(a);
+        } catch {
+          result = { status: "MANUAL", type: "order_artwork", reason: "ARTWORK_INSPECTION_FAILED" };
+        }
         if (closed) return;
         r.results.push(result);
         desc.push(summarize(result));
         if (result.status === "MANUAL") manual2++;
         else research++;
+        renderStats("\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0444\u0430\u0439\u043B\u043E\u0432 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u043C \u0437\u0430\u043A\u0430\u0437\u0435: " + (i + 1) + "/" + total);
+        if (i + 1 < total) await new Promise((resolve) => setTimeout(resolve, LOCAL_ORDERS.fetchPaceMs));
       }
       if (closed) return;
       r.partial = null;
       r.scanAttempted = true;
-      if (candidates.length > limit2 || r.limited || r.local_only_excluded > 0 && !fromOrder)
+      if (r.local_only_excluded > 0 && !fromOrder)
         manual2++;
       r.label.textContent = manual2 ? "Vision: " + manual2 + " \u0442\u0440\u0435\u0431\u0443\u044E\u0442 \u0440\u0443\u0447\u043D\u043E\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438" : "Vision: " + research + " \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u044B (\u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A)";
-      r.detail.textContent = (fromOrder ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430: " + candidates.length + " \u043A\u043B\u0438\u0435\u043D\u0442\u0441\u043A\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432, " + r.orderTemplates + " \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u043E\u0432. " : "") + desc.join(" | ").slice(0, 520) + (candidates.length > limit2 ? " \xB7 \u0447\u0430\u0441\u0442\u044C \u0444\u0430\u0439\u043B\u043E\u0432 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u0430 \u043F\u043E \u043B\u0438\u043C\u0438\u0442\u0443" : "");
+      r.detail.textContent = (fromOrder ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430: " + candidates.length + " \u043A\u043B\u0438\u0435\u043D\u0442\u0441\u043A\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432, " + r.orderTemplates + " \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u043E\u0432. " : "") + desc.join(" | ").slice(0, 520);
       r.button.disabled = false;
       renderStats("\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430\u043C \u0437\u0430\u043A\u0430\u0437\u043E\u0432. \u0412\u044B\u0432\u043E\u0434 \u043D\u0435 \u044F\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u0434\u043E\u043F\u0443\u0441\u043A\u043E\u043C.");
     }
     async function scanRow(r) {
       if (busy || closed) return;
       busy = true;
+      pauseRequested = false;
       refreshBtn.disabled = scanBtn.disabled = true;
+      pauseBtn.disabled = false;
       try {
         await scanRowContents(r);
       } finally {
@@ -2961,34 +3004,37 @@
       }
     }
     function updateBatchControls() {
-      renewBtn.disabled = busy || closed || fileBudget > 0 || nextRowIndex >= rows.length;
-      scanBtn.disabled = busy || closed || nextRowIndex >= rows.length || fileBudget <= 0;
-      scanBtn.textContent = nextRowIndex >= rows.length ? "\u0412\u0441\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u044B" : fileBudget <= 0 ? "\u041B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432 \u0438\u0441\u0447\u0435\u0440\u043F\u0430\u043D" : "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0435 " + Math.min(
-        LOCAL_ORDERS.maxOrdersPerClick,
-        rows.length - nextRowIndex
-      ) + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432";
+      pauseBtn.disabled = !busy || closed || pauseRequested;
+      scanBtn.disabled = busy || closed || nextRowIndex >= rows.length;
+      scanBtn.textContent = nextRowIndex >= rows.length ? "\u0412\u0441\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u044B" : pauseRequested ? "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043E\u0447\u0435\u0440\u0435\u0434\u044C (" + (rows.length - nextRowIndex) + ")" : "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0432\u0441\u0435 \u0437\u0430\u043A\u0430\u0437\u044B (" + (rows.length - nextRowIndex) + ")";
     }
     async function scanAll() {
       if (busy || closed) return;
       busy = true;
+      pauseRequested = false;
       refreshBtn.disabled = scanBtn.disabled = true;
+      pauseBtn.disabled = false;
       let examined = 0;
       try {
-        while (nextRowIndex < rows.length && examined < LOCAL_ORDERS.maxOrdersPerClick && !closed && fileBudget > 0) {
+        while (nextRowIndex < rows.length && !closed && !pauseRequested) {
           const r = rows[nextRowIndex++];
           if (r.scanAttempted) continue;
-          await scanRowContents(r);
+          try {
+            await scanRowContents(r);
+          } catch {
+            r.results = [{ type: "order", status: "MANUAL", reason: "ORDER_INSPECTION_FAILED" }];
+            r.scanAttempted = true;
+            r.button.disabled = false;
+          }
           if (r.partial) {
             nextRowIndex--;
             break;
           }
           examined++;
-          await new Promise((resolve) => setTimeout(resolve, 0));
+          renderStats("\u041E\u0447\u0435\u0440\u0435\u0434\u044C: \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E " + examined + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0441 \u043C\u043E\u043C\u0435\u043D\u0442\u0430 \u0437\u0430\u043F\u0443\u0441\u043A\u0430, \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 " + (nextRowIndex + 1) + "/" + rows.length);
+          await new Promise((resolve) => setTimeout(resolve, LOCAL_ORDERS.fetchPaceMs));
         }
-        if (!closed) {
-          const message = fileBudget <= 0 ? "\u041B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432 \u0438\u0441\u0447\u0435\u0440\u043F\u0430\u043D. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432\xBB \u0434\u043B\u044F \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u044F." : nextRowIndex >= rows.length ? "\u0412\u0441\u0435 \u043E\u0431\u043D\u0430\u0440\u0443\u0436\u0435\u043D\u043D\u044B\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u044B. \u0420\u0435\u0437\u0443\u043B\u044C\u0442\u0430\u0442\u044B \u0442\u0440\u0435\u0431\u0443\u044E\u0442 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u043E\u043C." : "\u041E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u0430 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u043F\u043E\u0440\u0446\u0438\u044F \u0438\u0437 " + examined + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432. \u0414\u043B\u044F \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u044F \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0441\u043D\u043E\u0432\u0430.";
-          renderStats(message);
-        }
+        if (!closed) renderStats(nextRowIndex >= rows.length ? "\u041E\u0447\u0435\u0440\u0435\u0434\u044C \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430. \u0412\u0441\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u044B \u0438\u043B\u0438 \u043F\u043E\u043C\u0435\u0447\u0435\u043D\u044B \u0434\u043B\u044F \u0440\u0443\u0447\u043D\u043E\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438." : "\u041E\u0447\u0435\u0440\u0435\u0434\u044C \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430 \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0444\u0430\u0439\u043B\u0430. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043E\u0447\u0435\u0440\u0435\u0434\u044C\xBB.");
       } finally {
         busy = false;
         refreshBtn.disabled = false;
