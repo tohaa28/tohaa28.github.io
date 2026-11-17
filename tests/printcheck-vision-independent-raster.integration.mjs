@@ -4,6 +4,11 @@
  * Run: node tests/printcheck-vision-independent-raster.integration.mjs
  */
 import test from 'node:test';
+import {mkdtemp,writeFile,rm,symlink} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {verifyReplayFiles} from '../vision/raster/verify-replay-files.mjs';
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {decodeTrustedPngBytes} from '../vision/dataset/strict-png-decoder.mjs';
@@ -142,4 +147,37 @@ test('pretending an external ICC profile is verified is always manual for resear
   const result=await verifyIndependentRasterReplay(x);
   assert.equal(result.status,'MANUAL');
   assert.equal(result.reason,'SOURCE_COLOR_MANAGEMENT_NOT_VERIFIED');
+});
+
+test('private signed SVG replay CLI uses real Rust renderer, hides filenames and refuses symlinks',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'pcv-replay-synthetic-'));
+  try{
+    const i=signedInput();
+    const bytes=[i.sourceBytes,i.previewPngBytes,i.orderEvidenceBytes,
+      i.receiptBytes,i.signatureBytes,Buffer.from(i.trustedPublicKeyPem)];
+    const paths=['source.svg','preview.png','order-proof.bin',
+      'render-receipt.json','render-receipt.sig','public.pem'].map(s=>join(folder,s));
+    for(let k=0;k<paths.length;k++)await writeFile(paths[k],bytes[k]);
+    const args={
+      sourcePath:paths[0],previewPath:paths[1],
+      orderPath:paths[2],receiptPath:paths[3],signaturePath:paths[4],
+      publicKeyPath:paths[5],trustedSpkiSha256:i.trustedSpkiSha256
+    };
+    const answer=await verifyReplayFiles(args);
+    assert.equal(answer.status,
+      'EXACT_INDEPENDENT_RGBA_REPLAY_RESEARCH_ONLY',answer.reason);
+    const result=spawnSync(process.execPath,[
+      'vision/raster/verify-replay-files.mjs',
+      ...paths,i.trustedSpkiSha256
+    ],{encoding:'utf8',timeout:15000,maxBuffer:100000});
+    assert.equal(result.status,0,result.stderr);
+    const parsed=JSON.parse(result.stdout);
+    assert.equal(parsed.status,'EXACT_INDEPENDENT_RGBA_REPLAY_RESEARCH_ONLY');
+    assert.equal(parsed.production_approved,false);
+    for(const path of paths)assert.equal(result.stdout.includes(path),false);
+    const link=join(folder,'preview-link.png');
+    await symlink(paths[1],link);
+    const denied=await verifyReplayFiles({...args,previewPath:link});
+    assert.equal(denied.reason,'PRIVATE_REPLAY_SOURCE_UNSUPPORTED');
+  }finally{await rm(folder,{recursive:true,force:true})}
 });
