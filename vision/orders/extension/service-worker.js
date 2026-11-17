@@ -72,7 +72,8 @@ function installPortListener(runtime){
    },15000);
    try{
     const response=await fetch(target.url,{
-     method:'GET',credentials:'include',redirect:'error',cache:'no-store',
+     // Maketnaya follows the site's legitimate redirects, then validates the final location.
+     method:'GET',credentials:'include',redirect:'follow',cache:'no-store',
      referrerPolicy:'no-referrer',signal:controller.signal,
      headers:target.kind==='popup'?
        {accept:'text/html,application/json',
@@ -81,6 +82,23 @@ function installPortListener(runtime){
          'application/pdf,application/octet-stream,*/*':
          'text/html,application/json'}
     });
+    // A successful redirect is accepted only when the final URL is the
+    // *same read-only resource* on one of the two explicitly trusted LAN
+    // hosts. Never relay login pages, arbitrary paths or external hosts.
+    // The native Maketnaya likewise follows, validates and rejects auth.
+    if(response.url){
+      let final;
+      try{final=new URL(response.url)}catch{}
+      if(!final||final.protocol!=='http:'||!TEST_HOSTS.has(final.hostname)||
+         final.port||final.username||final.password){
+        send({op:'error',code:'EXTENSION_REDIRECT_UNTRUSTED_ORIGIN'});return;
+      }
+      if(final.pathname!==new URL(target.url).pathname||
+         final.search!==new URL(target.url).search){
+        const login=/(?:^|\\/)(?:auth|login|signin)(?:\\/|$)/i.test(final.pathname);
+        send({op:'error',code:login?'EXTENSION_AUTH_REDIRECT':'EXTENSION_REDIRECT_UNEXPECTED_PATH'});return;
+      }
+    }
     const lengthHeader=response.headers.get('content-length');
     const announced=lengthHeader&&/^\d+$/.test(lengthHeader)?
       Number(lengthHeader):null;
