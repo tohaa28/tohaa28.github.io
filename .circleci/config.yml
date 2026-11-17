@@ -57,6 +57,35 @@ jobs:
             set -euo pipefail
             node tests/printcheck-vision-pilot-python-e2e.mjs
 
+  vision-raster:
+    docker:
+      - image: cimg/node:22
+    resource_class: small
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Install pinned independent raster engines only in research folder
+          command: |
+            set -euo pipefail
+            node --version
+            npm install --prefix vision/raster --no-audit --no-fund
+          no_output_timeout: 10m
+      - run:
+          name: Check independent renderer source and pixel comparator
+          command: |
+            set -euo pipefail
+            node --check vision/dataset/exact-pixel-replay.mjs
+            node --check vision/raster/replay-engines.mjs
+            node --check vision/raster/verify-independent-replay.mjs
+            node --check tests/printcheck-vision-independent-raster.integration.mjs
+      - run:
+          name: Run true resvg and PDF.js Skia independent replay integration
+          command: |
+            set -euo pipefail
+            node tests/printcheck-vision-independent-raster.integration.mjs
+          no_output_timeout: 5m
+
   vision-browser:
     docker:
       - image: cimg/node:22
@@ -104,6 +133,14 @@ workflows:
   vision-automatic:
     jobs:
       - vision-contract:
+          filters:
+            branches:
+              only:
+                - feature/printcheck-vision-copy-v01
+
+  vision-raster-replay:
+    jobs:
+      - vision-raster:
           filters:
             branches:
               only:
