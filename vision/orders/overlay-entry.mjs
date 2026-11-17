@@ -45,7 +45,13 @@ function summarize(res){
    ' кандидатов (синтетический MLP; масштаб неизвестен)';
 }
 const makeButton=(text,fn)=>{
- const b=node('button',text);b.type='button';b.addEventListener('click',fn);return b;
+ const b=node('button',text);b.type='button';
+ b.addEventListener('click',event=>{
+   // Some test order tables navigate on TR onclick. An overlay button
+   // must never trigger the original row's handler or change the page.
+   event.preventDefault();event.stopPropagation();fn(event);
+ });
+ return b;
 };
 export function initLocalOrdersOverlay(){
  if(!isAllowedTestOrderPage()){
@@ -166,6 +172,9 @@ export function initLocalOrdersOverlay(){
      const cell=node(r.element.tagName==='TR'?'td':'div',undefined,
        'vision-order-result-cell');
      cell.setAttribute('data-vision-order-cell','');
+     // Respect original order row navigation while isolating Vision controls.
+     for(const eventName of ['click','dblclick','pointerdown','mousedown','keydown'])
+       cell.addEventListener(eventName,event=>event.stopPropagation());
      const label=node('span','Vision: не проверено','vlo-label');
      const target=rowOrderTarget(r.element,window.location.href);
      r.hasOrderLink=target.status==='ORDER_LINK_FOUND'&&
