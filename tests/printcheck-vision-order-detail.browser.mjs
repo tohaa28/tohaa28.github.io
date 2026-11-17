@@ -32,7 +32,7 @@ const browser=await chromium.launch({headless:true});
 try{
  const context=await browser.newContext({acceptDownloads:true});
  const page=await context.newPage();
- const requests=[];let forbidden=0;
+ const requests=[],forbiddenUrls=[];let forbidden=0;
  await page.route('**/*',route=>{
   const u=route.request().url();
   if(u===local+'/devorders?status=140')
@@ -67,7 +67,7 @@ try{
    return route.fulfill({status:200,contentType:'text/html;charset=utf-8',
      body:'<html><body>no internal id</body></html>'});
   }
-  forbidden++;return route.abort();
+  forbidden++;forbiddenUrls.push({url:u,method:route.request().method()});return route.abort();
  });
  await page.goto(local+'/devorders?status=140');
  await page.addScriptTag({url:src});
@@ -109,7 +109,8 @@ try{
  assert.ok(zip.includes(Buffer.from('samples/0002.pdf')));
  assert.ok(!zip.includes(Buffer.from('wrong-order.pdf')));
  assert.ok(!zip.includes(Buffer.from('template.pdf')));
- assert.equal(forbidden,0,'No cross-site request, untrusted upload or production Gifts URL');
+ assert.deepEqual(forbiddenUrls,[],
+   'No cross-site request, untrusted upload or production Gifts URL');
  const late=requests.slice(4);
  assert.ok(late.every(r=>r.method==='GET'&&r.u.includes('/cart/act/mda?oid=771&id=')));
  await context.close();
