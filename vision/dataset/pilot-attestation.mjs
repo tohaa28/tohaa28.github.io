@@ -13,7 +13,8 @@
  * No remote requests, no private keys, no default trust key, no public data.
  */
 import {createHash,createPublicKey,verify} from 'node:crypto';
-import {readFile,open,stat} from 'node:fs/promises';
+import {readFile,open,stat,lstat} from 'node:fs/promises';
+import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {validateReviewTask,compareIndependentReviews} from './review-task.mjs';
 
@@ -249,13 +250,49 @@ function parseBinary(bytes,label){
   return bytes;
 }
 function selfAssertedCount(){return 2}
+/**
+ * Explicitly writes research datasets to a PRE-EXISTING private directory.
+ * Does not create/upload any artwork. Never overwrites an existing file.
+ * All labels are region-level, signed auditor assertions, not print approval.
+ */
+export async function exportPilotEvaluations(result,folder){
+  if(typeof folder!=='string'||folder.length===0)
+    reject('PRIVATE_OUTPUT_DIRECTORY_REQUIRED');
+  const info=await lstat(folder);
+  if(!info.isDirectory()||info.isSymbolicLink()||
+     (process.platform!=='win32'&&(info.mode&0o077)!==0))
+    reject('OUTPUT_DIRECTORY_NOT_PRIVATE');
+  if(result?.summary?.status!=='ATTESTED_RESEARCH_LABELS_ONLY'||
+     !Array.isArray(result.evaluations)||
+     result.summary.included_regions<=0)
+    reject('NO_ATTESTED_EXPERT_REGIONS_TO_EXPORT');
+  const names=new Set();
+  for(const e of result.evaluations){
+    if(typeof e.algorithm_id!=='string'||
+       !/^[A-Za-z0-9_-]{1,40}$/.test(e.algorithm_id)||
+       names.has(e.algorithm_id))
+      reject('OUTPUT_ALGORITHM_ID_UNSAFE');
+    names.add(e.algorithm_id);
+  }
+  const written=[];
+  for(const e of result.evaluations){
+    const filePath=join(folder,'vision-research-'+e.algorithm_id+'.json');
+    const file=await open(filePath,'wx',0o600);
+    try{
+      await file.writeFile(JSON.stringify(e.document,null,2)+'\n','utf8');
+      written.push(e.algorithm_id);
+    }finally{await file.close()}
+  }
+  return {status:'PRIVATE_RESEARCH_DATASETS_SAVED',
+    algorithm_count:written.length,regions_per_method:result.summary.included_regions};
+}
 const direct=process.argv[1]&&pathToFileURL(process.argv[1]).href===import.meta.url;
 if(direct){
   try{
     const args=process.argv.slice(2);
-    if(args.length!==10)reject('ARGS_INVALID');
+    if(args.length!==10&&args.length!==11)reject('ARGS_INVALID');
     const [taskPath,imagePath,artworkPath,reviewAPath,reviewBPath,
-      comparisonPath,attPath,sigPath,pubPath,spkiPin]=args;
+      comparisonPath,attPath,sigPath,pubPath,spkiPin,privateOutputDir]=args;
     // Input files are local and limited before reading into process memory.
     const paths=[taskPath,imagePath,artworkPath,reviewAPath,reviewBPath,
                  comparisonPath,attPath,sigPath,pubPath];
@@ -273,7 +310,9 @@ if(direct){
       trustedPublicKeyPem:bytes[8].toString('utf8'),
       trustedSpkiSha256:spkiPin
     });
-    // Deliberately only print aggregates. No raw datasets on stdout.
+    // Verified datasets are written only when a PRIVATE output directory
+    // is explicitly supplied. Without it, stdout contains aggregates only.
+    if(privateOutputDir)await exportPilotEvaluations(result,privateOutputDir);
     process.stdout.write(JSON.stringify(result.summary,null,2)+'\n');
   }catch{
     process.stderr.write('PILOT_ATTESTATION_REFUSED: check source bytes, signature and independent trust pin\n');
