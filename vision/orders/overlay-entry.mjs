@@ -6,8 +6,8 @@
 import {LOCAL_ORDERS,isAllowedTestOrderPage,discoverOrderRows,
   inspectSameOriginArtwork,inspectOrderArtworkBytes,
   diagnoseTestOrderTable} from './row-scanner.mjs';
-import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes}
-  from './order-page-discovery.mjs';
+import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes,
+  recheckOrderPopupReferences} from './order-page-discovery.mjs';
 import {makeLocalExpertDataset,exportLocalDatasetParts} from './local-training-zip.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
@@ -39,7 +39,8 @@ const safeNumber=n=>Number.isFinite(n)?n.toFixed(3)+' мм':'не измерен
 function summarize(res){
  if(res.status!=='RESEARCH_ONLY')
    return (res.type||'файл').toUpperCase()+': ручная проверка — '+
-     String(res.reason||'не определено').slice(0,80);
+     String(res.reason||'не определено').slice(0,80)+
+     (res.reference_state?' · '+res.reference_state:'');
  if(res.type==='svg')
    return 'SVG: '+res.detected_regions+' мест; линия '+safeNumber(res.min_line_document_mm)+
      ', пробел '+safeNumber(res.min_gap_document_mm)+' (не подтвержден масштаб заказа)';
@@ -108,6 +109,8 @@ export function initLocalOrdersOverlay(){
          origin_relation:result.origin_relation||null,
          failure_class:result.failure_class||null,
          http_status:result.http_status??null,
+         reference_state:result.reference_state||null,
+         reference_recheck_failure_class:result.reference_recheck_failure_class||null,
          fetch_exception_family:result.fetch_exception_family||null,
          transport_error:result.transport_error||null,
          detected_regions:result.detected_regions??null,
@@ -313,6 +316,7 @@ export function initLocalOrdersOverlay(){
      }
    }
    const total=candidates.length;
+   let popup404Recheck=null;
    for(let i=r.partial?.nextIndex||0;i<total;i++){
      if(closed)return;
      if(pauseRequested){
@@ -341,6 +345,19 @@ export function initLocalOrdersOverlay(){
      }catch{
        // One unreadable file never stops the rest of the sequential queue.
        result={status:'MANUAL',type:'order_artwork',reason:'ARTWORK_INSPECTION_FAILED'};
+     }
+     if(fromOrder&&result.reason==='ARTWORK_HTTP_ERROR'&&
+        result.http_status===404){
+       // Exactly one additional popup GET per affected order; never retry
+       // 404 file downloads or guess alternative download paths.
+       if(!popup404Recheck)
+         popup404Recheck=await recheckOrderPopupReferences(candidates);
+       result.reference_state=popup404Recheck.status==='REFERENCE_RECHECKED'?
+         popup404Recheck.listed[i]?'STILL_LISTED_IN_POPUP':'MISSING_FROM_POPUP':
+         'POPUP_RECHECK_UNAVAILABLE';
+       if(result.reference_state==='POPUP_RECHECK_UNAVAILABLE')
+         result.reference_recheck_failure_class=
+           popup404Recheck.failure_class||null;
      }
      if(closed)return;
      r.results.push(result);
