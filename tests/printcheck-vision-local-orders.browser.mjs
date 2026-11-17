@@ -60,6 +60,21 @@ try{
   assert.equal(await page.locator('#vision-local-order-overlay').count(),1);
   assert.equal(await page.locator('[data-vision-order-cell]').count(),4);
   assert.equal(artworkFetches,0,'No files downloaded before explicit click');
+  const diagnosticDownload=page.waitForEvent('download');
+  await page.locator('#vision-local-order-overlay button')
+    .filter({hasText:'Диагностика таблицы'}).click();
+  const diagnostic=JSON.parse(await readFile(
+    await (await diagnosticDownload).path(),'utf8'));
+  assert.equal(diagnostic.status,'ANONYMOUS_STRUCTURE_ONLY');
+  assert.equal(diagnostic.table_count,1);
+  assert.equal(diagnostic.recognized_rows,4);
+  assert.equal(diagnostic.candidate_anchor_count,4);
+  assert.equal(diagnostic.same_origin_candidate_count,3);
+  assert.equal(diagnostic.cross_origin_or_unsafe_candidate_count,1);
+  assert.equal(diagnostic.raw_artwork_bytes_included,false);
+  assert.equal(JSON.stringify(diagnostic).includes('10001'),false);
+  assert.equal(JSON.stringify(diagnostic).includes('/files/a.svg'),false);
+  assert.equal(artworkFetches,0,'DOM diagnostics must not fetch any order file');
   assert.equal(await page.locator('#unmodified').innerText(),'ORIGINAL SITE DATA');
   await page.locator('#vision-local-order-overlay button').filter({hasText:'Проверить макеты'}).click();
   await page.waitForFunction(()=>
