@@ -144,27 +144,40 @@ export function initLocalOrdersOverlay(){
    const a=node('a');a.href=url;a.download='vision-local-table-diagnostic.json';
    a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  });
- const bundleBtn=makeButton('Локальные примеры ZIP',async()=>{
+ const bundleBtn=makeButton('Локальные примеры ZIP — все',async()=>{
    if(busy||closed)return;
-   if(!window.confirm('Скачать локальный ZIP с ОРИГИНАЛАМИ тестовых макетов из выбранных строк? Файлы могут содержать конфиденциальные данные. Не загружайте ZIP в публичный GitHub.'))return;
+   if(!window.confirm('Скачать ВСЕ доступные оригиналы тестовых макетов в последовательные локальные ZIP-части? Имена и файлы конфиденциальны; браузер может запросить разрешение на несколько загрузок. В архивах нет подтверждённых ROI для обучения. НЕ загружайте их в публичный GitHub.'))return;
    busy=true;bundleBtn.disabled=true;
    refreshBtn.disabled=scanBtn.disabled=true;
-   stats.textContent='Локальное скачивание отмеченных технологом тестовых файлов…';
+   let saved=0,parts=0,unavailable=0;
+   stats.textContent='Локальное последовательное чтение всех файлов. Каждый архив ограничен размером, а не общим количеством файлов.';
    try{
-     const exported=await makeLocalExpertDataset(rows);
-     if(closed)return;
-     if(exported.status!=='LOCAL_ZIP_READY'){
-       renderStats('ZIP не сформирован: '+String(exported.reason).slice(0,90)+
-         '. Поставьте экспертную метку хотя бы одной строке.');
-       return;
+     for await(const part of exportLocalDatasetParts(rows,{
+       onProgress:progress=>{
+         if(!closed)stats.textContent='Локальное сохранение '+progress.processed+
+           '/'+progress.total+' · записано '+progress.saved+
+           ' · часть '+progress.part;
+       }
+     })){
+       if(closed)break;
+       if(part.status!=='LOCAL_ZIP_READY'){
+         if(!saved)renderStats('ZIP не сформирован: '+String(part.reason).slice(0,90));
+         continue;
+       }
+       const u=URL.createObjectURL(part.zip),a=node('a');
+       a.href=u;a.download='vision-private-originals-part-'+
+         String(part.part).padStart(4,'0')+'.zip';
+       document.body.append(a);a.click();a.remove();
+       setTimeout(()=>URL.revokeObjectURL(u),4000);
+       saved+=part.sample_count;parts++;unavailable+=part.skipped_count;
+       await new Promise(resolve=>setTimeout(resolve,180));
      }
-     const u=URL.createObjectURL(exported.zip),a=node('a');
-     a.href=u;a.download='vision-local-test-labeled-samples.zip';
-     a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);
-     renderStats('Локально сохранено '+exported.sample_count+
-       ' тестовых примеров. Нужны экспертные ROI и независимая проверка перед обучением.');
+     if(!closed&&saved)renderStats('Локально выгружено '+saved+
+       ' исходных файлов в '+parts+' ZIP-частях. Не удалось выгрузить: '+
+       unavailable+'. Браузер может запросить разрешение на многократное скачивание.'+
+       ' Без экспертных ROI модель не дообучается.');
    }catch{
-     if(!closed)renderStats('Ошибка локального ZIP. Данные наружу не передавались.');
+     if(!closed)renderStats('Сбой формирования ZIP. Уже созданные локальные части сохранены; данные наружу не передавались.');
    }finally{
      busy=false;bundleBtn.disabled=false;refreshBtn.disabled=false;
      updateBatchControls();
