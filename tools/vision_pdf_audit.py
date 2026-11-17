@@ -21,6 +21,7 @@ MAX_FILE = 16_000_000
 MAX_PAGES = 32
 MAX_DRAWINGS_PER_PAGE = 10_000
 MAX_CANDIDATES_PER_PAGE = 80
+MAX_FILLED_CANDIDATES_PER_PAGE = 80
 SCHEMA = "printcheck.vision.pdf-path-audit.v1"
 
 
@@ -48,13 +49,16 @@ def rect_points(value):
 
 
 def audit_document(pdf_path: Path, *, engine=None,
-                   exploratory_stroke_mm: float = 0.1) -> dict:
+                   exploratory_stroke_mm: float = 0.1,
+                   exploratory_fill_bbox_mm: float = 0.15) -> dict:
     """Inspect only a signed, local source file; accepts an injected fake
     engine in CI. The proposed stroke threshold is exploratory, NOT a
     technology-specific print specification.
     """
     if not positive_number(exploratory_stroke_mm) or exploratory_stroke_mm > 2:
         return manual("STROKE_THRESHOLD_INVALID")
+    if not positive_number(exploratory_fill_bbox_mm) or exploratory_fill_bbox_mm > 2:
+        return manual("FILLED_BBOX_THRESHOLD_INVALID")
     if not pdf_path.is_file() or pdf_path.stat().st_size > MAX_FILE:
         return manual("PDF_SIZE_OR_SOURCE_INVALID")
     with pdf_path.open("rb") as source:
@@ -84,6 +88,8 @@ def audit_document(pdf_path: Path, *, engine=None,
                 return manual("PDF_DRAWING_COMPLEXITY_LIMIT")
             thin = []
             thin_candidates_total = 0
+            narrow_fills = []
+            narrow_fills_total = 0
             stroke_paths = 0
             filled_paths = 0
             hairlines = 0
@@ -114,6 +120,25 @@ def audit_document(pdf_path: Path, *, engine=None,
                             })
                 if kind in ("f", "fs"):
                     filled_paths += 1
+                    # Bounding boxes are not equivalent to actual minimum ink
+                    # feature width: Bezier clips, overlaps and transparencies
+                    # remain unknown. Retain them only as review candidates.
+                    box = rect_points(path.get("rect"))
+                    if box is not None:
+                        bwidth = (box[2] - box[0]) * POINT_MM
+                        bheight = (box[3] - box[1]) * POINT_MM
+                        if min(bwidth, bheight) < exploratory_fill_bbox_mm:
+                            narrow_fills_total += 1
+                            if len(narrow_fills) < MAX_FILLED_CANDIDATES_PER_PAGE:
+                                narrow_fills.append({
+                                    "page_number": page_num,
+                                    "bbox_page_pt": [round(v, 4) for v in box],
+                                    "bbox_min_dimension_mm": round(min(bwidth, bheight), 5),
+                                    "bbox_max_dimension_mm": round(max(bwidth, bheight), 5),
+                                    "candidate_kind": "narrow_filled_bbox",
+                                    "actual_ink_feature_width_verified": False,
+                                    "candidate_only": True
+                                })
                 beziers += sum(1 for item in path.get("items", ())
                                if isinstance(item, (tuple, list)) and
                                item and item[0] == "c")
@@ -134,11 +159,16 @@ def audit_document(pdf_path: Path, *, engine=None,
                                         if isinstance(b, dict)),
                 "thin_stroke_candidates": thin,
                 "thin_stroke_candidates_truncated": thin_candidates_total > MAX_CANDIDATES_PER_PAGE,
+                "narrow_filled_bbox_candidates": narrow_fills,
+                "narrow_filled_bbox_candidates_truncated": narrow_fills_total > MAX_FILLED_CANDIDATES_PER_PAGE,
                 "unit_for_boxes": "pdf_page_pt"
             })
         return {"schema": SCHEMA, "status": "RESEARCH_ONLY",
                 "page_count": len(pages), "pages": pages,
                 "exploratory_stroke_threshold_mm": exploratory_stroke_mm,
+                "exploratory_filled_bbox_threshold_mm": exploratory_fill_bbox_mm,
+                "narrow_filled_bbox_is_actual_ink_feature_width": False,
+                "clipping_and_paint_order_verified": False,
                 "stroke_width_is_nominal_not_printed_width": True,
                 "min_gap_verified": False, "transparency_verified": False,
                 "text_outlines_verified": False, "spot_and_icc_verified": False,
@@ -157,7 +187,8 @@ def audit_document(pdf_path: Path, *, engine=None,
 
 
 def audit_sample(root: Path, sample_id: str, *, engine=None,
-                 exploratory_stroke_mm: float = 0.1) -> dict:
+                 exploratory_stroke_mm: float = 0.1,
+                 exploratory_fill_bbox_mm: float = 0.15) -> dict:
     if not isinstance(sample_id, str) or not re.fullmatch(
         r"\d{8}T\d{6}_[0-9a-f]{10}:\d{4}", sample_id
     ):
@@ -185,7 +216,8 @@ def audit_sample(root: Path, sample_id: str, *, engine=None,
     if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
         return manual("SOURCE_SHA256_MISMATCH")
     out = audit_document(target, engine=engine,
-                         exploratory_stroke_mm=exploratory_stroke_mm)
+                         exploratory_stroke_mm=exploratory_stroke_mm,
+                         exploratory_fill_bbox_mm=exploratory_fill_bbox_mm)
     out["sample_id"] = sample_id
     return out
 
@@ -195,9 +227,11 @@ def main(argv=None):
     p.add_argument("--root", default=r"D:\VisionCheckLab")
     p.add_argument("--sample-id", required=True)
     p.add_argument("--exploratory-stroke-mm", type=float, default=.1)
+    p.add_argument("--exploratory-fill-bbox-mm", type=float, default=.15)
     args = p.parse_args(argv)
     print(json.dumps(audit_sample(Path(args.root), args.sample_id,
-        exploratory_stroke_mm=args.exploratory_stroke_mm),
+        exploratory_stroke_mm=args.exploratory_stroke_mm,
+        exploratory_fill_bbox_mm=args.exploratory_fill_bbox_mm),
         ensure_ascii=False, indent=2))
 
 
