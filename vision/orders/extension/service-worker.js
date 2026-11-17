@@ -95,7 +95,7 @@ function installPortListener(runtime){
       }
       if(final.pathname!==new URL(target.url).pathname||
          final.search!==new URL(target.url).search){
-        const login=/(?:^|\\/)(?:auth|login|signin)(?:\\/|$)/i.test(final.pathname);
+        const login=final.pathname.toLowerCase().split('/').some(part=>['auth','login','signin'].includes(part));
         send({op:'error',code:login?'EXTENSION_AUTH_REDIRECT':'EXTENSION_REDIRECT_UNEXPECTED_PATH'});return;
       }
     }
