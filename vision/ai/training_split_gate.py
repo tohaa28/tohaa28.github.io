@@ -19,6 +19,7 @@ def audit_split_manifest(records):
     families = {}
     sources = {}
     hashes = {}
+    roi_roles = {}
     for item in records:
         if not isinstance(item, dict):
             return _manual("INVALID_RECORD", counts)
@@ -45,6 +46,9 @@ def audit_split_manifest(records):
             return _manual("PHYSICAL_SCALE_UNVERIFIED", counts)
         if item.get("color_profile_verified") is not True:
             return _manual("COLOR_PROFILE_UNVERIFIED", counts)
+        previous_role = roi_roles.setdefault(roi, role)
+        if previous_role != role:
+            return _manual("ROI_ROLE_CONFLICT", counts)
         for key, value, seen in (
             ("FAMILY", family, families), ("SOURCE", source, sources),
             ("ROI", roi, hashes)
