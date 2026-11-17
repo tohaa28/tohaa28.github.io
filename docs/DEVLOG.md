@@ -975,3 +975,58 @@ Pre-change HEAD `59bef4d405335c6b2fe0a9c51c83eb886a24b462`; PR #4 open/DRAFT/unm
 - In optional offline `tools/vision_pdf_audit.py`, `rect_points` now rejects booleans, numeric strings and non-finite coordinates instead of silently coercing values with `float()`. Added synthetic rectangle and page-box fail-closed regression tests in `tests/test_vision_pdf_audit.py`.
 - No customer PDFs, paths, secrets or private expert labels committed. No production files modified. New SHA CI and threefold reviewer/adjudication regression remain to be independently verified; no passing claim is made for this change until checks complete.
 - Unresolved: preview publish; real independent ROI evidence, proven physical mm, ICC/spot, PDF paint/transparency, technology-specific gaps, independent family holdout and real-world accuracy. Unknown => MANUAL; training/production approval disabled.
+
+
+## Vision M3.3 — контроль 404/доступа, узкие PDF-заливки и последовательный PDF-аудит (2026-11-17)
+
+Область изменений: только `feature/printcheck-vision-copy-v01`, PR #4 DRAFT.
+Никаких настоящих макетов, секретов, имён файлов и приватных URL не выгружено
+в GitHub. Действующая «Макетная» и production не изменялись.
+
+**Источники фактов:** ранее предоставленный анонимный отчёт тестовой таблицы
+с 61 обработанным заказом, 164 клиентскими файлами, 125 распознанными PDF,
+37 HTTP 404 и 2 сетевыми/авторизационными отказами. Цифры не означают,
+что нам удалось устранить 404 или испытать настоящие PDF в GitHub CI.
+
+- `248d7b1`, `05355d2`: после HTTP 404 модуль повторно читает *только*
+  авторизованный read-only popup того же заказа. Выполняется один popup
+  GET на заказ с ошибкой, а не повторное скачивание файла. Анонимная
+  классификация: `STILL_LISTED_IN_POPUP`, `MISSING_FROM_POPUP`,
+  `POPUP_RECHECK_UNAVAILABLE`. Ни один другой URL для оригинала не
+  подбирается; auth/CORS не обходятся.
+- `97c54fa`: тесты безопасного списка допущенных URL, отсутствующей
+  ссылки, существующей ссылки и редактирования приватных ошибок.
+- `c3b256b`, `6df0701`: фиксированные MV3 коды ошибок скачивания
+  теперь показывают категории отказов авторизации, редиректов,
+  сетевого подключения и отключения сервиса без копирования браузерной
+  строки исключения. Реальная причина двух отказов ещё неизвестна.
+- `f20811d`, `77b698e`: локальный исследовательский PDF-аудит
+  дополнен узкими bounding-box заполненных векторных путей, с явным
+  отрицанием эквивалентности истинной ширине линии и ограничением
+  80 кандидатов на страницу. Проверены края, неверные пороги, приватность;
+  нет производственного допуска, цветоделения/ICC и оценки минимального gap.
+- `3fce181`, `fc19fe5`: локальный `audit_all_samples` обрабатывает
+  все импортированные PDF последовательно без общей квоты на количество
+  файлов, атомарно записывает приватные JSON в `reports/pdf-audits/`.
+  Тест: 20 синтетических PDF из нескольких ZIP-частей, повторный запуск,
+  контроль SHA-256/подмены файла, без исходного текста и путей в отчёте.
+- `29f1ab0`: Windows инсталлятор создаёт `AUDIT-ALL-PDFS.cmd`.
+  Установщик не скачивает PyMuPDF — библиотека является опциональной
+  зависимостью с требованиями AGPL/коммерческого лицензирования.
+- `ba13681`, `486345c`, `fce6146`: Chromium end-to-end тест двух
+  файлов с 404, одним popup recheck и анонимным локальным JSON; новый
+  тест первоначально не распознавал собственную одноячеечную фикстуру.
+  Добавлена вторая ячейка согласно реальному контракту DOM-адаптера.
+
+**CI:** синтетические JS/Python тесты, UI, raster, rules на промежуточных
+SHA завершались успешно. Publication runs 44151652612 и 44151909273
+завершались с ошибкой таймаута 404-browser теста из-за фикстуры.
+После `fce6146` требуется дождаться и проверить новый публикационный
+workflow; прежний SUCCESS не переносить автоматически.
+
+**Следующее:** реальный анонимный JSON после обновления локального
+расширения, чтобы выяснить пропавшие ссылочные id vs существующие
+404, а также точные классы двух отказов. При получении приватных
+PDF вне GitHub провести локальный audit-all и независимую ROI-разметку,
+семейный holdout, проверку физического масштаба, spot/ICC, paint-order.
+Самообучение остаётся выключенным для неподтверждённых ROI.
