@@ -21,6 +21,10 @@ on:
       - "vision/dataset/pilot-attestation.mjs"
       - "vision/dataset/prepare-pilot-signoff.mjs"
       - "tests/printcheck-vision-pilot-attestation.test.mjs"
+      - "vision/dataset/visual-fingerprint.mjs"
+      - "vision/dataset/cohort-leakage-audit.mjs"
+      - "tests/printcheck-vision-visual-fingerprint.test.mjs"
+      - "tests/printcheck-vision-cohort-leakage.test.mjs"
       - "tests/printcheck-vision-pilot-python-e2e.mjs"
       - "tests/bench-printcheck-vision-spatial.mjs"
       - "tests/bench-printcheck-vision-curved.mjs"
@@ -71,6 +75,10 @@ jobs:
           node --check vision/dataset/pilot-attestation.mjs
           node --check vision/dataset/prepare-pilot-signoff.mjs
           node --check tests/printcheck-vision-pilot-attestation.test.mjs
+          node --check vision/dataset/visual-fingerprint.mjs
+          node --check vision/dataset/cohort-leakage-audit.mjs
+          node --check tests/printcheck-vision-visual-fingerprint.test.mjs
+          node --check tests/printcheck-vision-cohort-leakage.test.mjs
           node --check tests/printcheck-vision-pilot-python-e2e.mjs
           node --check tests/bench-printcheck-vision-spatial.mjs
           node --check tests/bench-printcheck-vision-curved.mjs
@@ -81,7 +89,7 @@ jobs:
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-svg-dom.test.mjs
       - name: Run deterministic rule tests
-        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs tests/printcheck-vision-review-task.test.mjs tests/printcheck-vision-region-methods.test.mjs tests/printcheck-vision-compare-reviews.test.mjs tests/printcheck-vision-pilot-attestation.test.mjs
+        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs tests/printcheck-vision-review-task.test.mjs tests/printcheck-vision-region-methods.test.mjs tests/printcheck-vision-compare-reviews.test.mjs tests/printcheck-vision-pilot-attestation.test.mjs tests/printcheck-vision-visual-fingerprint.test.mjs tests/printcheck-vision-cohort-leakage.test.mjs
       - name: Report synthetic CPU performance and exact result parity
         run: node tests/bench-printcheck-vision-spatial.mjs
       - name: Report synthetic curved-boundary CPU scaling
