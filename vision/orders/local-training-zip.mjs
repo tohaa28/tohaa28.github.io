@@ -50,7 +50,7 @@ export function makeLocalStoredZip(entries){
  for(const {name,bytes} of entries){
    if(typeof name!=='string'||te.encode(name).length>300||
       !safeEntryName(name)||used.has(name)||
-      !(bytes instanceof Uint8Array)||bytes.length>5_000_000)
+      !(bytes instanceof Uint8Array)||bytes.length>16_000_000)
      throw new RangeError('LOCAL_ZIP_ENTRY_INVALID');
    used.add(name);
    const nameBytes=te.encode(name),crc=crc32(bytes);
@@ -178,4 +178,102 @@ export async function makeLocalExpertDataset(rows,{
  return {status:'LOCAL_ZIP_READY',zip,manifest,
    sample_count:samples.length,skipped_count:skipped.length,
    exported_bytes:consumed};
+}
+
+
+/**
+ * Uncapped, user-triggered, sequential local export. Each ZIP is bounded so
+ * a large order queue cannot exhaust browser memory or produce oversized
+ * archives. All test customer files are represented, including files not yet
+ * given an expert label. They are explicitly NOT training-ready examples.
+ *
+ * The caller downloads each yielded part locally; this module NEVER uploads,
+ * caches or persists sources or filenames to a remote service.
+ */
+export async function* exportLocalDatasetParts(rows,{
+ loc=globalThis.location,
+ fetcher=globalThis.__visionLocalTrustedTransport||globalThis.fetch,
+ onProgress=()=>{},
+ maxPerFile=16_000_000,
+ maxPartBytes=24_000_000,
+ maxFilesPerPart=16
+}={}){
+ if(!isAllowedTestOrderPage(loc)){yield refused('NOT_TEST_ORDER_PAGE');return}
+ if(!Array.isArray(rows)||maxPerFile<1||maxPerFile>16_000_000||
+    maxPartBytes<maxPerFile||maxPartBytes>24_000_000||
+    maxFilesPerPart<1||maxFilesPerPart>16){
+   yield refused('LOCAL_EXPORT_SETTINGS_INVALID');return;
+ }
+ const all=rows.flatMap(r=>(r.orderUploads?.length?r.orderUploads:r.files||[])
+   .map(a=>({file:a,row:r})));
+ if(!all.length){yield refused('NO_SOURCE_ARTWORK');return}
+ let part=0,saved=0,processed=0,entries=[],samples=[],skipped=[],bytes=0;
+ const buildPart=()=>{
+   if(!samples.length)return null;
+   part++;
+   const manifest={
+     schema:'printcheck.vision.local-test-artwork.v0',
+     created_at:new Date().toISOString(),source:'local_test_orders',
+     training_ready:false,roi_annotations_verified:false,
+     held_out_families_verified:false,source_order_ids_included:false,
+     source_urls_included:false,public_upload_permitted:false,
+     contains_original_filenames:true,
+     warning:'PRIVATE local archive. Unreviewed and row-only labels are NOT verified ROI training annotations.',
+     samples,skipped
+   };
+   const parts=[{name:'manifest.json',
+     bytes:te.encode(JSON.stringify(manifest,null,2)+'\n')},...entries];
+   const output={status:'LOCAL_ZIP_READY',part,zip:makeLocalStoredZip(parts),
+     manifest,sample_count:samples.length,skipped_count:skipped.length,
+     processed_files:processed,total_files:all.length};
+   entries=[];samples=[];skipped=[];bytes=0;
+   return output;
+ };
+ for(const {file:a,row:r} of all){
+   processed++;
+   onProgress({processed,total:all.length,saved,part:part+1});
+   // Apply the same official source verification and per-file bounded GET.
+   const response=a.role==='customer_uploaded_artwork'?
+     await fetchOrderResourceBytes(a,{fetcher,loc,maxBytes:maxPerFile}):
+     await fetchSameOriginArtworkBytes(a,{fetcher,loc,maxFileBytes:maxPerFile});
+   if(response.status!=='LOCAL_BYTES_ONLY'){
+     skipped.push({row_index:r.row_index,reason:response.reason||'FILE_UNAVAILABLE'});
+     continue;
+   }
+   const supplied=a.originalFilename??a.filename??'';
+   const originalName=supplied?exactLocalFilename(supplied):null;
+   if(supplied&&!originalName){
+     skipped.push({row_index:r.row_index,reason:'ORIGINAL_FILENAME_UNSAFE_TO_EXPORT'});
+     continue;
+   }
+   if(samples.length>=maxFilesPerPart||bytes+response.bytes.length>maxPartBytes){
+     const batch=buildPart();
+     if(batch)yield batch;
+   }
+   const slot=String(samples.length+1).padStart(4,'0');
+   const name=originalName?'samples/'+slot+'/'+originalName:
+     'samples/'+slot+'.'+suffix(response.url,response.bytes,'');
+   const label=r.grade?.value||'unreviewed';
+   const sha=await optionalSha256(response.bytes);
+   samples.push({
+     sample_name:name,anonymous_row_index:r.row_index,
+     ...(originalName?{original_filename:originalName}:{}),
+     expert_label:allowedLabels.has(label)?label:'unreviewed',
+     expert_label_scope:allowedLabels.has(label)?
+       'whole_order_row_not_object_ROI':'not_yet_expert_labeled',
+     bytes:response.bytes.length,sha256:sha,
+     source_size_and_placement_proven:false,
+     trusted_artwork_provenance_proven:false
+   });
+   entries.push({name,bytes:response.bytes});
+   bytes+=response.bytes.length;
+   saved++;
+   if(samples.length>=maxFilesPerPart){
+     const batch=buildPart();
+     if(batch)yield batch;
+   }
+ }
+ const tail=buildPart();
+ if(tail)yield tail;
+ if(saved===0)yield refused('NO_EXPORTABLE_ARTWORK');
 }
