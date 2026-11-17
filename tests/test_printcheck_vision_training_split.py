@@ -58,6 +58,22 @@ class SplitGateTests(unittest.TestCase):
         for data in ([], {}, None, [None]):
             self.assertEqual(audit_split_manifest(data)["status"], "MANUAL")
 
+    def test_malformed_container_values_fail_closed_without_exception(self):
+        for key, value, reason in (
+            ("split", [], "INVALID_SPLIT"),
+            ("split", {}, "INVALID_SPLIT"),
+            ("region_role", [], "UNVERIFIED_REGION_ROLE"),
+            ("region_role", {}, "UNVERIFIED_REGION_ROLE"),
+        ):
+            with self.subTest(key=key, value=value):
+                rows = copy.deepcopy(self.rows)
+                rows[0][key] = value
+                out = audit_split_manifest(rows)
+                self.assertEqual(out["status"], "MANUAL")
+                self.assertEqual(out["reason"], reason)
+                self.assertFalse(out["production_approved"])
+                self.assertFalse(out["auto_deploy_allowed"])
+
     def test_counts_are_aggregate_only(self):
         rows = copy.deepcopy(self.rows)
         rows[0]["private_customer_name"] = "SECRET-DO-NOT-EXPORT"
