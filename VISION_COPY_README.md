@@ -85,6 +85,14 @@
 
 **Ограничения:** JPG/WebP/профилированные, индексированные, интерлейсные PNG требуют MANUAL; совпадение byte SHA с подписанным документом не удостоверяет подлинность заказа Gifts.ru или физические миллиметры. Реальная экспертная выборка пока не проверена.
 
+## C3B.3.J — подписной PDF/SVG → PNG → физическое поле
+
+Отдельный модуль vision/dataset/render-calibration-attestation.mjs требует подписанный Ed25519 отчёт по **точным SHA-256 исходного PDF/SVG, PNG и закрытого источника заказа**. Независимо пересчитываются документный SVG viewBox (для строгого subset) или заявленная PDF-viewport матрица (page box, rotation, UserUnit), не менее 5 контрольных точек, допустимые аффинные преобразования без shear/nonuniform scale и вписывание углов макета в поле мм.
+
+Новый **обязательный** renderCalibrationInput в vision/dataset/locked-pilot-gate.mjs должен ссылаться на те же source/preview/order байты, что и signed pilot. Без него research evaluation запрещён. Отдельная локальная команда vision/dataset/verify-render-files.mjs проверяет пакет без раскрытия клиентских имён и SHA в журнале. Полный протокол: docs/C3B3_J_RENDER_CALIBRATION.md.
+
+**Граница доверия:** подписной renderer receipt подтверждает байтовую и численную согласованность, но не выполняет независимый полный PDF painter, не доказывает визуальное совпадение с PNG, а ICC/CMYK/spot цветоуправление остаётся внешней незавершённой работой. Значения print_scale_proven, production_approved и visual_render_equivalence_proven остаются false. Синтетические тесты — через CircleCI vision-contract, реальные клиентские исходники не публикуются.
+
 ## Локальное открытие
 
 Для проверки визуальной части:
