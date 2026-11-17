@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Vision Check — тестовая сеть (локальный адаптер)",
+  "version": "0.1.0",
+  "description": "Исследовательская проверка макетов в тестовых заказах. Только два указанных локальных HTTP-хоста, без выгрузки данных.",
+  "host_permissions": [
+    "http://psk.testgifts.local/*",
+    "http://testgifts.local/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://psk.testgifts.local/devorders*"
+      ],
+      "js": [
+        "content-transport.js",
+        "vision-order-overlay.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}
