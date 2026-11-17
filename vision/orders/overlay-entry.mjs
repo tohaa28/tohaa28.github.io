@@ -334,7 +334,9 @@ export function initLocalOrdersOverlay(){
            await inspectOrderArtworkBytes(artifact.bytes,artifact.url,
              artifact.mime,a.filename):
            {status:'MANUAL',type:'order_artwork',
-             reason:artifact.reason||'ARTWORK_DOWNLOAD_FAILED'};
+             reason:artifact.reason||'ARTWORK_DOWNLOAD_FAILED',
+           stage:artifact.stage||'artwork',http_status:artifact.http_status??null,
+           failure_class:artifact.failure_class||null};
        }else result=await inspectSameOriginArtwork(a);
      }catch{
        // One unreadable file never stops the rest of the sequential queue.
