@@ -1902,6 +1902,187 @@
     return inspectOrderArtworkBytes(payload.bytes, payload.url, payload.contentType);
   }
 
+  // vision/orders/local-training-zip.mjs
+  var te = new TextEncoder();
+  var allowedLabels = /* @__PURE__ */ new Set([
+    "confirmed_defect",
+    "false_positive",
+    "missed_defect",
+    "expert_clear"
+  ]);
+  var refused2 = (reason) => ({ status: "MANUAL", reason, production_approved: false });
+  var size16 = (dv, off, value) => dv.setUint16(off, value, true);
+  var size32 = (dv, off, value) => dv.setUint32(off, value >>> 0, true);
+  function crc32(bytes) {
+    let n = 4294967295;
+    for (const b of bytes) {
+      n ^= b;
+      for (let i = 0; i < 8; i++)
+        n = n >>> 1 ^ (n & 1 ? 3988292384 : 0);
+    }
+    return (n ^ 4294967295) >>> 0;
+  }
+  function makeLocalStoredZip(entries) {
+    if (!Array.isArray(entries) || !entries.length || entries.length > 40)
+      throw new RangeError("LOCAL_ZIP_ENTRIES_INVALID");
+    const data = [], central = [];
+    let offset = 0, centralSize = 0;
+    for (const { name, bytes } of entries) {
+      if (typeof name !== "string" || name.length > 100 || !/^(?:manifest\.json|samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin))$/.test(name) || !(bytes instanceof Uint8Array) || bytes.length > 5e6)
+        throw new RangeError("LOCAL_ZIP_ENTRY_INVALID");
+      const nameBytes = te.encode(name), crc = crc32(bytes);
+      const local = new Uint8Array(30 + nameBytes.length), v = new DataView(local.buffer);
+      size32(v, 0, 67324752);
+      size16(v, 4, 20);
+      size16(v, 6, 2048);
+      size16(v, 8, 0);
+      size16(v, 10, 0);
+      size16(v, 12, 33);
+      size32(v, 14, crc);
+      size32(v, 18, bytes.length);
+      size32(v, 22, bytes.length);
+      size16(v, 26, nameBytes.length);
+      size16(v, 28, 0);
+      local.set(nameBytes, 30);
+      data.push(local, bytes);
+      const cd = new Uint8Array(46 + nameBytes.length), d = new DataView(cd.buffer);
+      size32(d, 0, 33639248);
+      size16(d, 4, 20);
+      size16(d, 6, 20);
+      size16(d, 8, 2048);
+      size16(d, 10, 0);
+      size16(d, 12, 0);
+      size16(d, 14, 33);
+      size32(d, 16, crc);
+      size32(d, 20, bytes.length);
+      size32(d, 24, bytes.length);
+      size16(d, 28, nameBytes.length);
+      size16(d, 30, 0);
+      size16(d, 32, 0);
+      size16(d, 34, 0);
+      size16(d, 36, 0);
+      size32(d, 38, 0);
+      size32(d, 42, offset);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+      centralSize += cd.length;
+      offset += local.length + bytes.length;
+    }
+    if (offset + centralSize >= 4294967295) throw new RangeError("LOCAL_ZIP_SIZE_LIMIT");
+    const end = new Uint8Array(22), e = new DataView(end.buffer);
+    size32(e, 0, 101010256);
+    size16(e, 4, 0);
+    size16(e, 6, 0);
+    size16(e, 8, entries.length);
+    size16(e, 10, entries.length);
+    size32(e, 12, centralSize);
+    size32(e, 16, offset);
+    size16(e, 20, 0);
+    return new Blob([...data, ...central, end], { type: "application/zip" });
+  }
+  function suffix(url, bytes) {
+    const match = /\.([a-z0-9]+)$/i.exec(url.pathname);
+    const ext = match?.[1]?.toLowerCase();
+    if (["svg", "pdf", "png", "jpg", "jpeg", "webp", "cdr", "eps", "ai"].includes(ext))
+      return ext;
+    if (bytes.length > 5 && String.fromCharCode(...bytes.subarray(0, 5)) === "%PDF-")
+      return "pdf";
+    if (bytes.length > 8 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78)
+      return "png";
+    if (bytes.length > 3 && bytes[0] === 255 && bytes[1] === 216) return "jpg";
+    if (bytes.length > 12 && String.fromCharCode(...bytes.subarray(0, 4)) === "RIFF") return "webp";
+    if (bytes.length <= 256e3) {
+      try {
+        if (/^\s*<svg\b/.test(new TextDecoder("utf-8", { fatal: true }).decode(bytes)))
+          return "svg";
+      } catch {
+      }
+    }
+    return "bin";
+  }
+  async function optionalSha256(bytes) {
+    if (!globalThis.crypto?.subtle) return null;
+    try {
+      const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+    } catch {
+      return null;
+    }
+  }
+  async function makeLocalExpertDataset(rows, {
+    loc = globalThis.location,
+    fetcher = globalThis.fetch,
+    maxFiles = 16,
+    maxPerFile = 4e6,
+    maxTotal = 24e6
+  } = {}) {
+    if (!isAllowedTestOrderPage(loc)) return refused2("NOT_TEST_ORDER_PAGE");
+    if (!Array.isArray(rows) || rows.length > LOCAL_ORDERS.maxRows || !Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 16 || !Number.isSafeInteger(maxPerFile) || maxPerFile < 1 || maxPerFile > 4e6 || !Number.isSafeInteger(maxTotal) || maxTotal < 1 || maxTotal > 24e6)
+      return refused2("EXPERT_EXPORT_LIMITS_INVALID");
+    const picked = rows.filter((r) => allowedLabels.has(r.grade?.value));
+    if (!picked.length) return refused2("EXPERT_LABELS_REQUIRED");
+    const entries = [], samples = [], skipped = [];
+    let consumed = 0, id = 0;
+    outer: for (const r of picked) {
+      for (const a of (r.files || []).slice(0, 4)) {
+        if (id >= maxFiles) break outer;
+        const file = await fetchSameOriginArtworkBytes(a, {
+          fetcher,
+          loc,
+          maxFileBytes: maxPerFile
+        });
+        if (file.status !== "LOCAL_BYTES_ONLY") {
+          skipped.push({ row_index: r.row_index, reason: file.reason });
+          continue;
+        }
+        if (consumed + file.bytes.length > maxTotal) {
+          skipped.push({ row_index: r.row_index, reason: "EXPERT_EXPORT_TOTAL_LIMIT" });
+          break outer;
+        }
+        id++;
+        consumed += file.bytes.length;
+        const name = "samples/" + String(id).padStart(4, "0") + "." + suffix(file.url, file.bytes);
+        const sha = await optionalSha256(file.bytes);
+        entries.push({ name, bytes: file.bytes });
+        samples.push({
+          sample_name: name,
+          anonymous_row_index: r.row_index,
+          expert_label: r.grade.value,
+          expert_label_scope: "whole_order_row_not_object_ROI",
+          bytes: file.bytes.length,
+          sha256: sha,
+          source_size_and_placement_proven: false,
+          trusted_artwork_provenance_proven: false
+        });
+      }
+    }
+    if (!samples.length) return refused2("NO_EXPORTABLE_LABELED_ARTWORK");
+    const manifest = {
+      schema: "printcheck.vision.local-test-artwork.v0",
+      created_at: (/* @__PURE__ */ new Date()).toISOString(),
+      source: "local_test_orders",
+      training_ready: false,
+      roi_annotations_verified: false,
+      held_out_families_verified: false,
+      source_order_ids_included: false,
+      source_urls_included: false,
+      public_upload_permitted: false,
+      warning: "Contains original test-only files and row-level opinions, NOT a verified training dataset. Store and annotate locally.",
+      samples,
+      skipped
+    };
+    entries.unshift({ name: "manifest.json", bytes: te.encode(JSON.stringify(manifest, null, 2) + "\n") });
+    const zip = makeLocalStoredZip(entries);
+    return {
+      status: "LOCAL_ZIP_READY",
+      zip,
+      manifest,
+      sample_count: samples.length,
+      skipped_count: skipped.length,
+      exported_bytes: consumed
+    };
+  }
+
   // vision/orders/overlay-entry.mjs
   var ID = "vision-local-order-overlay";
   var STYLE_ID = "vision-local-order-style";
@@ -1969,7 +2150,7 @@
     const actions = node("div", void 0, "vlo-actions");
     const stats = node("div", "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043F\u043E\u0438\u0441\u043A\u0430 \u0441\u0442\u0440\u043E\u043A\u2026", "vlo-stats");
     stats.setAttribute("role", "status");
-    const warning = node("p", "\u042D\u0442\u043E \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u0441\u043A\u0438\u0439 \u0430\u043D\u0430\u043B\u0438\u0437, \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A \u043A \u043F\u0435\u0447\u0430\u0442\u0438. \u041D\u0435\u0442 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0445 \u043C\u0435\u0441\u0442 \u2260 \u043C\u0430\u043A\u0435\u0442 \u0433\u043E\u0434\u0435\u043D. PDF \u0438 \u0441\u043B\u043E\u0436\u043D\u044B\u0435 \u0432\u0435\u043A\u0442\u043E\u0440\u044B: MANUAL.", "vlo-note");
+    const warning = node("p", "\u042D\u0442\u043E \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u0441\u043A\u0438\u0439 \u0430\u043D\u0430\u043B\u0438\u0437, \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A \u043A \u043F\u0435\u0447\u0430\u0442\u0438. \u041D\u0435\u0442 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0445 \u043C\u0435\u0441\u0442 \u2260 \u043C\u0430\u043A\u0435\u0442 \u0433\u043E\u0434\u0435\u043D. PDF \u0438 \u0441\u043B\u043E\u0436\u043D\u044B\u0435 \u0432\u0435\u043A\u0442\u043E\u0440\u044B: MANUAL. \u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 ZIP \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u2014 \u043D\u0435 \u043F\u0443\u0431\u043B\u0438\u043A\u0443\u0439\u0442\u0435 \u0435\u0433\u043E.", "vlo-note");
     let rows = [], busy = false, closed = false, fileBudget = LOCAL_ORDERS.maxBatchFiles;
     function close2() {
       closed = true;
@@ -2034,11 +2215,41 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1e3);
     });
+    const bundleBtn = makeButton("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u0440\u0438\u043C\u0435\u0440\u044B ZIP", async () => {
+      if (busy || closed) return;
+      if (!window.confirm("\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 ZIP \u0441 \u041E\u0420\u0418\u0413\u0418\u041D\u0410\u041B\u0410\u041C\u0418 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u043C\u0430\u043A\u0435\u0442\u043E\u0432 \u0438\u0437 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0445 \u0441\u0442\u0440\u043E\u043A? \u0424\u0430\u0439\u043B\u044B \u043C\u043E\u0433\u0443\u0442 \u0441\u043E\u0434\u0435\u0440\u0436\u0430\u0442\u044C \u043A\u043E\u043D\u0444\u0438\u0434\u0435\u043D\u0446\u0438\u0430\u043B\u044C\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435. \u041D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0439\u0442\u0435 ZIP \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.")) return;
+      busy = true;
+      bundleBtn.disabled = true;
+      refreshBtn.disabled = scanBtn.disabled = true;
+      stats.textContent = "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0435 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043D\u044B\u0445 \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u043E\u043C \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0444\u0430\u0439\u043B\u043E\u0432\u2026";
+      try {
+        const exported = await makeLocalExpertDataset(rows);
+        if (closed) return;
+        if (exported.status !== "LOCAL_ZIP_READY") {
+          renderStats("ZIP \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D: " + String(exported.reason).slice(0, 90) + ". \u041F\u043E\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u044D\u043A\u0441\u043F\u0435\u0440\u0442\u043D\u0443\u044E \u043C\u0435\u0442\u043A\u0443 \u0445\u043E\u0442\u044F \u0431\u044B \u043E\u0434\u043D\u043E\u0439 \u0441\u0442\u0440\u043E\u043A\u0435.");
+          return;
+        }
+        const u = URL.createObjectURL(exported.zip), a = node("a");
+        a.href = u;
+        a.download = "vision-local-test-labeled-samples.zip";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(u), 1500);
+        renderStats("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E " + exported.sample_count + " \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u043F\u0440\u0438\u043C\u0435\u0440\u043E\u0432. \u041D\u0443\u0436\u043D\u044B \u044D\u043A\u0441\u043F\u0435\u0440\u0442\u043D\u044B\u0435 ROI \u0438 \u043D\u0435\u0437\u0430\u0432\u0438\u0441\u0438\u043C\u0430\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u043F\u0435\u0440\u0435\u0434 \u043E\u0431\u0443\u0447\u0435\u043D\u0438\u0435\u043C.");
+      } catch {
+        if (!closed) renderStats("\u041E\u0448\u0438\u0431\u043A\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0433\u043E ZIP. \u0414\u0430\u043D\u043D\u044B\u0435 \u043D\u0430\u0440\u0443\u0436\u0443 \u043D\u0435 \u043F\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043B\u0438\u0441\u044C.");
+      } finally {
+        busy = false;
+        bundleBtn.disabled = false;
+        refreshBtn.disabled = false;
+        scanBtn.disabled = rows.length === 0;
+      }
+    });
     actions.append(
       refreshBtn,
       scanBtn,
       exportBtn,
       diagnosticBtn,
+      bundleBtn,
       makeButton("\u0417\u0430\u043A\u0440\u044B\u0442\u044C", close2)
     );
     panel.append(title, description, actions, stats, warning);
