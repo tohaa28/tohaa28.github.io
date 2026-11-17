@@ -16,9 +16,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install pinned research-only SVG and PDF raster engines
-        run: npm install --prefix vision/raster --no-audit --no-fund
-      - name: Capture exact research dependency lock (no credentials)
-        run: node -e "console.log('PINNED_LOCK_JSON=' + JSON.stringify(require('node:fs').readFileSync('vision/raster/package-lock.json','utf8')))"
+        run: npm ci --prefix vision/raster --no-audit --no-fund
       - name: Run actual Rust resvg and PDF.js Skia pixel replay
         run: |
           node tests/printcheck-vision-independent-raster.integration.mjs
