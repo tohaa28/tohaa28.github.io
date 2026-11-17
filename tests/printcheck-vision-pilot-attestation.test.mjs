@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
+import {mkdtemp,stat,readFile,rm,chmod} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {createReviewTask,createReviewSubmission} from '../vision/dataset/review-task.mjs';
-import {buildAttestedPilot} from '../vision/dataset/pilot-attestation.mjs';
+import {buildAttestedPilot,exportPilotEvaluations} from '../vision/dataset/pilot-attestation.mjs';
 
 const hash=data=>createHash('sha256').update(data).digest('hex');
 const syntheticHash=n=>n.toString(16).padStart(64,'0');
@@ -230,4 +233,43 @@ test('research comparison ROI substitution, duplicate or unsupported state is bl
       ...input,comparisonBytes:json(cmp)
     }),/RESEARCH_METHOD_INVALID|RESEARCH_ROI_INVALID|RESEARCH_COMPARISON_INVALID/);
   }
+});
+
+test('only an explicit 0700 local directory can receive algorithm-specific signed research rows',async()=>{
+  const {assemble}=await fixture();
+  const result=buildAttestedPilot(assemble());
+  const folder=await mkdtemp(join(tmpdir(),'pcv-audit-synthetic-'));
+  try{
+    await chmod(folder,0o700);
+    const saved=await exportPilotEvaluations(result,folder);
+    assert.equal(saved.status,'PRIVATE_RESEARCH_DATASETS_SAVED');
+    assert.equal(saved.algorithm_count,2);
+    for(const name of ['parallel','normal']){
+      const path=join(folder,'vision-research-'+name+'.json');
+      const info=await stat(path);
+      if(process.platform!=='win32')assert.equal(info.mode&0o777,0o600);
+      const data=JSON.parse(await readFile(path,'utf8'));
+      assert.equal(data.schema,'printcheck.vision.expert-regions.v1');
+      assert.equal(data.regions.length,2);
+      assert.equal(new Set(data.regions.map(r=>r.region_sha256)).size,2);
+      assert.equal(data.regions.every(r=>r.expert.state==='verified'),true);
+    }
+    await assert.rejects(()=>exportPilotEvaluations(result,folder),/EEXIST/);
+    if(process.platform!=='win32'){
+      await chmod(folder,0o755);
+      await assert.rejects(()=>exportPilotEvaluations(result,folder),
+        /OUTPUT_DIRECTORY_NOT_PRIVATE/);
+    }
+  }finally{await chmod(folder,0o700);await rm(folder,{recursive:true,force:true})}
+});
+test('cannot export zero reviewed decisions as a meaningful accuracy dataset',async()=>{
+  const {assemble,att}=await fixture();
+  const updated=structuredClone(att);
+  // Consensus override on agreed regions is blocked; only the conflict is
+  // eligible for an explicit manual decision, never an implicit "acceptable".
+  updated.regions[1].decision='manual';
+  const result=buildAttestedPilot(assemble({att:updated}));
+  assert.equal(result.summary.included_regions,1);
+  assert.equal(result.summary.abstained_regions,2);
+  assert.equal(result.evaluations.every(x=>x.document.regions.length===1),true);
 });
