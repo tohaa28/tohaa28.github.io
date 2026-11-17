@@ -181,6 +181,21 @@ function classifiedError(error,phase,originRelation){
  if(error?.visionCode==='TEST_REDIRECT_DENIED')
    return REFUSE(phase==='order_card'?'ORDER_CARD_REDIRECT_DENIED':'ORDER_POPUP_REDIRECT_DENIED',
      {...common,failure_class:'redirect_denied'});
+ // MV3 returns fixed code tokens, not raw URLs, response text or cookies.
+ // Distinguish an extension redirect/auth failure from an ordinary browser
+ // TypeError while preserving privacy in the downloadable JSON diagnostics.
+ const mv3FailureClasses={
+   EXTENSION_AUTH_REDIRECT:'login_redirect',
+   EXTENSION_REDIRECT_UNTRUSTED_ORIGIN:'untrusted_redirect_origin',
+   EXTENSION_REDIRECT_UNEXPECTED_PATH:'unexpected_redirect_path',
+   EXTENSION_FETCH_REJECTED:'extension_network_rejected',
+   EXTENSION_SERVICE_DISCONNECTED:'extension_disconnected',
+   EXTENSION_FETCH_TIMEOUT:'timeout'
+ };
+ if(Object.prototype.hasOwnProperty.call(mv3FailureClasses,message))
+   return REFUSE(phase==='order_card'?'ORDER_CARD_FETCH_REJECTED':'ORDER_POPUP_FETCH_REJECTED',
+     {...common,failure_class:mv3FailureClasses[message],
+       transport_error:message,fetch_exception_family:'TypeError'});
  // A failed browser fetch does NOT identify CORS specifically: it can
  // mean a denied redirect, DNS, offline test host or another network block.
  return REFUSE(phase==='order_card'?'ORDER_CARD_FETCH_REJECTED':'ORDER_POPUP_FETCH_REJECTED',
