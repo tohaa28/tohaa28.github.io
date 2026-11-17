@@ -17,6 +17,7 @@ on:
       - vision/orders/extension/**
       - tests/printcheck-vision-lan-failure-stages.test.mjs
       - tests/printcheck-vision-extension-worker.test.mjs
+      - tests/printcheck-vision-lan-extension.browser.mjs
       - tools/vision_local_lab.py
       - tools/install-vision-local-lab.ps1
       - tests/test_vision_local_lab.py
@@ -100,6 +101,7 @@ jobs:
           node --check vision/orders/extension/content-transport.js
           node --check vision/orders/extension/service-worker.js
           node --test tests/printcheck-vision-extension-worker.test.mjs
+          node --check tests/printcheck-vision-lan-extension.browser.mjs
           python3 -m py_compile tools/vision_local_lab.py
           python3 tests/test_vision_local_lab.py
           node --check vision/orders/local-training-zip.mjs
@@ -148,6 +150,7 @@ jobs:
           node tests/printcheck-vision-vector.browser.mjs
           node tests/printcheck-vision-local-orders.browser.mjs
           node tests/printcheck-vision-order-detail.browser.mjs
+          node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher
