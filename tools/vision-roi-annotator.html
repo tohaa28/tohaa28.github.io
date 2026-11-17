@@ -116,7 +116,7 @@ async function load(){
  if(ext==="svg"){
    if(src.size>256_000){fail("Сложный SVG требует ручной проверки.");return}
    const source=await src.text();
-   if(/<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b/i.test(source)){
+   if(/<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b|@import\b|url\s*\(/i.test(source)){
      fail("Небезопасная структура SVG.");return;
    }
    const xml=new DOMParser().parseFromString(source,"image/svg+xml");
@@ -125,7 +125,7 @@ async function load(){
       svg.localName!=="svg"||xml.querySelector("parsererror")){
      fail("SVG не прошёл проверку XML.");return;
    }
-   for(const el of svg.querySelectorAll("*")){
+   for(const el of [svg,...svg.querySelectorAll("*")]){
      for(const attr of el.attributes){
        if(/^on/i.test(attr.localName)||/^(?:href|src)$/i.test(attr.localName)||
           /url\s*\(/i.test(attr.value)){
