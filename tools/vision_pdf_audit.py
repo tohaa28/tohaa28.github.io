@@ -102,6 +102,14 @@ def audit_document(pdf_path: Path, *, engine=None,
                 if not isinstance(path, dict):
                     return manual("PDF_PATH_STRUCTURE_UNSUPPORTED")
                 kind = path.get("type", "")
+                if type(kind) is not str or kind not in ("s", "f", "fs"):
+                    return manual("PDF_PATH_TYPE_UNSUPPORTED")
+                items = path.get("items")
+                if not isinstance(items, (list, tuple)) or any(
+                    not isinstance(item, (list, tuple)) or not item or
+                    type(item[0]) is not str for item in items
+                ):
+                    return manual("PDF_PATH_ITEMS_UNSUPPORTED")
                 if kind in ("s", "fs"):
                     stroke_paths += 1
                     stroke = path.get("width")
