@@ -20,7 +20,8 @@ const listing='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
  '</tbody></table></body></html>';
 const order='<html><div id="j_cart_host" data-orderid="771"></div></html>';
 const popup=JSON.stringify({html:'<div><h2>Загрузка макетов</h2>'+
- '<a data-maket="true" href="/cart/act/mda?oid=771&id=42">synthetic.svg</a>'+
+ '<div class="flex-item flex-main"><a data-maket="true" href="/cart/act/mda?oid=771&id=42">synthetic.svg</a>'+
+ '<span title="Исходное имя закачанного файла">Исходный  файл.SvG</span></div>'+
  '<a href="/drawing?action=getOrderItemPdf&orderitemid=4">reference.pdf</a></div>'});
 const svg='<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="80mm" viewBox="0 0 100 80">'+
  '<path d="M10 20 H13 V65 H10 Z" fill="#123456"/>'+
@@ -81,9 +82,21 @@ try{
  await page.locator('#vision-local-order-overlay button').filter({hasText:'Отчёт JSON'}).click();
  const feedback=JSON.parse(await readFile(await (await saved).path(),'utf8'));
  assert.equal(feedback.rows[0].artifacts[0].type,'svg');
+ assert.equal(JSON.stringify(feedback).includes('Исходный  файл.SvG'),false);
+ assert.match(await page.locator('[data-vision-order-cell]').innerText(),/Исходный  файл.SvG/);
  assert.equal(feedback.rows[0].artifacts[0].status,'RESEARCH_ONLY');
  assert.equal(feedback.rows[0].artifacts[0].production_approved,false);
  assert.equal(JSON.stringify(feedback).includes('8001111'),false);
+ // The private ZIP must use the same MV3 transport, not the page's
+ // cross-origin browser fetch; its original UTF-8 basename is unchanged.
+ await page.locator('[data-vision-order-cell] select').selectOption('expert_clear');
+ page.once('dialog',async dialog=>dialog.accept());
+ const localZip=page.waitForEvent('download');
+ await page.locator('#vision-local-order-overlay button')
+  .filter({hasText:'Локальные примеры ZIP'}).click();
+ const zipBytes=await readFile(await (await localZip).path());
+ assert.ok(zipBytes.includes(Buffer.from('samples/0001/Исходный  файл.SvG','utf8')));
+ assert.deepEqual(requests.map(x=>x.kind),['order','popup','artwork','artwork']);
  assert.deepEqual(errors,[]);
  console.log('MV3 extension Chromium end-to-end: separate test origin order->popup->original SVG via restricted background fetch, anonymous report PASS');
 }finally{
