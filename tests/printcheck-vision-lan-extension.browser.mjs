@@ -83,6 +83,7 @@ try{
  const feedback=JSON.parse(await readFile(await (await saved).path(),'utf8'));
  assert.equal(feedback.rows[0].artifacts[0].type,'svg');
  assert.equal(JSON.stringify(feedback).includes('Исходный  файл.SvG'),false);
+ await page.locator('[data-vision-order-cell] .vlo-files summary').click();
  assert.match(await page.locator('[data-vision-order-cell]').innerText(),/Исходный  файл.SvG/);
  assert.equal(feedback.rows[0].artifacts[0].status,'RESEARCH_ONLY');
  assert.equal(feedback.rows[0].artifacts[0].production_approved,false);
