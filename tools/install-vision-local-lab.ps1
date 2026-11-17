@@ -44,6 +44,11 @@ foreach ($module in @('vision_roi_review.py', 'vision_pdf_audit.py')) {
   }
   Copy-Item -LiteralPath $moduleSource -Destination (Join-Path $base "tools\$module") -Force
 }
+$visualSource = Join-Path $PSScriptRoot 'vision-roi-annotator.html'
+if (-not (Test-Path -LiteralPath $visualSource)) {
+  throw 'Missing local visual annotator HTML. Extract the complete archive.'
+}
+Copy-Item -LiteralPath $visualSource -Destination (Join-Path $base 'tools\vision-roi-annotator.html') -Force
 & py -3 $installedPython init --root $base
 if ($LASTEXITCODE -ne 0) {
   throw 'Python lab init failed.'
@@ -75,6 +80,12 @@ pause
   [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path $base 'REPORT-VISION-LAB.cmd'),$report,
   [System.Text.UTF8Encoding]::new($false))
+$openAnnotator = @'
+@echo off
+start "" "%~dp0tools\vision-roi-annotator.html"
+'@
+[System.IO.File]::WriteAllText((Join-Path $base 'OPEN-ROI-ANNOTATOR.cmd'),$openAnnotator,
+  [System.Text.UTF8Encoding]::new($false))
 $readme = @'
 Vision Check — локальный исследовательский стенд
 =============================================
@@ -91,7 +102,10 @@ Vision Check — локальный исследовательский стен�
    py -3 tools\vision_pdf_audit.py --root D:\VisionCheckLab --sample-id ID
    PyMuPDF является НЕОБЯЗАТЕЛЬНОЙ внешней зависимостью, не устанавливается
    скриптом; проверьте условия AGPL/коммерческой лицензии самостоятельно.
-8. Двойная независимая ROI-разметка:
+8. Откройте OPEN-ROI-ANNOTATOR.cmd для локальной визуальной ROI-разметки:
+   выберите SVG или PNG/JPEG/WebP, выделите область и выполните полученную
+   команду propose через PowerShell. Никакой сетевой отправки нет.
+9. Двойная независимая ROI-разметка:
    py -3 tools\vision_roi_review.py propose --root D:\VisionCheckLab ...
    py -3 tools\vision_roi_review.py vote --root D:\VisionCheckLab ...
    py -3 tools\vision_roi_review.py queue --root D:\VisionCheckLab
@@ -106,6 +120,7 @@ visionlab.sqlite3 — учёт SHA-256 и экспертных ROI
 tools/vision_local_lab.py — автономное приложение Python (стандартная библиотека)
 tools/vision_roi_review.py — независимая ROI-разметка, голоса и разбор конфликтов
 tools/vision_pdf_audit.py — опциональный локальный PDF-аудит (без автодопуска)
+tools/vision-roi-annotator.html — локальное выделение ROI в браузере
 
 НЕТ автоматического обучения. Метка строки — не подтверждённый дефект
 конкретного объекта. Для качественного обучения нужны ROI, независимая
