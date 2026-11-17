@@ -74,6 +74,25 @@ class SplitGateTests(unittest.TestCase):
                 self.assertFalse(out["production_approved"])
                 self.assertFalse(out["auto_deploy_allowed"])
 
+    def test_same_roi_conflicting_roles_fail_closed(self):
+        rows = copy.deepcopy(self.rows)
+        duplicate = copy.deepcopy(rows[0])
+        duplicate["region_role"] = "gap"
+        rows.insert(1, duplicate)
+        out = audit_split_manifest(rows)
+        self.assertEqual(out["status"], "MANUAL")
+        self.assertEqual(out["reason"], "ROI_ROLE_CONFLICT")
+        self.assertFalse(out["production_approved"])
+        self.assertFalse(out["auto_deploy_allowed"])
+
+    def test_same_roi_same_role_remains_research_only(self):
+        rows = copy.deepcopy(self.rows)
+        rows.insert(1, copy.deepcopy(rows[0]))
+        out = audit_split_manifest(rows)
+        self.assertEqual(out["status"], "RESEARCH_SPLIT_STRUCTURE_ONLY")
+        self.assertFalse(out["production_approved"])
+        self.assertFalse(out["auto_deploy_allowed"])
+
     def test_counts_are_aggregate_only(self):
         rows = copy.deepcopy(self.rows)
         rows[0]["private_customer_name"] = "SECRET-DO-NOT-EXPORT"
