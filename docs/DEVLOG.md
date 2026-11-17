@@ -593,3 +593,43 @@ Rollback: изменения только в экспериментальной 
 ### Следующая задача C3B.3.K
 
 Настоящий независимо закреплённый offline renderer (MuPDF/PDF.js/Resvg) с повторным рендером и pixel-domain comparison; независимое ICC (LittleCMS) / DeviceCMYK/spot-проверка и доверенная авторизованная привязка геометрии к заказу. Затем закрытый пилот двух технологов на реальных макетах без перемешивания семей исходников между train/test. GitHub PR #4 оставить черновым; Issue #5 открытым.
+
+
+## C3B.3.K — независимый реальный PDF/SVG рендер, точное RGBA, закрытая research приёмка
+
+Дата 2026-11-17. Изолированная ветка feature/printcheck-vision-copy-v01, PR #4 DRAFT, Issue #5 OPEN. Производственная «Макетная» и исходная ветка gifts-layout-workbench-mockups-source НЕ менялись. Реальные клиентские файлы, приватные подписи, рецензии и seed НЕ передавались в публичный GitHub/CircleCI.
+
+### Цель, реальная проблема, поисковые решения
+- C3B.3.J подписывал original/PNG/order/mm, но не доказывал, что содержимое PNG получено именно из векторного исходника. Самоутверждённый отчёт мог связать любой PDF с произвольным PNG.
+- Рассмотрены Rust/resvg-js 2.6.2 (MPL-2.0), Mozilla pdfjs-dist 6.5.438 (Apache-2.0), Skia @napi-rs/canvas 1.0.9 (MIT). Не выбран MuPDF AGPL, чтобы без обсуждения не вносить лицензионные обязательства в репозиторий. Пакеты живут исключительно в экспериментальном подпроекте.
+- PDF.js нормализует CMYK в RGB при построении operator list; одного проверки уже интерпретированного цвета нельзя считать достоверным распознаванием печатной краски. Во время CI этот сценарий действительно прошёл исходный фильтр и был исправлен строгим raw-stream барьером.
+
+### Реализовано
+1. **065f2fd9a32d279560773cb3eb9d1379a9ade6d8** — vision/dataset/exact-pixel-replay.mjs: точное byte-by-byte RGBA, включая alpha, no implicit tolerance, ограничение 12Mpx, число отличий и максимальная delta, всегда no production/color approval. **484f580a9510249f7ab912cd8c17b83c5e0b1017** — 5 unit tests.
+2. **d1344d50702c6df2bc877bd5a537984abbcfc360** — vision/raster/replay-engines.mjs: реальный Rust Resvg без внешних SVG-ресурсов, no fonts/style/image/use; реальный PDF.js+@napi-rs/canvas с проверкой metadata page.view/rotate/userUnit, минимальным допустимым набором fill ops, без размытых PDF pixel claims. **254edce8a5dcf61f1b5615ac63e25b64ec9d4770** — vision/raster/package.json версии pinned.
+3. **0d059a2a3b6f4f302874d66e9934a7a98cece158** — vision/raster/verify-independent-replay.mjs: заново требует старую Ed25519 signed source/preview/order/mm, strict decodes PNG, рендерит самостоятельно, сравнивает полный RGBA. Только EXACT_INDEPENDENT_RGBA_REPLAY_RESEARCH_ONLY, если все пиксели равны и поддерживаемый RGB subset. ICC/spot/physical print scale всегда false.
+4. **0e9778b4bc68be07156b587e523de49488c9b114** — vision/dataset/locked-pilot-gate.mjs: legacy sync verifyLockedPilot перестал разрешать research metrics (PENDING_RASTER_REPLAY, evaluation_allowed=false); async verifyLockedPilotWithReplay делает полную signed crosscheck/blind controls и ACTUAL rerender до возможного evaluation_allowed=true только RESEARCH. **b0f0db1a2c349b7c715651057a57036a1790a227** — синхронные тесты актуализированы.
+5. **e138ab4a342c9c1e8fb12f5b43f20ee4c1c50f5a** — детерминированный корректный PDF xref-test-fixture. **33de723a5b17cbac7aa480715ff4e0b1ce6b0dd1** — настоящие интеграционные тесты независимых resvg/PDF.js/Skia движков, изменённый PNG при валидной переподписи, PDF UserUnit/page-box, SVG external refs, invalid ICC, CMYK. **992e2d2277d11e45813a4ce4d24aa0e956475137** — сквозной тест всех 3 независимых Ed25519 подписей, слепого cohort и живого Rust resvg до research-gate.
+6. **08a6797ba3e2fe87349ebd5cb10a9603e25ca42f** — отдельный CircleCI vision-raster job. **845b71275cf1da1445e450b22fedd56fc2796ca8** — чистые быстрые контрактные GitHub тесты. **64b5759f82afe30d8dad77cf2661595ea815c1a8** / **eb2f5752efc618e40ee1239d49ad94389f140774** — временная GitHub raster job для технических логов.
+7. **86ff15b965b9238ca7a0397f25b22630b8747f02** — исправлена реальная PDF.js 6.5 несовместимость: CanvasFactory.getNoAlphaContext, обнаруженная failure CI. После исправления PDFJS действительно отрендерил тестовый PDF, но CMYK test выявил, что нормализованная RGB операторная семантика не показывает источник CMYK.
+8. **954489da73e096e68a7d69364d5103f6587183e5** — добавлен checkReplayPdfRgbSubset по НЕРАСКОДИРОВАННЫМ raw bytes. Автоматическая проверка PDF сознательно допускает лишь один uncompressed ASCII stream, одну чёрную DeviceRGB прямоугольную заливку; любой CMYK, DeviceN/Separation, ICC, masks, image/fonts, compressed/multiple streams — MANUAL. **9013ba932f34616c58221360d10689cf4fdac4b9** — тест CMYK исправлен на раннюю причину отказа. **5d7c83b0f12a6a4f7ab67b42b6c40d5ceac61955** — 5 дополнительных негативных raw PDF tests.
+9. **89e9af8e0fe3538950aa788257d27b3e9437301d** — приватный CLI source→rerender→RGBA без сетевых запросов, с lstat и защитой от symlink, без customer path/SHA stdout. **2399524a23125249cea31c8880e3184cf1e8e008** — тест реального CLI на PNG/SVG/symlink/отсутствие утечек.
+10. **3d508e2408b0c09d34de2c4b20c0a8d8b5d7b8b4**, **9ce27b92b038c2b15168827cc719ace5c6b90695**, **4001f3e6e5e8be01a3f758b0d6bdb6e2832bceab** — все новые интеграционные тесты gated в CircleCI и GitHub Actions.
+11. **aa5891bfba092ceb7770e296fe331dca5682ffaa** — сохранён полный npm package-lock v3, реально полученный из зелёного runner, включая 39 pinned packages. **e03f125c6871b3642e6e48516a6ffb00c8eb9b90**, **dc1938d5a4bdd3fb6f299f61d7cfe88dd98028a0**, **cde3bf438a4954b7e936076948087c399002502e** — CircleCI/GitHub переведены на воспроизводимый npm ci; дублирующее GH диагностическое задание удалено, оставлена одна отдельная raster workflow.
+12. **15c4f812f7bdc8b0019330e65e6eee579a432684** — docs/C3B3_K_INDEPENDENT_RASTER.md, полный протокол, лицензии и строгие границы доверия. **0d0f21d57cac56e017140e5a3a57dc4b25645108** — краткий README.
+
+### Проверяемые результаты на этапе K
+- GitHub Actions rules **255/255 JS + 6/6 ZIP Python + 11/11 eval Python = 272/272**; отдельный synthetic signed Node→Python E2E прошёл.
+- Отдельные реальные raster tests: **8/8** (actual resvg, actual PDF.js+Skia, CRC PNG, real CLI, CMYK и ICC negatives), ещё **3/3** signed frozen cohort + expert + exact SVG resvg end-to-end.
+- Итог на сохранённом lock: CircleCI [vision-raster](https://app.circleci.com/workflow/6635f7b0-6757-480c-9778-f11ba6b5048f/job/3ae1901a-2e47-494c-b8c4-dd2e7d9789ba) SUCCESS и [vision-contract](https://app.circleci.com/workflow/a0872340-637a-4569-9368-4b51d9246cf1/job/bf9cbf10-d38a-429c-a8c4-d70f5983adc8) SUCCESS. GitHub Actions independent raster PR 44037393027 SUCCESS, rules 44037393026 SUCCESS.
+- До исправлений CI дважды реально обнаруживал несовместимость CanvasFactory и потенциальный **ложный CMYK approval**. Исправления не основаны на ослаблении численных допусков и защищены новыми тестами.
+
+### Не завершено и строгие инварианты
+- Это НЕ полноценный PDF renderer в смысле поддержки всех PDF-разновидностей: хотя PDF.js действительно запускается, *автоматический выбор допустимых документов* сведен к единственной несложной uncompressed DeviceRGB-заливке, остальные MANUAL.
+- Нет independent ICC conversion / ΔE, CMYK+spot mapping, proofing, проверенного порядка красок, масштабирования документа в реальном заказе Gifts.ru, двух подписанных реальных независимых экспертных выборок и оценки real-data recall/false positives. Никаких production OK/ERROR, все связанные с цветом и физической печатью флаги false.
+- SVG renderer ограничен однотонными inline <path/> без внешнего ресурса. Не поддерживаются CSS/clip/fonts/images/masks и неопределённые профили.
+- Для опасных исходных PDF/ SVG запускать вне клиентской среды: OS sandbox, ограничения времени/CPU/RAM, без сетевого доступа. Локальный инструмент сам по себе не заменяет OS isolation.
+- Все изменения только в экспериментальной ветке, отдельный подпроект vision/raster. Никаких production UI/макетов не изменено; PR #4 draft и Issue #5 открыты.
+
+### Следующая задача C3B.3.L
+Расширить исходный PDF color-space analyzer с настоящей проверкой operators/ColorSpace, не теряя CMYK при нормализации; внедрить в отдельном изолированном worker проверяемый ICC/LittleCMS ΔE и полноценный closed-source provenance документа заказа, затем провести real-data blinded pilot; не увеличивать перечень автоматически допускаемых PDF без отрицательных тестов.
