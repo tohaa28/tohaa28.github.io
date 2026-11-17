@@ -314,6 +314,70 @@ export async function inspectOrderPageFromRow(row,{
 
 
 /**
+ * On HTTP 404, re-read ONLY the already authenticated popup. This differentiates
+ * a stale file reference from a file endpoint that still returns 404 even
+ * though the popup lists it. Neither case permits guessing another URL.
+ * The returned indexes refer to verified candidates in memory; downloadable
+ * diagnostics contain only categorical states.
+ */
+export async function recheckOrderPopupReferences(resources,{
+ loc=globalThis.location,
+ fetcher=globalThis.__visionLocalTrustedTransport||globalThis.fetch,
+ DOMParserClass=globalThis.DOMParser
+}={}){
+ if(!loc||loc.protocol!=="http:"||loc.hostname!=="psk.testgifts.local"||
+    !/^\/devorders(?:\/|$)/.test(loc.pathname))
+   return REFUSE("NOT_TEST_ORDER_PAGE");
+ if(!Array.isArray(resources)||resources.length<1||resources.length>10000)
+   return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+ const first=resources[0];
+ if(!internal(first?.internalId)||!digits(first?.orderNumber)||
+    !testUrl(first?.detailOrigin,loc.href))
+   return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+ const validate=r=>{
+   if(r?.role!=="customer_uploaded_artwork"||!internal(r.id)||
+      r.internalId!==first.internalId||r.orderNumber!==first.orderNumber||
+      r.detailOrigin!==first.detailOrigin)return false;
+   const u=testUrl(r.url,loc.href);
+   return Boolean(u&&u.pathname==="/cart/act/mda"&&
+     u.origin===r.detailOrigin&&
+     u.searchParams.get("oid")===r.internalId&&
+     u.searchParams.get("id")===r.id);
+ };
+ if(!resources.every(validate))return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+ const popupUrl=testUrl("/ajax/gifts/order?action=makets_popup&oid="+
+   first.internalId,first.detailOrigin);
+ if(!popupUrl)return REFUSE("UNTRUSTED_POPUP_RECHECK_LIST");
+ try{
+   const raw=await getText(popupUrl.href,fetcher,loc.origin,"popup");
+   const html=popupHtml(raw);
+   if(html.status!=="POPUP_HTML")
+     return REFUSE("POPUP_REFERENCE_RECHECK_MALFORMED");
+   const parsed=parse(html.html,DOMParserClass);
+   if(!parsed)return REFUSE("POPUP_REFERENCE_RECHECK_MALFORMED");
+   const discovered=extractOrderResources(parsed,popupUrl.origin,
+     first.orderNumber,first.internalId);
+   if(discovered.status!=="ORDER_RESOURCES")
+     return REFUSE("POPUP_REFERENCE_RECHECK_MALFORMED");
+   const exact=new Set(discovered.uploads.map(x=>x.url));
+   return {
+     status:"REFERENCE_RECHECKED",
+     listed:resources.map(x=>exact.has(x.url)),
+     production_approved:false
+   };
+ }catch(error){
+   const reason=classifiedError(error,"popup",first.detailOrigin===loc.origin?
+     "same_origin":"approved_other_test_origin");
+   return REFUSE("POPUP_REFERENCE_RECHECK_UNAVAILABLE",{
+     failure_class:reason.failure_class||null,
+     http_status:reason.http_status??null,
+     transport_error:reason.transport_error||null
+   });
+ }
+}
+
+
+/**
  * Read customer artwork bytes from a VERIFIED popup descriptor. Download
  * filenames, template links, arbitrary row hrefs or untrusted URLs are never
  * independently granted access to this helper.
