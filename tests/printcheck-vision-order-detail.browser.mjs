@@ -97,6 +97,8 @@ try{
    null,{timeout:15000});
  assert.match(await page.locator('[data-vision-order-cell]').nth(2).innerText(),
    /ORDER_INTERNAL_ID_NOT_FOUND/);
+ assert.equal(page.url(),local+'/devorders?status=140',
+   'Vision inline controls must not bubble to order row navigation');
  await first.locator('select').selectOption('confirmed_defect');
  page.once('dialog',async d=>d.accept());
  const pending=page.waitForEvent('download');
