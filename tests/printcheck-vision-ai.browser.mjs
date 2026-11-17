@@ -57,6 +57,12 @@ try{
    assert.equal(report.production_approved,false);
    assert.equal(report.physical_scale_verified,false);
    assert.equal(report.customer_image_bytes_in_report,false);
+   const imageDownload=page.waitForEvent('download');
+   await page.locator('#exportImage').click();
+   const pngDownload=await imageDownload;
+   const png=await readFile(await pngDownload.path());
+   assert.deepEqual(Array.from(png.subarray(0,8)),[137,80,78,71,13,10,26,10]);
+   assert.ok(png.byteLength>100);
    assert.ok(report.count_thin_ink_px>10);
    assert.ok(report.count_narrow_gap_px>10);
    assert.deepEqual(errors,[]);
