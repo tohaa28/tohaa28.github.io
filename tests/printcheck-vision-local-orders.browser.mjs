@@ -119,7 +119,7 @@ try{
   assert.ok(zip.includes(Buffer.from('samples/0001.svg')));
   assert.ok(zip.includes(Buffer.from('"training_ready": false')));
   assert.ok(zip.includes(Buffer.from('confirmed_defect')));
-  assert.equal(artworkFetches,4,'Only one labeled SVG is locally re-fetched');
+  assert.equal(artworkFetches,6,'All three safe originals are privately re-fetched, including unreviewed files');
   assert.equal(foreign,0,'Expert ZIP must not upload to an external server');
   assert.deepEqual(errors,[]);
   await page.locator('#vision-local-order-overlay button').filter({hasText:'Закрыть'}).click();
