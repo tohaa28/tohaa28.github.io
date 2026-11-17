@@ -719,3 +719,36 @@ CI: проверка новых commit SHA выполняется автомат
 **No production approval.** Physically authenticated placement is unknown; multi-color overlaps, overprint/knockout, strokes, fonts, external effects and most complex SVG/PDF require MANUAL. Synthetic raster MLP is a separate, secondary path. Real vector PDFs need verified complete paint-operator coverage and source ColorSpace before geometry can be treated as research evidence; do not infer print fitness from a PDF.js image.
 
 **Next vector-first stage P1**: actual PDF object/page/paint interpretation with original source bytes and color spaces; support verified path primitives and transforms without dropping unsupported objects, then connect evidence to order/artwork/field millimeters. Keep PR #4 DRAFT, Issue #5 OPEN until blinded real-data acceptance.
+
+
+## C3B.3.O/O2 — local test orders overlay, synthetic verified and private expert dataset (2026-11-17)
+
+**User-authorized test environment**: \`http://testgifts.local/\` with order table \`http://psk.testgifts.local/devorders?status=140\`, accessible only over their **own LAN**. User explicitly permits test artwork downloads/inspections/training. This is a temporary testing adapter and must not modify or replace original gifts.ru production Maketnaya. **The developer environment and GitHub CI cannot verify real LAN access or the actual DOM of this private site**. All tests and data used in public repo are synthetic.
+
+### O — active per-order browser overlay
+- \`76a88c77\` \`vision/orders/row-scanner.mjs\`: exact host/protocol/path guard, DOM discovery for table rows / data-order-id nodes, same-origin link selection, bounded GET with original session credentials, redirects denied, streaming cap 16MB per file, 15s timeout, max 32 files in a batch.
+- SVG: reuse vector-first \`inspectLocalSvgVector\` to measure local mm candidates without rasterization. PNG/JPEG/WEBP: existing *synthetic-only* MLP on 300px proxy; real-data accuracy unknown. PDF: recognize file and force \`MANUAL: PDF_VECTOR_PAINT_PIPELINE_NOT_VERIFIED\` (no partial path approvals); CDR/EPS/AI and unsupported files also MANUAL. No production pass/fail, no modification of order status.
+- \`703f38da\` \`vision/orders/overlay-entry.mjs\`: optional on-page control with a result column appended to recognized order rows and explicit row/batch scan. Expert labels kept in memory, local anonymized JSON downloadable. No server POST, telemetry, cookies export, persistent storage or original bytes in JSON. Closing overlay removes extra cells.
+- \`8f0025d0\` \`vision-local-orders.html\` provides a drag-to-bookmarks launcher only for \`http://psk.testgifts.local/devorders\`; loads a single classic ESBuild bundle from isolated GitHub Pages preview. If test-site CSP blocks external script, do not bypass security; use a locally installed/approved extension or local script. Source code is public, but test orders remain local.
+- \`4ccb918f\` Node safety tests: rejected off-origin/artifact spoofing, HTML login/mismatched signature, PDF refusal, bounded download; \`c3e482bc\` true Chromium synthetic same-origin browser: SVG 0.12mm, raster MLP, PDF MANUAL, off-origin link not fetched, row statuses, expert JSON, closing cleanly. \`7443b25c\` workflow creates/publishes isolated classic bundle after tests. \`2faa1f40\` entry from Vision landing.
+- **CI verified** [publish 44050726019](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44050726019) SUCCESS; browser log: \`Local orders overlay: LAN origin guard, SVG vector, PDF MANUAL, raster MLP, per-row UI, expert JSON, no external fetch PASS\`. Code published only inside \`main/gifts-layout-workbench-vision/\`.
+- \`1a563051\`: extensionless same-origin SVG attachment URLs can be detected by explicit \`image/svg+xml\` content type; still require full strict XML validation.
+- \`526aba24\`, \`75ae4a87\`, \`9628b10b\`: **anonymous table DOM diagnostics** (counts only: tables, links, link types, rows; no original HTML, order IDs, URLs or customer text). Button \`Диагностика таблицы\` helps calibrate to the real private UI without publishing orders. [publish 44051084563](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44051084563) SUCCESS with desktop/mobile browser.
+- \`1b926cc9\`: full local setup and threat model \`docs/C3B3_O_LAN_ORDERS.md\`.
+
+### O2 — explicitly downloadable local test training source ZIP
+- \`b3941317\`: extraction of the same restricted same-origin byte fetching contract for both inspection and local-only export; no extra domains allowed.
+- \`ac6c7bd3\`: \`vision/orders/local-training-zip.mjs\`, pure JS ZIP store/CRC32 with anonymous \`samples/0001.ext\` names and manifest; 16 labeled files max, 4MB each, 24MB total, no order URLs or order IDs in archive manifest; optional source SHA256 only if browser WebCrypto available. **The ZIP does contain real test artwork and is downloaded only to the user's own device after explicit click and browser confirmation.**
+- \`19a1189f\`: overlay button \`Локальные примеры ZIP\` enabled after expert row labels, no automatic upload or training.
+- \`749a4f61\`: Node ZIP writer/guard tests; \`cfaeb47c\`: Chromium synthetic ZIP export with user-confirmed dialog, verifies only the labeled source SVG re-fetched, original SVG included, no external network, \`training_ready:false\`; \`2d86cc4e\`: workflow runs archive safety checks.
+- **CI verified** [publish 44051709907](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44051709907) SUCCESS: all ZIP test suites + browser SVG/PDF/raster/ZIP smoke and bookmarklet.
+- \`7acaf813\`: additional independent Python stdlib ZIP decoder verification in CI (await latest run before marking independently green).
+- \`ab844ca2\`, \`f920c322\`, \`4896b287\`: installer, O2 contract and README extended. Sources only in experimental branch + the separately published isolated preview folder; PR #4 remains DRAFT.
+
+### Mandatory next steps
+1. **Actual browser validation inside the user's LAN** at \`psk.testgifts.local\` by running the bookmarklet. A synthetic test cannot prove real row structure, authentication, CORS, that attachments live on same origin or CSP. If necessary use anonymous \`Диагностика таблицы\` to update DOM adapter; never copy actual customer HTML or files to public GitHub. Remote cloud environment has no proven LAN route.
+2. **Vector PDF P1**: extract all source path/CTM/ColorSpace and printed forms, do not accept incomplete vector traversal or PDF.js-converted RGB as original spot proof. Unknown operations -> MANUAL.
+3. **Real training**: ZIP is only locally collected **source files plus coarse row labels**, with explicit \`training_ready:false\`. Add private local ROI geometry annotations and print requirements, signed source provenance, SHA256 when available, source-family-separated holdout and independent reviewer labels before any ML training/evaluation. No synthetic-score claim on real data and no automatic hidden model update.
+4. Local-only result storage in test orders requires a verified test API and explicit permission. Current code does not write into local server database; statuses are temporary DOM decorations and downloaded local files only.
+
+Do not merge experimental PR #4 or deploy production checking logic based on these synthetic results.
