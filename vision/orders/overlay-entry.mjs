@@ -91,6 +91,10 @@ export function initLocalOrdersOverlay(){
        row_index:r.row_index,discovered_links:r.anchors.length,
        same_origin_files:r.files.length,
        order_card_discovered:r.hasOrderLink,
+       analysis_complete:r.scanAttempted===true,
+       pending_file_count:r.partial?
+         Math.min(r.partial.candidates.length,LOCAL_ORDERS.maxFilesPerRow)-
+           r.partial.nextIndex:0,
        customer_uploaded_artworks:r.orderUploads?.length??null,
        constructor_template_count:r.orderTemplates??null,
        excluded_links:r.local_only_excluded,
@@ -218,13 +222,17 @@ export function initLocalOrdersOverlay(){
      'Строки не распознаны. Требуется адаптер к DOM тестовой таблицы; файловые запросы не выполнялись.');
  }
  async function scanRowContents(r){
-   r.scanAttempted=true;
+   r.scanAttempted=false;
    r.button.disabled=true;
    r.label.textContent='Vision: карточка заказа → макеты…';
-   r.results=[];
-   let manual=0,research=0,desc=[];
-   let candidates=[],fromOrder=false;
-   if(r.hasOrderLink){
+   if(!r.partial)r.results=[];
+   let manual=r.partial?.manual||0,research=r.partial?.research||0,
+     desc=r.partial?.descriptions||[];
+   let candidates=r.partial?.candidates||[],fromOrder=r.partial?.fromOrder||false;
+   if(r.partial){
+     // Resume the same authenticated file descriptors; do not refetch
+     // already processed files or reopen a completed popup.
+   }else if(r.hasOrderLink){
      const detail=await inspectOrderPageFromRow(r.element);
      if(closed)return;
      if(detail.status!=='ORDER_DETAIL_DISCOVERED'){
@@ -233,6 +241,7 @@ export function initLocalOrdersOverlay(){
          String(detail.reason||'не прочитано').slice(0,120);
        r.results.push({type:'order',status:'MANUAL',
          reason:detail.reason||'ORDER_DETAIL_UNAVAILABLE'});
+       r.scanAttempted=true;
        r.button.disabled=false;renderStats('Нужен доступ к карточке заказа и AJAX окну');
        return;
      }
@@ -244,6 +253,7 @@ export function initLocalOrdersOverlay(){
          'найдено конструкторов: '+detail.templates.length;
        r.results.push({type:'order',status:'MANUAL',
          reason:'CUSTOMER_UPLOADS_NOT_FOUND'});
+       r.scanAttempted=true;
        r.button.disabled=false;renderStats('Конструкторы не являются исходными макетами клиента');
        return;
      }
@@ -259,16 +269,26 @@ export function initLocalOrdersOverlay(){
        r.detail.textContent='Не удалось найти безопасную ссылку на карточку заказа';
        r.results.push({type:'order',status:'MANUAL',
          reason:'ORDER_DETAIL_LINK_REQUIRED'});
+       r.scanAttempted=true;
        r.button.disabled=false;renderStats('Не найден переход на страницу заказа');
        return;
      }
    }
    const limit=LOCAL_ORDERS.maxFilesPerRow;
-   for(const a of candidates.slice(0,limit)){
-     if(closed)break;
+   const total=Math.min(candidates.length,limit);
+   for(let i=r.partial?.nextIndex||0;i<total;i++){
+     if(closed)return;
      if(fileBudget<=0){
-       manual++;desc.push('Лимит сеанса — остальные файлы не проверены');break;
+       r.partial={candidates,fromOrder,nextIndex:i,manual,research,
+         descriptions:desc};
+       r.label.textContent='Vision: частично, нужен новый лимит файлов';
+       r.detail.textContent='Проверено '+i+' из '+total+
+         ' вложений. Уже проверенные файлы сохранены; продолжение не повторит GET.';
+       r.button.disabled=false;
+       renderStats('Лимит загрузок. Незавершённая строка сохранена для продолжения.');
+       return;
      }
+     const a=candidates[i];
      fileBudget--;
      let result;
      if(fromOrder){
@@ -285,6 +305,8 @@ export function initLocalOrdersOverlay(){
      if(result.status==='MANUAL')manual++;else research++;
    }
    if(closed)return;
+   r.partial=null;
+   r.scanAttempted=true;
    if(candidates.length>limit||r.limited||r.local_only_excluded>0&&!fromOrder)
      manual++;
    r.label.textContent=manual?
@@ -321,6 +343,10 @@ export function initLocalOrdersOverlay(){
        const r=rows[nextRowIndex++];
        if(r.scanAttempted)continue;
        await scanRowContents(r);
+       if(r.partial){
+         nextRowIndex--;
+         break;
+       }
        examined++;
        await new Promise(resolve=>setTimeout(resolve,0));
      }
