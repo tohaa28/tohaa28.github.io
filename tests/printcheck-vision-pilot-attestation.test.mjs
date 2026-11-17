@@ -328,3 +328,17 @@ test('draft refuse missing original source provenance before an auditor review',
     ...input,sourceEvidenceBytes:Buffer.alloc(0)
   }),/SOURCE_BYTES_INVALID/);
 });
+
+test('human review payload with leaked predictor hints cannot enter signed benchmark',async()=>{
+  const {assemble}=await fixture(),input=assemble();
+  const review=JSON.parse(input.reviewABytes.toString('utf8'));
+  review.prediction_hint='automatic detector says this is a defect';
+  expectedErr(()=>buildAttestedPilot({
+    ...input,reviewABytes:json(review)
+  }),/REVIEW_UNEXPECTED_HINT_FIELDS/);
+  const normal=JSON.parse(input.reviewBBytes.toString('utf8'));
+  normal.results[0].confidence_from_model=0.99;
+  expectedErr(()=>buildAttestedPilot({
+    ...input,reviewBBytes:json(normal)
+  }),/REVIEW_UNEXPECTED_HINT_FIELDS/);
+});
