@@ -173,6 +173,67 @@ class PDFAuditTests(unittest.TestCase):
         self.assertFalse(out["production_approved"])
         self.assertFalse(out["training_ready"])
 
+    def test_narrow_filled_bounding_box_is_only_a_research_candidate(self):
+        class FilledPage(Page):
+            def get_drawings(self):
+                return [
+                    {"type": "f", "width": None, "rect": Rect(1, 2, 1.2, 100),
+                     "items": [("c", "private path")], "secret": "CUSTOMER TEXT"},
+                    {"type": "fs", "width": .4, "rect": Rect(0, 0, 50, 60),
+                     "items": []},
+                    {"type": "f", "width": None, "rect": Rect(False, 0, 2, 3),
+                     "items": []}
+                ]
+
+        class FilledEngine:
+            def open(self, _):
+                class FilledDocument(Document):
+                    def __iter__(self):
+                        return iter([FilledPage()])
+                return FilledDocument()
+
+        src = self.root / lab.list_samples(self.root)[0]["path"]
+        out = pdf.audit_document(src, engine=FilledEngine(),
+                                 exploratory_fill_bbox_mm=.15)
+        self.assertEqual(out["status"], "RESEARCH_ONLY")
+        page = out["pages"][0]
+        self.assertEqual(page["filled_path_count"], 3)
+        self.assertEqual(len(page["narrow_filled_bbox_candidates"]), 1)
+        feature = page["narrow_filled_bbox_candidates"][0]
+        self.assertEqual(feature["bbox_page_pt"], [1, 2, 1.2, 100])
+        self.assertEqual(feature["candidate_kind"], "narrow_filled_bbox")
+        self.assertFalse(feature["actual_ink_feature_width_verified"])
+        self.assertFalse(out["narrow_filled_bbox_is_actual_ink_feature_width"])
+        self.assertFalse(out["clipping_and_paint_order_verified"])
+        self.assertFalse(out["production_approved"])
+        self.assertFalse(out["training_ready"])
+        self.assertNotIn("CUSTOMER TEXT", json.dumps(out))
+
+    def test_filled_candidate_limit_and_invalid_threshold_fail_closed(self):
+        class ManyPage(Page):
+            def get_drawings(self):
+                return [{"type": "f", "rect": Rect(0, 0, .15, 200),
+                         "items": [], "width": None}
+                        for _ in range(81)]
+
+        class ManyEngine:
+            def open(self, _):
+                class ManyDocument(Document):
+                    def __iter__(self):
+                        return iter([ManyPage()])
+                return ManyDocument()
+
+        src = self.root / lab.list_samples(self.root)[0]["path"]
+        result = pdf.audit_document(src, engine=ManyEngine())
+        self.assertEqual(len(result["pages"][0]["narrow_filled_bbox_candidates"]), 80)
+        self.assertTrue(result["pages"][0]["narrow_filled_bbox_candidates_truncated"])
+        for invalid in (0, -1, True, float("nan"), float("inf"), 5):
+            with self.subTest(invalid=repr(invalid)):
+                out = pdf.audit_document(src, engine=ManyEngine(),
+                                         exploratory_fill_bbox_mm=invalid)
+                self.assertEqual(out["reason"], "FILLED_BBOX_THRESHOLD_INVALID")
+                self.assertFalse(out["production_approved"])
+
     def test_missing_and_tampered_source_fail_closed(self):
         self.assertEqual(pdf.audit_sample(self.root, "invalid", engine=Engine())["reason"],
                          "SAMPLE_ID_INVALID")
