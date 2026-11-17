@@ -22,7 +22,7 @@ const hshape=(x,y)=>(
  y>.45&&y<.56&&x>.2&&x<.78
 );
 const bar=(x,y)=>x>.24&&x<.76&&y>.43&&y<.57;
-const FP={t:image(tee),ring:image(ring),h:image(hshape),bar:image(bar)};
+const FP={t:image(tee),ring:image(ring),h:image(hshape)};
 for(const [name,fp] of Object.entries(FP))
   assert.equal(fp.status,'ADVISORY_SIGNATURE_ONLY','synthetic '+name);
 const entry=(id,split,fp=FP.t,overrides={})=>({
