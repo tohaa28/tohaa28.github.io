@@ -105,7 +105,8 @@ async function optionalSha256(bytes){
  }catch{return null}
 }
 export async function makeLocalExpertDataset(rows,{
-  loc=globalThis.location,fetcher=globalThis.fetch,
+  loc=globalThis.location,
+  fetcher=globalThis.__visionLocalTrustedTransport||globalThis.fetch,
   maxFiles=16,maxPerFile=4_000_000,maxTotal=24_000_000
 }={}){
  if(!isAllowedTestOrderPage(loc))return refused('NOT_TEST_ORDER_PAGE');
