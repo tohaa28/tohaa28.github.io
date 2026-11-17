@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeLocalStoredZip,makeLocalExpertDataset,exactLocalFilename}
+import {makeLocalStoredZip,makeLocalExpertDataset,exactLocalFilename,exportLocalDatasetParts}
   from '../vision/orders/local-training-zip.mjs';
 const loc=new URL('http://psk.testgifts.local/devorders?status=140');
 const link=href=>({getAttribute(name){return name==='href'?href:null}});
@@ -139,4 +139,42 @@ test('unsafe source filenames are refused instead of silently sanitized',async()
  })});
  assert.equal(result.status,'MANUAL');
  assert.equal(result.reason,'NO_EXPORTABLE_LABELED_ARTWORK');
+});
+
+
+test('uncapped sequential archival saves 37 unreviewed sources as 3 private ZIP parts',async()=>{
+ const total=37,requests=[];
+ const artwork=Array.from({length:total},(_,i)=>({
+   role:'customer_uploaded_artwork',id:String(i+1),internalId:'55',
+   orderNumber:'8000001',detailOrigin:'http://testgifts.local',
+   filename:'normalized.svg',originalFilename:'Клиент  '+(i+1)+'.SVG',
+   url:'http://testgifts.local/cart/act/mda?oid=55&id='+(i+1)
+ }));
+ const source=[{row_index:1,grade:{value:'unreviewed'},orderUploads:artwork}];
+ const outputs=[];
+ for await(const part of exportLocalDatasetParts(source,{
+   loc,fetcher:async(url,options)=>{
+     requests.push(url);
+     assert.equal(options.method,'GET');
+     return new Response('<svg xmlns="http://www.w3.org/2000/svg"></svg>',{
+       headers:{'Content-Type':'image/svg+xml'}
+     });
+   }
+ }))outputs.push(part);
+ assert.equal(requests.length,total,'Every file fetched exactly once');
+ assert.equal(new Set(requests).size,total);
+ assert.deepEqual(outputs.map(x=>x.sample_count),[16,16,5]);
+ assert.deepEqual(outputs.map(x=>x.part),[1,2,3]);
+ assert.ok(outputs.every(x=>x.status==='LOCAL_ZIP_READY'));
+ const saved=outputs.flatMap(x=>x.manifest.samples);
+ assert.equal(saved.length,total);
+ assert.ok(saved.every(x=>x.expert_label==='unreviewed'));
+ assert.ok(saved.every(x=>x.expert_label_scope==='not_yet_expert_labeled'));
+ assert.ok(outputs.every(x=>x.manifest.training_ready===false));
+ assert.ok(outputs.every(x=>x.manifest.source_urls_included===false));
+ assert.equal(saved[0].sample_name,'samples/0001/Клиент  1.SVG');
+ assert.equal(saved[16].sample_name,'samples/0001/Клиент  17.SVG');
+ assert.equal(saved[36].original_filename,'Клиент  37.SVG');
+ assert.ok(Buffer.from(await outputs[2].zip.arrayBuffer())
+   .includes(Buffer.from('samples/0005/Клиент  37.SVG','utf8')));
 });
