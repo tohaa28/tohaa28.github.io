@@ -95,7 +95,7 @@ try{
    ?.querySelector('.vlo-label')?.textContent?.includes('ручная проверка'),
    null,{timeout:15000});
  assert.match(await page.locator('[data-vision-order-cell]').nth(1).innerText(),
-   /ORDER_DETAIL_FETCH_OR_CORS_FAILURE/);
+   /ORDER_POPUP_FETCH_REJECTED/);
  await page.locator('[data-vision-order-cell]').nth(2).locator('button').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-vision-order-cell]')[2]
    ?.querySelector('.vlo-label')?.textContent?.includes('ручная проверка'),
