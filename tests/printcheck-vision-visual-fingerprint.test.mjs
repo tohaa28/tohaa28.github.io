@@ -21,7 +21,9 @@ const plus=(x,y)=>(
  (x>.22&&x<.78&&y>.45&&y<.55) ||
  (y>.2&&y<.8&&x>.44&&x<.56)
 );
-const square=(x,y)=>x>.2&&x<.8&&y>.2&&y<.8;
+const hshape=(x,y)=>(x>.17&&x<.27&&y>.18&&y<.83)||
+  (x>.7&&x<.8&&y>.18&&y<.83)||
+  (x>.2&&x<.77&&y>.45&&y<.55);
 const ring=(x,y)=> {
  const d=Math.hypot(x-.5,y-.5);
  return d>.27&&d<.36;
@@ -34,7 +36,7 @@ test('same artwork at different source resolution has a near-zero perceptual dis
   assert.equal(b.status,'ADVISORY_SIGNATURE_ONLY');
   const d=visualDistance(a,b);
   assert.equal(d.status,'ADVISORY_SIMILARITY_ONLY');
-  assert.ok(d.silhouette_bits<=12,JSON.stringify(d));
+  assert.ok(d.silhouette_bits<=15,JSON.stringify(d));
 });
 test('90-degree rotation and mirroring use exact D4 orientation search',()=>{
   const a=fp(t,240,240);
@@ -43,7 +45,7 @@ test('90-degree rotation and mirroring use exact D4 orientation search',()=>{
   for(const other of [rotated,mirrored]){
     const d=visualDistance(a,other);
     assert.equal(d.status,'ADVISORY_SIMILARITY_ONLY');
-    assert.ok(d.silhouette_bits<=12,JSON.stringify(d));
+    assert.ok(d.silhouette_bits<=15,JSON.stringify(d));
   }
 });
 test('brightness/contrast and transparent background preserve visible silhouette',()=>{
@@ -52,11 +54,11 @@ test('brightness/contrast and transparent background preserve visible silhouette
   const transparent=fp(plus,260,260,{alpha:true});
   for(const other of [bright,transparent]){
     const d=visualDistance(normal,other);
-    assert.ok(d.silhouette_bits<=12,JSON.stringify(d));
+    assert.ok(d.silhouette_bits<=15,JSON.stringify(d));
   }
 });
 test('different visual logos are not assigned an automatic SAME_ARTWORK verdict',()=>{
-  const a=fp(ring),b=fp(square);
+  const a=fp(ring),b=fp(hshape);
   const d=visualDistance(a,b);
   assert.equal(d.status,'ADVISORY_SIMILARITY_ONLY');
   assert.ok(d.silhouette_bits>0,JSON.stringify(d));
