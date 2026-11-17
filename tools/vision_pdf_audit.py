@@ -36,9 +36,11 @@ def positive_number(number) -> bool:
 
 def rect_points(value):
     try:
-        coords = [float(value.x0), float(value.y0),
-                  float(value.x1), float(value.y1)]
+        coords = [value.x0, value.y0, value.x1, value.y1]
     except (TypeError, AttributeError, ValueError, OverflowError):
+        return None
+    # Reject booleans and numeric strings rather than coercing PDF geometry.
+    if any(type(x) not in (int, float) for x in coords):
         return None
     return coords if all(math.isfinite(x) for x in coords) and (
         coords[2] >= coords[0] and coords[3] >= coords[1]
