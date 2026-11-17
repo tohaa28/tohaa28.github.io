@@ -10,6 +10,7 @@ import {createHash} from 'node:crypto';
 import {verifyFrozenHoldout} from './cohort-leakage-audit.mjs';
 import {buildAttestedPilot} from './pilot-attestation.mjs';
 import {verifyBlindSamplingPlan} from './blind-sampling-plan.mjs';
+import {verifyCohortImageBindings} from './cohort-image-provenance.mjs';
 
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const refuse=reason=>({
@@ -20,6 +21,7 @@ const refuse=reason=>({
 export function verifyLockedPilot({
   cohortManifestBytes,cohortSignatureBytes,
   cohortPublicKeyPem,cohortSpkiSha256,
+  cohortImageBytes,
   pilotInput
 }={}){
   const lock=verifyFrozenHoldout({
@@ -30,6 +32,13 @@ export function verifyLockedPilot({
   });
   if(lock.status!=='SCREENED_COHORT_ONLY')
     return refuse('SIGNED_COHORT_NOT_CLEAN_OR_NOT_VERIFIED');
+  // Fail closed: signed self-reported fingerprints are not evidence that
+  // the local preview bytes really generated those features.
+  const imageBinding=verifyCohortImageBindings({
+    cohortManifestBytes,imageBytesList:cohortImageBytes
+  });
+  if(imageBinding.status!=='ALL_PREVIEW_FINGERPRINTS_RECONSTRUCTED')
+    return refuse('SIGNED_COHORT_IMAGE_FINGERPRINTS_UNVERIFIED');
   let pilot;
   try{pilot=buildAttestedPilot(pilotInput)}
   catch{return refuse('SIGNED_PILOT_REQUIRED')}
@@ -98,6 +107,8 @@ export function verifyLockedPilot({
     method_count:pilot.evaluations.length,
     evaluated_regions:pilot.evaluations.map(x=>x.document.regions.length),
     locked_cohort_count:cohort.entries.length,
+    fingerprint_source_images_redecoded:imageBinding.verified_image_count,
+    preview_sha256_cryptographically_bound:true,
     independently_derived_control_count:controls.independently_derived_control_count,
     pre_registered_candidate_count:controls.candidate_roi_count,
     control_fraction:controls.control_fraction,
