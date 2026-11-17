@@ -5,6 +5,7 @@
  */
 import {LOCAL_ORDERS,isAllowedTestOrderPage,discoverOrderRows,
   inspectSameOriginArtwork,diagnoseTestOrderTable} from './row-scanner.mjs';
+import {makeLocalExpertDataset} from './local-training-zip.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
  '#vision-local-order-overlay{position:fixed!important;top:12px!important;right:12px!important;z-index:2147483640!important;width:min(390px,calc(100vw - 24px))!important;max-height:76vh!important;overflow:auto!important;background:#24383c!important;border:1px solid #5c777a!important;border-radius:9px!important;box-shadow:0 8px 35px #101b22a8!important;color:#eef5f2!important;padding:15px!important;text-align:left!important;font:13px/1.45 system-ui,sans-serif!important}',
@@ -61,7 +62,7 @@ export function initLocalOrdersOverlay(){
  const actions=node('div',undefined,'vlo-actions');
  const stats=node('div','Подготовка поиска строк…','vlo-stats');
  stats.setAttribute('role','status');
- const warning=node('p','Это исследовательский анализ, не допуск к печати. Нет найденных мест ≠ макет годен. PDF и сложные векторы: MANUAL.','vlo-note');
+ const warning=node('p','Это исследовательский анализ, не допуск к печати. Нет найденных мест ≠ макет годен. PDF и сложные векторы: MANUAL. Локальный ZIP содержит исходные тестовые файлы — не публикуйте его.','vlo-note');
  let rows=[],busy=false,closed=false,fileBudget=LOCAL_ORDERS.maxBatchFiles;
  function close(){
    closed=true;panel.remove();style.remove();
@@ -110,7 +111,33 @@ export function initLocalOrdersOverlay(){
    const a=node('a');a.href=url;a.download='vision-local-table-diagnostic.json';
    a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  });
- actions.append(refreshBtn,scanBtn,exportBtn,diagnosticBtn,
+ const bundleBtn=makeButton('Локальные примеры ZIP',async()=>{
+   if(busy||closed)return;
+   if(!window.confirm('Скачать локальный ZIP с ОРИГИНАЛАМИ тестовых макетов из выбранных строк? Файлы могут содержать конфиденциальные данные. Не загружайте ZIP в публичный GitHub.'))return;
+   busy=true;bundleBtn.disabled=true;
+   refreshBtn.disabled=scanBtn.disabled=true;
+   stats.textContent='Локальное скачивание отмеченных технологом тестовых файлов…';
+   try{
+     const exported=await makeLocalExpertDataset(rows);
+     if(closed)return;
+     if(exported.status!=='LOCAL_ZIP_READY'){
+       renderStats('ZIP не сформирован: '+String(exported.reason).slice(0,90)+
+         '. Поставьте экспертную метку хотя бы одной строке.');
+       return;
+     }
+     const u=URL.createObjectURL(exported.zip),a=node('a');
+     a.href=u;a.download='vision-local-test-labeled-samples.zip';
+     a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);
+     renderStats('Локально сохранено '+exported.sample_count+
+       ' тестовых примеров. Нужны экспертные ROI и независимая проверка перед обучением.');
+   }catch{
+     if(!closed)renderStats('Ошибка локального ZIP. Данные наружу не передавались.');
+   }finally{
+     busy=false;bundleBtn.disabled=false;refreshBtn.disabled=false;
+     scanBtn.disabled=rows.length===0;
+   }
+ });
+ actions.append(refreshBtn,scanBtn,exportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
  document.body.append(panel);
