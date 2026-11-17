@@ -1,15 +1,5 @@
 name: PrintCheck Vision independent raster safety
 on:
-  push:
-    branches:
-      - feature/printcheck-vision-copy-v01
-    paths:
-      - "vision/raster/**"
-      - "vision/dataset/exact-pixel-replay.mjs"
-      - "vision/dataset/locked-pilot-gate.mjs"
-      - "tests/printcheck-vision-independent-raster.integration.mjs"
-      - "tests/helpers/synthetic-simple-pdf.mjs"
-      - ".github/workflows/test-printcheck-vision-raster.yml"
   pull_request:
     branches:
       - gifts-layout-workbench-mockups-source
@@ -27,6 +17,8 @@ jobs:
           node-version: "22"
       - name: Install pinned research-only SVG and PDF raster engines
         run: npm install --prefix vision/raster --no-audit --no-fund
+      - name: Capture exact research dependency lock (no credentials)
+        run: node -e "console.log('PINNED_LOCK_JSON=' + JSON.stringify(require('node:fs').readFileSync('vision/raster/package-lock.json','utf8')))"
       - name: Run actual Rust resvg and PDF.js Skia pixel replay
         run: |
           node tests/printcheck-vision-independent-raster.integration.mjs
