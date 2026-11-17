@@ -15,6 +15,9 @@ const expectedErr=(fn,re)=>assert.throws(fn,re);
 async function fixture(){
   const imageBytes=Buffer.from('synthetic private raster bytes');
   const artworkBytes=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>');
+  const sourceEvidenceBytes=Buffer.from('synthetic verified source snapshot evidence');
+  const calibrationEvidenceBytes=Buffer.from('synthetic 2D physical scale audit evidence');
+  const samplingEvidenceBytes=Buffer.from('synthetic blinded ROI sampling plan');
   const task=await createReviewTask({
     image_sha256:hash(imageBytes),width_px:100,height_px:100,
     artwork_sha256:hash(artworkBytes),family_sha256:syntheticHash(100),
@@ -75,9 +78,9 @@ async function fixture(){
     review_a_sha256:hash(reviewABytes),
     review_b_sha256:hash(reviewBBytes),
     comparison_sha256:hash(comparisonBytes),
-    source_evidence_sha256:syntheticHash(21),
-    calibration_evidence_sha256:syntheticHash(22),
-    sampling_evidence_sha256:syntheticHash(23),
+    source_evidence_sha256:hash(sourceEvidenceBytes),
+    calibration_evidence_sha256:hash(calibrationEvidenceBytes),
+    sampling_evidence_sha256:hash(samplingEvidenceBytes),
     reviewer_identities_verified:true,
     source_identity_verified:true,
     scale_evidence_checked:true,
@@ -101,6 +104,7 @@ async function fixture(){
       sign(null,attestationBytes,privateKey);
     return {
       taskBytes,imageBytes,artworkBytes,
+      sourceEvidenceBytes,calibrationEvidenceBytes,samplingEvidenceBytes,
       reviewABytes,reviewBBytes,comparisonBytes,
       attestationBytes,signatureBytes,
       trustedPublicKeyPem,trustedSpkiSha256,
@@ -272,4 +276,13 @@ test('cannot export zero reviewed decisions as a meaningful accuracy dataset',as
   assert.equal(result.summary.included_regions,1);
   assert.equal(result.summary.abstained_regions,2);
   assert.equal(result.evaluations.every(x=>x.document.regions.length===1),true);
+});
+
+test('source snapshot, calibration and sampling evidence bytes must match auditor commitment',async()=>{
+  const {assemble}=await fixture(),input=assemble();
+  for(const key of ['sourceEvidenceBytes','calibrationEvidenceBytes',
+                     'samplingEvidenceBytes']){
+    const bad={...input,[key]:Buffer.from('modified private proof')};
+    expectedErr(()=>buildAttestedPilot(bad),/ADJUDICATION_INPUT_DIGEST_MISMATCH/);
+  }
 });
