@@ -14,6 +14,9 @@ on:
       - vision-local-orders.html
       - vision/orders/row-scanner.mjs
       - vision/orders/order-page-discovery.mjs
+      - vision/orders/extension/**
+      - tests/printcheck-vision-lan-failure-stages.test.mjs
+      - tests/printcheck-vision-extension-worker.test.mjs
       - tools/vision_local_lab.py
       - tools/install-vision-local-lab.ps1
       - tests/test_vision_local_lab.py
@@ -93,6 +96,10 @@ jobs:
           node --check tests/printcheck-vision-order-detail.browser.mjs
           node --check tests/printcheck-vision-61-order-browser.mjs
           node --test tests/printcheck-vision-order-detail.test.mjs
+          node --test tests/printcheck-vision-lan-failure-stages.test.mjs
+          node --check vision/orders/extension/content-transport.js
+          node --check vision/orders/extension/service-worker.js
+          node --test tests/printcheck-vision-extension-worker.test.mjs
           python3 -m py_compile tools/vision_local_lab.py
           python3 tests/test_vision_local_lab.py
           node --check vision/orders/local-training-zip.mjs
@@ -176,6 +183,29 @@ jobs:
           cp vision-vector.html "$PREVIEW/"
           cp vision-local-orders.html vision-order-overlay.js "$PREVIEW/"
           python3 - <<'PY'
+          from pathlib import Path
+          import json,zipfile
+          package=Path('vision/orders/extension')
+          manifest=json.loads((package/'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['manifest_version']==3
+          assert manifest['host_permissions']==[
+              'http://psk.testgifts.local/*','http://testgifts.local/*']
+          assert manifest['background']['service_worker']=='service-worker.js'
+          assert manifest['content_scripts'][0]['js']==[
+              'content-transport.js','vision-order-overlay.js']
+          with zipfile.ZipFile('vision-local-lan-extension.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
+              for file in ['manifest.json','service-worker.js','content-transport.js','README_RU.md']:
+                  z.write(package/file,file)
+              z.write('vision-order-overlay.js','vision-order-overlay.js')
+          with zipfile.ZipFile('vision-local-lan-extension.zip') as z:
+              assert z.testzip() is None
+              assert set(z.namelist())=={
+                  'manifest.json','service-worker.js','content-transport.js',
+                  'README_RU.md','vision-order-overlay.js'}
+          print('Local-only Chrome MV3 extension verified: exact LAN hosts, zero remote code')
+          PY
+          cp vision-local-lan-extension.zip "$PREVIEW/"
+          python3 - <<'PY'
           import zipfile
           paths=['tools/vision_local_lab.py','tools/install-vision-local-lab.ps1',
                  'docs/VISION_LOCAL_LAB_SETUP_RU.md']
@@ -211,6 +241,7 @@ jobs:
           test -f "$PREVIEW/vision-vector.html"
           test -f "$PREVIEW/vision-local-orders.html"
           test -s "$PREVIEW/vision-order-overlay.js"
+          test -s "$PREVIEW/vision-local-lan-extension.zip"
           test -s "$PREVIEW/vision-local-lab.zip"
           test -f "$PREVIEW/vision/geometry/svg-local-vector.mjs"
           test -f "$PREVIEW/vision/geometry/svg-ink-forms.mjs"
