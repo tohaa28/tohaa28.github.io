@@ -34,7 +34,30 @@ MAX_SAMPLES = 16
 SCHEMA = "printcheck.vision.local-test-artwork.v0"
 LABELS = {"confirmed_defect", "false_positive", "missed_defect", "expert_clear"}
 FORMATS = {"svg", "pdf", "png", "jpg", "jpeg", "webp", "cdr", "eps", "ai", "bin"}
-EXT_RE = re.compile(r"^samples/([0-9]{4})\.([a-z]+)$")
+EXT_RE = re.compile(r"^samples/([0-9]{4})(?:\.([a-z]+)|/([^/]+))$")
+WINDOWS_RESERVED = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$", re.I)
+
+
+def archive_member_extension(name: str) -> str | None:
+    """Legacy anonymous member or original basename in a numbered directory.
+
+    Never normalize or silently rename source filenames. Deny unsafe ZIP paths
+    before extraction, and keep equal basenames in separate numbered folders.
+    """
+    match = EXT_RE.fullmatch(name)
+    if not match:
+        return None
+    if match.group(2):
+        return match.group(2) if match.group(2) in FORMATS else None
+    basename = match.group(3)
+    if (not basename or len(basename) > 200 or
+        len(basename.encode("utf-8")) > 255 or
+        basename.endswith((".", " ")) or WINDOWS_RESERVED.fullmatch(basename) or
+        any(ord(c) < 32 or ord(c) == 127 or c in '\\/:*?"<>|' for c in basename)):
+        return None
+    ext = basename.rsplit(".", 1)[-1].lower() if "." in basename else ""
+    return ext if ext in FORMATS and ext != "bin" else None
+
 
 
 def utc() -> str:
@@ -137,8 +160,7 @@ def import_zip(root: Path, archive_path: Path) -> dict:
             ) & 0o170000 == 0o120000:
                 raise ValueError("ZIP_ENTRY_UNSAFE")
             if member.filename != "manifest.json":
-                match = EXT_RE.fullmatch(member.filename)
-                if not match or match.group(2) not in FORMATS:
+                if not archive_member_extension(member.filename):
                     raise ValueError("ZIP_FILENAME_UNSAFE")
         if sum(i.file_size for i in infos) > MAX_TOTAL + 512_000:
             raise ValueError("ZIP_EXPANDED_SIZE_LIMIT")
@@ -155,9 +177,17 @@ def import_zip(root: Path, archive_path: Path) -> dict:
         pending = []
         for meta in items:
             name = meta.get("sample_name")
-            match = EXT_RE.fullmatch(name or "")
-            if not match or name not in names or meta.get("expert_label") not in LABELS:
+            ext = archive_member_extension(name or "")
+            if not ext or name not in names or meta.get("expert_label") not in LABELS:
                 raise ValueError("SAMPLE_METADATA_INVALID")
+            original = meta.get("original_filename")
+            if "/" in name[len("samples/"):] and (
+                not isinstance(original, str) or
+                name != "samples/" + name.split("/")[1] + "/" + original
+            ):
+                raise ValueError("ORIGINAL_FILENAME_MISMATCH")
+            if "/" not in name[len("samples/"):] and original is not None:
+                raise ValueError("ORIGINAL_FILENAME_MISMATCH")
             with archive.open(name) as stream:
                 data = stream.read(MAX_FILE + 1)
             if not data or len(data) > MAX_FILE or len(data) != meta.get("bytes"):
@@ -165,23 +195,25 @@ def import_zip(root: Path, archive_path: Path) -> dict:
             digest = hashlib.sha256(data).hexdigest()
             if meta.get("sha256") and meta["sha256"].lower() != digest:
                 raise ValueError("SAMPLE_SHA256_MISMATCH")
-            eligibility = verify_file(match.group(2), data)
+            eligibility = verify_file(ext, data)
             if eligibility.startswith("REJECT_"):
                 raise ValueError("SAMPLE_SOURCE_UNSAFE:" + eligibility)
-            pending.append((name, digest, data, meta, eligibility, match.group(2)))
+            pending.append((name, digest, data, meta, eligibility, ext))
     import_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S") + "_" + secrets.token_hex(5)
     temp = root / "quarantine" / import_id
     final = root / "samples" / import_id
     temp.mkdir(parents=True, exist_ok=False)
     try:
-        for name, _, data, _, _, _ in pending:
-            (temp / Path(name).name).write_bytes(data)
+        for i, (name, _, data, _, _, _) in enumerate(pending, 1):
+            destination = temp / str(i).zfill(4) / Path(name).name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(data)
         with open_db(root) as db:
             db.execute("INSERT INTO imports VALUES(?,?,?,0,0)",
                        (import_id, utc(), "browser_local_test_zip"))
             for i, (name, sha, data, meta, status, ext) in enumerate(pending, 1):
                 sample_id = import_id + ":" + str(i).zfill(4)
-                rel = str(Path("samples") / import_id / Path(name).name)
+                rel = str(Path("samples") / import_id / str(i).zfill(4) / Path(name).name)
                 db.execute("INSERT INTO samples VALUES (?,?,?,?,?,?,?,?,?,NULL,0)", (
                     sample_id, import_id, rel, sha, len(data), ext,
                     meta["expert_label"], meta.get("anonymous_row_index"), status))
