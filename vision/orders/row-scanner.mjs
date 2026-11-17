@@ -243,16 +243,23 @@ export async function inspectOrderArtworkBytes(bytes,url,contentType=''){
  }
  return manual('FILE_TYPE_UNKNOWN');
 }
-export async function inspectSameOriginArtwork(anchor,{
+/**
+ * Explicit local-only byte fetch: used by both research scan and by an
+ * optional locally downloaded expert ZIP. Do not expose to remote endpoints.
+ */
+export async function fetchSameOriginArtworkBytes(anchor,{
   fetcher=globalThis.fetch,loc=globalThis.location,
-  timeoutMs=LOCAL_ORDERS.timeoutMs
+  timeoutMs=LOCAL_ORDERS.timeoutMs,
+  maxFileBytes=LOCAL_ORDERS.maxFileBytes
 }={}){
- if(!isAllowedTestOrderPage(loc))
-   return manual('NOT_TEST_ORDER_PAGE');
+ if(!isAllowedTestOrderPage(loc))return manual('NOT_TEST_ORDER_PAGE');
  const url=sameOriginArtifactUrl(anchor?.getAttribute?.('href'),loc);
  if(!url)return manual('CROSS_ORIGIN_OR_UNSAFE_FILE_URL');
  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<100||timeoutMs>60000)
    return manual('INVALID_TIMEOUT');
+ if(!Number.isSafeInteger(maxFileBytes)||maxFileBytes<1||
+    maxFileBytes>LOCAL_ORDERS.maxFileBytes)
+   return manual('INVALID_BYTE_LIMIT');
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),timeoutMs);
  try{
@@ -263,12 +270,17 @@ export async function inspectSameOriginArtwork(anchor,{
    });
    if(!response?.ok)return manual('ARTWORK_HTTP_ERROR',extensionType(url.pathname),
      {http_status:response?.status||0});
-   const bytes=await readBounded(response,LOCAL_ORDERS.maxFileBytes);
-   return await inspectOrderArtworkBytes(bytes,url,
-     response.headers.get('content-type')||'');
+   const bytes=await readBounded(response,maxFileBytes);
+   return {status:'LOCAL_BYTES_ONLY',bytes,url,
+     contentType:response.headers.get('content-type')||''};
  }catch(err){
    return manual(controller.signal.aborted?'ARTWORK_TIMEOUT':
      err?.message==='FILE_SIZE_LIMIT'?'FILE_SIZE_LIMIT':
      'ARTWORK_NETWORK_OR_CORS_FAILURE');
  }finally{clearTimeout(timer)}
+}
+export async function inspectSameOriginArtwork(anchor,options={}){
+ const payload=await fetchSameOriginArtworkBytes(anchor,options);
+ if(payload.status!=='LOCAL_BYTES_ONLY')return payload;
+ return inspectOrderArtworkBytes(payload.bytes,payload.url,payload.contentType);
 }
