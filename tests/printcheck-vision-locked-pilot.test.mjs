@@ -33,7 +33,9 @@ assert.equal(T.status,'ADVISORY_SIGNATURE_ONLY');
 assert.equal(O.status,'ADVISORY_SIGNATURE_ONLY');
 async function fixture(){
   const imageBytes=tPng;
-  const artworkBytes=Buffer.from('synthetic original artwork bytes');
+  const artworkBytes=Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100"><path fill="#000000" d="M10 10L80 10L80 80Z"/></svg>'
+  );
   const sourceEvidenceBytes=Buffer.from('synthetic official Gifts order evidence');
   const calibrationEvidenceBytes=Buffer.from('synthetic official mm calibration evidence');
   const controlOptions={
@@ -116,6 +118,44 @@ async function fixture(){
     trustedPublicKeyPem:auditor.publicKey.export({format:'pem',type:'spki'}),
     trustedSpkiSha256:hash(auditor.publicKey.export({format:'der',type:'spki'}))
   };
+  // Separate independent test renderer signer and verifiable source/
+  // preview/order bytes. The source SVG here is synthetic and PNG is NOT
+  // guaranteed pixel-equivalent; only the signed byte chain is checked.
+  const renderer=generateKeyPairSync('ed25519');
+  const m=[1.92,0,0,1.92,0,0];
+  const coords=[[0,0],[100,0],[0,100],[100,100],[50,50]];
+  const renderReceipt={
+    schema:'printcheck.vision.render-calibration.v1',
+    source_sha256:hash(artworkBytes),preview_sha256:hash(imageBytes),
+    order_evidence_sha256:hash(sourceEvidenceBytes),
+    source_format:'svg',page_index:0,
+    render_engine:{
+      engine_id:'synthetic-renderer',engine_version:'0.1.0',
+      engine_binary_sha256:hash(Buffer.from('synthetic renderer build'))
+    },
+    preview_pixel_dimensions:[192,192],source_page_box:[0,0,100,100],
+    pdf_user_unit:null,page_rotation_degrees:0,
+    source_document_size_mm:[100,100],
+    source_to_preview_px:m,
+    source_to_field_mm:[1,0,0,1,0,0],
+    field_size_mm:[100,100],mirror_authorized:false,
+    color_pipeline:{
+      source_color_state:'explicit_srgb',output_encoding:'unprofiled_rgb8',
+      conversion_profile_sha256:hash(Buffer.from('synthetic profile policy'))
+    },
+    anchors:coords.map(source_xy=>({
+      source_xy,preview_xy:[source_xy[0]*1.92,source_xy[1]*1.92],
+      field_mm_xy:source_xy.slice()
+    }))
+  };
+  const receiptBytes=json(renderReceipt);
+  const renderCalibrationInput={
+    sourceBytes:artworkBytes,previewPngBytes:imageBytes,
+    orderEvidenceBytes:sourceEvidenceBytes,receiptBytes,
+    signatureBytes:sign(null,receiptBytes,renderer.privateKey),
+    trustedPublicKeyPem:renderer.publicKey.export({type:'spki',format:'pem'}),
+    trustedSpkiSha256:hash(renderer.publicKey.export({type:'spki',format:'der'}))
+  };
   const cohort={
     schema:'printcheck.vision.cohort.v1',
     predictions_hidden:true,frozen_for_holdout:true,
@@ -137,7 +177,7 @@ async function fixture(){
       cohortPublicKeyPem:signer.publicKey.export({type:'spki',format:'pem'}),
       cohortSpkiSha256:hash(signer.publicKey.export({type:'spki',format:'der'})),
       cohortImageBytes:[oPng,tPng],
-      pilotInput
+      pilotInput,renderCalibrationInput
     };
   };
   return {task,att,pilotInput,cohort,pack};
@@ -156,6 +196,9 @@ test('separately signed and perceptually screened holdout matches attested pilot
   assert.equal(r.lock_signed_before_tuning_independently_proven,false);
   assert.equal(r.fingerprint_source_images_redecoded,2);
   assert.equal(r.preview_sha256_cryptographically_bound,true);
+  assert.equal(r.source_preview_mm_receipt_signed,true);
+  assert.equal(r.independent_visual_render_equivalence_proven,false);
+  assert.equal(r.physical_print_scale_proven,false);
 });
 test('known near duplicate across train/test blocks even when different SHA/family',async()=>{
   const {cohort,pack}=await fixture();
@@ -219,4 +262,30 @@ test('a missing or byte-substituted original PNG is refused despite valid signed
     ...packageData,cohortImageBytes:[tPng,tPng]
   });
   assert.equal(replaced.reason,'SIGNED_COHORT_IMAGE_FINGERPRINTS_UNVERIFIED');
+});
+
+test('signed cohort and reviews without independently pinned render receipt cannot enable metrics',async()=>{
+  const {pack}=await fixture();
+  const bundle=pack();
+  delete bundle.renderCalibrationInput;
+  assert.equal(verifyLockedPilot(bundle).reason,
+    'SIGNED_RENDER_CALIBRATION_REQUIRED');
+});
+test('a valid render receipt for a different preview or source is rejected by pilot byte binding',async()=>{
+  const {pack}=await fixture(),bundle=pack();
+  bundle.renderCalibrationInput={
+    ...bundle.renderCalibrationInput,
+    previewPngBytes:oPng
+  };
+  assert.equal(verifyLockedPilot(bundle).reason,
+    'RENDER_RECEIPT_NOT_BOUND_TO_PILOT');
+});
+test('invalid render signature and untrusted mm matrix block research metrics',async()=>{
+  const {pack}=await fixture(),bundle=pack();
+  bundle.renderCalibrationInput={
+    ...bundle.renderCalibrationInput,
+    signatureBytes:Buffer.alloc(64)
+  };
+  assert.equal(verifyLockedPilot(bundle).reason,
+    'SIGNED_RENDER_CALIBRATION_INCOMPLETE');
 });
