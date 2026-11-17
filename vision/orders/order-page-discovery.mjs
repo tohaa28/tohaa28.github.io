@@ -10,7 +10,7 @@
  * never request production gifts.ru, never mistake template for training logo.
  */
 export const TEST_HOSTS=Object.freeze(["psk.testgifts.local","testgifts.local"]);
-const REFUSE=reason=>({status:"MANUAL",reason,production_approved:false});
+const REFUSE=(reason,extra={})=>({status:"MANUAL",reason,production_approved:false,...extra});
 const digits=s=>/^\d{5,12}$/.test(String(s||""));
 const internal=s=>/^\d{1,20}$/.test(String(s||""));
 const allowed=url=>url?.protocol==="http:"&&TEST_HOSTS.includes(url.hostname)&&
@@ -157,23 +157,77 @@ async function boundedText(response,limit=3_000_000){
  for(const part of parts){buf.set(part,offset);offset+=part.length}
  return new TextDecoder("utf-8").decode(buf);
 }
-async function getText(url,fetcher,listOrigin){
+// No URLs, customer filenames, authentication state or server response body
+// are ever serialized into a diagnostics object.
+function classifiedError(error,phase,originRelation){
+ const message=String(error?.message||'');
+ const common={stage:phase,origin_relation:originRelation,
+   network_attempted:true,http_status:null};
+ if(error?.visionCode==='RESPONSE_HTTP_STATUS')
+   return REFUSE(phase==='order_card'?'ORDER_CARD_HTTP_ERROR':'ORDER_POPUP_HTTP_ERROR',
+     {...common,failure_class:'http_status',http_status:error.status});
+ if(error?.visionCode==='TEST_SESSION_AUTH_REQUIRED')
+   return REFUSE(phase==='order_card'?'ORDER_CARD_AUTH_REQUIRED':'ORDER_POPUP_AUTH_REQUIRED',
+     {...common,failure_class:'login_html'});
+ if(error?.visionCode==='DOCUMENT_TOO_LARGE')
+   return REFUSE(phase==='order_card'?'ORDER_CARD_TOO_LARGE':'ORDER_POPUP_TOO_LARGE',
+     {...common,failure_class:'response_limit'});
+ if(error?.visionCode==='UNEXPECTED_DOCUMENT_CONTENT_TYPE')
+   return REFUSE(phase==='order_card'?'ORDER_CARD_UNEXPECTED_TYPE':'ORDER_POPUP_UNEXPECTED_TYPE',
+     {...common,failure_class:'content_type'});
+ if(error?.visionCode==='FETCH_TIMEOUT')
+   return REFUSE(phase==='order_card'?'ORDER_CARD_TIMEOUT':'ORDER_POPUP_TIMEOUT',
+     {...common,failure_class:'timeout'});
+ // A failed browser fetch does NOT identify CORS specifically: it can
+ // mean a denied redirect, DNS, offline test host or another network block.
+ return REFUSE(phase==='order_card'?'ORDER_CARD_FETCH_REJECTED':'ORDER_POPUP_FETCH_REJECTED',
+   {...common,failure_class:'cors_redirect_or_network',
+     fetch_exception_family:error?.name==='TypeError'?'TypeError':'other'});
+}
+async function getText(url,fetcher,listOrigin,phase){
  const loc=new URL(url);
  if(!allowed(loc))throw Error("UNTRUSTED_TEST_HOST");
- // Cross-origin mirrors are allowed ONLY on this exact local two-host allowlist.
- // Browser CORS still applies; no browser security bypass or cross-site redirect.
  const same=loc.origin===listOrigin;
- const res=await fetcher(loc.href,{
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),15000);
+ let res;
+ try{
+  res=await fetcher(loc.href,{
    method:"GET",mode:same?"same-origin":"cors",
    credentials:"include",redirect:"error",cache:"no-store",
-   referrerPolicy:"no-referrer",headers:{accept:"text/html,application/json"}
- });
- const text=await boundedText(res);
- if(isAuthHtml(text))throw Error("TEST_SESSION_AUTH_REQUIRED");
- return text;
+   referrerPolicy:"no-referrer",signal:controller.signal,
+   headers:phase==="popup"&&same?
+     {accept:"text/html,application/json","x-requested-with":"XMLHttpRequest"}:
+     {accept:"text/html,application/json"}
+  });
+  if(!res.ok){
+   const error=Error("RESPONSE_HTTP_STATUS");
+   error.visionCode="RESPONSE_HTTP_STATUS";
+   error.status=res.status;
+   throw error;
+  }
+  let text;
+  try{text=await boundedText(res)}
+  catch(error){
+   if(error.message==="DOCUMENT_TOO_LARGE")error.visionCode="DOCUMENT_TOO_LARGE";
+   if(error.message==="UNEXPECTED_DOCUMENT_CONTENT_TYPE")
+     error.visionCode="UNEXPECTED_DOCUMENT_CONTENT_TYPE";
+   throw error;
+  }
+  if(isAuthHtml(text)){
+   const error=Error("TEST_SESSION_AUTH_REQUIRED");
+   error.visionCode="TEST_SESSION_AUTH_REQUIRED";throw error;
+  }
+  return text;
+ }catch(error){
+  if(controller.signal.aborted)error.visionCode="FETCH_TIMEOUT";
+  throw error;
+ }finally{clearTimeout(timer)}
 }
+
 export async function inspectOrderPageFromRow(row,{
- loc=globalThis.location,fetcher=globalThis.fetch,
+ loc=globalThis.location,
+ fetcher=globalThis.__visionLocalTrustedTransport||globalThis.fetch,
  DOMParserClass=globalThis.DOMParser
 }={}){
  if(!loc||loc.protocol!=="http:"||loc.hostname!=="psk.testgifts.local"||
@@ -181,14 +235,18 @@ export async function inspectOrderPageFromRow(row,{
    return REFUSE("NOT_TEST_ORDER_PAGE");
  const target=rowOrderTarget(row,loc.href);
  if(target.status!=="ORDER_LINK_FOUND")return target;
+ const originRelation=target.url.origin===loc.origin?
+   "same_origin":"approved_other_test_origin";
+ let phase="order_card";
  try{
-  const source=await getText(target.url.href,fetcher,loc.origin);
+  const source=await getText(target.url.href,fetcher,loc.origin,phase);
   const doc=parse(source,DOMParserClass);
   const oid=extractOrderInternalId(doc);
   if(!oid)return REFUSE("ORDER_INTERNAL_ID_NOT_FOUND");
   const popupUrl=testUrl("/ajax/gifts/order?action=makets_popup&oid="+oid,
     target.url.origin);
-  const raw=await getText(popupUrl.href,fetcher,loc.origin);
+  phase="popup";
+  const raw=await getText(popupUrl.href,fetcher,loc.origin,phase);
   const parsed=popupHtml(raw);
   if(parsed.status!=="POPUP_HTML")return parsed;
   const popupDoc=parse(parsed.html,DOMParserClass);
@@ -201,13 +259,10 @@ export async function inspectOrderPageFromRow(row,{
     uploads:resources.uploads.map(x=>({...x,internalId:oid,
       detailOrigin:target.url.origin})),
     templates:resources.templates,
-    rejected:resources.rejected};
+    rejected:resources.rejected,
+    stage:"resources",origin_relation:originRelation};
  }catch(error){
-  const msg=String(error?.message||"");
-  return REFUSE(msg==="TEST_SESSION_AUTH_REQUIRED"?"TEST_SESSION_AUTH_REQUIRED":
-    msg==="DOCUMENT_TOO_LARGE"?"ORDER_DOCUMENT_TOO_LARGE":
-    msg.startsWith("HTTP_")?"ORDER_HTTP_ERROR":
-    "ORDER_DETAIL_FETCH_OR_CORS_FAILURE");
+  return classifiedError(error,phase,originRelation);
  }
 }
 
@@ -218,7 +273,8 @@ export async function inspectOrderPageFromRow(row,{
  * independently granted access to this helper.
  */
 export async function fetchOrderResourceBytes(resource,{
- fetcher=globalThis.fetch,loc=globalThis.location,timeoutMs=15000,
+ fetcher=globalThis.__visionLocalTrustedTransport||globalThis.fetch,
+ loc=globalThis.location,timeoutMs=15000,
  maxBytes=16_000_000
 }={}){
  if(!loc||loc.protocol!=="http:"||loc.hostname!=="psk.testgifts.local"||
