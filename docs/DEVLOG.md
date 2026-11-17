@@ -649,3 +649,37 @@ Rollback: изменения только в экспериментальной 
 Этот малый защитный этап НЕ является полным PDF lexer/parser, независимым ICC/LittleCMS, DeviceCMYK→RGB преобразованием или выделением spot-форм. Даже одобренный K-subset остаётся только узким независимым RGBA rerender для ИССЛЕДОВАНИЙ. Нельзя заявлять доказанный источник заказа, подлинный ICC, color ΔE, реальные нормы печати или production OK. Следующий шаг L2: настоящая лексическая декомпозиция операторов и ColorSpace по байтам с сохранением исходной CMYK/spot-семантики, в строго изолированном worker; без расширения автодопусков, пока нет позитивных и негативных синтетических тестов.
 
 CI: проверка новых commit SHA выполняется автоматически; результаты фиксировать отдельно только по фактическим run URL, не выводить PASS из одного факта публикации коммитов.
+
+
+## C3B.3.L2–M3 — исходные цвета PDF, действующий нейросетевой сканер, Worker и экспорт
+
+Дата 2026-11-17. Все исходники только на \`feature/printcheck-vision-copy-v01\`. PR #4 **DRAFT**, Issue #5 OPEN. Никакие производственные модули (Maketnaya, PrintCheck PDF, Editor, Mockups) не были изменены или объединены с PR #4.
+
+### L2: Diagnostic original PDF source color spaces
+- \`c8d33219\` — \`vision/raster/pdf-source-color-audit.mjs\`, безопасный ограниченный разбор original PDF ASCII content operators до PDF.js RGB conversion. Обнаруживает DeviceRGB/Gray/CMYK и именованные цветовые пространства. PDF \`#20\`-escaped names, комментарии и числовые operands. Неопределённые конструкции требуют MANUAL. Диагностический результат не есть печатное approval.
+- \`d15eacaf\` — отдельные 6 Node regression tests. Первые CI failures выявили ошибочный запрет корректного PDF \`#20\` в имени и некорректную синтетическую no-paint fixture. Исправлено \`e1cc21de\`, \`7f7ae529\`. Инвариант source_structure_verified=false, production_approved=false сохраняется.
+- \`3d77dcc\`, \`78133afe\` — CI test discovery включён в CircleCI и GitHub rules.
+
+### M0: настоящий небольшой neural inference, synthetic-only
+- Обучена компактная 8→12→1 tanh/sigmoid MLP на синтетических патчах 9×9. Frozen weights: \`vision/ai/synthetic-feature-model.mjs\`, commit \`17626ac0\`. Синтетический 3000-patch validation accuracy 0.99733, precision threshold .75 0.99921, recall 0.99219. **НЕ переносить на реальные изображения!** Нормативная годность, физические размеры и real precision/recall не доказаны.
+- \`168662ee\` — отдельный \`vision-ai.html\`: локальная загрузка PNG/JPEG/WEBP, сегментация по alpha/color picker, 9×9 neural patch scan, overlay red/yellow, отказ MANUAL при плохой маске, JSON координат и обязательные поля production_approved=false. До 700×700 px, 20 MB; не проверяет полноту векторного PDF.
+- \`076b9123\` — unit tests synthetic line, tiny gap, thick circle, arbitrary ink color, invalid raster. \`5684c6b6\` — actual Chromium desktop/mobile E2E.
+- \`facba09c\` — ссылка с экспериментальной стартовой страницы; \`b4bdbe25\` и последующие — безопасная отдельная публикация.
+
+### M1: отдельный Worker и интеграция с панелью
+- \`60770111\` — \`vision/ai/scan-worker.mjs\` с bounded image contract, без прямого чтения заказа, сетевых операций или передачи cookies.
+- \`da41ed86\` — parity/memory/no-image-echo Node tests; \`8c43158d\` — Worker, отмена stale jobs и 15 s timeout в браузере; \`093f5aff\` — Chromium worker integration.
+- \`c7c8cccc\` — кнопка запуска отдельного AI-анализатора в Vision-панели, открывает новый origin строго по пользовательскому клику, **без передачи изображений**; основная Макетная не меняется.
+- \`c56158f9\` — исправлен тест реальной same-origin srcdoc capability, вместо неверного \`about:srcdoc location.origin\`. Отдельно добавлена UTF-8 charset в mocked JS response \`0e36800e\`. Реальный launcher не ослаблялся.
+- GitHub [publish 44044957182](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44044957182) SUCCESS: валидный Worker, Playwright AI и bookmarklet, изолированная публикация в main.
+
+### M2: локальный annotated PNG и успешная публикация
+- \`4a780aa8\` — PNG с наложением результатов, только браузерный download, без сети; \`43d5d61b\` — полноценный Playwright test скачанного PNG и JSON без raw RGBA.
+- GitHub [publish 44045300377](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44045300377) **SUCCESS**: 2 Worker unit tests, 6 synthetic MLP tests, реальное Chromium desktop/mobile AI inference, PNG/JSON download, bookmarklet same-origin PASS; main only \`gifts-layout-workbench-vision/\` обновлён до preview commit \`8f1a3fb\`. CI [rules 44045069047](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44045069047) 272/272 Node, 6/6 ZIP Python, 11/11 evaluation Python, synthetic signed pilot PASS. Растровый replay engine не расширялся.
+- Прямая ссылка на экспериментальный анализатор: https://tohaa28.github.io/gifts-layout-workbench-vision/vision-ai.html . Проверено наличие файла и Worker на GitHub Pages исходной ветке \`main\`. Актуальная загрузка конечным пользователем зависит от кэша GitHub Pages.
+
+### M3: следующий training cycle начат
+- \`ccb97572\` — отдельный \`vision/ai/train_synthetic_reference.py\` с синтетической генерацией, 8→12→1 PyTorch training/validation и экспортом NEW UNAPPROVED checkpoint. Локальный прототип запущен: holdout 3000, accuracy_0_5 0.99667, precision_0_75 1.0, recall_0_75 0.99219 (только на синтетике). Файл не подключён к production и не заменяет M0 без независимой оценки.
+- Дальше: signed expert ROI dataset от двух технологов на реальных разрешённых макетах, исключить family leakage, выверить mm/placement/ICC/spot и потребовать независимую quality gate. Держать PR #4 в DRAFT до завершения real-data QA. Скриншоты, оригиналы заказов и приватные ключи не коммитить.
+
+Граница доверия: эта работа даёт **работающий исследовательский neural inference**, но НЕ обученную на реальных заказах и НЕ производственно утверждённую нейросетевую систему. Любое пустое сканирование не является признаком годности. Пользовательский отчёт — candidates only.
