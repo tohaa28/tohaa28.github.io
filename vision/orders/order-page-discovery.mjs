@@ -433,8 +433,30 @@ export async function fetchOrderResourceBytes(resource,{
   for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength}
   if(bytes.byteLength<8)return REFUSE("ARTWORK_EMPTY");
   return {status:"LOCAL_BYTES_ONLY",bytes,url,mime};
- }catch{
-  return REFUSE(ctrl.signal.aborted?"ARTWORK_TIMEOUT":
-    same?"ARTWORK_DOWNLOAD_FAILED":"TEST_SUBDOMAIN_CORS_OR_AUTH_REQUIRED");
+ }catch(error){
+  if(ctrl.signal.aborted)
+   return REFUSE("ARTWORK_TIMEOUT",{
+     stage:"artwork",failure_class:"timeout"});
+  // Chrome MV3 content transport emits one of these exact internal enums.
+  // Never copy raw browser exception messages (which may contain private URLs).
+  const mv3Codes={
+   EXTENSION_AUTH_REDIRECT:["ARTWORK_AUTH_REDIRECT","login_redirect"],
+   EXTENSION_REDIRECT_UNTRUSTED_ORIGIN:["ARTWORK_REDIRECT_UNTRUSTED_ORIGIN","untrusted_redirect_origin"],
+   EXTENSION_REDIRECT_UNEXPECTED_PATH:["ARTWORK_REDIRECT_UNEXPECTED_PATH","unexpected_redirect_path"],
+   EXTENSION_FETCH_REJECTED:["ARTWORK_EXTENSION_NETWORK_REJECTED","extension_network_rejected"],
+   EXTENSION_SERVICE_DISCONNECTED:["ARTWORK_EXTENSION_DISCONNECTED","extension_disconnected"],
+   EXTENSION_FETCH_TIMEOUT:["ARTWORK_TIMEOUT","timeout"],
+   EXTENSION_FETCH_ABORTED:["ARTWORK_TRANSPORT_ABORTED","extension_aborted"],
+   EXTENSION_READ_ONLY_PATH_DENIED:["ARTWORK_EXTENSION_PATH_DENIED","extension_policy_refusal"]
+  };
+  const known=Object.prototype.hasOwnProperty.call(mv3Codes,error?.message)?
+    mv3Codes[error.message]:null;
+  if(known)
+    return REFUSE(known[0],{stage:"artwork",
+      failure_class:known[1],transport_error:error.message});
+  return REFUSE(same?"ARTWORK_DOWNLOAD_FAILED":
+     "TEST_SUBDOMAIN_CORS_OR_AUTH_REQUIRED",{
+       stage:"artwork",failure_class:"cors_redirect_or_network"
+     });
  }finally{clearTimeout(timer)}
 }
