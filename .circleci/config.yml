@@ -1,0 +1,119 @@
+# CircleCI fallback CI for isolated PrintCheck Vision development.
+# Runs NO releases, NO deployments and NO changes to the Gifts workbench.
+# Source branch only. Browser tests are opt-in to conserve compute credits.
+version: 2.1
+
+parameters:
+  run_browser:
+    type: boolean
+    default: false
+
+jobs:
+  vision-contract:
+    docker:
+      - image: cimg/python:3.12-node
+    resource_class: small
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Verify runtime and isolated source
+          command: |
+            set -euo pipefail
+            node --version
+            python --version
+            test -f vision/geometry/vector-corridors.mjs
+            test -f vision/dataset/pilot-attestation.mjs
+            test -f tests/printcheck-vision-pilot-python-e2e.mjs
+      - run:
+          name: Check every Vision module and deterministic Node test for syntax
+          command: |
+            set -euo pipefail
+            find vision -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+            find tests -maxdepth 1 -name 'printcheck-vision-*.test.mjs' -print0 | xargs -0 -n1 node --check
+            node --check tests/printcheck-vision-pilot-python-e2e.mjs
+            node --check tests/bench-printcheck-vision-spatial.mjs
+            node --check tests/bench-printcheck-vision-curved.mjs
+      - run:
+          name: Run all deterministic Vision geometry, security and dataset tests
+          command: |
+            set -euo pipefail
+            node --test tests/printcheck-vision-*.test.mjs
+          no_output_timeout: 5m
+      - run:
+          name: Compare reference and indexed CPU measurements
+          command: |
+            set -euo pipefail
+            node tests/bench-printcheck-vision-spatial.mjs
+            node tests/bench-printcheck-vision-curved.mjs
+      - run:
+          name: Run Python private ZIP and expert-evaluation tests
+          command: |
+            set -euo pipefail
+            python -m unittest discover -s tests -p 'test_printcheck_vision_*.py' -v
+      - run:
+          name: Run full synthetic signed pilot into real Python evaluator
+          command: |
+            set -euo pipefail
+            node tests/printcheck-vision-pilot-python-e2e.mjs
+
+  vision-browser:
+    docker:
+      - image: cimg/node:22
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Check Vision browser and bookmarklet scripts
+          command: |
+            set -euo pipefail
+            node --version
+            node --check assets/printcheck-vision-ui.js
+            node --check tests/printcheck-vision-ui.browser.mjs
+            node --check tests/printcheck-vision-studio.browser.mjs
+            node --check tests/printcheck-vision-review.browser.mjs
+            node --check tests/printcheck-vision-session-launch.browser.mjs
+            node --check tools/build-launcher.mjs
+      - run:
+          name: Install Playwright Chromium for headless testing
+          command: |
+            set -euo pipefail
+            npm install --no-save playwright
+            npx playwright install --with-deps chromium
+          no_output_timeout: 10m
+      - run:
+          name: Smoke-test desktop/mobile editor and blind expert review
+          command: |
+            set -euo pipefail
+            node tests/printcheck-vision-ui.browser.mjs
+            node tests/printcheck-vision-studio.browser.mjs
+            node tests/printcheck-vision-review.browser.mjs
+          no_output_timeout: 5m
+      - run:
+          name: Rebuild and verify same-origin authenticated Gifts launcher
+          command: |
+            set -euo pipefail
+            export WORKBENCH_BASE='https://tohaa28.github.io/gifts-layout-workbench-vision/'
+            node tools/build-launcher.mjs
+            node --check launcher.js
+            node tests/printcheck-vision-session-launch.browser.mjs
+          no_output_timeout: 5m
+
+workflows:
+  vision-automatic:
+    jobs:
+      - vision-contract:
+          filters:
+            branches:
+              only:
+                - feature/printcheck-vision-copy-v01
+
+  vision-browser-on-demand:
+    when: << pipeline.parameters.run_browser >>
+    jobs:
+      - vision-browser:
+          filters:
+            branches:
+              only:
+                - feature/printcheck-vision-copy-v01
