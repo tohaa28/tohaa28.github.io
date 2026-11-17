@@ -80,9 +80,18 @@ try{
     assert.ok(subframe,'iframe srcdoc did not create a real frame');
     await subframe.waitForLoadState('domcontentloaded');
     assert.equal(new URL(subframe.url()).protocol,'about:','srcdoc frame expected');
-    const frameOrigin=await subframe.evaluate(()=>location.origin);
-    assert.equal(frameOrigin,'https://gifts.ru',
-      'Same-origin document must be a direct child of authorized gifts.ru');
+    // about:srcdoc has an opaque-looking URL; location.origin is 'null'
+    // even when the DOCUMENT inherited the embedding parent's origin.
+    // Test the actual same-origin capability instead of the URL's origin.
+    const directParentAccess=await subframe.evaluate(()=>{
+      try{
+        return window.parent.location.origin==='https://gifts.ru'&&
+          window.parent.document.querySelector('#giftsSession')?.textContent===
+            'SYNTHETIC SIGNED-IN PAGE';
+      }catch{return false}
+    });
+    assert.equal(directParentAccess,true,
+      'Srcdoc must inherit authorized gifts.ru origin and access parent DOM');
     const fetchResult=await subframe.evaluate(async()=>fetch('https://gifts.ru/vision-auth-check')
       .then(r=>r.json()));
     assert.equal(fetchResult.authenticated,true,
