@@ -10,6 +10,9 @@ on:
       - "tests/printcheck-vision-independent-raster.integration.mjs"
       - "tests/helpers/synthetic-simple-pdf.mjs"
       - ".github/workflows/test-printcheck-vision-raster.yml"
+  pull_request:
+    branches:
+      - gifts-layout-workbench-mockups-source
   workflow_dispatch:
 permissions:
   contents: read
