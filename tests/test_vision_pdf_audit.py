@@ -234,6 +234,62 @@ class PDFAuditTests(unittest.TestCase):
                 self.assertEqual(out["reason"], "FILLED_BBOX_THRESHOLD_INVALID")
                 self.assertFalse(out["production_approved"])
 
+    def test_unbounded_sequential_pdf_batch_writes_private_atomic_reports(self):
+        for part, n in enumerate((16, 3), 1):
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as archive:
+                samples = []
+                for i in range(n):
+                    name = "samples/" + str(i+1).zfill(4) + ".pdf"
+                    payload = self.pdf + bytes([part, i])
+                    archive.writestr(name, payload)
+                    samples.append({
+                        "sample_name": name, "expert_label": "unreviewed",
+                        "bytes": len(payload),
+                        "sha256": hashlib.sha256(payload).hexdigest()
+                    })
+                archive.writestr("manifest.json", json.dumps({
+                    "schema": lab.SCHEMA, "training_ready": False,
+                    "public_upload_permitted": False, "samples": samples
+                }))
+            source = Path(self.temp.name) / ("part" + str(part) + ".zip")
+            source.write_bytes(buffer.getvalue())
+            lab.import_zip(self.root, source)
+        progress = []
+        result = pdf.audit_all_samples(self.root, engine=Engine(),
+                 on_progress=lambda i, total, status: progress.append((i,total,status)))
+        self.assertEqual(result["total_pdf_samples"], 20)
+        self.assertEqual(result["processed"], 20)
+        self.assertEqual(result["status_counts"]["RESEARCH_ONLY"], 20)
+        self.assertEqual(len(progress), 20)
+        self.assertEqual(progress[-1], (20,20,"RESEARCH_ONLY"))
+        self.assertFalse(result["remote_uploads"])
+        self.assertFalse(result["training_ready"])
+        location = self.root / "reports" / "pdf-audits"
+        outputs = sorted(location.glob("*.json"))
+        self.assertEqual(len(outputs), 20)
+        self.assertFalse(list(location.glob("*.tmp")))
+        for output in outputs:
+            self.assertEqual(len(output.stem), 64)
+            sample = json.loads(output.read_text(encoding="utf8"))
+            self.assertEqual(sample["status"], "RESEARCH_ONLY")
+            self.assertFalse(sample["production_approved"])
+            self.assertEqual(len(sample["source_sha256"]), 64)
+            self.assertNotIn(str(self.root), output.read_text(encoding="utf8"))
+        again = pdf.audit_all_samples(self.root, engine=Engine())
+        self.assertEqual(again["processed"], 20)
+        self.assertEqual(len(list(location.glob("*.json"))), 20)
+
+    def test_batch_cannot_treat_modified_original_as_valid_pdf(self):
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        source.write_bytes(self.pdf + b"tampered")
+        result = pdf.audit_all_samples(self.root,engine=Engine())
+        self.assertEqual(result["processed"], 1)
+        self.assertEqual(result["status_counts"]["SOURCE_SHA256_MISMATCH"], 1)
+        self.assertFalse(result["production_approved"])
+        report = next((self.root / "reports" / "pdf-audits").glob("*.json"))
+        self.assertEqual(json.loads(report.read_text(encoding="utf8"))["status"], "MANUAL")
+
     def test_missing_and_tampered_source_fail_closed(self):
         self.assertEqual(pdf.audit_sample(self.root, "invalid", engine=Engine())["reason"],
                          "SAMPLE_ID_INVALID")
