@@ -1030,3 +1030,12 @@ workflow; прежний SUCCESS не переносить автоматиче�
 PDF вне GitHub провести локальный audit-all и независимую ROI-разметку,
 семейный holdout, проверку физического масштаба, spot/ICC, paint-order.
 Самообучение остаётся выключенным для неподтверждённых ROI.
+
+## M3.4 — strict PDF path fail-closed (2026-11-18)
+
+- Experimental branch only; draft PR #4 not merged; no production or customer files touched.
+- Baseline 582fcd4b966177c9b221d41caf12f1362b4da281: UI smoke, raster safety, rules/dataset safety and CircleCI vision-contract/vision-raster SUCCESS. Preview publish not confirmed.
+- 44f61f0568bcb1bc767615d3f1094f0e8fdc99a8: unsupported PDF path types and malformed items return MANUAL with fixed diagnostic codes.
+- 4b70347e7af3aa21bb77f63f520130b1d46b594e: synthetic regression covers invalid types, invalid items, no production approval and no private string leakage.
+- New SHA CI and threefold independent ROI/adjudication regression remain unverified until independently checked. Do not infer success from baseline.
+- Blockers: live anonymous 404 reference_state and MV3 network classification missing; real verified ROI/family holdout, physical mm, ICC/spot, print process and real-world AI accuracy not established. Local PDF --all must not upload inputs or source identifiers. Training and production OK remain disabled.
