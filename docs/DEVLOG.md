@@ -883,3 +883,16 @@ Pre-change PR #4 DRAFT/unmerged head `65ade5bcecb4b00c4bf0027da8734030e5041a94`.
 - `ba43a54`: synthetic regression cases for array/object values on both fields; assert MANUAL, no production approval, no auto-deploy.
 - No real data, model weights, CI secrets or production Maketnaya code changed. These checks do not validate real-world scale, ICC, independent labels or model accuracy.
 - CI for the new head must be checked separately; no CI pass is claimed in this entry before completion.
+
+
+## C3B.3.M3.1b — contradictory ROI role gate (2026-11-17)
+
+Pre-change draft PR #4 HEAD `900b26809bc17db49a632e0795c02b638d3dbed5`; PR remains DRAFT/unmerged. At inspection, GitHub Actions experimental UI smoke run 44082225546 was QUEUED and CircleCI vision-contract / vision-raster were PENDING. These are observations, **not** CI passes.
+
+- `18036e9`: `vision/ai/training_split_gate.py` now rejects an identical ROI SHA labelled as both `ink` and `gap`, even within the same split. This is a fail-closed structural conflict; status `MANUAL`, reason `ROI_ROLE_CONFLICT`.
+- `6508b59`: synthetic regression tests for contradictory ROI roles and same-role duplicate records; no customer data used. Same-role duplicates are permitted structurally, but do not grant production approval.
+- The research gate still cannot independently establish expert identity, consent, true family provenance, physical mm, ICC/spot or real-world accuracy. A clean structure remains `RESEARCH_SPLIT_STRUCTURE_ONLY`, `production_approved:false`, `auto_deploy_allowed:false`.
+- **CI status for new SHA:** not yet confirmed when this entry was authored. Follow up by checking GitHub Actions and CircleCI for final head and recording exact outcomes; do not infer success from previous runs.
+- Rollback: revert only the two isolated gate/test commits. No production Maketnaya files or published model weights changed.
+
+Next: check CI; then design an offline-only expert annotation manifest with verifiable mm/ICC provenance and independent labels. Never upload real originals, signatures, identifiers, hashes, or private files to public GitHub.
