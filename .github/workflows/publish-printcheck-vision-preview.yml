@@ -13,6 +13,9 @@ on:
       - vision-vector.html
       - vision-local-orders.html
       - vision/orders/row-scanner.mjs
+      - vision/orders/order-page-discovery.mjs
+      - tests/printcheck-vision-order-detail.test.mjs
+      - tests/printcheck-vision-order-detail.browser.mjs
       - vision/orders/local-training-zip.mjs
       - tests/printcheck-vision-training-zip.test.mjs
       - vision/orders/overlay-entry.mjs
@@ -81,6 +84,9 @@ jobs:
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-vector.browser.mjs
           node --check vision/orders/row-scanner.mjs
+          node --check vision/orders/order-page-discovery.mjs
+          node --check tests/printcheck-vision-order-detail.browser.mjs
+          node --test tests/printcheck-vision-order-detail.test.mjs
           node --check vision/orders/local-training-zip.mjs
           node --check tests/printcheck-vision-training-zip.test.mjs
           node --test tests/printcheck-vision-training-zip.test.mjs
@@ -126,6 +132,7 @@ jobs:
           node tests/printcheck-vision-ai.browser.mjs
           node tests/printcheck-vision-vector.browser.mjs
           node tests/printcheck-vision-local-orders.browser.mjs
+          node tests/printcheck-vision-order-detail.browser.mjs
 
       - name: Build isolated bookmarklet launcher
         env:
