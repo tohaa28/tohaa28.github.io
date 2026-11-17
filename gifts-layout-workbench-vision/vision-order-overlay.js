@@ -2493,7 +2493,7 @@
     const stats = node("div", "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043F\u043E\u0438\u0441\u043A\u0430 \u0441\u0442\u0440\u043E\u043A\u2026", "vlo-stats");
     stats.setAttribute("role", "status");
     const warning = node("p", "\u042D\u0442\u043E \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u0441\u043A\u0438\u0439 \u0430\u043D\u0430\u043B\u0438\u0437, \u043D\u0435 \u0434\u043E\u043F\u0443\u0441\u043A \u043A \u043F\u0435\u0447\u0430\u0442\u0438. \u041D\u0435\u0442 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0445 \u043C\u0435\u0441\u0442 \u2260 \u043C\u0430\u043A\u0435\u0442 \u0433\u043E\u0434\u0435\u043D. PDF \u0438 \u0441\u043B\u043E\u0436\u043D\u044B\u0435 \u0432\u0435\u043A\u0442\u043E\u0440\u044B: MANUAL. \u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 ZIP \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0444\u0430\u0439\u043B\u044B \u2014 \u043D\u0435 \u043F\u0443\u0431\u043B\u0438\u043A\u0443\u0439\u0442\u0435 \u0435\u0433\u043E.", "vlo-note");
-    let rows = [], busy = false, closed = false, fileBudget = LOCAL_ORDERS.maxBatchFiles;
+    let rows = [], busy = false, closed = false, fileBudget = LOCAL_ORDERS.maxBatchFiles, nextRowIndex = 0;
     function close2() {
       closed = true;
       panel.remove();
@@ -2545,7 +2545,14 @@
       setTimeout(() => URL.revokeObjectURL(u), 1e3);
     }
     const refreshBtn = makeButton("\u041D\u0430\u0439\u0442\u0438 \u0441\u0442\u0440\u043E\u043A\u0438", refresh);
-    const scanBtn = makeButton("\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B", () => scanAll());
+    const scanBtn = makeButton("\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C 10 \u0437\u0430\u043A\u0430\u0437\u043E\u0432", () => scanAll());
+    const renewBtn = makeButton("\u041D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432", () => {
+      if (busy || closed || fileBudget > 0) return;
+      fileBudget = LOCAL_ORDERS.maxBatchFiles;
+      updateBatchControls();
+      renderStats("\u041D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A \u0440\u0430\u0437\u0440\u0435\u0448\u0451\u043D \u044F\u0432\u043D\u043E. \u0423\u0436\u0435 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043D\u044B\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
+    });
+    renewBtn.disabled = true;
     scanBtn.className = "vlo-start";
     const exportBtn = makeButton("\u041E\u0442\u0447\u0451\u0442 JSON", saveReport);
     const diagnosticBtn = makeButton("\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430 \u0442\u0430\u0431\u043B\u0438\u0446\u044B", () => {
@@ -2586,12 +2593,13 @@
         busy = false;
         bundleBtn.disabled = false;
         refreshBtn.disabled = false;
-        scanBtn.disabled = rows.length === 0;
+        updateBatchControls();
       }
     });
     actions.append(
       refreshBtn,
       scanBtn,
+      renewBtn,
       exportBtn,
       diagnosticBtn,
       bundleBtn,
@@ -2599,17 +2607,20 @@
     );
     panel.append(title, description, actions, stats, warning);
     document.body.append(panel);
-    window.__visionLocalOrderOverlay = { close: close2, refresh, version: "C3B.3.O" };
+    window.__visionLocalOrderOverlay = { close: close2, refresh, version: "C3B.3.Q" };
     function renderStats(msg) {
       const discovered = rows.reduce((n, r) => n + r.anchors.length, 0);
       const local = rows.reduce((n, r) => n + (r.orderUploads?.length ?? r.files.length), 0);
       const completed = rows.reduce((n, r) => n + (r.results?.length || 0), 0);
-      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u0441\u0441\u044B\u043B\u043A\u0438: " + discovered + " \xB7 \u0444\u0430\u0439\u043B\u044B \u0438\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A/\u0441\u0442\u0440\u043E\u043A: " + local + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E: " + completed + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
+      const scanned = rows.filter((r) => r.scanAttempted).length;
+      const linked = rows.filter((r) => r.hasOrderLink).length;
+      stats.textContent = "\u0421\u0442\u0440\u043E\u043A: " + rows.length + " \xB7 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438: " + linked + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E \u0441\u0442\u0440\u043E\u043A: " + scanned + " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432/\u043E\u0442\u043A\u0430\u0437\u043E\u0432: " + completed + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439 \u043D\u0430\u0439\u0434\u0435\u043D\u043E: " + local + " \xB7 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A: " + fileBudget + "\n" + (msg || "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043C\u0430\u043A\u0435\u0442\u044B\xBB.");
     }
     function refresh() {
       if (busy || closed) return;
       document.querySelectorAll("[data-vision-order-cell]").forEach((n) => n.remove());
       rows = discoverOrderRows(document);
+      nextRowIndex = 0;
       fileBudget = LOCAL_ORDERS.maxBatchFiles;
       for (const r of rows) {
         const cell = node(
@@ -2651,10 +2662,11 @@
         r.detail = detail;
         r.button = trigger;
       }
-      scanBtn.disabled = rows.length === 0;
-      renderStats(rows.length ? "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044E \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F." : "\u0421\u0442\u0440\u043E\u043A\u0438 \u043D\u0435 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u044B. \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0430\u0434\u0430\u043F\u0442\u0435\u0440 \u043A DOM \u0442\u0435\u0441\u0442\u043E\u0432\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B; \u0444\u0430\u0439\u043B\u043E\u0432\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u043B\u0438\u0441\u044C.");
+      updateBatchControls();
+      renderStats(rows.length ? "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043F\u043E\u0440\u0446\u0438\u044F\u043C\u0438 \u043F\u043E 10 \u0437\u0430\u043A\u0430\u0437\u043E\u0432, \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044E." : "\u0421\u0442\u0440\u043E\u043A\u0438 \u043D\u0435 \u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u044B. \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0430\u0434\u0430\u043F\u0442\u0435\u0440 \u043A DOM \u0442\u0435\u0441\u0442\u043E\u0432\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B; \u0444\u0430\u0439\u043B\u043E\u0432\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B \u043D\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u043B\u0438\u0441\u044C.");
     }
     async function scanRowContents(r) {
+      r.scanAttempted = true;
       r.button.disabled = true;
       r.label.textContent = "Vision: \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u0430 \u2192 \u043C\u0430\u043A\u0435\u0442\u044B\u2026";
       r.results = [];
@@ -2753,27 +2765,38 @@
       } finally {
         busy = false;
         refreshBtn.disabled = false;
-        scanBtn.disabled = rows.length === 0;
+        updateBatchControls();
       }
+    }
+    function updateBatchControls() {
+      renewBtn.disabled = busy || closed || fileBudget > 0 || nextRowIndex >= rows.length;
+      scanBtn.disabled = busy || closed || nextRowIndex >= rows.length || fileBudget <= 0;
+      scanBtn.textContent = nextRowIndex >= rows.length ? "\u0412\u0441\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u044B" : fileBudget <= 0 ? "\u041B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432 \u0438\u0441\u0447\u0435\u0440\u043F\u0430\u043D" : "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0435 " + Math.min(
+        LOCAL_ORDERS.maxOrdersPerClick,
+        rows.length - nextRowIndex
+      ) + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432";
     }
     async function scanAll() {
       if (busy || closed) return;
       busy = true;
       refreshBtn.disabled = scanBtn.disabled = true;
+      let examined = 0;
       try {
-        for (const r of rows) {
-          if (closed) break;
-          if (fileBudget <= 0) {
-            renderStats("\u041B\u0438\u043C\u0438\u0442 " + LOCAL_ORDERS.maxBatchFiles + " \u0444\u0430\u0439\u043B\u043E\u0432. \u0414\u043B\u044F \u043D\u043E\u0432\u043E\u0433\u043E \u0441\u0435\u0430\u043D\u0441\u0430 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041D\u0430\u0439\u0442\u0438 \u0441\u0442\u0440\u043E\u043A\u0438\xBB.");
-            break;
-          }
+        while (nextRowIndex < rows.length && examined < LOCAL_ORDERS.maxOrdersPerClick && !closed && fileBudget > 0) {
+          const r = rows[nextRowIndex++];
+          if (r.scanAttempted) continue;
           await scanRowContents(r);
+          examined++;
           await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        if (!closed) {
+          const message = fileBudget <= 0 ? "\u041B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432 \u0438\u0441\u0447\u0435\u0440\u043F\u0430\u043D. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041D\u043E\u0432\u044B\u0439 \u043B\u0438\u043C\u0438\u0442 \u0444\u0430\u0439\u043B\u043E\u0432\xBB \u0434\u043B\u044F \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u044F." : nextRowIndex >= rows.length ? "\u0412\u0441\u0435 \u043E\u0431\u043D\u0430\u0440\u0443\u0436\u0435\u043D\u043D\u044B\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u044B. \u0420\u0435\u0437\u0443\u043B\u044C\u0442\u0430\u0442\u044B \u0442\u0440\u0435\u0431\u0443\u044E\u0442 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u043E\u043C." : "\u041E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u0430 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u043F\u043E\u0440\u0446\u0438\u044F \u0438\u0437 " + examined + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432. \u0414\u043B\u044F \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u044F \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0441\u043D\u043E\u0432\u0430.";
+          renderStats(message);
         }
       } finally {
         busy = false;
         refreshBtn.disabled = false;
-        scanBtn.disabled = rows.length === 0;
+        updateBatchControls();
       }
     }
     refresh();
