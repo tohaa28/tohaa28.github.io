@@ -1344,9 +1344,8 @@
         failures
       };
     }
-    autoScan.addEventListener("click", async (event) => {
-      stop(event);
-      if (busy) return;
+    async function performAutomaticApprovalScan(queueMode = false) {
+      if (busy) return { status: "BUSY" };
       busy = true;
       stopRequested = false;
       collection = null;
@@ -1377,15 +1376,44 @@
         if (!panel.isConnected) return;
         stats.textContent = "\u041E\u0431\u0445\u043E\u0434: " + collection.status + "\n\u0410\u0440\u0442\u0438\u043A\u0443\u043B\u043E\u0432: " + collection.articles.length + " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u0430: " + done + " \xB7 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E: " + skipped + "\n\u0424\u0430\u0439\u043B\u044B: " + attachmentReport.files + " \xB7 ZIP-\u0447\u0430\u0441\u0442\u0435\u0439: " + attachmentReport.parts + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u0447\u0442\u0435\u043D\u0438\u044F: " + attachmentReport.failures + " \xB7 \u0441\u0442\u0430\u0442\u0443\u0441: " + attachmentReport.status + "\n\u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0439 JSON \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043C\u0435\u0447\u0430\u043D\u0438\u0439. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0435\u0433\u043E \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. Chrome \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0439.";
         privateSave.disabled = anonymousSave.disabled = attachmentRetry.disabled = false;
+        if (queueMode && collection?.articles?.length) {
+          downloadJson(collection, "vision-private-approval-evidence-" + location.pathname.split("/").filter(Boolean).at(-1) + ".json");
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        return {
+          status: collection.status,
+          eligible_articles: collection.selected_by_badge,
+          verified_articles: done,
+          files: attachmentReport.files,
+          zip_parts: attachmentReport.parts,
+          failures: attachmentReport.failures,
+          private_text_saved: !!(queueMode && collection?.articles?.length)
+        };
       } catch {
         if (panel.isConnected) stats.textContent = "MANUAL: \u043E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u043E\u0433\u043E \u043E\u0431\u0445\u043E\u0434\u0430.";
+        return { status: "MANUAL_AUTO_SCAN_FAILED" };
       } finally {
         busy = false;
         scan.disabled = autoScan.disabled = false;
         stopScan.disabled = true;
         exportButton.disabled = last?.status !== "VISIBLE_MODAL_STRUCTURE_ONLY";
       }
+    }
+    autoScan.addEventListener("click", (event) => {
+      stop(event);
+      void performAutomaticApprovalScan();
     });
+    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+        if (message?.op !== "vision-approval-order-collect-v1") return false;
+        if (!isOrderPage() || message.order_url !== location.href) {
+          respond({ status: "MANUAL_ORDER_URL_MISMATCH" });
+          return false;
+        }
+        performAutomaticApprovalScan(true).then(respond, () => respond({ status: "MANUAL_AUTO_SCAN_FAILED" }));
+        return true;
+      });
+    }
     attachmentRetry.addEventListener("click", async (event) => {
       stop(event);
       if (busy || !collection) return;
