@@ -9,6 +9,7 @@
  * No clicks that mutate orders, no GET to delete/upload endpoints, no POST,
  * never request production gifts.ru, never mistake template for training logo.
  */
+import {inspectOrderDiscussionDom} from './discussion-probe.mjs';
 export const TEST_HOSTS=Object.freeze(["psk.testgifts.local","testgifts.local"]);
 const REFUSE=(reason,extra={})=>({status:"MANUAL",reason,production_approved:false,...extra});
 const digits=s=>/^\d{5,12}$/.test(String(s||""));
@@ -312,6 +313,35 @@ export async function inspectOrderPageFromRow(row,{
  }
 }
 
+
+/**
+ * One already-allowed order-card GET per explicit user request. Never fetch
+ * alleged discussion endpoints, click controls or retrieve screenshots.
+ * Private message text is read transiently in the local page and reduced to
+ * fixed topic enums; it is never returned to the caller or uploaded.
+ */
+export async function inspectOrderDiscussionFromRow(row,{
+ loc=globalThis.location,
+ fetcher=globalThis.__visionLocalTrustedTransport||globalThis.fetch,
+ DOMParserClass=globalThis.DOMParser
+}={}){
+ if(!loc||loc.protocol!=='http:'||loc.hostname!=='psk.testgifts.local'||
+    !/^\/devorders(?:\/|$)/.test(loc.pathname))
+   return REFUSE('NOT_TEST_ORDER_PAGE');
+ const target=rowOrderTarget(row,loc.href);
+ if(target.status!=='ORDER_LINK_FOUND')return target;
+ const originRelation=target.url.origin===loc.origin?
+   'same_origin':'approved_other_test_origin';
+ try{
+   const source=await getText(target.url.href,fetcher,loc.origin,'order_card');
+   const doc=parse(source,DOMParserClass);
+   if(!doc)return REFUSE('ORDER_DISCUSSION_HTML_UNREADABLE',
+     {stage:'order_card'});
+   return inspectOrderDiscussionDom(doc,{baseUrl:target.url.href});
+ }catch(error){
+   return classifiedError(error,'order_card',originRelation);
+ }
+}
 
 /**
  * On HTTP 404, re-read ONLY the already authenticated popup. This differentiates
