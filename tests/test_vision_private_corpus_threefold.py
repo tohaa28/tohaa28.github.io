@@ -28,7 +28,7 @@ class ThreefoldPrivateCorpusTests(unittest.TestCase):
                     key.chmod(0o600)
                 rows = []
                 for number, family in ((1, "1111111"), (2, "2222222")):
-                    relative = f"private_originals/sample{number}.pdf"
+                    relative = f"private_originals/archive1_file{number:04d}.pdf"
                     (root / relative).write_bytes(payload)
                     rows.append({
                         "archive": 1, "sequence": number,
@@ -51,6 +51,8 @@ class ThreefoldPrivateCorpusTests(unittest.TestCase):
                 summary, tasks = corpus.stage(
                     manifest, output, key, max_bytes=512_000_000)
                 self.assertEqual(summary["verified_pdf_files"], 2)
+                self.assertEqual(summary["verification_statuses"],
+                                 {"SOURCE_VERIFIED_RESEARCH_ONLY": 2})
                 self.assertEqual(summary["family_clusters"], 1)
                 self.assertEqual(summary["unique_sha256_contents"], 1)
                 self.assertEqual(summary["duplicate_extra_copies"], 1)
@@ -71,11 +73,12 @@ class ThreefoldPrivateCorpusTests(unittest.TestCase):
                                   "1111111", "2222222", digest, "private_originals"):
                     self.assertNotIn(forbidden, reports)
                 # A changed source must fail closed, even when the manifest SHA is unchanged.
-                (root / "private_originals/sample2.pdf").write_bytes(
+                (root / "private_originals/archive1_file0002.pdf").write_bytes(
                     b"%PDF-1.7\nCHANGED")
                 changed, _ = corpus.stage(
                     manifest, output, key, max_bytes=512_000_000)
                 self.assertEqual(changed["verified_pdf_files"], 1)
+                self.assertEqual(changed["verification_statuses"].get("SOURCE_SIZE_MISMATCH"), 1)
                 self.assertFalse(changed["automatic_training_enabled"])
 
 
