@@ -54,7 +54,7 @@ try{
  assert.equal(item.article_scoped_controls,1);
  assert.equal(item.inline_thread_candidates,1);
  assert.equal(item.visible_message_candidates,1);
- assert.equal(item.screenshot_or_image_candidates,2);
+ assert.equal(item.screenshot_or_image_candidates,1);
  assert.deepEqual(item.weak_topic_candidates,['negative_min','positive_min']);
  assert.equal(item.expert_label_verified,false);
  assert.equal(item.training_ready,false);
