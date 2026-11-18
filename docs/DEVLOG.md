@@ -1366,3 +1366,75 @@ PDF вне GitHub провести локальный audit-all и незави�
   This is a **synthetic-browser confirmation**, NOT evidence the
   authenticated real test site has successfully processed an
   actual order yet. End-user field trial remains required.
+
+
+## M3.15 — capture selected designer problems, discussion history and local attachment bytes (2026-11-18)
+
+- User explicitly requested enabling the reading of **designer-selected
+  problems, discussions and files attached to these discussions**.
+  Previous M3.14 collected selected problem flags, comment text and
+  attachment IDs/names but did NOT read the binary content of attachments.
+- Reopened the user-supplied **private saved order HTML** locally,
+  deliberately did NOT publish the source or customer details. Verified
+  `OrderEmployer.config.downloadMaketAdjustingAttachmentUrl` is exactly
+  `/ajax/gifts/order?action=download_maketadjusting_attachment`, that
+  `OrderEmployer.config.idParam="id"`, and that each original attachment
+  anchor has class `j_maketadjusting_attachment` and numeric `data-id`.
+  Thus the single narrow candidate read-only route is
+  `GET /ajax/gifts/order?action=download_maketadjusting_attachment&id=<id>`.
+  **Actual authenticated response semantics are unverified** until
+  real browser field testing; no fallback guesses are allowed.
+- `90db2c946514`: for each currently checked `ma_problem[]`
+  extract problem code/text **plus the associated printing technology
+  and application position** from the nearest native modal `.grid`.
+  Available, unchecked form options are not defects; the history of
+  'Добавлены проблемы'/'Удалены проблемы' remains separate.
+- `69e28a3decee` / `c4bbe29078df`:
+  `vision/orders/approval-attachments.mjs` performs only exact
+  same-origin authenticated GET on `http://testgifts.local`,
+  checks status/redirect/URL/content-length/actual byte count,
+  denies login HTML and mismatched PDF/PSD/image signatures;
+  no POST or unknown endpoints. Original bytes are kept in memory
+  briefly, never placed in JSON, sent to GitHub, or logged.
+  Bounded by 16MB per file, 64 files/order, 12/ZIP part and
+  24MB/part. Unsupported formats or larger originals => MANUAL,
+  not inferred negative/positive labels.
+- `246bdbd6a93a` extends the existing ZIP writer's **strict**
+  allowlist to numbered `attachments/####/####.<allowed-ext>` paths,
+  no arbitrary filenames or traversal in ZIP headers. Original
+  filenames, article identifier, message sequence, attachment ID and
+  SHA-256 **if supported in this browser's secure context** reside in
+  PRIVATE per-part `manifest.json`, not public artifacts.
+- `a5dfc8996776`: new complete flow in the native-order
+  inspector: click **«Автообход согласований >1»**, extract all selected
+  defects/text/events then sequentially read attachment bytes and
+  automatically offer local
+  `vision-private-approval-attachments-part-0001.zip` downloads.
+  User saves `vision-private-approval-evidence.json` separately;
+  **«Повторить скачивание вложений»** permits retry; anonymous
+  JSON still contains only safe fixed status/counter fields.
+  Browser may require permission for multiple downloads.
+- `7a09c5781ba5`: approval link must refer to the
+  **exact current order** on testgifts.local, never just an
+  allowed hostname and a different order. Use site's own modal
+  close control when exposed; fallback hides only a matching modal.
+- `b7a3dbc1384` / `70b0f2c74b08`: synthetic Node safety tests
+  for exact GET URL, MIME/signature, malicious paths, redirects,
+  oversized bytes, login HTML and local ZIP; synthetic ZIP is
+  decoded independently by Python `zipfile` in CI via
+  `b56a48cf542d`.
+- `0c05f595810d` / `8288cbbcaf9b`: Chromium integration
+  simulation intercepts ONLY exact native attachment GET,
+  confirms a private ZIP download with PDF/image payload,
+  exact selected designer method and placement, and rejects a
+  malicious approval link to a different order. Existing 13/1/2
+  threshold and no-POST expectations retained.
+- `4650546e2db2` / `7b9decea4da4` / `6f4d39fd8474`:
+  documented v0.1.3 research/data protection and updated isolated
+  preview landing. `9a437af10011` increments MV3 to v0.1.3.
+- CURRENT LIMITATIONS: no authenticated test site session available
+  inside this execution, so successful real attachment retrieval,
+  content type, PDF revision mapping, screenshot ROI and final ML
+  eligibility are NOT confirmed. File bytes remain local/private;
+  model training is OFF, no production acceptance, no PR #4 merge.
+- CI publication status **to be confirmed on final code HEAD**.
