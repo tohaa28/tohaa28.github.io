@@ -184,8 +184,17 @@ def stage(manifest_path: Path, output_dir: Path, group_key_path: Path,
             unite(row["order_group"], seen_hash[sha])
         seen_hash[sha] = row["order_group"]
         by_hash[sha].append(row)
-    conflict_sha = {sha for sha, variants in by_hash.items()
-                    if len({x["provisional_label"] for x in variants}) > 1}
+    mixed_sha = {sha for sha, variants in by_hash.items()
+                 if len({x["provisional_label"] for x in variants}) > 1}
+    error_neutral_sha = {sha for sha, variants in by_hash.items() if
+                         {x["provisional_label"] for x in variants} >=
+                         {"error_claim_in_filename", "unlabeled_reference"}}
+    clean_neutral_sha = {sha for sha, variants in by_hash.items() if
+                         {x["provisional_label"] for x in variants} >=
+                         {"explicit_clean_filename", "unlabeled_reference"}}
+    opposed_sha = {sha for sha, variants in by_hash.items() if
+                   {x["provisional_label"] for x in variants} >=
+                   {"explicit_clean_filename", "error_claim_in_filename"}}
     queue_rows = []
     statuses = Counter()
     oversized = 0
@@ -200,7 +209,7 @@ def stage(manifest_path: Path, output_dir: Path, group_key_path: Path,
         partition = hmac.new(key, ("review-partition-v1:" + family).encode(),
                              hashlib.sha256).digest()[0] % 10
         label = row["provisional_label"]
-        priority = "P0_HASH_LABEL_CONFLICT" if sha in conflict_sha else (
+        priority = "P0_MIXED_FILENAME_CLAIMS" if sha in mixed_sha else (
             "P0_SOURCE_UNAVAILABLE" if status != "SOURCE_VERIFIED_RESEARCH_ONLY"
             else ("P1_UNLABELED" if label == "unlabeled_reference" else
                   "P2_ERROR_CLAIM" if label == "error_claim_in_filename"
@@ -223,7 +232,7 @@ def stage(manifest_path: Path, output_dir: Path, group_key_path: Path,
             "family_holdout_verified": False,
             "training_approved": False
         })
-    order = {"P0_HASH_LABEL_CONFLICT":0, "P0_SOURCE_UNAVAILABLE":1,
+    order = {"P0_MIXED_FILENAME_CLAIMS":0, "P0_SOURCE_UNAVAILABLE":1,
              "P1_UNLABELED":2, "P2_ERROR_CLAIM":3, "P3_CLEAN_CLAIM":4}
     queue_rows.sort(key=lambda r: (order[r["priority"]],
                                    r["family_token"], r["sample_token"]))
@@ -235,7 +244,10 @@ def stage(manifest_path: Path, output_dir: Path, group_key_path: Path,
         "unique_sha256_contents": len(by_hash),
         "duplicate_sha256_groups": sum(len(v)>1 for v in by_hash.values()),
         "duplicate_extra_copies": sum(len(v)-1 for v in by_hash.values()),
-        "conflicting_provisional_label_sha256_groups": len(conflict_sha),
+        "sha256_groups_with_mixed_filename_claims": len(mixed_sha),
+        "sha256_error_claim_plus_unlabeled_groups": len(error_neutral_sha),
+        "sha256_clean_claim_plus_unlabeled_groups": len(clean_neutral_sha),
+        "sha256_opposing_error_clean_claim_groups": len(opposed_sha),
         "source_files_over_16mb": oversized,
         "largest_source_bytes": max(x["bytes"] for x in entries),
         "provisional_labels_from_filenames": dict(sorted(Counter(
