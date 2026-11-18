@@ -298,6 +298,55 @@
     return new Blob([...data, ...central, end], { type: "application/zip" });
   }
 
+  // vision/orders/approval-inline-images.mjs
+  var imagePath = /^\/maketadjusting\/([0-9]{1,20})\/([0-9]{5,12})\/([0-9]{1,20})\/([^/?#]+)\.(png|jpe?g|webp|gif)$/i;
+  var safeOriginal = /^[^\\/:*?"<>|\x00-\x1f\x7f]{1,180}$/;
+  function verifiedApprovalGalleryImageUrl(raw, { orderNumber, itemId } = {}) {
+    if (typeof raw !== "string" || raw.length > 1800 || !/^[0-9]{5,12}$/.test(String(orderNumber)) || !/^[0-9]{1,20}$/.test(String(itemId))) return null;
+    try {
+      const u = new URL(raw);
+      if (u.origin !== "http://files.testgifts.local" || u.search || u.hash || u.username || u.password || u.port) return null;
+      const m = imagePath.exec(u.pathname);
+      if (!m || m[2] !== String(orderNumber) || m[3] !== String(itemId)) return null;
+      const filename = decodeURIComponent(m[4]) + "." + m[5];
+      if (!safeOriginal.test(filename) || /[. ]$/.test(filename)) return null;
+      return { url: u.href, filename, extension: m[5].toLowerCase() };
+    } catch {
+      return null;
+    }
+  }
+  function galleryOriginals(gallery) {
+    const root = gallery.shadowRoot || gallery.querySelector?.('template[shadowrootmode="open"]')?.content;
+    return root ? [...root.querySelectorAll("section picture img")] : [...gallery.querySelectorAll(":scope > img")];
+  }
+  function extractApprovalGalleryImages(messageMain, scope) {
+    if (!messageMain?.querySelectorAll) return [];
+    const found = [], seen = /* @__PURE__ */ new Set();
+    for (const gallery of messageMain.querySelectorAll("g-gallery")) {
+      for (const image of galleryOriginals(gallery)) {
+        const raw = image.getAttribute("data-hd") || image.getAttribute("src") || image.getAttribute("data-src") || "";
+        const candidate = verifiedApprovalGalleryImageUrl(raw, scope);
+        if (!candidate || seen.has(candidate.url)) continue;
+        seen.add(candidate.url);
+        const record = {
+          source: "native_approval_gallery",
+          attachment_id: null,
+          filename: candidate.filename,
+          kind: "image",
+          downloaded: false
+        };
+        Object.defineProperty(record, "inline_image_url", {
+          value: candidate.url,
+          enumerable: false,
+          writable: false
+        });
+        found.push(record);
+        if (found.length >= 40) return found;
+      }
+    }
+    return found;
+  }
+
   // vision/orders/approval-attachments.mjs
   var TEST_ORIGIN = "http://testgifts.local";
   var LIMIT_PER_FILE = 16e6;
@@ -495,20 +544,27 @@
   async function readNativeApprovalAttachment(attachment, {
     origin = globalThis.location?.origin || "",
     fetcher = globalThis.fetch,
+    imageFetcher = globalThis.__visionLocalTrustedTransport,
+    orderNumber = "",
+    itemId = "",
     maxFileBytes = LIMIT_PER_FILE
   } = {}) {
     const name = safeName(attachment?.filename);
-    const url = nativeApprovalAttachmentUrl(attachment?.attachment_id, { origin });
-    if (!url || !name) return code("MANUAL_UNSAFE_ATTACHMENT_METADATA");
+    const inline = attachment?.source === "native_approval_gallery" ? verifiedApprovalGalleryImageUrl(attachment.inline_image_url, { orderNumber, itemId }) : null;
+    const url = attachment?.source === "native_approval_gallery" ? inline?.url : nativeApprovalAttachmentUrl(attachment?.attachment_id, { origin });
+    if (!url || !name || inline && name.name !== inline.filename)
+      return code("MANUAL_UNSAFE_ATTACHMENT_METADATA");
+    const selectedFetcher = inline ? imageFetcher : fetcher;
+    if (inline && origin !== TEST_ORIGIN) return code("MANUAL_UNAUTHORIZED_SCOPE");
     if (!Number.isInteger(maxFileBytes) || maxFileBytes < 1 || maxFileBytes > LIMIT_PER_FILE) return code("MANUAL_LIMIT_INVALID");
-    if (typeof fetcher !== "function") return code("MANUAL_FETCH_UNAVAILABLE");
+    if (typeof selectedFetcher !== "function") return code("MANUAL_FETCH_UNAVAILABLE");
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 18e3);
     let reader;
     try {
-      const resp = await fetcher(url, {
+      const resp = await selectedFetcher(url, {
         method: "GET",
-        credentials: "same-origin",
+        credentials: inline ? "include" : "same-origin",
         redirect: "error",
         cache: "no-store",
         signal: abort.signal,
@@ -589,6 +645,7 @@
   async function* exportNativeApprovalAttachmentParts(report, {
     origin = globalThis.location?.origin || "",
     fetcher = globalThis.fetch,
+    imageFetcher = globalThis.__visionLocalTrustedTransport,
     onProgress = () => {
     },
     stop = () => false,
@@ -658,6 +715,9 @@
       const file = await readNativeApprovalAttachment(job.attachment, {
         origin,
         fetcher,
+        imageFetcher,
+        orderNumber: report.order_number,
+        itemId: job.article.item_id,
         maxFileBytes: maxPerFile
       });
       processed++;
@@ -702,6 +762,7 @@
         order_item_id: job.article.item_id,
         comment_sequence: job.message.sequence,
         attachment_id: job.attachment.attachment_id,
+        source: job.attachment.source === "native_approval_gallery" ? "native_approval_gallery" : "native_maketadjusting_attachment_get",
         original_filename: file.original_filename,
         bytes: file.size,
         sha256: file.sha256,
@@ -720,55 +781,6 @@
       skipped_count: skipped.length
     });
     onProgress({ processed, total: jobs.length, successful, complete: true });
-  }
-
-  // vision/orders/approval-inline-images.mjs
-  var imagePath = /^\/maketadjusting\/([0-9]{1,20})\/([0-9]{5,12})\/([0-9]{1,20})\/([^/?#]+)\.(png|jpe?g|webp|gif)$/i;
-  var safeOriginal = /^[^\\/:*?"<>|\x00-\x1f\x7f]{1,180}$/;
-  function verifiedApprovalGalleryImageUrl(raw, { orderNumber, itemId } = {}) {
-    if (typeof raw !== "string" || raw.length > 1800 || !/^[0-9]{5,12}$/.test(String(orderNumber)) || !/^[0-9]{1,20}$/.test(String(itemId))) return null;
-    try {
-      const u = new URL(raw);
-      if (u.origin !== "http://files.testgifts.local" || u.search || u.hash || u.username || u.password || u.port) return null;
-      const m = imagePath.exec(u.pathname);
-      if (!m || m[2] !== String(orderNumber) || m[3] !== String(itemId)) return null;
-      const filename = decodeURIComponent(m[4]) + "." + m[5];
-      if (!safeOriginal.test(filename) || /[. ]$/.test(filename)) return null;
-      return { url: u.href, filename, extension: m[5].toLowerCase() };
-    } catch {
-      return null;
-    }
-  }
-  function galleryOriginals(gallery) {
-    const root = gallery.shadowRoot || gallery.querySelector?.('template[shadowrootmode="open"]')?.content;
-    return root ? [...root.querySelectorAll("section picture img")] : [...gallery.querySelectorAll(":scope > img")];
-  }
-  function extractApprovalGalleryImages(messageMain, scope) {
-    if (!messageMain?.querySelectorAll) return [];
-    const found = [], seen = /* @__PURE__ */ new Set();
-    for (const gallery of messageMain.querySelectorAll("g-gallery")) {
-      for (const image of galleryOriginals(gallery)) {
-        const raw = image.getAttribute("data-hd") || image.getAttribute("src") || image.getAttribute("data-src") || "";
-        const candidate = verifiedApprovalGalleryImageUrl(raw, scope);
-        if (!candidate || seen.has(candidate.url)) continue;
-        seen.add(candidate.url);
-        const record = {
-          source: "native_approval_gallery",
-          attachment_id: null,
-          filename: candidate.filename,
-          kind: "image",
-          downloaded: false
-        };
-        Object.defineProperty(record, "inline_image_url", {
-          value: candidate.url,
-          enumerable: false,
-          writable: false
-        });
-        found.push(record);
-        if (found.length >= 40) return found;
-      }
-    }
-    return found;
   }
 
   // vision/orders/approval-auto-scan.mjs
