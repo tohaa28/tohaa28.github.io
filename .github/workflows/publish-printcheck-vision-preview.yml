@@ -16,6 +16,8 @@ on:
       - vision/orders/discussion-probe.mjs
       - vision/orders/maket-approval-probe.mjs
       - vision/orders/approval-page-entry.mjs
+      - vision/orders/approval-auto-scan.mjs
+      - tests/printcheck-vision-approval-auto.browser.mjs
       - tests/printcheck-vision-maket-approval.browser.mjs
       - tests/printcheck-vision-discussions.test.mjs
       - tests/printcheck-vision-discussions.browser.mjs
@@ -111,6 +113,8 @@ jobs:
           node --check vision/orders/discussion-probe.mjs
           node --check vision/orders/maket-approval-probe.mjs
           node --check vision/orders/approval-page-entry.mjs
+          node --check vision/orders/approval-auto-scan.mjs
+          node --check tests/printcheck-vision-approval-auto.browser.mjs
           node --check tests/printcheck-vision-maket-approval.browser.mjs
           node --check tests/printcheck-vision-discussions.test.mjs
           node --test tests/printcheck-vision-discussions.test.mjs
@@ -187,6 +191,7 @@ jobs:
           node tests/printcheck-vision-order-404.browser.mjs
           node tests/printcheck-vision-discussions.browser.mjs
           node tests/printcheck-vision-maket-approval.browser.mjs
+          node tests/printcheck-vision-approval-auto.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
