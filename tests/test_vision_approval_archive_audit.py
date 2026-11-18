@@ -170,5 +170,30 @@ class ArchiveAuditTests(unittest.TestCase):
             self.assertNotIn(secret, child.stdout + child.stderr)
 
 
+    def test_nested_duplicate_item_digest_is_fail_closed_and_redacted(self):
+        m = manifest()
+        raw = json.dumps(m, ensure_ascii=False)
+        digest = m["items"][0]["sha256"]
+        original = '"sha256": "' + digest + '"'
+        self.assertIn(original, raw)
+        raw = raw.replace(original,
+                          '"sha256": "' + "0" * 64 + '", ' + original, 1)
+        with zipfile.ZipFile(self.zip, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("manifest.json", raw)
+            zf.writestr(m["items"][0]["entry"], PDF)
+        self.assertEqual(self.reason(evidence_path=self.evidence), "DUPLICATE_JSON_KEY")
+        child = subprocess.run([sys.executable, str(TOOL), str(self.zip),
+                                "--evidence", str(self.evidence)],
+                               capture_output=True, text=True)
+        self.assertEqual(child.returncode, 1)
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["reason"], "DUPLICATE_JSON_KEY")
+        self.assertIs(receipt["training_ready"], False)
+        self.assertIs(receipt["production_approved"], False)
+        for secret in (str(self.zip), str(self.evidence), digest, "9000001",
+                       "example.pdf"):
+            self.assertNotIn(secret, child.stdout + child.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
