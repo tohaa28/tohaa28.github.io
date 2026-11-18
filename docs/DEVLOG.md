@@ -1550,3 +1550,68 @@ PDF вне GitHub провести локальный audit-all и незави�
   ответ сервера gifts.ru, исходную версию PDF, тип нанесения, ROI или
   независимые экспертные метки. Реальный authenticated end-to-end тест
   остаётся открытым. Не разрешать обучение и производство.
+
+
+## M3.21 — согласования с общей страницы заказов, исходные изображения галерей (2026-11-18)
+
+- Получены пользователем два ПРИВАТНЫХ файла: сохранённая карточка
+  заказа и обезличенная диагностика (на GitHub НЕ публиковались).
+  В локальной копии HTML: один триггер li[data-itemid] a.j_maketadjusting
+  с badge=8; 23 записи истории (8 human / 15 system);
+  27 вариантов проблем, 2 checked; 4 галереи g-gallery, 5 оригиналов
+  изображений внутри OPEN shadowRoot / declarative template. При этом
+  ни одной ссылки a.j_maketadjusting_attachment в этой модалке.
+  Анонимная диагностика: 61 строка, rows_scanned=0 и NOT_SCANNED.
+- Выявлены две основные причины пропуска: (1) прежний M3.14/M3.15
+  работал только на открытой странице ОДНОГО заказа, а из /devorders
+  была доступна лишь неглубокая структурная диагностика;
+  (2) «картинки» в обсуждениях содержатся в g-gallery.shadowRoot,
+  старый алгоритм искал только a.j_maketadjusting_attachment.
+- Новая версия MV3 0.1.5, только experimental branch
+  feature/printcheck-vision-copy-v01, PR #4 остаётся draft.
+  На странице psk.testgifts.local/devorders введены кнопки
+  «Собрать согласования из всех заказов», «Остановить согласования»,
+  «Отчёт согласований JSON». Каждый уникальный явно указанный заказ
+  читается последовательно через временную вкладку, штатные кнопки
+  2+ открываются внутри неё, записи сохраняются ПО ЗАКАЗУ отдельным
+  приватным JSON; оригиналы вложений — локальными ZIP.
+- 1d1057bb: vision/orders/approval-inline-images.mjs находит настоящие
+  section picture img в Shadow DOM native g-gallery, отбрасывает
+  миниатюры/avatar и проверяет exact CDN URL с matching order + item.
+  19520236/8ce8fb79: извлечение в хронологию и счётчики. 4aa07800:
+  GET оригиналов/ZIP, в приватном JSON сохраняются только метаданные:
+  URL изображения хранится как non-enumerable свойство в памяти.
+- 7d04093d/2cb8dcdf: worker пропускает только read-only image GET
+  http://files.testgifts.local/maketadjusting/<digits>/<order>/<item>/*.<image>
+  от расширения конкретного testgifts.local/private/order/<order>.
+  Дополнительное host_permission только тестовый files.testgifts.local,
+  без production host, POST или произвольных URL. Manifest 0.1.5
+  добавляет tabs и content-transport.js на страницу заказа.
+- a5efc8d6/21d349a1/9d133520: изолированная последовательная
+  очередь заказов из /devorders; автоматическая загрузка полного
+  приватного JSON и ZIP, анонимный отчёт из страницы списка.
+  4fc5c8d2: уникальные ZIP имена с номером заказа во время batch,
+  чтобы не смешать ZIP-части разных заказов.
+  Кнопка прекращения списка действует ПОСЛЕ текущего заказа.
+- 0222a828/57c2e52d/9fe9e8f6: синтетические проверки gallery DOM,
+  отсутствия URL в JSON, сохранения SHA и ограничений worker.
+  a0bd75bf: offline ZIP audit понимает источник
+  native_approval_gallery с attachment_id=null, но сохраняет
+  проверку exact article/message/file/bytes/SHA.
+- af3ddc2b/beaae9ab: Chromium end-to-end queue test из /devorders,
+  проверка локальных JSON/ZIP, zero POST. Первые CI публикации
+  давали FAIL на этапе новой проверки: Playwright page.route не
+  перехватывал раннюю навигацию вкладки, созданной из MV3 worker.
+  2fa32c4f заменил фикстуру сетевого слоя на локальный
+  HTTP-прокси, чтобы тестировать extension-created tabs как настоящий
+  HTTP трафик. Код приложения не должен настраивать прокси.
+- b31db40b: packaging assertion обновлён для 3 разрешённых
+  тестовых хостов и content transport на order page.
+  6786be06: изолированные stale preview builds отменяются при
+  более новом экспериментальном push; production main / PR merge
+  НЕ затрагиваются.
+- Не считать реальный сбор доказанным, пока финальный CI и
+  authenticated-проверка на тестовой сети не завершены.
+  Вся личная информация остаётся локально, без выгрузки в repo/CI.
+  Любой неподтверждённый source PDF revision / ROI / масштаб:
+  training_ready=false, production_approved=false, MANUAL.
