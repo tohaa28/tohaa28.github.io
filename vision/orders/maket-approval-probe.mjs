@@ -11,6 +11,7 @@
  * counts human entries, NOT all audit events. Nothing in output includes
  * customer text, order/item IDs, names, timestamps or attachment URLs.
  */
+import {extractApprovalGalleryImages} from './approval-inline-images.mjs';
 const MAX=10000;
 const count=n=>Math.min(MAX,Math.max(0,n));
 const nodes=(root,selector)=>{
@@ -137,6 +138,13 @@ export function inspectOpenMaketApprovalDom(doc){
   else if(kind==='state')result.status_change_events++;
   else if(kind==='other_system')result.other_system_events++;
   else {humans++;categorize(content,weakMessages)}
+  // Original screenshots live in g-gallery.shadowRoot, not attachment links.
+  const orderNumber=String(doc?.location?.pathname||'').match(
+    /^\/private\/order\/(\d{5,12})\/?$/)?.[1];
+  const itemId=String(form?.querySelector('input[name="oiid"]')?.value||'');
+  const gallery=extractApprovalGalleryImages(main,{orderNumber,itemId});
+  result.attachments_total+=gallery.length;
+  result.attachments_image_candidates+=gallery.length;
   // Attachment links appear WITHIN the comment's main text block, not
   // inside the author avatar. No GETs and no links returned.
   for(const anchor of nodes(main,'a.j_maketadjusting_attachment')){
