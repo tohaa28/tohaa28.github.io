@@ -43,8 +43,8 @@ const proxy=createServer((req,res)=>{
   res.writeHead(204,{'cache-control':'no-store'});res.end();return;
  }
  let type='unexpected',body=Buffer.from('denied'),mime='text/plain',status=404;
- if(url===list){type='list';body=Buffer.from(listing);mime='text/html';status=200}
- else if(url===order){type='order';body=Buffer.from(orderHtml);mime='text/html';status=200}
+ if(url===list){type='list';body=Buffer.from(listing);mime='text/html; charset=utf-8';status=200}
+ else if(url===order){type='order';body=Buffer.from(orderHtml);mime='text/html; charset=utf-8';status=200}
  else if(url===image){type='image';body=png;mime='image/png';status=200}
  requests.push({type,method});
  res.writeHead(status,{'content-type':mime,'content-length':body.length,
