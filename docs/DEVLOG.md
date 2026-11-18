@@ -1071,3 +1071,56 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `1460e7e83a5930493369fe32824e8bf5d1bacf94`: synthetic regression creates a regular file at the report directory location; expects MANUAL, no training/production approval, no private marker leakage or alteration of existing file.
 - No customer sources, private labels, source identifiers or secrets committed. New SHA CI and three independent two-reviewer/adjudication, PDF batch and Chromium 404 regressions require separate confirmation; no local pass claim. Preview publish unverified.
 - Blockers: live anonymous 404 reference_state/MV3 category, verified ROI/family holdout, physical scale, ICC/spot, PDF transparency, technology tolerances, Windows ACL verification, real-world accuracy. Unknown => MANUAL. Automatic training and production OK disabled.
+
+
+## M3.9 — private PDF corpus streaming stage and review-only leakage controls (2026-11-18)
+
+- Source basis: two user-uploaded private RAR archives, inspected only in an
+  isolated local workdir; **NO** PDF, archive, original filename, order ID,
+  source SHA-256, grouping secret or private review CSV was committed.
+  Independent offline streaming SHA-256 verification: **97/97** exact matches,
+  673,198,383 bytes; 45 filename-derived families, 91 distinct content hashes,
+  six duplicate hash groups (6 extra copies), five PDF sources above 16 MB;
+  largest 300,971,685 bytes. File openability (133 previously profiled pages)
+  does NOT establish print acceptance or a valid ROI.
+- Label nuance: **3** duplicate-SHA groups have differing filename-derived
+  provisional labels. Precisely 2 are error-claim/unlabeled, 1 is
+  clean-claim/unlabeled and **0** are opposing error-claim/clean-claim.
+  Therefore this is a *mixed preliminary naming* queue, not three
+  proven conflicting expert judgements.
+- `d2e946f69e96`: new offline `tools/vision_private_corpus_stage.py`.
+  Streams PDF source in 1-MB chunks, limits each file to 512 MB, checks
+  exact original SHA-256, byte count and PDF signature. Validates an explicitly
+  private manifest and source path. Joins family clusters across identical
+  hashes, creates fixed-priority review-only tasks, HMAC-pseudonymous
+  sample/family/content tokens and only **candidate** blind review partitions.
+  No training, no production approval or remote network calls.
+- `349fb528d249`: synthetic tests for cross-family duplicate clustering,
+  mixed filename labels, source privacy, >16 MB streaming, tampering,
+  path traversal, symlinks, deterministic repeat and never-approved results.
+- `7e98bb41872a` / `e706621cbb1f`: three repeated Python regression
+  cycles in rules CI plus test and offline-tool inclusion in isolated preview
+  Windows Lab ZIP. Source PDF bytes are not present in GitHub CI.
+- `5d0e0da72912` / `bb6c1d08324a`: mixed SHA filename claims are
+  distinguished from actually opposing clean/error claims.
+- `4a295400b8e0`: private queue includes a safe source slot (A#:F####)
+  for joining back to a private local manifest without exposing filenames.
+- `6609fbed63ca` / `365441ba7dc7`: POSIX grouping-key permissions guard,
+  synthetic test of publicly readable 32-byte key and refusal to stage.
+  Windows file ACLs require independent local inspection.
+- `a004531d7cfc` / `2020d07ce60c` / `5969d8edbe3e`:
+  offline instructions, installer integration and Vision test landing-page note.
+  `71c74ada6e34`: key permissions documented.
+- CI: rules/dataset safety, raster safety and UI smoke for `365441ba7`
+  have each completed SUCCESS (runs 44247715367, 44247715392,
+  44247715364); the independent 3-cycle rules job 44247708203 also
+  SUCCESS. Preview publication must be independently verified on final SHA;
+  earlier successful preview `5969d8ed` run 44247490645 is not sufficient
+  evidence for future commits.
+- Next unresolved steps: direct live test-hardware ROI and technology
+  association, application-template/constructor/artwork matching, expert ROI
+  adjudication for all uncertain filename claims, verified physical scale,
+  official process thresholds, locked family holdout and offline acceptance
+  gate. Existing 16-MB browser/ZIP limit remains unchanged intentionally;
+  the large-corpus stage is a separate PRIVATE local tool.
+  `training_ready=false`, `training_approved_count=0` and unknown=>MANUAL.
