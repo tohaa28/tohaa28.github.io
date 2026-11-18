@@ -28,7 +28,10 @@ const CATEGORIES={
  effects:/(?:градиент|прозрачност|эффект)/i,
  field_boundary:/(?:поле\s+нанесени|площад[ьи]|вылет)/i,
  constructor:/(?:конструктор|шаблон|масштаб|оси\s+конструктора)/i,
- fonts:/(?:текст\s+не\s+преобразов|шрифт)/i
+ fonts:/(?:текст\s+не\s+преобразов|шрифт)/i,
+ wrong_artwork:/(?:макет\s+не\s+тот|не\s+тот\s+файл|файл\s+не\s+тот|неверн(?:ый|ое)\s+(?:макет|файл))/i,
+ complex_work:/(?:сложност|час(?:а|ов)?\s+на\s+(?:дизайн|гравир))/i,
+ revision:/(?:доработан|исправлен|нов(?:ый|ую)\s+макет)/i
 };
 function summary(){
  return {
@@ -37,7 +40,8 @@ function summary(){
   trigger_count:0,article_scoped_trigger_count:0,
   modal_loaded:false,modal_currently_visible:false,
   problems_available_count:0,problems_checked_current_count:0,
-  checked_problem_topic_hints:[],unselected_problem_options_are_not_defects:true,
+  checked_problem_topic_hints:[],weak_message_topic_hints:[],
+  unselected_problem_options_are_not_defects:true,
   human_comment_count:0,history_entry_count:0,history_system_entry_count:0,
   problem_add_events:0,problem_remove_events:0,status_change_events:0,
   other_system_events:0,attachments_total:0,attachments_pdf:0,
@@ -118,6 +122,7 @@ export function inspectOpenMaketApprovalDom(doc){
  const entries=nodes(list,':scope > li');
  result.history_entry_count=count(entries.length);
  let humans=0;
+ const weakMessages=new Set();
  for(const el of entries){
   const wrapper=el.querySelector?.('.comment_wrap');
   const main=wrapper?.querySelector?.(':scope > .flex-main');
@@ -127,7 +132,7 @@ export function inspectOpenMaketApprovalDom(doc){
   else if(kind==='problem_remove')result.problem_remove_events++;
   else if(kind==='state')result.status_change_events++;
   else if(kind==='other_system')result.other_system_events++;
-  else humans++;
+  else {humans++;categorize(content,weakMessages)}
   // Attachment links appear WITHIN the comment's main text block, not
   // inside the author avatar. No GETs and no links returned.
   for(const anchor of nodes(main,'a.j_maketadjusting_attachment')){
@@ -140,6 +145,7 @@ export function inspectOpenMaketApprovalDom(doc){
   }
  }
  result.human_comment_count=count(humans);
+ result.weak_message_topic_hints=[...weakMessages].sort();
  result.history_system_entry_count=count(entries.length-humans);
  result.badge_comment_count=getCounter(modal);
  result.badge_matches_human_messages=result.badge_comment_count===null?
