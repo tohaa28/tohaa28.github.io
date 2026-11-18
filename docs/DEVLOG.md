@@ -147,7 +147,6 @@ CI: в предыдущем цикле GitHub Actions smoke desktop/mobile пр�
 
 ### Цель
 Получить воспроизводимые геометрические измерения непосредственно по векторным контурам, а не по bbox изображения или экранным пикселям. Учесть аффинное преобразование конечного размещения и исключить выдуманные минимумы на острых засечках. Честно разграничить результаты локального алгоритма и доказательство пригодности всего макета.
-
 ### Входы / проверенные первоисточники
 - W3C SVG Paths: https://www.w3.org/TR/SVG2/paths.html
 - W3C SVG Coordinate Systems / viewBox: https://www.w3.org/TR/SVG/coords.html
@@ -297,8 +296,7 @@ Done: отдельный запуск Vision на origin авторизован�
 ### Коммиты
 - 27756e89e5c5b6f3e1443393fce036ec707475a4 — добавлена точная AABB grid broad phase для ребер в мм, ограничение ячеек/ссылок, полный fallback на reference, счётчики изученных пар.
 - 4ef7ee5636c85a7b573b350c468a72b2cb456043 — параметр бюджета индексных ссылок для проверки отката в full reference.
-- e9ea9552d76106be479dcb123d40eedd02c1d054 — 8 новых тестов: 80 отдельных линий, отрицательные пробелы, вращение/отражение/анизотропный transform, касания, пересечения, микрозазоры, seeded-random макет и падение обратно на полный перебор.
-- eabc301fbf6bf195d436626ba66ce2f07ba8c169 — CI включает новый suite.
+- e9ea9552d76106be479dcb123d40eedd02c1d054 — 8 новых тестов: 80 отдельных линий, отрицательные пробелы, вращение/отражение/анизотропный transform, касания, пересечения, микрозазоры, seeded-random макет и падение обратно на полный перебор.- eabc301fbf6bf195d436626ba66ce2f07ba8c169 — CI включает новый suite.
 - e05dbc4b898ed85d8580185a34a1e44a4c0b27c9 — отдельный benchmark с медианами, чередованием порядка методов и проверкой полной идентичности кандидатов.
 - 05395f4fc815a46e5d091ea74281bd83a3c7affc — benchmark включён в GitHub Actions без нестабильного жёсткого порога по времени.
 
@@ -447,8 +445,7 @@ Rollback: отменить 4 изолированных source→preview ком�
 - Реальных удостоверенных экспертных решений и подписанных оригиналов в текущем цикле не получено. Тесты используют только синтетические байты и временные ключи.
 
 ### Выполненные коммиты
-1. fd88b92f37043d83ba26bfc2983ac81ebd89790e — vision/dataset/pilot-attestation.mjs: отдельная offline-проверка двух независимых отзывов, подписи аудитора Ed25519 и SHA исходников/результатов, проверка закрытия каждого конфликта и границ доверия. Открытый ключ должен иметь заранее независимо закреплённый SHA-256 DER SPKI.
-2. 4f116b6daa20d1b1b45aae2ea9c9c346d64af26a — исправлена ошибка возможного смешения методов с одинаковым номером revision: каждому алгоритму соответствует отдельный набор региональных predictions для Python.
+1. fd88b92f37043d83ba26bfc2983ac81ebd89790e — vision/dataset/pilot-attestation.mjs: отдельная offline-проверка двух независимых отзывов, подписи аудитора Ed25519 и SHA исходников/результатов, проверка закрытия каждого конфликта и границ доверия. Открытый ключ должен иметь заранее независимо закреплённый SHA-256 DER SPKI.2. 4f116b6daa20d1b1b45aae2ea9c9c346d64af26a — исправлена ошибка возможного смешения методов с одинаковым номером revision: каждому алгоритму соответствует отдельный набор региональных predictions для Python.
 3. 5893511a7ed070095905d907598790ef220b8413 — 10 security/regression тестов: подмена исходного изображения, другого оригинального вектора, подписи/публичного ключа/pin, удаление/дубли ROI, конфликт экспертов, неверный технологический код, неопределённые результаты.
 4. 52bf22200faa065259c5451f5b3ad584a23f70fe — Node CI; первый успешный run 44016723934, 151 JS + 6 ZIP Python + 11 evaluation Python.
 5. ea0b1e2e72538f2147d4d2f45b90d353cb52865b — приватная запись результатов: только в заранее созданную закрытую папку, отдельный файл на метод, 0600 для файла и 0700 для каталога на POSIX, без перезаписи, без идентификаторов в stdout.
@@ -598,7 +595,6 @@ Rollback: изменения только в экспериментальной 
 ## C3B.3.K — независимый реальный PDF/SVG рендер, точное RGBA, закрытая research приёмка
 
 Дата 2026-11-17. Изолированная ветка feature/printcheck-vision-copy-v01, PR #4 DRAFT, Issue #5 OPEN. Производственная «Макетная» и исходная ветка gifts-layout-workbench-mockups-source НЕ менялись. Реальные клиентские файлы, приватные подписи, рецензии и seed НЕ передавались в публичный GitHub/CircleCI.
-
 ### Цель, реальная проблема, поисковые решения
 - C3B.3.J подписывал original/PNG/order/mm, но не доказывал, что содержимое PNG получено именно из векторного исходника. Самоутверждённый отчёт мог связать любой PDF с произвольным PNG.
 - Рассмотрены Rust/resvg-js 2.6.2 (MPL-2.0), Mozilla pdfjs-dist 6.5.438 (Apache-2.0), Skia @napi-rs/canvas 1.0.9 (MIT). Не выбран MuPDF AGPL, чтобы без обсуждения не вносить лицензионные обязательства в репозиторий. Пакеты живут исключительно в экспериментальном подпроекте.
@@ -747,8 +743,7 @@ CI: проверка новых commit SHA выполняется автомат
 
 ### Mandatory next steps
 1. **Actual browser validation inside the user's LAN** at \`psk.testgifts.local\` by running the bookmarklet. A synthetic test cannot prove real row structure, authentication, CORS, that attachments live on same origin or CSP. If necessary use anonymous \`Диагностика таблицы\` to update DOM adapter; never copy actual customer HTML or files to public GitHub. Remote cloud environment has no proven LAN route.
-2. **Vector PDF P1**: extract all source path/CTM/ColorSpace and printed forms, do not accept incomplete vector traversal or PDF.js-converted RGB as original spot proof. Unknown operations -> MANUAL.
-3. **Real training**: ZIP is only locally collected **source files plus coarse row labels**, with explicit \`training_ready:false\`. Add private local ROI geometry annotations and print requirements, signed source provenance, SHA256 when available, source-family-separated holdout and independent reviewer labels before any ML training/evaluation. No synthetic-score claim on real data and no automatic hidden model update.
+2. **Vector PDF P1**: extract all source path/CTM/ColorSpace and printed forms, do not accept incomplete vector traversal or PDF.js-converted RGB as original spot proof. Unknown operations -> MANUAL.3. **Real training**: ZIP is only locally collected **source files plus coarse row labels**, with explicit \`training_ready:false\`. Add private local ROI geometry annotations and print requirements, signed source provenance, SHA256 when available, source-family-separated holdout and independent reviewer labels before any ML training/evaluation. No synthetic-score claim on real data and no automatic hidden model update.
 4. Local-only result storage in test orders requires a verified test API and explicit permission. Current code does not write into local server database; statuses are temporary DOM decorations and downloaded local files only.
 
 Do not merge experimental PR #4 or deploy production checking logic based on these synthetic results.
@@ -896,7 +891,6 @@ Pre-change draft PR #4 HEAD `900b26809bc17db49a632e0795c02b638d3dbed5`; PR remai
 - Rollback: revert only the two isolated gate/test commits. No production Maketnaya files or published model weights changed.
 
 Next: check CI; then design an offline-only expert annotation manifest with verifiable mm/ICC provenance and independent labels. Never upload real originals, signatures, identifiers, hashes, or private files to public GitHub.
-
 
 ## C3B.3.M3.2 — локальная PDF-геометрия, визуальная ROI-разметка, независимая экспертиза и циклы (2026-11-17)
 
@@ -1047,7 +1041,6 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `e3d4efb2195bed782a849e956bda31a0207253d7`: synthetic tests for unsupported operators, non-disclosure of private marker text and supported operators. No real PDFs or expert labels committed.
 - Local git clone/test execution blocked by DNS resolution of github.com. These new tests have NOT been claimed to pass locally; verify new SHA in CI. Three independent ROI reviewer/adjudication cycles, batch PDF --all and Chromium 404 were not executed locally in this edit.
 - Unresolved: preview publish, anonymous real 404 reference_state/MV3 category, two verified ROI votes and family holdout, physical mm, ICC/spot and PDF transparency, print process, real-world accuracy. Unknown => MANUAL; no automatic training or production OK. Production modules and PR merge untouched.
-
 ## M3.6 — private local PDF batch report directory (2026-11-18)
 
 - Before edit: experimental PR #4 OPEN/DRAFT/unmerged, HEAD `f6e98ba2a482989062f25dddaaca73e039b447bf`. GitHub Actions UI smoke/raster safety/rules-dataset safety SUCCESS (runs 44229726828, 44229726869, 44229726923); CircleCI vision-contract/vision-raster SUCCESS. Preview publish on this SHA not confirmed.
@@ -1197,8 +1190,7 @@ PDF вне GitHub провести локальный audit-all и незави�
   are loaded in existing card HTML or exclusively from a modal.
   Only after independently confirming a safe read-only route, consider
   privacy-filtered local extraction and expert ROI attachment links.
-  No real discussion extracted, no training labels approved, no model
-  training, no production acceptance, no PR merge. Unknown=>MANUAL.
+  No real discussion extracted, no training labels approved, no model  training, no production acceptance, no PR merge. Unknown=>MANUAL.
 
 - **M3.12 publication checkpoint:** `5061c87df107af5467c45120c233f02fbee49d56`
   completed the isolated preview workflow **SUCCESS** (run
@@ -1347,8 +1339,7 @@ PDF вне GitHub провести локальный audit-all и незави�
   Github/CI; no customer HTML or raw test artwork committed.
 - CI & distribution: v0.1.2 preview build must finish
   **successfully on the final implementation commit** before reporting
-  a refreshed extension ZIP. Experiments remain on
-  `feature/printcheck-vision-copy-v01`, draft PR #4 not merged.
+  a refreshed extension ZIP. Experiments remain on  `feature/printcheck-vision-copy-v01`, draft PR #4 not merged.
   Production Maketnaya not modified, training_ready=false.
 
 
@@ -1467,3 +1458,10 @@ PDF вне GitHub провести локальный audit-all и незави�
   source references. If the server requires another query contract
   or redirects to a different endpoint, remain MANUAL and inspect
   network evidence; do not guess or bypass access control.
+## M3.16 — synthetic same-length SHA tamper regression (2026-11-18)
+
+- Pre-change experimental HEAD: `6591f6a7297789afdcadc75a2715989733f4595e`. PR #4 matched GitHub draft search, remained OPEN and unmerged.
+- `09548af324eb94d9cc4b08b71fcc8bde8e1f5947`: extend `tests/test_vision_private_corpus_threefold.py` in each of three independent synthetic 16MB+ corpus cycles. Modify one PDF byte while preserving the original byte length and valid PDF signature; require `SOURCE_SHA256_MISMATCH`, exactly one remaining verified file, `automatic_training_enabled=false`, `family_holdout_verified=false`, `production_approved=false`, `training_ready=false`, and no synthetic private names, group identifiers, raw digest or private path in either report. This complements the existing size-mismatch test, not a customer-data evaluation.
+- Before change: GitHub Actions UI smoke run `44293748086` IN_PROGRESS; raster run `44293748011` SUCCESS; rules/dataset run `44293747877` SUCCESS; CircleCI vision-contract and vision-raster SUCCESS on `6591f6a`. Isolated preview publish run `44292885181` SUCCESS for earlier code SHA `d63b698`, not for current HEAD.
+- Immediately after test commit: no completed GitHub Actions runs yet; CircleCI vision-contract and vision-raster PENDING for `09548af`. No local Python test execution: container git fetch failed DNS resolution of github.com. Do not claim the new test passed.
+- Open: verified real constructor/method/physical scale, independent blind ROI votes and adjudication, verified family holdout, ICC/spot/PDF transparency, anonymous real 404 reference_state/MV3 report, Windows ACL and production accuracy. Local private source PDFs/registry/HMAC keys remain outside GitHub. No training or production OK; unknown => MANUAL.
