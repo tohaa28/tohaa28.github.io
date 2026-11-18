@@ -195,5 +195,28 @@ class ArchiveAuditTests(unittest.TestCase):
             self.assertNotIn(secret, child.stdout + child.stderr)
 
 
+    def test_nested_duplicate_evidence_digest_rejected_without_leak(self):
+        """Duplicate nested digest cannot be selected by JSON parser ordering."""
+        raw = self.evidence.read_text(encoding="utf8")
+        digest = hashlib.sha256(PDF).hexdigest()
+        original = '"sha256": "' + digest + '"'
+        self.assertIn(original, raw)
+        raw = raw.replace(original,
+                          '"sha256": "' + "0" * 64 + '", ' + original, 1)
+        self.evidence.write_text(raw, encoding="utf8")
+        self.assertEqual(self.reason(evidence_path=self.evidence), "DUPLICATE_JSON_KEY")
+        child = subprocess.run([sys.executable, str(TOOL), str(self.zip),
+                                "--evidence", str(self.evidence)],
+                               capture_output=True, text=True)
+        self.assertEqual(child.returncode, 1)
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["reason"], "DUPLICATE_JSON_KEY")
+        self.assertIs(receipt["training_ready"], False)
+        self.assertIs(receipt["production_approved"], False)
+        for secret in (str(self.zip), str(self.evidence), digest, "9000001",
+                       "example.pdf"):
+            self.assertNotIn(secret, child.stdout + child.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
