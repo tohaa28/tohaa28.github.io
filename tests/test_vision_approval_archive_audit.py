@@ -132,5 +132,43 @@ class ArchiveAuditTests(unittest.TestCase):
         self.assertFalse(child.stderr)
 
 
+    def test_duplicate_manifest_json_key_rejected_before_flag_interpretation(self):
+        m = manifest()
+        raw = json.dumps(m, ensure_ascii=False)
+        self.assertIn('"training_ready": false', raw)
+        raw = raw.replace('"training_ready": false',
+                          '"training_ready": true, "training_ready": false', 1)
+        with zipfile.ZipFile(self.zip, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("manifest.json", raw)
+            zf.writestr(m["items"][0]["entry"], PDF)
+        self.assertEqual(self.reason(evidence_path=self.evidence), "DUPLICATE_JSON_KEY")
+        child = subprocess.run([sys.executable, str(TOOL), str(self.zip)],
+                               capture_output=True, text=True)
+        self.assertEqual(child.returncode, 1)
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["reason"], "DUPLICATE_JSON_KEY")
+        self.assertFalse(receipt.get("training_ready", False))
+        for secret in (str(self.zip), "9000001", "example.pdf"):
+            self.assertNotIn(secret, child.stdout + child.stderr)
+
+    def test_duplicate_private_evidence_json_key_rejected_without_leak(self):
+        raw = self.evidence.read_text(encoding="utf8")
+        self.assertIn('"order_number": "9000001"', raw)
+        raw = raw.replace('"order_number": "9000001"',
+                          '"order_number": "9000002", "order_number": "9000001"', 1)
+        self.evidence.write_text(raw, encoding="utf8")
+        self.assertEqual(self.reason(evidence_path=self.evidence), "DUPLICATE_JSON_KEY")
+        child = subprocess.run([sys.executable, str(TOOL), str(self.zip),
+                                "--evidence", str(self.evidence)],
+                               capture_output=True, text=True)
+        self.assertEqual(child.returncode, 1)
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["reason"], "DUPLICATE_JSON_KEY")
+        self.assertFalse(receipt.get("training_ready", False))
+        for secret in (str(self.zip), str(self.evidence), "9000001", "9000002",
+                       "example.pdf"):
+            self.assertNotIn(secret, child.stdout + child.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
