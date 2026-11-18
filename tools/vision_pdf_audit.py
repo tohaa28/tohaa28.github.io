@@ -24,6 +24,7 @@ POINT_MM = 25.4 / 72.0
 MAX_FILE = 16_000_000
 MAX_PAGES = 32
 MAX_DRAWINGS_PER_PAGE = 10_000
+MAX_ITEMS_PER_PATH = 10_000
 MAX_CANDIDATES_PER_PAGE = 80
 MAX_FILLED_CANDIDATES_PER_PAGE = 80
 SCHEMA = "printcheck.vision.pdf-path-audit.v1"
@@ -105,7 +106,7 @@ def audit_document(pdf_path: Path, *, engine=None,
                 if type(kind) is not str or kind not in ("s", "f", "fs"):
                     return manual("PDF_PATH_TYPE_UNSUPPORTED")
                 items = path.get("items")
-                if not isinstance(items, (list, tuple)) or any(
+                if not isinstance(items, (list, tuple)) or len(items) > MAX_ITEMS_PER_PATH or any(
                     not isinstance(item, (list, tuple)) or not item or
                     type(item[0]) is not str or item[0] not in ("l", "c", "re", "qu")
                     for item in items
