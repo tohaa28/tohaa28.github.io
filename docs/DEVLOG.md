@@ -1666,3 +1666,12 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Test commit `5482d562e60559d8b0e34b7182dbcec708dc40a8`: synthetic nested duplicate `sha256` in a manifest item must fail with `DUPLICATE_JSON_KEY`, not accept either digest; CLI receipt must keep `training_ready=false` and `production_approved=false`, without exposing private paths, identifiers or hashes. Only `tests/test_vision_approval_archive_audit.py` changed.
 - Local Python regression was not executed in this cycle. New SHA CI must be checked independently; no unobserved PASS is claimed. Production code, customer files and private expert labels were not touched.
 - Still blocked: authenticated 404/MV3 anonymous reference_state, three independent expert ROI/adjudication cycles, verified PDF revision + constructor + print method + physical scale, ICC/spot and complex PDF color, verified family holdout, private Windows ACL and real-world accuracy. Unknown evidence => MANUAL; training_ready=false; production_approved=false.
+
+
+### M3.28 — nested private evidence digest duplicate regression (2026-11-19)
+
+- Before test change: PR #4 OPEN, draft=true, merged=false; branch HEAD `d23f8193832f17bf5e4cec5a9beffa6fedd74713`.
+- Confirmed on prior HEAD: GitHub Actions UI smoke 44380669696 SUCCESS, raster safety 44380671018 SUCCESS, rules/dataset safety 44380669672 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Isolated preview publish on this exact SHA not established.
+- Test-only commit `308410a71cc04e01170bc3b58b80c7ab75c6d83e`: added synthetic nested duplicate `sha256` key inside private evidence attachment. Requires `DUPLICATE_JSON_KEY`, fail-closed `training_ready=false` and `production_approved=false`, and CLI redaction of paths, IDs, and digest. Production modules unchanged.
+- Local Git clone / Python execution blocked by DNS resolution of github.com. The new test has NOT been independently executed; new SHA GitHub Actions/CircleCI results remain to be checked. Preview publish not triggered by this test-only change.
+- Still open: authenticated 404/MV3 anonymous reference_state, independent 2-voice ROI + adjudication threefold regression, exact constructor/print method/PDF revision/physical scale, ICC/spot and complex PDF, verified family holdout, Windows private ACL and real-world accuracy. Never upload private files, SHA, names, keys or expert labels. Unknown evidence => MANUAL; `training_ready=false`; `production_approved=false`.
