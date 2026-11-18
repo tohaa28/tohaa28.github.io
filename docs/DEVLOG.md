@@ -1649,3 +1649,12 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Draft PR #4 остаётся открытым и НЕ слит. Основная Макетная
   вне изолированного preview не затронута. Частные данные не
   передавались в публичный репозиторий.
+
+
+### M3.26 — регрессия duplicate JSON keys в локальном архивном аудите (2026-11-18)
+
+- Исходный HEAD ветки: `008a48bb6f1698f40a71dd9431640385f46438d4`. Перед записью проверен PR #4: open, draft=true, merged=false.
+- Новый тестовый коммит: `cacb03ba8b2763eac763084e77ef1206d63b0c8c`. Изменён **только** `tests/test_vision_approval_archive_audit.py`: два полностью синтетических сценария повторных ключей `training_ready` в ZIP manifest и `order_number` в private evidence. Требуются `DUPLICATE_JSON_KEY`, fail-closed `training_ready=false`, отсутствие путей, имён и синтетических ID в stdout/stderr. Основной аудитор уже использует `object_pairs_hook=unique_pairs`; production-модули не менялись.
+- На исходном SHA GitHub Actions: UI smoke run 44317489488 SUCCESS, raster safety 44317489482 SUCCESS, rules/dataset safety 44317489501 SUCCESS; CircleCI vision-contract и vision-raster SUCCESS. Отдельный preview publish на исходном SHA не подтверждён; предыдущая публикация run 44317055363 относится к иному SHA.
+- Локальный Git clone/test не состоялся: DNS `github.com` недоступен в рабочем контейнере. Новый тестовый коммит **не объявляется прошедшим CI до фактических результатов**. Следующий цикл должен проверить GitHub Actions/CircleCI на новом HEAD и отдельно preview publish.
+- Открыто: реальный анонимный 404/MV3 reference_state, три независимых цикла ROI (два голоса + аджудикация), реальная связка макет/конструктор/технология, подтверждённый физический масштаб, ICC/spot и сложные PDF, verified family holdout, локальная приватность/ACL, реальная точность. Без доказанных ROI, revision, метода нанесения и масштаба: `training_ready=false`, `production_approved=false`, `MANUAL`. Приватные файлы и идентификаторы в GitHub не отправлялись.
