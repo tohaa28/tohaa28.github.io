@@ -115,8 +115,14 @@ def audit_archives(paths, evidence=None):
                         and is_positive_int(item.get("comment_sequence"))
                         and isinstance(item.get("order_item_id"), str)
                         and DIGITS.fullmatch(item["order_item_id"]) is not None
-                        and isinstance(item.get("attachment_id"), str)
-                        and DIGITS.fullmatch(item["attachment_id"]) is not None,
+                        and (
+                            (item.get("source") == "native_approval_gallery"
+                             and item.get("attachment_id") is None)
+                            or
+                            (item.get("source", "native_maketadjusting_attachment_get")
+                             == "native_maketadjusting_attachment_get"
+                             and isinstance(item.get("attachment_id"), str)
+                             and DIGITS.fullmatch(item["attachment_id"]) is not None)),
                         "ITEM_SOURCE_MAPPING_INVALID")
                 require(isinstance(item.get("original_filename"), str)
                         and 0 < len(item["original_filename"]) <= 200,
