@@ -80,6 +80,24 @@ class ThreefoldPrivateCorpusTests(unittest.TestCase):
                 self.assertEqual(changed["verified_pdf_files"], 1)
                 self.assertEqual(changed["verification_statuses"].get("SOURCE_SIZE_MISMATCH"), 1)
                 self.assertFalse(changed["automatic_training_enabled"])
+                # Same-length tampering must be caught by SHA, not only size.
+                tampered = payload[:-1] + b"T"
+                self.assertEqual(len(tampered), len(payload))
+                (root / "private_originals/archive1_file0002.pdf").write_bytes(tampered)
+                sha_changed, sha_tasks = corpus.stage(
+                    manifest, output, key, max_bytes=512_000_000)
+                self.assertEqual(sha_changed["verified_pdf_files"], 1)
+                self.assertEqual(
+                    sha_changed["verification_statuses"].get("SOURCE_SHA256_MISMATCH"), 1)
+                self.assertFalse(sha_changed["automatic_training_enabled"])
+                self.assertFalse(sha_changed["family_holdout_verified"])
+                self.assertFalse(sha_changed["production_approved"])
+                self.assertFalse(sha_tasks["training_ready"])
+                safe_reports = (output / "corpus-stage-summary.json").read_text()
+                safe_reports += (output / "private-review-tasks.json").read_text()
+                for forbidden in ("PRIVATE SYNTHETIC NAME", "PRIVATE ARCHIVE NAME",
+                                  "1111111", "2222222", digest, "private_originals"):
+                    self.assertNotIn(forbidden, safe_reports)
 
 
     def test_hmac_namespace_and_key_rotation_are_isolated(self):
