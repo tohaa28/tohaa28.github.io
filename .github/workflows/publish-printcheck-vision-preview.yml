@@ -261,13 +261,16 @@ jobs:
           manifest=json.loads((package/'manifest.json').read_text(encoding='utf-8'))
           assert manifest['manifest_version']==3
           assert manifest['host_permissions']==[
-              'http://psk.testgifts.local/*','http://testgifts.local/*']
+              'http://psk.testgifts.local/*','http://testgifts.local/*',
+              'http://files.testgifts.local/*']
+          assert manifest['permissions']==['tabs']
           assert manifest['background']['service_worker']=='service-worker.js'
           assert manifest['content_scripts'][0]['js']==[
               'content-transport.js','vision-order-overlay.js']
           assert manifest['content_scripts'][1]['matches']==[
               'http://testgifts.local/private/order/*']
-          assert manifest['content_scripts'][1]['js']==['vision-order-approval.js']
+          assert manifest['content_scripts'][1]['js']==[
+              'content-transport.js','vision-order-approval.js']
           with zipfile.ZipFile('vision-local-lan-extension.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
               for file in ['manifest.json','service-worker.js','content-transport.js','README_RU.md']:
                   z.write(package/file,file)
