@@ -1124,3 +1124,11 @@ PDF вне GitHub провести локальный audit-all и незави�
   gate. Existing 16-MB browser/ZIP limit remains unchanged intentionally;
   the large-corpus stage is a separate PRIVATE local tool.
   `training_ready=false`, `training_approved_count=0` and unknown=>MANUAL.
+
+
+## M3.10 — threefold synthetic private corpus regression (2026-11-18)
+
+- Before change: PR #4 OPEN/DRAFT/unmerged; HEAD `157944c510d86b443aadceedbcdec23bea228033`. GitHub Actions UI smoke, raster safety, rules/dataset safety SUCCESS on this SHA; CircleCI vision-contract/vision-raster SUCCESS. Preview publish on this SHA not established.
+- `3c49aae5531abf9cf6bad9c1dc1f24acd99b12c4`: added `tests/test_vision_private_corpus_threefold.py` with three isolated synthetic 16 MB+ streaming runs under the configured 512 MB cap; duplicate-content family coalescence, SHA mutation fail-closed, HMAC token agreement, private-output redaction, no training/production approval. This tests the 512 MB *limit setting*, not a full 512 MB fixture.
+- Direct local tests unavailable: github.com DNS resolution failed in the execution container. New SHA CI is not yet verified; this is not a PASS assertion. No customer PDFs, original filenames, SHA lists, HMAC keys, ROI answers or private manifests were uploaded.
+- Still blocked: real 404 reference_state/MV3 evidence, two independent verified expert ROI, real layout-to-constructor/print-method binding, verified physical mm, ICC/spot, PDF transparency, technology rules, Windows ACL and verified family holdout. Filename claims are not expert conflict labels. Unknown => MANUAL; training and production OK disabled.
