@@ -7,8 +7,11 @@
 (()=>{
  'use strict';
  if(typeof chrome==='undefined'||!chrome.runtime?.connect)return;
- if(location.protocol!=='http:'||location.hostname!=='psk.testgifts.local'||
-   !/^\/devorders(?:\/|$)/.test(location.pathname))return;
+ if(location.protocol!=='http:'||!(
+   location.hostname==='psk.testgifts.local'&&
+      /^\/devorders(?:\/|$)/.test(location.pathname)||
+   location.hostname==='testgifts.local'&&
+      /^\/private\/order\/\d{5,12}\/?$/.test(location.pathname)))return;
  if(globalThis.__visionLocalTrustedTransport)return;
  const CHUNK_LIMIT=64*1024;
  globalThis.__visionLocalTrustedTransport=async function(url,options={}){
