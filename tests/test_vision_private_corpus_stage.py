@@ -26,7 +26,7 @@ class PrivateCorpusStageTests(unittest.TestCase):
 
     def add(self, archive, sequence, family, label, contents=None, tags=None):
         if contents is None:
-            contents = ("%PDF-1.7\nSYNTHETIC %d:%d\n" % (
+            contents = ("%%PDF-1.7\nSYNTHETIC %d:%d\n" % (
                 archive, sequence)).encode()
         rel = "private_originals/archive%d_file%04d.pdf" % (archive, sequence)
         (self.root / rel).write_bytes(contents)
