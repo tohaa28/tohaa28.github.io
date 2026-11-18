@@ -7,6 +7,7 @@
  * words of a designer, screenshots, URLs, names and article IDs stay private.
  * All possible defect terms are weak "topic candidates", NEVER expert labels.
  */
+import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
 const CONTROL_SELECTOR='a[href],button,[role="button"],[data-action],'+
   '[data-toggle],[onclick],[class*="discuss"],[class*="comment"],[class*="chat"]';
 const THREAD_SELECTOR='[data-discussion-id],[data-thread-id],[data-comments-id],'+
@@ -16,7 +17,7 @@ const MESSAGE_SELECTOR='[data-comment-id],[data-message-id],.comment-item,'+
   '.message-item,.discussion-message,.chat-message';
 const BODY_SELECTOR='.comment-body,.comment-text,.message-text,'+
   '.message-body,[data-comment-text],[data-message-text]';
-const ARTICLE_SELECTOR='[data-orderitemid],[data-orderitem-id],'+
+const ARTICLE_SELECTOR='[data-itemid],[data-orderitemid],[data-orderitem-id],'+
   '[data-item-id],[data-article],.orderitem,.order-item,'+
   '.cart-order-item,.cart-item,.j_order_item';
 const DISCUSS=/(?:обсуждени[еяй]|комментар(?:ии|ий|ия|иев)|переписк[ауе]|discuss(?:ion)?|comments?|messages?|conversation|чат\b)/i;
@@ -45,7 +46,8 @@ const empty=()=>({
  discussion_artwork_link_verified:false,expert_label_verified:false,
  screenshot_roi_verified:false,training_ready:false,
  customer_text_included:false,attachment_urls_included:false,
- order_ids_included:false,author_names_included:false,source_artwork_included:false
+ order_ids_included:false,author_names_included:false,source_artwork_included:false,
+ maket_approval:null
 });
 const safeAttr=(el,name)=>String(el?.getAttribute?.(name)||'').slice(0,260);
 const inForbiddenBlock=el=>Boolean(el?.closest?.(
@@ -103,7 +105,10 @@ export function inspectOrderDiscussionDom(doc,{baseUrl='http://psk.testgifts.loc
    // Skip approval/sign-off controls. Discussion of a PRINT APPLICATION
    // must not be confused with the prohibited "Согласования макетов" flow.
    const label=controlLabel(el);
-   if(!DISCUSS.test(label)||AGREEMENT.test(label))continue;
+   const nativeMaketAdjusting=safeAttr(el,'class').split(/\s+/)
+     .includes('j_maketadjusting');
+   if((!DISCUSS.test(label)||AGREEMENT.test(label))&&!nativeMaketAdjusting)
+     continue;
    report.controls_total++;
    const scope=el.closest?.(ARTICLE_SELECTOR);
    if(scope)report.article_scoped_controls++;
@@ -144,6 +149,16 @@ export function inspectOrderDiscussionDom(doc,{baseUrl='http://psk.testgifts.loc
  }
  report.screenshot_or_image_candidates=limit(photos.size);
  report.weak_topic_candidates=[...topics].sort();
+ report.maket_approval=inspectOpenMaketApprovalDom(doc);
+ if(report.maket_approval.modal_loaded){
+   report.visible_message_candidates=report.maket_approval.history_entry_count;
+   report.screenshot_or_image_candidates=
+     report.maket_approval.attachments_image_candidates;
+   report.weak_topic_candidates=[...new Set([
+     ...report.weak_topic_candidates,
+     ...report.maket_approval.weak_message_topic_hints
+   ])].sort();
+ }
  return report;
 }
 
