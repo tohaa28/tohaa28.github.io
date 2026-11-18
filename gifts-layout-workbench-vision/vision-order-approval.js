@@ -170,6 +170,440 @@
     return result;
   }
 
+  // vision/geometry/svg-viewport.mjs
+  var mmMultipliers = Object.freeze({ mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72 });
+
+  // vision/ai/synthetic-feature-model.mjs
+  var MODEL_INFO = Object.freeze({
+    schema: "printcheck.vision.synthetic-feature-mlp.v1",
+    source: "synthetic_width_classes_only",
+    seed: 20261117,
+    syntheticHoldoutN: 3e3,
+    syntheticAccuracy: 0.99733,
+    syntheticPrecision075: 0.99921,
+    syntheticRecall075: 0.99219,
+    realWorldAccuracyVerified: false,
+    productionApproved: false
+  });
+
+  // vision/orders/discussion-probe.mjs
+  var TOPICS = Object.freeze({
+    positive_min: /(?:тонк(?:ая|ие|их|ий)|толщин[ауы]|мелки[ех]|перемычк[аие]|линия\s+тонк)/i,
+    negative_min: /(?:пробел[ауы]?|выворотк|зазор[ауы]?|просвет[ауы]?)/i,
+    out_of_field: /(?:вне\s+(?:поля|зоны)|за\s+(?:пределы|границ)|выходит\s+за|охранн(?:ое|ая)\s+поле)/i,
+    color: /(?:\brgb\b|\bcmyk\b|\bpantone\b|цветоделени|цветов(?:ое|ые)|цвет\s+не)/i,
+    font: /(?:шрифт[ауы]?|в\s+кривы[ех]|текст\s+не\s+перев)/i,
+    raster_resolution: /(?:разрешени[ея]|dpi|пикселизац|растров(?:ый|ое)|пиксел[ья])/i,
+    gradient_transparency: /(?:градиент[ауы]?|прозрачност[ьи]|эффект[ауы]?|тень\b)/i,
+    constructor_alignment: /(?:конструктор[ауы]?|шаблон[ауы]?|масштаб[ауы]?|смещени[ея]|совмещени[ея])/i
+  });
+
+  // vision/orders/order-page-discovery.mjs
+  var TEST_HOSTS = Object.freeze(["psk.testgifts.local", "testgifts.local"]);
+
+  // vision/orders/row-scanner.mjs
+  var LOCAL_ORDERS = Object.freeze({
+    host: "psk.testgifts.local",
+    route: "/devorders",
+    // No row or file-count quota: read and inspect sequentially on user action.
+    // The per-file size and network timeout guards remain mandatory.
+    maxFileBytes: 16e6,
+    timeoutMs: 15e3,
+    fetchPaceMs: 30
+  });
+
+  // vision/orders/local-training-zip.mjs
+  var te = new TextEncoder();
+  var size16 = (dv, off, value) => dv.setUint16(off, value, true);
+  var size32 = (dv, off, value) => dv.setUint32(off, value >>> 0, true);
+  var formats = /* @__PURE__ */ new Set(["svg", "pdf", "png", "jpg", "jpeg", "webp", "cdr", "eps", "ai"]);
+  function exactLocalFilename(value) {
+    if (typeof value !== "string" || !value || value.length > 200 || /[\u0000-\u001f\u007f\/\\:*?"<>|]/.test(value) || /[. ]$/.test(value) || value === "." || value === ".." || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(value) || te.encode(value).length > 255) return null;
+    const m = /\.([a-z0-9]+)$/i.exec(value);
+    return m && formats.has(m[1].toLowerCase()) ? value : null;
+  }
+  function safeEntryName(name) {
+    if (name === "manifest.json") return true;
+    if (/^attachments\/[0-9]{4}\/[0-9]{4}\.(?:pdf|psd|psb|png|jpg|jpeg|webp|tif|tiff|gif|svg|eps|ai|cdr|zip)$/.test(name)) return true;
+    if (/^samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin)$/.test(name)) return true;
+    const m = /^samples\/[0-9]{4}\/([^/]+)$/.exec(name);
+    return !!m && exactLocalFilename(m[1]) === m[1];
+  }
+  function crc32(bytes) {
+    let n = 4294967295;
+    for (const b of bytes) {
+      n ^= b;
+      for (let i = 0; i < 8; i++)
+        n = n >>> 1 ^ (n & 1 ? 3988292384 : 0);
+    }
+    return (n ^ 4294967295) >>> 0;
+  }
+  function makeLocalStoredZip(entries) {
+    if (!Array.isArray(entries) || !entries.length || entries.length > 40)
+      throw new RangeError("LOCAL_ZIP_ENTRIES_INVALID");
+    const data = [], central = [], used = /* @__PURE__ */ new Set();
+    let offset = 0, centralSize = 0;
+    for (const { name, bytes } of entries) {
+      if (typeof name !== "string" || te.encode(name).length > 300 || !safeEntryName(name) || used.has(name) || !(bytes instanceof Uint8Array) || bytes.length > 16e6)
+        throw new RangeError("LOCAL_ZIP_ENTRY_INVALID");
+      used.add(name);
+      const nameBytes = te.encode(name), crc = crc32(bytes);
+      const local = new Uint8Array(30 + nameBytes.length), v = new DataView(local.buffer);
+      size32(v, 0, 67324752);
+      size16(v, 4, 20);
+      size16(v, 6, 2048);
+      size16(v, 8, 0);
+      size16(v, 10, 0);
+      size16(v, 12, 33);
+      size32(v, 14, crc);
+      size32(v, 18, bytes.length);
+      size32(v, 22, bytes.length);
+      size16(v, 26, nameBytes.length);
+      size16(v, 28, 0);
+      local.set(nameBytes, 30);
+      data.push(local, bytes);
+      const cd = new Uint8Array(46 + nameBytes.length), d = new DataView(cd.buffer);
+      size32(d, 0, 33639248);
+      size16(d, 4, 20);
+      size16(d, 6, 20);
+      size16(d, 8, 2048);
+      size16(d, 10, 0);
+      size16(d, 12, 0);
+      size16(d, 14, 33);
+      size32(d, 16, crc);
+      size32(d, 20, bytes.length);
+      size32(d, 24, bytes.length);
+      size16(d, 28, nameBytes.length);
+      size16(d, 30, 0);
+      size16(d, 32, 0);
+      size16(d, 34, 0);
+      size16(d, 36, 0);
+      size32(d, 38, 0);
+      size32(d, 42, offset);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+      centralSize += cd.length;
+      offset += local.length + bytes.length;
+    }
+    if (offset + centralSize >= 4294967295) throw new RangeError("LOCAL_ZIP_SIZE_LIMIT");
+    const end = new Uint8Array(22), e = new DataView(end.buffer);
+    size32(e, 0, 101010256);
+    size16(e, 4, 0);
+    size16(e, 6, 0);
+    size16(e, 8, entries.length);
+    size16(e, 10, entries.length);
+    size32(e, 12, centralSize);
+    size32(e, 16, offset);
+    size16(e, 20, 0);
+    return new Blob([...data, ...central, end], { type: "application/zip" });
+  }
+
+  // vision/orders/approval-attachments.mjs
+  var TEST_ORIGIN = "http://testgifts.local";
+  var LIMIT_PER_FILE = 16e6;
+  var MAX_FILES = 64;
+  var MAX_PART_BYTES = 24e6;
+  var MAX_PART_FILES = 12;
+  var extensions = /* @__PURE__ */ new Set([
+    "pdf",
+    "psd",
+    "psb",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "tif",
+    "tiff",
+    "gif",
+    "svg",
+    "eps",
+    "ai",
+    "cdr",
+    "zip"
+  ]);
+  var te2 = new TextEncoder();
+  var numeric = (v) => typeof v === "string" && /^\d{1,20}$/.test(v);
+  var code = (status, extra = {}) => ({ status, training_ready: false, ...extra });
+  function nativeApprovalAttachmentUrl(id, { origin = TEST_ORIGIN } = {}) {
+    if (origin !== TEST_ORIGIN || !numeric(id)) return null;
+    const url = new URL("/ajax/gifts/order", origin);
+    url.searchParams.set("action", "download_maketadjusting_attachment");
+    url.searchParams.set("id", id);
+    return url.href;
+  }
+  function safeName(name) {
+    if (typeof name !== "string" || !name || name.length > 200 || /[\x00-\x1f\x7f\\/:*?"<>|]/.test(name) || /[. ]$/.test(name) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(name) || te2.encode(name).length > 255) return null;
+    const ext = /\.([a-z0-9]{2,5})$/i.exec(name)?.[1]?.toLowerCase();
+    return ext && extensions.has(ext) ? { name, extension: ext } : null;
+  }
+  function looksLikeHTML(bytes) {
+    const prefix = new TextDecoder().decode(bytes.subarray(0, Math.min(384, bytes.length))).trimStart().toLowerCase();
+    return prefix.startsWith("<!doctype html") || prefix.startsWith("<html") || prefix.startsWith("<?xml") && prefix.includes("<html") || prefix.startsWith('{"') || prefix.startsWith('{"error"') || prefix.startsWith('{"status"') || prefix.startsWith("<script") || prefix.startsWith("<body");
+  }
+  function nativeAttachmentSignature(bytes, extension) {
+    if (!(bytes instanceof Uint8Array) || bytes.length < 8) return "FILE_TOO_SMALL";
+    if (looksLikeHTML(bytes)) return "HTML_OR_AUTH_RESPONSE";
+    const ascii = (start, size) => String.fromCharCode(...bytes.subarray(start, start + size));
+    if (extension === "pdf") return ascii(0, 5) === "%PDF-" ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "psd" || extension === "psb")
+      return ascii(0, 4) === "8BPS" ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "png")
+      return bytes[0] === 137 && ascii(1, 3) === "PNG" ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "jpg" || extension === "jpeg")
+      return bytes[0] === 255 && bytes[1] === 216 ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "gif") return /^GIF8[79]a$/.test(ascii(0, 6)) ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "webp")
+      return ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP" ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "tif" || extension === "tiff")
+      return ["II*\0", "MM\0*", "II+\0", "MM\0+"].includes(ascii(0, 4)) ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "zip")
+      return bytes[0] === 80 && bytes[1] === 75 && [3, 5, 7].includes(bytes[2]) ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    if (extension === "svg") {
+      const prefix = new TextDecoder().decode(bytes.subarray(0, Math.min(512, bytes.length)));
+      return /<svg(?:\s|>)/i.test(prefix) ? "KNOWN_SIGNATURE" : "FORMAT_MISMATCH";
+    }
+    if (bytes[0] === 77 && bytes[1] === 90) return "EXECUTABLE_MISMATCH";
+    return "UNVERIFIED_BINARY_TYPE";
+  }
+  async function hash(bytes) {
+    try {
+      if (!globalThis.crypto?.subtle) return null;
+      const dig = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", bytes));
+      return Array.from(dig, (x) => x.toString(16).padStart(2, "0")).join("");
+    } catch {
+      return null;
+    }
+  }
+  async function readNativeApprovalAttachment(attachment, {
+    origin = globalThis.location?.origin || "",
+    fetcher = globalThis.fetch,
+    maxFileBytes = LIMIT_PER_FILE
+  } = {}) {
+    const name = safeName(attachment?.filename);
+    const url = nativeApprovalAttachmentUrl(attachment?.attachment_id, { origin });
+    if (!url || !name) return code("MANUAL_UNSAFE_ATTACHMENT_METADATA");
+    if (!Number.isInteger(maxFileBytes) || maxFileBytes < 1 || maxFileBytes > LIMIT_PER_FILE) return code("MANUAL_LIMIT_INVALID");
+    if (typeof fetcher !== "function") return code("MANUAL_FETCH_UNAVAILABLE");
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 18e3);
+    let reader;
+    try {
+      const resp = await fetcher(url, {
+        method: "GET",
+        credentials: "same-origin",
+        redirect: "error",
+        cache: "no-store",
+        signal: abort.signal,
+        referrerPolicy: "no-referrer",
+        headers: { accept: "application/octet-stream,application/pdf,image/*,*/*" }
+      });
+      if (resp?.url && resp.url !== url) return code("MANUAL_REDIRECT_OR_PATH_CHANGED");
+      if (resp?.redirected || resp?.type === "opaqueredirect")
+        return code("MANUAL_REDIRECT_OR_PATH_CHANGED");
+      if (!resp?.ok) return code("MANUAL_HTTP_ERROR", { http_status: resp?.status ?? null });
+      if (resp.status !== 200) return code(
+        "MANUAL_HTTP_UNEXPECTED_STATUS",
+        { http_status: resp.status }
+      );
+      const ct = String(resp.headers?.get?.("content-type") || "").toLowerCase();
+      if (/(?:text\/html|application\/json|text\/plain|application\/xhtml)/.test(ct))
+        return code("MANUAL_UNEXPECTED_CONTENT_TYPE");
+      const declared = resp.headers?.get?.("content-length") || "";
+      if (/^\d+$/.test(declared) && Number(declared) > maxFileBytes)
+        return code("MANUAL_ATTACHMENT_TOO_LARGE");
+      if (!resp.body?.getReader) return code("MANUAL_BODY_UNREADABLE");
+      reader = resp.body.getReader();
+      let total = 0;
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!(value instanceof Uint8Array)) return code("MANUAL_BAD_BINARY_CHUNK");
+        total += value.length;
+        if (total > maxFileBytes) return code("MANUAL_ATTACHMENT_TOO_LARGE");
+        chunks.push(value);
+      }
+      if (total < 8) return code("MANUAL_ATTACHMENT_EMPTY");
+      if (/^\d+$/.test(declared) && Number(declared) !== total)
+        return code("MANUAL_ATTACHMENT_TRUNCATED");
+      const bytes = new Uint8Array(total);
+      let off = 0;
+      for (const part of chunks) {
+        bytes.set(part, off);
+        off += part.length;
+      }
+      const signature = nativeAttachmentSignature(bytes, name.extension);
+      if (!["KNOWN_SIGNATURE", "UNVERIFIED_BINARY_TYPE"].includes(signature))
+        return code("MANUAL_ATTACHMENT_" + signature);
+      return {
+        status: "LOCAL_ATTACHMENT_BYTES_ONLY",
+        bytes,
+        extension: name.extension,
+        original_filename: name.name,
+        size: total,
+        sha256: await hash(bytes),
+        signature_status: signature,
+        training_ready: false
+      };
+    } catch {
+      return code(abort.signal.aborted ? "MANUAL_ATTACHMENT_TIMEOUT" : "MANUAL_ATTACHMENT_FETCH_FAILED");
+    } finally {
+      clearTimeout(timeout);
+      try {
+        await reader?.cancel();
+      } catch {
+      }
+      try {
+        reader?.releaseLock();
+      } catch {
+      }
+    }
+  }
+  function* targets(report) {
+    for (let i = 0; i < (report?.articles || []).length; i++) {
+      const article = report.articles[i];
+      if (article?.status !== "PRIVATE_REVIEW_ONLY") continue;
+      for (const message of article.history || [])
+        for (const attachment of message.attachments || [])
+          yield { article, articleIndex: i + 1, message, attachment };
+    }
+  }
+  async function* exportNativeApprovalAttachmentParts(report, {
+    origin = globalThis.location?.origin || "",
+    fetcher = globalThis.fetch,
+    onProgress = () => {
+    },
+    stop = () => false,
+    maxFiles = MAX_FILES,
+    maxPerFile = LIMIT_PER_FILE,
+    maxPartBytes = MAX_PART_BYTES,
+    maxPartFiles = MAX_PART_FILES
+  } = {}) {
+    if (origin !== TEST_ORIGIN || report?.schema !== "printcheck.vision.private-approval-collection.v1") {
+      yield code("MANUAL_UNAUTHORIZED_SCOPE");
+      return;
+    }
+    if (maxFiles < 1 || maxFiles > MAX_FILES || maxPerFile < 1 || maxPerFile > LIMIT_PER_FILE || maxPartBytes < maxPerFile || maxPartBytes > MAX_PART_BYTES || maxPartFiles < 1 || maxPartFiles > MAX_PART_FILES) {
+      yield code("MANUAL_INVALID_ATTACHMENT_LIMITS");
+      return;
+    }
+    const jobs = [...targets(report)];
+    if (jobs.length > MAX_FILES) {
+      yield code("MANUAL_TOO_MANY_ATTACHMENTS", { found: jobs.length });
+      return;
+    }
+    let partNo = 0, processed = 0, successful = 0, entries = [], items = [], skipped = [], total = 0;
+    function createPart() {
+      if (!items.length) return null;
+      partNo++;
+      const manifest = {
+        schema: "printcheck.vision.private-approval-attachments.v1",
+        scope: "LOCAL_PRIVATE_ONLY",
+        order_number: report.order_number,
+        package_part: partNo,
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        source: "native_maketadjusting_attachment_get",
+        training_ready: false,
+        expert_roi_verified: false,
+        source_pdf_revision_confirmed: false,
+        filenames_are_private: true,
+        export_to_public_github_allowed: false,
+        items,
+        skipped
+      };
+      const zip = makeLocalStoredZip([{
+        name: "manifest.json",
+        bytes: te2.encode(JSON.stringify(manifest, null, 2) + "\n")
+      }, ...entries]);
+      const ready = {
+        status: "PRIVATE_LOCAL_ZIP_READY",
+        zip,
+        manifest,
+        files: items.length,
+        part: partNo,
+        processed,
+        successful
+      };
+      entries = [];
+      items = [];
+      skipped = [];
+      total = 0;
+      return ready;
+    }
+    for (let j = 0; j < jobs.length; j++) {
+      if (stop()) {
+        yield code("STOPPED", { processed, successful });
+        return;
+      }
+      const job = jobs[j];
+      onProgress({ processed, total: jobs.length, successful });
+      const file = await readNativeApprovalAttachment(job.attachment, {
+        origin,
+        fetcher,
+        maxFileBytes: maxPerFile
+      });
+      processed++;
+      job.attachment.local_get_status = file.status;
+      if (file.status === "LOCAL_ATTACHMENT_BYTES_ONLY") {
+        job.attachment.byte_count = file.size;
+        job.attachment.sha256 = file.sha256;
+        job.attachment.signature_status = file.signature_status;
+      }
+      if (file.status !== "LOCAL_ATTACHMENT_BYTES_ONLY") {
+        skipped.push({
+          article_index: job.articleIndex,
+          comment_sequence: job.message.sequence,
+          reason: file.status,
+          http_status: file.http_status ?? null
+        });
+        continue;
+      }
+      if (items.length && (total + file.size > maxPartBytes || items.length >= maxPartFiles)) {
+        const part = createPart();
+        if (part) yield part;
+      }
+      if (file.size > maxPartBytes) {
+        skipped.push({
+          article_index: job.articleIndex,
+          comment_sequence: job.message.sequence,
+          reason: "MANUAL_PART_BYTES_LIMIT"
+        });
+        continue;
+      }
+      const n = String(items.length + 1).padStart(4, "0");
+      const ext = file.extension;
+      const filename = "attachments/" + String(partNo + 1).padStart(4, "0") + "/" + n + "." + ext;
+      entries.push({ name: filename, bytes: file.bytes });
+      total += file.size;
+      successful++;
+      job.attachment.private_zip_part = partNo + 1;
+      job.attachment.private_zip_entry = filename;
+      items.push({
+        entry: filename,
+        article_index: job.articleIndex,
+        order_item_id: job.article.item_id,
+        comment_sequence: job.message.sequence,
+        attachment_id: job.attachment.attachment_id,
+        original_filename: file.original_filename,
+        bytes: file.size,
+        sha256: file.sha256,
+        signature_status: file.signature_status,
+        version_and_print_method_verified: false,
+        training_ready: false
+      });
+    }
+    report.attachment_gets_completed = processed;
+    report.attachment_gets_verified = successful;
+    const last = createPart();
+    if (last) yield last;
+    else yield code("NO_ATTACHMENT_FILES_VERIFIED", {
+      processed,
+      successful,
+      skipped_count: skipped.length
+    });
+    onProgress({ processed, total: jobs.length, successful, complete: true });
+  }
+
   // vision/orders/approval-auto-scan.mjs
   var MAX_TARGETS = 100;
   var MAX_MESSAGES = 1500;
@@ -200,6 +634,16 @@
     return "other";
   };
   var visibleModal = (doc) => all(doc, "g-modal[visible]").find((m) => m.querySelector?.("#j_maketAdjustingForm"));
+  function isCurrentOrderApprovalLink(raw, doc) {
+    if (raw === "#" || raw === "") return true;
+    try {
+      const page = new URL(doc?.location?.href || globalThis.location?.href);
+      const target = new URL(raw, page.href);
+      return page.protocol === "http:" && page.hostname === "testgifts.local" && target.origin === page.origin && target.pathname === page.pathname && target.hash === "#" && !target.search && !target.username && !target.password;
+    } catch {
+      return false;
+    }
+  }
   var humanOrSystem = (body, wrapper) => {
     if (/^Добавлены проблемы\s*:/i.test(body)) return "problem_added";
     if (/^Удалены проблемы\s*:/i.test(body)) return "problem_removed";
@@ -214,7 +658,7 @@
       const element = anchors[index], li = element.closest("li[data-itemid]");
       const itemId = attr2(li, "data-itemid"), badge = badgeNumber(element);
       const anchorHref = attr2(element, "href");
-      const linkOk = anchorHref === "#" || anchorHref === "" || anchorHref.startsWith("http://testgifts.local/private/order/") && anchorHref.endsWith("#");
+      const linkOk = isCurrentOrderApprovalLink(anchorHref, doc);
       const approved = digits(itemId) && linkOk;
       const info = { index: index + 1, element, itemId, badge };
       if (!approved) skipped.push({ index: index + 1, reason: "UNSAFE_NATIVE_TRIGGER" });
@@ -240,10 +684,20 @@
     if (summary2.status !== "VISIBLE_MODAL_STRUCTURE_ONLY")
       return { status: "MODAL_STRUCTURE_INCOMPLETE" };
     const checks = all(form, 'input[type="checkbox"][name="ma_problem[]"]');
-    const currentProblems = checks.filter((c) => c.checked === true).map((c) => ({
-      code: digits(String(c.value || attr2(c, "value"))) ? String(c.value || attr2(c, "value")) : null,
-      label: safeText(str(c.closest("label") || c.parentElement))
-    })).slice(0, 100);
+    const currentProblems = checks.filter((c) => c.checked === true).map((c) => {
+      const group = c.closest(".grid");
+      const tech = group?.querySelector(".col-3-12");
+      const method = str(tech?.querySelector(".bold-500"));
+      const placement = str(tech?.querySelector(".color-text.color--dark"));
+      return {
+        code: digits(String(c.value || attr2(c, "value"))) ? String(c.value || attr2(c, "value")) : null,
+        label: safeText(str(c.closest("label") || c.parentElement)),
+        print_method: safeText(method),
+        print_placement: safeText(placement),
+        source: "currently_checked_designer_problem",
+        historical_event_required_for_original_defect_proof: true
+      };
+    }).slice(0, 100);
     const description = safeText(form.querySelector('[name="ma_description"]')?.value || "");
     const list = modal.querySelector("#j_maketadjusting_comments_list");
     const entries = all(list, ":scope > li");
@@ -406,7 +860,11 @@
       } finally {
         const modal = visibleModal(doc);
         const activeId = String(modal?.querySelector('input[name="oiid"]')?.value || attr2(modal?.querySelector('input[name="oiid"]'), "value"));
-        if (modal && activeId === target.itemId) modal.removeAttribute("visible");
+        if (modal && activeId === target.itemId) {
+          const nativeClose = modal.shadowRoot?.querySelector?.(".close[close]");
+          if (nativeClose) nativeClose.click();
+          if (modal.hasAttribute("visible")) modal.removeAttribute("visible");
+        }
       }
       if (result.status === "LOCAL_PRIVATE_BUDGET_REACHED") break;
       if (stop()) {
@@ -460,8 +918,50 @@
       for (const key of nums) safe[key] = Number.isInteger(summary2[key]) ? Math.max(0, Math.min(1e4, summary2[key])) : null;
       return safe;
     });
+    const allowedReadStatuses = /* @__PURE__ */ new Set([
+      "LOCAL_ATTACHMENT_BYTES_ONLY",
+      "MANUAL_UNSAFE_ATTACHMENT_METADATA",
+      "MANUAL_ATTACHMENT_TOO_LARGE",
+      "MANUAL_HTTP_ERROR",
+      "MANUAL_HTTP_UNEXPECTED_STATUS",
+      "MANUAL_ATTACHMENT_TRUNCATED",
+      "MANUAL_REDIRECT_OR_PATH_CHANGED",
+      "MANUAL_UNEXPECTED_CONTENT_TYPE",
+      "MANUAL_BODY_UNREADABLE",
+      "MANUAL_ATTACHMENT_EMPTY",
+      "MANUAL_ATTACHMENT_FORMAT_MISMATCH",
+      "MANUAL_ATTACHMENT_HTML_OR_AUTH_RESPONSE",
+      "MANUAL_ATTACHMENT_EXECUTABLE_MISMATCH",
+      "MANUAL_ATTACHMENT_FILE_TOO_SMALL",
+      "MANUAL_ATTACHMENT_TIMEOUT",
+      "MANUAL_ATTACHMENT_FETCH_FAILED",
+      "MANUAL_BAD_BINARY_CHUNK",
+      "MANUAL_FETCH_UNAVAILABLE",
+      "MANUAL_LIMIT_INVALID"
+    ]);
+    const byStatus = {};
+    let attemptCount = 0, confirmed = 0;
+    for (const row of report?.articles || []) {
+      for (const message of row.history || []) {
+        for (const attachment of message.attachments || []) {
+          const raw = attachment.local_get_status;
+          const state = !raw ? "NOT_ATTEMPTED" : allowedReadStatuses.has(raw) ? raw : "MANUAL_UNKNOWN";
+          byStatus[state] = (byStatus[state] || 0) + 1;
+          if (raw) {
+            attemptCount++;
+            if (state === "LOCAL_ATTACHMENT_BYTES_ONLY") confirmed++;
+          }
+        }
+      }
+    }
     return {
       schema: "printcheck.vision.anonymous-approval-collection.v1",
+      attachment_reads_attempted: attemptCount,
+      attachment_reads_verified: confirmed,
+      attachment_reads_by_status: byStatus,
+      local_zip_parts_prepared: Number.isSafeInteger(
+        report?.attachment_download_summary?.local_zip_parts
+      ) ? Math.min(1e3, report.attachment_download_summary.local_zip_parts) : 0,
       eligible_articles: rows.length,
       articles: rows,
       skipped_below_or_unknown: (report?.skipped || []).length,
@@ -497,7 +997,7 @@
     panel.id = BOX_ID;
     panel.setAttribute("aria-label", "Vision AI \u2014 \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F");
     const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430");
-    const note = make("p", "\u0410\u0432\u0442\u043E\u043E\u0431\u0445\u043E\u0434 \u043F\u043E \u0430\u0440\u0442\u0438\u043A\u0443\u043B\u0430\u043C: Vision \u0441\u0430\u043C\u043E\u0441\u0442\u043E\u044F\u0442\u0435\u043B\u044C\u043D\u043E \u043D\u0430\u0436\u043C\u0451\u0442 \u0442\u043E\u043B\u044C\u043A\u043E \xAB\u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430\xBB \u0441\u043E \u0441\u0447\u0451\u0442\u0447\u0438\u043A\u043E\u043C \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u0439 \u0431\u043E\u043B\u044C\u0448\u0435 1, \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0435\u0442 \u043E\u0442\u043A\u0440\u044B\u0432\u0448\u0435\u0435\u0441\u044F \u043E\u043A\u043D\u043E \u0438 \u0437\u0430\u043A\u0440\u043E\u0435\u0442 \u0435\u0433\u043E. \u0411\u0435\u0437 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \u0438\u043B\u0438 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438 \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u0439. \u041C\u043E\u0436\u043D\u043E \u0442\u0430\u043A\u0436\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043E\u0434\u043D\u043E \u0432\u0440\u0443\u0447\u043D\u0443\u044E \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u043E\u043A\u043D\u043E.");
+    const note = make("p", "\u0410\u0432\u0442\u043E\u043E\u0431\u0445\u043E\u0434: \u0434\u043B\u044F \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u0441 2+ \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F\u043C\u0438 \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0430 \u0447\u0438\u0442\u0430\u0435\u0442 \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u044B, \u0432\u0441\u044E \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u0438 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E \u043F\u043E\u043B\u0443\u0447\u0430\u0435\u0442 \u0444\u0430\u0439\u043B\u044B \u0447\u0435\u0440\u0435\u0437 \u0440\u0430\u0437\u0440\u0435\u0448\u0451\u043D\u043D\u044B\u0439 GET. \u0410\u0440\u0445\u0438\u0432\u044B \u0441 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F\u043C\u0438 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u0430 \u044D\u0442\u043E\u0442 \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0431\u043E\u0440. \u041D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0439\u0442\u0435 \u043F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0435 ZIP \u0438 JSON \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.");
     const stats = make("p", "\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u043E\u043A\u043D\u043E.");
     stats.setAttribute("role", "status");
     const scan = make("button", "\u041F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435");
@@ -506,11 +1006,21 @@
     const stopScan = make("button", "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u043E\u0431\u0445\u043E\u0434");
     const privateSave = make("button", "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435");
     const anonymousSave = make("button", "\u0410\u043D\u043E\u043D\u0438\u043C\u043D\u044B\u0439 \u043E\u0442\u0447\u0451\u0442 \u043E\u0431\u0445\u043E\u0434\u0430");
+    const attachmentRetry = make("button", "\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u044C \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439");
     const close = make("button", "\u0417\u0430\u043A\u0440\u044B\u0442\u044C Vision");
     exportButton.disabled = true;
-    stopScan.disabled = privateSave.disabled = anonymousSave.disabled = true;
+    stopScan.disabled = privateSave.disabled = anonymousSave.disabled = attachmentRetry.disabled = true;
     let last = null, collection = null, busy = false, stopRequested = false;
-    for (const b of [scan, exportButton, autoScan, stopScan, privateSave, anonymousSave, close])
+    for (const b of [
+      scan,
+      exportButton,
+      autoScan,
+      stopScan,
+      privateSave,
+      anonymousSave,
+      attachmentRetry,
+      close
+    ])
       b.type = "button";
     const stop = (e) => {
       e.preventDefault();
@@ -613,6 +1123,46 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(uri), 2500);
     }
+    async function savePrivateAttachmentParts() {
+      if (!collection) return { status: "NO_COLLECTION", files: 0, parts: 0 };
+      let files = 0, parts = 0, processed = 0, failures = 0;
+      for await (const item of exportNativeApprovalAttachmentParts(collection, {
+        stop: () => stopRequested || !panel.isConnected,
+        onProgress: (p) => {
+          if (panel.isConnected) stats.textContent = "\u0424\u0430\u0439\u043B\u044B \u0438\u0437 \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u0439: " + p.processed + " / " + p.total + " \xB7 \u0441\u0447\u0438\u0442\u0430\u043D\u043E " + p.successful + "\n\u0422\u043E\u043B\u044C\u043A\u043E \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D\u043D\u044B\u0435 GET, \u0431\u0435\u0437 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \u043D\u0430 \u0441\u0430\u0439\u0442\u0435.";
+        }
+      })) {
+        if (item.status === "PRIVATE_LOCAL_ZIP_READY") {
+          files += item.files;
+          parts++;
+          const u = URL.createObjectURL(item.zip), a = make("a");
+          a.href = u;
+          a.download = "vision-private-approval-attachments-part-" + String(item.part).padStart(4, "0") + ".zip";
+          document.body.append(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(u), 3e4);
+          processed = item.processed;
+          failures += item.manifest.skipped.length;
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        } else if (item.status === "STOPPED") {
+          return { status: "STOPPED", files, parts, processed, failures };
+        } else if (item.status === "NO_ATTACHMENT_FILES_VERIFIED") {
+          processed = item.processed;
+          failures += item.skipped_count;
+          return { status: "MANUAL_NO_FILE_BYTES", files, parts, processed, failures };
+        } else {
+          return { status: item.status, files, parts, processed, failures };
+        }
+      }
+      return {
+        status: files ? "LOCAL_ZIP_PARTS_PREPARED" : "NO_ATTACHMENTS",
+        files,
+        parts,
+        processed,
+        failures
+      };
+    }
     autoScan.addEventListener("click", async (event) => {
       stop(event);
       if (busy) return;
@@ -621,7 +1171,7 @@
       collection = null;
       scan.disabled = autoScan.disabled = exportButton.disabled = true;
       stopScan.disabled = false;
-      privateSave.disabled = anonymousSave.disabled = true;
+      privateSave.disabled = anonymousSave.disabled = attachmentRetry.disabled = true;
       try {
         collection = await collectMaketApprovalsOnOrderPage(document, {
           orderNumber: location.pathname.split("/").filter(Boolean).at(-1),
@@ -634,8 +1184,18 @@
         if (!panel.isConnected) return;
         const done = collection.articles.filter((x) => x.status === "PRIVATE_REVIEW_ONLY").length;
         const skipped = collection.skipped.length;
-        stats.textContent = "\u041E\u0431\u0445\u043E\u0434: " + collection.status + "\n\u041E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + collection.articles.length + " \xB7 \u0443\u0441\u043F\u0435\u0448\u043D\u043E: " + done + " \xB7 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E \u043F\u043E \u0441\u0447\u0451\u0442\u0447\u0438\u043A\u0443/\u0431\u0435\u0437 \u0434\u043E\u0441\u0442\u0443\u043F\u0430: " + skipped + "\n\u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0439 JSON \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0442\u0435\u043A\u0441\u0442\u044B \u0437\u0430\u043C\u0435\u0447\u0430\u043D\u0438\u0439 \u0438 \u0438\u043C\u0435\u043D\u0430 \u0444\u0430\u0439\u043B\u043E\u0432 \u2014 \u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E.";
-        privateSave.disabled = anonymousSave.disabled = false;
+        const attachmentReport = stopRequested ? { status: "STOPPED", files: 0, parts: 0, failures: 0 } : await savePrivateAttachmentParts();
+        collection.attachment_download_summary = {
+          status: attachmentReport.status,
+          verified_files: attachmentReport.files,
+          local_zip_parts: attachmentReport.parts,
+          read_failures: attachmentReport.failures,
+          source_pdf_revision_confirmed: false,
+          training_ready: false
+        };
+        if (!panel.isConnected) return;
+        stats.textContent = "\u041E\u0431\u0445\u043E\u0434: " + collection.status + "\n\u0410\u0440\u0442\u0438\u043A\u0443\u043B\u043E\u0432: " + collection.articles.length + " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u0430: " + done + " \xB7 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E: " + skipped + "\n\u0424\u0430\u0439\u043B\u044B: " + attachmentReport.files + " \xB7 ZIP-\u0447\u0430\u0441\u0442\u0435\u0439: " + attachmentReport.parts + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u0447\u0442\u0435\u043D\u0438\u044F: " + attachmentReport.failures + " \xB7 \u0441\u0442\u0430\u0442\u0443\u0441: " + attachmentReport.status + "\n\u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0439 JSON \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043C\u0435\u0447\u0430\u043D\u0438\u0439. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0435\u0433\u043E \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. Chrome \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0439.";
+        privateSave.disabled = anonymousSave.disabled = attachmentRetry.disabled = false;
       } catch {
         if (panel.isConnected) stats.textContent = "MANUAL: \u043E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u043E\u0433\u043E \u043E\u0431\u0445\u043E\u0434\u0430.";
       } finally {
@@ -643,6 +1203,22 @@
         scan.disabled = autoScan.disabled = false;
         stopScan.disabled = true;
         exportButton.disabled = last?.status !== "VISIBLE_MODAL_STRUCTURE_ONLY";
+      }
+    });
+    attachmentRetry.addEventListener("click", async (event) => {
+      stop(event);
+      if (busy || !collection) return;
+      busy = true;
+      stopRequested = false;
+      autoScan.disabled = attachmentRetry.disabled = true;
+      stopScan.disabled = false;
+      try {
+        const res = await savePrivateAttachmentParts();
+        if (panel.isConnected) stats.textContent = "\u041F\u043E\u0432\u0442\u043E\u0440\u043D\u043E\u0435 \u0447\u0442\u0435\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u043E\u0432: " + res.status + " \xB7 \u0441\u0447\u0438\u0442\u0430\u043D\u043E " + res.files + " \xB7 ZIP-\u0447\u0430\u0441\u0442\u0435\u0439 " + res.parts + " \xB7 \u043E\u0442\u043A\u0430\u0437\u043E\u0432 " + res.failures;
+      } finally {
+        busy = false;
+        autoScan.disabled = attachmentRetry.disabled = false;
+        stopScan.disabled = true;
       }
     });
     stopScan.addEventListener("click", (event) => {
@@ -678,6 +1254,7 @@
       stopScan,
       privateSave,
       anonymousSave,
+      attachmentRetry,
       scan,
       exportButton,
       close,
