@@ -12,6 +12,7 @@
  * Original bytes remain in memory until a PRIVATE local ZIP download.
  */
 import {makeLocalStoredZip} from './local-training-zip.mjs';
+import {verifiedApprovalGalleryImageUrl} from './approval-inline-images.mjs';
 
 const TEST_ORIGIN='http://testgifts.local';
 const LIMIT_PER_FILE=16_000_000,MAX_FILES=64,MAX_PART_BYTES=24_000_000;
@@ -143,19 +144,27 @@ async function hash(bytes){
 export async function readNativeApprovalAttachment(attachment,{
  origin=globalThis.location?.origin||'',
  fetcher=globalThis.fetch,
+ imageFetcher=globalThis.__visionLocalTrustedTransport,
+ orderNumber='',itemId='',
  maxFileBytes=LIMIT_PER_FILE
 }={}){
  const name=safeName(attachment?.filename);
- const url=nativeApprovalAttachmentUrl(attachment?.attachment_id,{origin});
- if(!url||!name)return code('MANUAL_UNSAFE_ATTACHMENT_METADATA');
+ const inline=attachment?.source==='native_approval_gallery'?
+   verifiedApprovalGalleryImageUrl(attachment.inline_image_url,{orderNumber,itemId}):null;
+ const url=attachment?.source==='native_approval_gallery'?inline?.url:
+   nativeApprovalAttachmentUrl(attachment?.attachment_id,{origin});
+ if(!url||!name||(inline&&name.name!==inline.filename))
+   return code('MANUAL_UNSAFE_ATTACHMENT_METADATA');
+ const selectedFetcher=inline?imageFetcher:fetcher;
+ if(inline&&origin!==TEST_ORIGIN)return code('MANUAL_UNAUTHORIZED_SCOPE');
  if(!Number.isInteger(maxFileBytes)||maxFileBytes<1||
     maxFileBytes>LIMIT_PER_FILE)return code('MANUAL_LIMIT_INVALID');
- if(typeof fetcher!=='function')return code('MANUAL_FETCH_UNAVAILABLE');
+ if(typeof selectedFetcher!=='function')return code('MANUAL_FETCH_UNAVAILABLE');
  const abort=new AbortController();
  const timeout=setTimeout(()=>abort.abort(),18000);
  let reader;
  try{
-  const resp=await fetcher(url,{method:'GET',credentials:'same-origin',
+  const resp=await selectedFetcher(url,{method:'GET',credentials:inline?'include':'same-origin',
    redirect:'error',cache:'no-store',signal:abort.signal,
    referrerPolicy:'no-referrer',
    headers:{accept:'application/octet-stream,application/pdf,image/*,*/*'}});
@@ -219,7 +228,8 @@ function* targets(report){
  */
 export async function* exportNativeApprovalAttachmentParts(report,{
  origin=globalThis.location?.origin||'',
- fetcher=globalThis.fetch,onProgress=()=>{},stop=()=>false,
+ fetcher=globalThis.fetch,imageFetcher=globalThis.__visionLocalTrustedTransport,
+ onProgress=()=>{},stop=()=>false,
  maxFiles=MAX_FILES,maxPerFile=LIMIT_PER_FILE,
  maxPartBytes=MAX_PART_BYTES,maxPartFiles=MAX_PART_FILES
 }={}){
@@ -261,7 +271,9 @@ export async function* exportNativeApprovalAttachmentParts(report,{
   const job=jobs[j];
   onProgress({processed,total:jobs.length,successful});
   const file=await readNativeApprovalAttachment(job.attachment,{
-   origin,fetcher,maxFileBytes:maxPerFile});
+   origin,fetcher,imageFetcher,orderNumber:report.order_number,
+   itemId:job.article.item_id,
+   maxFileBytes:maxPerFile});
   processed++;
   // Link each binary GET result back to its exact comment in the
   // LOCAL PRIVATE evidence report; never place bytes in JSON.
@@ -298,6 +310,8 @@ export async function* exportNativeApprovalAttachmentParts(report,{
    order_item_id:job.article.item_id,
    comment_sequence:job.message.sequence,
    attachment_id:job.attachment.attachment_id,
+   source:job.attachment.source==='native_approval_gallery'?
+     'native_approval_gallery':'native_maketadjusting_attachment_get',
    original_filename:file.original_filename,bytes:file.size,
    sha256:file.sha256,signature_status:file.signature_status,
    version_and_print_method_verified:false,training_ready:false});
