@@ -1199,3 +1199,15 @@ PDF вне GitHub провести локальный audit-all и незави�
   privacy-filtered local extraction and expert ROI attachment links.
   No real discussion extracted, no training labels approved, no model
   training, no production acceptance, no PR merge. Unknown=>MANUAL.
+
+- **M3.12 publication checkpoint:** `5061c87df107af5467c45120c233f02fbee49d56`
+  completed the isolated preview workflow **SUCCESS** (run
+  44270125975). The Chromium article-discussion E2E passed within that
+  browser-smoke step; preceding run 44269347384 had failed only because
+  the exported weak-topic order was not canonical. `5061c87d` sorts
+  topics alphabetically; the corrected browser run succeeded. Published
+  main-branch preview HTML confirms its discussions instructions,
+  and deployed `vision-order-overlay.js` contains the probe, button
+  and `vision-local-discussion-probe.json` export. Draft PR #4 still
+  OPEN/unmerged; production Maketnaya source and original customer
+  data unchanged. No real authorized discussion HTML has been inspected.
