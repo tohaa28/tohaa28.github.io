@@ -239,6 +239,7 @@ export function initLocalOrdersOverlay(){
   }
   busy=true;approvalQueueStop=false;
   approvalQueueBtn.disabled=true;approvalQueueStopBtn.disabled=false;
+  refreshBtn.disabled=scanBtn.disabled=discussionBtn.disabled=true;
   pauseBtn.disabled=true;
   const ordered=new Map();
   for(const row of rows){
@@ -250,6 +251,12 @@ export function initLocalOrdersOverlay(){
     ordered.set(target.url.href,target.url.href);
   }
   const urls=[...ordered.values()];
+  if(!urls.length){
+   busy=false;approvalQueueBtn.disabled=false;approvalQueueStopBtn.disabled=true;
+   refreshBtn.disabled=false;updateBatchControls();
+   renderStats('MANUAL: в таблице нет точных ссылок на карточки разрешённых заказов.');
+   return;
+  }
   let done=0,verified=0,imagesAndFiles=0,errors=0;
   try{
    while(approvalQueueIndex<urls.length&&!closed&&!approvalQueueStop){
@@ -281,12 +288,14 @@ export function initLocalOrdersOverlay(){
     await new Promise(resolve=>setTimeout(resolve,100));
    }
    if(!closed)renderStats(approvalQueueStop?
-    'Обход согласований приостановлен. Нажмите «Собрать согласования», чтобы продолжить.':
-    'Обход согласований завершён. Приватные JSON и ZIP находятся в загрузках Chrome. '+
-    '«Отчёт согласований JSON» не содержит клиентских данных.');
+    'Обход согласований приостановлен: '+approvalQueueIndex+' / '+urls.length+'. Нажмите «Собрать согласования», чтобы продолжить.':
+    'Обход согласований завершён: '+approvalQueueIndex+' / '+urls.length+
+    ' · историй: '+verified+' · вложений: '+imagesAndFiles+
+    ' · ошибок: '+errors+'. Приватные JSON и ZIP находятся в загрузках Chrome.');
   }finally{
    busy=false;approvalQueueBtn.disabled=false;
-   approvalQueueStopBtn.disabled=true;updateBatchControls();
+   approvalQueueStopBtn.disabled=true;refreshBtn.disabled=false;
+   updateBatchControls();
   }
  }
 
@@ -308,7 +317,7 @@ export function initLocalOrdersOverlay(){
      ' · обработано строк: '+scanned+' · файлов/отказов: '+completed+
      ' · вложений найдено: '+local+' · очередь без лимита файлов\n'+
      'Транспорт: '+(typeof globalThis.__visionLocalTrustedTransport==='function'?
-       'локальный MV3 (два тестовых хоста)':'обычный браузерный fetch; переход на другой хост может блокироваться')+'\n'+
+       'локальный MV3 (тестовые хосты заказов и вложений)':'обычный браузерный fetch; переход на другой хост может блокироваться')+'\n'+
      (msg||'Нажмите «Проверить макеты».');
  }
  function refresh(){
@@ -316,6 +325,7 @@ export function initLocalOrdersOverlay(){
    document.querySelectorAll('[data-vision-order-cell]').forEach(n=>n.remove());
    rows=discoverOrderRows(document);
    nextRowIndex=0;
+   approvalQueueIndex=0;approvalQueueReports.length=0;
    pauseRequested=false;
    for(const r of rows){
      const cell=node(r.element.tagName==='TR'?'td':'div',undefined,
