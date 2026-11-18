@@ -50,7 +50,7 @@ try{
     const events=id==='1001'?2:1;
     const history=[];
     for(let i=0;i<messages;i++)
-     history.push('<li><div class="comment_wrap"><div class="flex-main">'+
+     history.push('<li><div class="comment_wrap" id="maketadjusting_commentid_'+(800000+Number(id)*100+i)+'"><div class="flex-main">'+
       'Секретный клиент '+id+' - нехорошая тонкая линия #'+i+
       (i===0?'<a class="j_maketadjusting_attachment" data-id="889900" '+
          'href="#">training_image.png</a>':'')+
@@ -119,6 +119,11 @@ try{
  assert.equal(privateReport.articles[0].status,'PRIVATE_REVIEW_ONLY');
  assert.equal(privateReport.articles[0].observed_human_comments,13);
  assert.equal(privateReport.articles[0].history.length,15);
+ assert.equal(privateReport.articles[0].history[0].native_comment_id,'900100');
+ assert.equal(privateReport.articles[0].history[0].actor_ref,'actor_1');
+ assert.equal(privateReport.articles[1].history[0].actor_ref,'actor_1',
+  'Same anonymous author alias reused across article discussions');
+ assert.equal(JSON.stringify(privateReport).includes('author_display_name'),false);
  assert.equal(privateReport.articles[0].current_problems.length,1);
  assert.equal(privateReport.articles[0].current_problems[0].print_method,
   'SB1: Сублимация/посуда,1');
