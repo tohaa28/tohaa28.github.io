@@ -204,7 +204,8 @@ async function runNativeApprovalOrder(url){
    try{
     const current=await chrome.tabs.get(tab.id);
     const location=new URL(current.url||current.pendingUrl||'about:blank');
-    stage=location.href===url?'EXPECTED':location.protocol==='chrome-error:'?
+    stage=location.href===url?'EXPECTED_'+(current.status==='complete'?
+      'COMPLETE':'LOADING'):location.protocol==='chrome-error:'?
       'ERROR_PAGE':'OTHER';
    }catch{stage='TAB_UNREADABLE'}
    return {status:'MANUAL_ORDER_TAB_'+stage};
