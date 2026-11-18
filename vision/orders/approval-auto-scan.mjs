@@ -78,11 +78,20 @@ export function extractMaketApprovalEvidence(doc,{itemId,orderNumber,badge}={}){
  if(summary.status!=='VISIBLE_MODAL_STRUCTURE_ONLY')
   return {status:'MODAL_STRUCTURE_INCOMPLETE'};
  const checks=all(form,'input[type="checkbox"][name="ma_problem[]"]');
- const currentProblems=checks.filter(c=>c.checked===true).map(c=>({
-  code:digits(String(c.value||attr(c,'value')))?
-    String(c.value||attr(c,'value')):null,
-  label:safeText(str(c.closest('label')||c.parentElement))
- })).slice(0,100);
+ const currentProblems=checks.filter(c=>c.checked===true).map(c=>{
+  const group=c.closest('.grid');
+  const tech=group?.querySelector('.col-3-12');
+  const method=str(tech?.querySelector('.bold-500'));
+  const placement=str(tech?.querySelector('.color-text.color--dark'));
+  return {
+   code:digits(String(c.value||attr(c,'value')))?
+     String(c.value||attr(c,'value')):null,
+   label:safeText(str(c.closest('label')||c.parentElement)),
+   print_method:safeText(method),print_placement:safeText(placement),
+   source:'currently_checked_designer_problem',
+   historical_event_required_for_original_defect_proof:true
+  };
+ }).slice(0,100);
  const description=safeText(form.querySelector('[name="ma_description"]')?.value||'');
  const list=modal.querySelector('#j_maketadjusting_comments_list');
  const entries=all(list,':scope > li');
