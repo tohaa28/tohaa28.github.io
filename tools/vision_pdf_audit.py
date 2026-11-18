@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import os
+import stat
 import tempfile
 import sys
 from collections import Counter
@@ -253,7 +254,14 @@ def audit_all_samples(root: Path, *, engine=None,
         return manual("REPORT_DIRECTORY_SYMLINK_DENIED")
     # New private reports directory must not be traversable by other local users.
     # Existing directory permissions are not silently changed.
-    report_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        report_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        directory_mode = report_dir.stat().st_mode
+    except OSError:
+        # Never expose filesystem exception strings containing private paths.
+        return manual("REPORT_DIRECTORY_UNAVAILABLE")
+    if not stat.S_ISDIR(directory_mode):
+        return manual("REPORT_DIRECTORY_UNAVAILABLE")
     # Refuse pre-existing group/world-accessible report directories on POSIX.
     # Never silently chmod a directory that may belong to another workflow.
     if os.name == "posix" and (report_dir.stat().st_mode & 0o077):
