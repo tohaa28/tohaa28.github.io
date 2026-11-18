@@ -1615,3 +1615,37 @@ PDF вне GitHub провести локальный audit-all и незави�
   Вся личная информация остаётся локально, без выгрузки в repo/CI.
   Любой неподтверждённый source PDF revision / ROI / масштаб:
   training_ready=false, production_approved=false, MANUAL.
+
+
+### M3.21 — итог CI и публикация расширения v0.1.5
+
+- Исправленный тестовый прогон на кодовом SHA
+  4fbd01804739e6679aba4a701eb44f632f610b3c.
+  GitHub Actions Publish isolated PrintCheck Vision preview:
+  https://github.com/tohaa28/tohaa28.github.io/actions/runs/44317055363
+  SUCCESS. В Chromium MV3 подтверждена полная синтетическая цепочка:
+  список заказов, временная вкладка заказа, точная ссылка
+  согласования с badge=2, 2 реплики, 1 отмеченная проблема,
+  оригинал изображения из Shadow DOM и создание приватных JSON/ZIP.
+- Причины промежуточных отказов CI-теста (не production):
+  Playwright context.route не перехватывал раннюю навигацию вкладки MV3,
+  исправлено локальным тестовым HTTP proxy; автоматические запросы favicon
+  отделены от действия расширения; для кириллического HTML
+  исправлен заголовок charset=utf-8. Итоговый синтетический тест
+  проверяет читаемый кириллический текст в сохранённом приватном JSON.
+- Публикация — только изолированный предпросмотр
+  https://tohaa28.github.io/gifts-layout-workbench-vision/
+  с main preview commit e14a7fad64e913e2722da84018730a830c7aaef6.
+  В опубликованном JS подтверждены версия v0.1.5, обработчик
+  native_approval_gallery и фоновая команда автообхода заказа.
+  Ссылка на ZIP:
+  https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+- Синтетический CI НЕ удостоверяет реальный authenticated-ответ
+  тестового сервера. Для проверки в тестовой сети необходимо
+  установить MV3 v0.1.5, разрешить tabs и files.testgifts.local,
+  включить несколько локальных скачиваний, собрать анонимный JSON.
+  Связь с конкретной версией PDF, ROI и обучение не подтверждены:
+  training_ready=false, production_approved=false.
+- Draft PR #4 остаётся открытым и НЕ слит. Основная Макетная
+  вне изолированного preview не затронута. Частные данные не
+  передавались в публичный репозиторий.
