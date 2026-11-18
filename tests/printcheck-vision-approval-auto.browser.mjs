@@ -9,6 +9,10 @@ const item=(id,badge)=>
  '<li data-itemid="'+id+'"><a href="#" class="j_maketadjusting" '+
  'data-hint="Согласование макета">Согласование макета'+
  '<span class="gifts-badge">'+badge+'</span></a></li>';
+const binaryAttachment=Buffer.from([
+ 137,80,78,71,13,10,26,10,0,0,0,0,73,68,65,84,0,0,0,0]);
+const attachmentUrl=origin+'/ajax/gifts/order?'+
+ 'action=download_maketadjusting_attachment&id=889900';
 const html='<!doctype html><html><head><meta charset="utf-8"></head>'+
  '<body><div class="cart-order"><ul>'+item(1001,13)+
  item(1002,1)+item(1003,2)+'</ul></div>'+
@@ -21,6 +25,8 @@ try{
  await page.route('**/*',route=>{
   if(route.request().url()===url&&route.request().method()==='GET')
    return route.fulfill({status:200,contentType:'text/html;charset=utf-8',body:html});
+  if(route.request().url()===attachmentUrl&&route.request().method()==='GET')
+   return route.fulfill({status:200,contentType:'image/png',body:binaryAttachment});
   violations.push({url:route.request().url(),method:route.request().method()});
   return route.abort();
  });
@@ -74,8 +80,15 @@ try{
   }
  });
  await page.addScriptTag({content:bundle});
+ const firstAttachmentZip=page.waitForEvent('download');
  await page.locator('#vision-approval-inspector button')
   .filter({hasText:'Автообход согласований >1'}).click();
+ const packaged=await firstAttachmentZip;
+ assert.match(packaged.suggestedFilename(),/^vision-private-approval-attachments-part-/);
+ const packagedBytes=await readFile(await packaged.path());
+ assert.equal(String.fromCharCode(...packagedBytes.subarray(0,2)),'PK');
+ assert.ok(packagedBytes.includes(Buffer.from('training_image.png')),
+  'Original attachment filename is retained only INSIDE local private ZIP');
  await page.waitForFunction(()=>document.querySelector('#vision-approval-inspector')
    ?.textContent?.includes('Обход: COMPLETE'),{timeout:15000});
  assert.deepEqual(await page.evaluate(()=>window.__nativeClicks),['1001','1003'],
@@ -101,6 +114,10 @@ try{
  assert.equal(privateReport.articles[0].current_problems.length,1);
  assert.equal(privateReport.articles[0].history[0].attachments[0].kind,'image');
  assert.equal(privateReport.articles[0].history[0].attachments[0].downloaded,false);
+ assert.equal(privateReport.articles[0].history[0].attachments[0].local_get_status,
+  'LOCAL_ATTACHMENT_BYTES_ONLY');
+ assert.equal(privateReport.attachment_download_summary.verified_files,1);
+ assert.equal(privateReport.attachment_download_summary.local_zip_parts,1);
  assert.equal(privateReport.articles[1].observed_human_comments,2);
  assert.equal(privateReport.training_ready,false);
  assert.match(JSON.stringify(privateReport),/Секретный клиент/);
