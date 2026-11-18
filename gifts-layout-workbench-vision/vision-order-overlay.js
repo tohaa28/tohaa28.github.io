@@ -17,17 +17,17 @@
   function inspectSvgDocumentViewport(root) {
     if (!root || root.localName !== "svg" || typeof root.getAttribute !== "function")
       return refuse("VALIDATED_SVG_ROOT_REQUIRED");
-    const attr = (name) => root.getAttribute(name);
-    if (attr("style") || attr("class") || attr("transform"))
+    const attr2 = (name) => root.getAttribute(name);
+    if (attr2("style") || attr2("class") || attr2("transform"))
       return refuse("SVG_ROOT_STYLE_OR_TRANSFORM_UNVERIFIED");
-    const align = (attr("preserveAspectRatio") || "xMidYMid meet").trim();
+    const align = (attr2("preserveAspectRatio") || "xMidYMid meet").trim();
     if (!/^(?:x(?:Min|Mid|Max)Y(?:Min|Mid|Max))(?:\s+(?:meet|slice))?$/.test(align))
       return refuse("SVG_ASPECT_RATIO_UNSUPPORTED");
     if (/slice$/.test(align)) return refuse("SVG_ASPECT_RATIO_SLICE_UNVERIFIED");
-    const physicalWidthMm = unitValue(attr("width")), physicalHeightMm = unitValue(attr("height"));
+    const physicalWidthMm = unitValue(attr2("width")), physicalHeightMm = unitValue(attr2("height"));
     if (!physicalWidthMm || !physicalHeightMm)
       return refuse("SVG_EXPLICIT_PHYSICAL_SIZE_REQUIRED");
-    const vb = attr("viewBox");
+    const vb = attr2("viewBox");
     if (typeof vb !== "string") return refuse("SVG_VIEWBOX_REQUIRED");
     const parts = vb.trim().split(/[\s,]+/);
     if (parts.length !== 4) return refuse("SVG_VIEWBOX_INVALID");
@@ -161,7 +161,7 @@
     const tokens = tokensOf(d, maxTokens);
     if (!tokens || tokens.length === 0) return refused("INVALID_PATH_DATA");
     const supported = /* @__PURE__ */ new Set(["M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"]);
-    let i = 0, command = null, position = { x: 0, y: 0 }, start = null, points = null, contours = [], count = 0, curveSegments = 0;
+    let i = 0, command = null, position = { x: 0, y: 0 }, start = null, points = null, contours = [], count2 = 0, curveSegments = 0;
     let lastCubicControl = null, lastQuadControl = null;
     const resetSmooth = () => {
       lastCubicControl = null;
@@ -174,9 +174,9 @@
       if (!points) throw new Error("PATH_SUBPATH_NOT_STARTED");
       if (!same(points[points.length - 1], p)) {
         points.push(p);
-        count++;
+        count2++;
       }
-      if (count > maxSegments) throw new Error("PATH_SEGMENT_BUDGET_EXCEEDED");
+      if (count2 > maxSegments) throw new Error("PATH_SEGMENT_BUDGET_EXCEEDED");
     };
     const scalar = () => {
       const v = tokens[i++];
@@ -243,9 +243,9 @@
         }
         if (upper === "C") {
           const c1 = target(rel), c2 = target(rel), end = target(rel);
-          const before = count;
+          const before = count2;
           cubicToPolyline(position, c1, c2, end, errorBudget, 14, emit);
-          curveSegments += count - before;
+          curveSegments += count2 - before;
           position = end;
           lastCubicControl = c2;
           lastQuadControl = null;
@@ -254,9 +254,9 @@
         if (upper === "S") {
           const c1 = reflected(lastCubicControl);
           const c2 = target(rel), end = target(rel);
-          const before = count;
+          const before = count2;
           cubicToPolyline(position, c1, c2, end, errorBudget, 14, emit);
-          curveSegments += count - before;
+          curveSegments += count2 - before;
           position = end;
           lastCubicControl = c2;
           lastQuadControl = null;
@@ -266,9 +266,9 @@
           const c = target(rel), end = target(rel);
           const c1 = { x: position.x + (c.x - position.x) * 2 / 3, y: position.y + (c.y - position.y) * 2 / 3 };
           const c2 = { x: end.x + (c.x - end.x) * 2 / 3, y: end.y + (c.y - end.y) * 2 / 3 };
-          const before = count;
+          const before = count2;
           cubicToPolyline(position, c1, c2, end, errorBudget, 14, emit);
-          curveSegments += count - before;
+          curveSegments += count2 - before;
           position = end;
           lastQuadControl = c;
           lastCubicControl = null;
@@ -276,7 +276,7 @@
         }
         if (upper === "A") {
           const rx = scalar(), ry = scalar(), rotation = scalar(), large = scalar(), sweep = scalar(), end = target(rel);
-          const before = count;
+          const before = count2;
           arcToPolyline(
             position,
             rx,
@@ -287,9 +287,9 @@
             end,
             errorBudget,
             emit,
-            maxSegments - count
+            maxSegments - count2
           );
-          curveSegments += count - before;
+          curveSegments += count2 - before;
           position = end;
           resetSmooth();
           continue;
@@ -299,9 +299,9 @@
           const end = target(rel);
           const c1 = { x: position.x + (c.x - position.x) * 2 / 3, y: position.y + (c.y - position.y) * 2 / 3 };
           const c2 = { x: end.x + (c.x - end.x) * 2 / 3, y: end.y + (c.y - end.y) * 2 / 3 };
-          const before = count;
+          const before = count2;
           cubicToPolyline(position, c1, c2, end, errorBudget, 14, emit);
-          curveSegments += count - before;
+          curveSegments += count2 - before;
           position = end;
           lastQuadControl = c;
           lastCubicControl = null;
@@ -907,12 +907,12 @@
     if (typeof value !== "string" || !value.trim() || value.length > 512) return null;
     const re = /([A-Za-z]+)\s*\(\s*([^)]*?)\s*\)/g;
     const num = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
-    let i = 0, m = identity.slice(), match, count = 0;
+    let i = 0, m = identity.slice(), match, count2 = 0;
     while (match = re.exec(value)) {
       if (!/^[\s,]*$/.test(value.slice(i, match.index))) return null;
       i = re.lastIndex;
-      count++;
-      if (count > 24) return null;
+      count2++;
+      if (count2 > 24) return null;
       const values = match[2].trim().split(/[\s,]+/);
       if (values.some((s) => !num.test(s))) return null;
       const a = values.map(Number);
@@ -931,7 +931,7 @@
       m = mul(m, t);
       if (!limit(m)) return null;
     }
-    if (count === 0 || !/^[\s,]*$/.test(value.slice(i)) || !invertible(m)) return null;
+    if (count2 === 0 || !/^[\s,]*$/.test(value.slice(i)) || !invertible(m)) return null;
     return m;
   }
   function boxOf(contours) {
@@ -1200,10 +1200,10 @@
     if (root.localName !== "svg" || root.namespaceURI !== SVG_NS)
       return "SVG_NAMESPACE_REQUIRED";
     const work = [root];
-    let count = 0;
+    let count2 = 0;
     while (work.length) {
       const node2 = work.pop();
-      if (++count > 512) return "SVG_XML_NODE_LIMIT";
+      if (++count2 > 512) return "SVG_XML_NODE_LIMIT";
       if (node2.namespaceURI !== SVG_NS || node2.prefix)
         return "SVG_FOREIGN_NAMESPACE_OR_PREFIX";
       const allowMetadata = node2.localName === "title" || node2.localName === "desc";
@@ -1435,7 +1435,7 @@
     const alphaMode = transparent > size / 50 && transparent < size * 0.99;
     const bg = [data[0], data[1], data[2]], reference = inkColor ?? bg;
     const maxDist = tolerance * tolerance, mask = new Uint8Array(size);
-    let count = 0;
+    let count2 = 0;
     for (let i = 0; i < size; i++) {
       const j = 4 * i;
       if (data[j + 3] < 24) continue;
@@ -1447,12 +1447,12 @@
       }
       if (ink) {
         mask[i] = 1;
-        count++;
+        count2++;
       }
     }
-    if (count < 2 || count >= size * 0.98)
+    if (count2 < 2 || count2 >= size * 0.98)
       return { status: "MANUAL", reason: "INK_MASK_EMPTY_OR_AMBIGUOUS" };
-    return { status: "INK_MASK_READY", mask, inkPixels: count, segmentation: alphaMode && !inkColor ? "alpha" : inkColor ? "sampled_ink_rgb" : "corner_background_rgb" };
+    return { status: "INK_MASK_READY", mask, inkPixels: count2, segmentation: alphaMode && !inkColor ? "alpha" : inkColor ? "sampled_ink_rgb" : "corner_background_rgb" };
   }
   function bracketedGap(mask, w, x, y) {
     const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
@@ -1562,12 +1562,181 @@
     };
   }
 
+  // vision/orders/maket-approval-probe.mjs
+  var MAX = 1e4;
+  var count = (n) => Math.min(MAX, Math.max(0, n));
+  var nodes = (root, selector) => {
+    try {
+      return [...root?.querySelectorAll?.(selector) || []];
+    } catch {
+      return [];
+    }
+  };
+  var text = (node2) => String(node2?.textContent || "").trim().slice(0, 4096);
+  var attr = (node2, key) => String(node2?.getAttribute?.(key) || "");
+  var CATEGORIES = {
+    positive_min: /(?:толщин(?:а|ы)\s+лини|позитивн|тонки[ех]|мелк(?:ий|ие|их))/i,
+    negative_min: /(?:пробельн|выворотк|зазор(?:ы|ов)?|просвет)/i,
+    text_height: /(?:высот[аы]\s+букв)/i,
+    color: /(?:\bCMYK\b|\bRGB\b|\bPantone\b|цветов(?:ой|ая|ые))/i,
+    raster_resolution: /(?:разрешени[ея]|dpi|растров(?:ого|ое))/i,
+    effects: /(?:градиент|прозрачност|эффект)/i,
+    field_boundary: /(?:поле\s+нанесени|площад[ьи]|вылет)/i,
+    constructor: /(?:конструктор|шаблон|масштаб|оси\s+конструктора)/i,
+    fonts: /(?:текст\s+не\s+преобразов|шрифт)/i,
+    wrong_artwork: /(?:макет\s+не\s+тот|не\s+тот\s+файл|файл\s+не\s+тот|неверн(?:ый|ое)\s+(?:макет|файл))/i,
+    complex_work: /(?:сложност|час(?:а|ов)?\s+на\s+(?:дизайн|гравир))/i,
+    revision: /(?:доработан|исправлен|нов(?:ый|ую)\s+макет)/i
+  };
+  function summary() {
+    return {
+      schema: "printcheck.vision.maket-adjusting-structure.v1",
+      status: "MODAL_NOT_LOADED",
+      trigger_count: 0,
+      article_scoped_trigger_count: 0,
+      modal_loaded: false,
+      modal_currently_visible: false,
+      problems_available_count: 0,
+      problems_checked_current_count: 0,
+      checked_problem_topic_hints: [],
+      weak_message_topic_hints: [],
+      unselected_problem_options_are_not_defects: true,
+      human_comment_count: 0,
+      history_entry_count: 0,
+      history_system_entry_count: 0,
+      problem_add_events: 0,
+      problem_remove_events: 0,
+      status_change_events: 0,
+      other_system_events: 0,
+      attachments_total: 0,
+      attachments_pdf: 0,
+      attachments_psd: 0,
+      attachments_image_candidates: 0,
+      attachments_other: 0,
+      badge_comment_count: null,
+      badge_matches_human_messages: null,
+      attachment_content_downloaded: false,
+      current_defects_expert_verified: false,
+      history_version_alignment_verified: false,
+      training_ready: false,
+      order_numbers_included: false,
+      item_ids_included: false,
+      author_names_included: false,
+      message_text_included: false,
+      attachment_names_or_urls_included: false,
+      timestamps_included: false
+    };
+  }
+  function inRealModal(form) {
+    const modal = form?.closest?.("g-modal");
+    if (!modal || !modal.querySelector?.("#j_maketadjusting_comments_list"))
+      return null;
+    return modal;
+  }
+  function isVisible(modal) {
+    return modal?.hasAttribute?.("visible") === true;
+  }
+  function categorize(textValue, found) {
+    for (const [key, re] of Object.entries(CATEGORIES))
+      if (re.test(textValue)) found.add(key);
+  }
+  function typeFromAttachment(anchor) {
+    const label = text(anchor);
+    const ext = /\.([a-z0-9]{2,5})$/i.exec(label)?.[1]?.toLowerCase() || "";
+    if (ext === "pdf") return "pdf";
+    if (["psd", "psb"].includes(ext)) return "psd";
+    if (["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"].includes(ext)) return "image";
+    return "other";
+  }
+  function isAuditEvent(content, wrap) {
+    if (/^Добавлены проблемы\s*:/i.test(content)) return "problem_add";
+    if (/^Удалены проблемы\s*:/i.test(content)) return "problem_remove";
+    if (/^(?:Вкл|Выкл)\s*\[/i.test(content)) return "state";
+    if (/(?:font-size\s*:\s*10px|background-color\s*:\s*#fbffff|background-color\s*:\s*#ffffcc)/i.test(attr(wrap, "style")) || wrap?.querySelector?.(".flex-main.opacity-half"))
+      return "other_system";
+    return "human";
+  }
+  function getCounter(modal) {
+    const span = modal.querySelector?.("#j_maketadjustingcomments_counter");
+    const match = /^\s*(\d{1,5})\s*$/.exec(text(span));
+    return match ? Math.min(MAX, Number(match[1])) : null;
+  }
+  function inspectOpenMaketApprovalDom(doc) {
+    const result = summary();
+    if (!doc?.querySelectorAll) return { ...result, status: "DOCUMENT_UNAVAILABLE" };
+    const triggers = nodes(doc, "a.j_maketadjusting");
+    result.trigger_count = count(triggers.length);
+    result.article_scoped_trigger_count = count(triggers.filter((el) => Boolean(el.closest?.("li[data-itemid]"))).length);
+    const forms = nodes(doc, "#j_maketAdjustingForm");
+    const verified = forms.map(inRealModal).filter(Boolean);
+    if (verified.length !== 1)
+      return { ...result, status: verified.length > 1 ? "AMBIGUOUS_APPROVAL_MODAL" : "MODAL_NOT_LOADED" };
+    const modal = verified[0], form = forms.find((x) => x.closest?.("g-modal") === modal);
+    result.modal_loaded = true;
+    result.modal_currently_visible = isVisible(modal);
+    result.status = result.modal_currently_visible ? "VISIBLE_MODAL_STRUCTURE_ONLY" : "PRELOADED_MODAL_STRUCTURE_ONLY";
+    const checks = nodes(form, 'input[name="ma_problem[]"][type="checkbox"]');
+    const checked = checks.filter((el) => el.checked === true || el.hasAttribute?.("checked"));
+    result.problems_available_count = count(checks.length);
+    result.problems_checked_current_count = count(checked.length);
+    const topics = /* @__PURE__ */ new Set();
+    for (const el of checked) {
+      const label = el.closest?.("label") || el.parentElement;
+      categorize(text(label), topics);
+    }
+    result.checked_problem_topic_hints = [...topics].sort();
+    const list = modal.querySelector?.("#j_maketadjusting_comments_list");
+    const entries = nodes(list, ":scope > li");
+    result.history_entry_count = count(entries.length);
+    let humans = 0;
+    const weakMessages = /* @__PURE__ */ new Set();
+    for (const el of entries) {
+      const wrapper = el.querySelector?.(".comment_wrap");
+      const main = wrapper?.querySelector?.(":scope > .flex-main");
+      const content = text(main);
+      const kind = isAuditEvent(content, wrapper);
+      if (kind === "problem_add") result.problem_add_events++;
+      else if (kind === "problem_remove") result.problem_remove_events++;
+      else if (kind === "state") result.status_change_events++;
+      else if (kind === "other_system") result.other_system_events++;
+      else {
+        humans++;
+        categorize(content, weakMessages);
+      }
+      for (const anchor of nodes(main, "a.j_maketadjusting_attachment")) {
+        result.attachments_total++;
+        const type = typeFromAttachment(anchor);
+        if (type === "pdf") result.attachments_pdf++;
+        if (type === "psd") result.attachments_psd++;
+        if (type === "image") result.attachments_image_candidates++;
+        if (type === "other") result.attachments_other++;
+      }
+    }
+    result.human_comment_count = count(humans);
+    result.weak_message_topic_hints = [...weakMessages].sort();
+    result.history_system_entry_count = count(entries.length - humans);
+    result.badge_comment_count = getCounter(modal);
+    result.badge_matches_human_messages = result.badge_comment_count === null ? null : result.badge_comment_count === result.human_comment_count;
+    for (const field of [
+      "problem_add_events",
+      "problem_remove_events",
+      "status_change_events",
+      "other_system_events",
+      "attachments_total",
+      "attachments_pdf",
+      "attachments_psd",
+      "attachments_image_candidates",
+      "attachments_other"
+    ]) result[field] = count(result[field]);
+    return result;
+  }
+
   // vision/orders/discussion-probe.mjs
   var CONTROL_SELECTOR = 'a[href],button,[role="button"],[data-action],[data-toggle],[onclick],[class*="discuss"],[class*="comment"],[class*="chat"]';
   var THREAD_SELECTOR = "[data-discussion-id],[data-thread-id],[data-comments-id],.discussion,.discussion-list,.discussion-dialog,.order-discussion,.comments-list,.comment-list,.chat-messages,.messages-list,.j_discussion,.j_comments";
   var MESSAGE_SELECTOR = "[data-comment-id],[data-message-id],.comment-item,.message-item,.discussion-message,.chat-message";
   var BODY_SELECTOR = ".comment-body,.comment-text,.message-text,.message-body,[data-comment-text],[data-message-text]";
-  var ARTICLE_SELECTOR = "[data-orderitemid],[data-orderitem-id],[data-item-id],[data-article],.orderitem,.order-item,.cart-order-item,.cart-item,.j_order_item";
+  var ARTICLE_SELECTOR = "[data-itemid],[data-orderitemid],[data-orderitem-id],[data-item-id],[data-article],.orderitem,.order-item,.cart-order-item,.cart-item,.j_order_item";
   var DISCUSS = /(?:обсуждени[еяй]|комментар(?:ии|ий|ия|иев)|переписк[ауе]|discuss(?:ion)?|comments?|messages?|conversation|чат\b)/i;
   var AGREEMENT = /(?:согласовани[ея]|утверждени[ея]|approval|approve)/i;
   var TOPICS = Object.freeze({
@@ -1606,7 +1775,8 @@
     attachment_urls_included: false,
     order_ids_included: false,
     author_names_included: false,
-    source_artwork_included: false
+    source_artwork_included: false,
+    maket_approval: null
   });
   var safeAttr = (el, name) => String(el?.getAttribute?.(name) || "").slice(0, 260);
   var inForbiddenBlock = (el) => Boolean(el?.closest?.(
@@ -1666,7 +1836,9 @@
       const isNative = ["A", "BUTTON", "INPUT", "SPAN", "I"].includes(tag);
       if (!isNative && role !== "button" && !action && !/(?:button|trigger|toggle|open|link|btn)/i.test(className)) continue;
       const label = controlLabel(el);
-      if (!DISCUSS.test(label) || AGREEMENT.test(label)) continue;
+      const nativeMaketAdjusting = safeAttr(el, "class").split(/\s+/).includes("j_maketadjusting");
+      if ((!DISCUSS.test(label) || AGREEMENT.test(label)) && !nativeMaketAdjusting)
+        continue;
       report.controls_total++;
       const scope = el.closest?.(ARTICLE_SELECTOR);
       if (scope) report.article_scoped_controls++;
@@ -1706,6 +1878,15 @@
     }
     report.screenshot_or_image_candidates = limit2(photos.size);
     report.weak_topic_candidates = [...topics].sort();
+    report.maket_approval = inspectOpenMaketApprovalDom(doc);
+    if (report.maket_approval.modal_loaded) {
+      report.visible_message_candidates = report.maket_approval.history_entry_count;
+      report.screenshot_or_image_candidates = report.maket_approval.attachments_image_candidates;
+      report.weak_topic_candidates = [.../* @__PURE__ */ new Set([
+        ...report.weak_topic_candidates,
+        ...report.maket_approval.weak_message_topic_hints
+      ])].sort();
+    }
     return report;
   }
 
@@ -1735,8 +1916,8 @@
       const found = /^\/private\/order\/(\d{5,12})\/?$/.exec(url.pathname);
       if (found) choices.push({ url, number: found[1] });
     }
-    for (const attr of ["data-href", "data-url"]) {
-      const url = testUrl(row.getAttribute?.(attr) || "", base);
+    for (const attr2 of ["data-href", "data-url"]) {
+      const url = testUrl(row.getAttribute?.(attr2) || "", base);
       const found = url && /^\/private\/order\/(\d{5,12})\/?$/.exec(url.pathname);
       if (found) choices.push({ url, number: found[1] });
     }
@@ -1767,19 +1948,19 @@
     const unique = [...new Set(ids)];
     return unique.length === 1 && internal(unique[0]) ? unique[0] : null;
   }
-  function popupHtml(text) {
-    if (typeof text !== "string" || !text.trim() || text.length > 3e6)
+  function popupHtml(text2) {
+    if (typeof text2 !== "string" || !text2.trim() || text2.length > 3e6)
       return REFUSE("POPUP_BODY_INVALID");
     try {
-      if (text.trimStart().startsWith("{")) {
-        const data = JSON.parse(text);
+      if (text2.trimStart().startsWith("{")) {
+        const data = JSON.parse(text2);
         if (typeof data?.html !== "string") return REFUSE("POPUP_JSON_MISSING_HTML");
         return { status: "POPUP_HTML", html: data.html };
       }
     } catch {
       return REFUSE("POPUP_JSON_INVALID");
     }
-    return { status: "POPUP_HTML", html: text };
+    return { status: "POPUP_HTML", html: text2 };
   }
   var findAll = (doc, selector) => {
     const out = [];
@@ -1855,8 +2036,8 @@
       return null;
     }
   }
-  function isAuthHtml(text) {
-    return /<form[^>]+name=["']authform["']/i.test(text) || /Авторизация\s*-\s*Проект\s*111/i.test(text);
+  function isAuthHtml(text2) {
+    return /<form[^>]+name=["']authform["']/i.test(text2) || /Авторизация\s*-\s*Проект\s*111/i.test(text2);
   }
   async function boundedText(response, limit3 = 3e6) {
     if (!response.ok) throw Error("HTTP_" + response.status);
@@ -1871,13 +2052,13 @@
       return s;
     }
     const parts = [];
-    let count = 0;
+    let count2 = 0;
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        count += value.length;
-        if (count > limit3) throw Error("DOCUMENT_TOO_LARGE");
+        count2 += value.length;
+        if (count2 > limit3) throw Error("DOCUMENT_TOO_LARGE");
         parts.push(value);
       }
     } catch (err) {
@@ -1888,7 +2069,7 @@
       ;
       throw err;
     }
-    const buf = new Uint8Array(count);
+    const buf = new Uint8Array(count2);
     let offset = 0;
     for (const part of parts) {
       buf.set(part, offset);
@@ -2005,21 +2186,21 @@
         error.status = res.status;
         throw error;
       }
-      let text;
+      let text2;
       try {
-        text = await boundedText(res);
+        text2 = await boundedText(res);
       } catch (error) {
         if (error.message === "DOCUMENT_TOO_LARGE") error.visionCode = "DOCUMENT_TOO_LARGE";
         if (error.message === "UNEXPECTED_DOCUMENT_CONTENT_TYPE")
           error.visionCode = "UNEXPECTED_DOCUMENT_CONTENT_TYPE";
         throw error;
       }
-      if (isAuthHtml(text)) {
+      if (isAuthHtml(text2)) {
         const error = Error("TEST_SESSION_AUTH_REQUIRED");
         error.visionCode = "TEST_SESSION_AUTH_REQUIRED";
         throw error;
       }
-      return text;
+      return text2;
     } catch (error) {
       if (controller.signal.aborted) error.visionCode = "FETCH_TIMEOUT";
       throw error;
@@ -2877,10 +3058,10 @@
     ".vision-order-result-cell button,.vision-order-result-cell select{font:12px system-ui,sans-serif!important;margin:3px 4px 3px 0!important;border:1px solid #a4b6b5!important;border-radius:4px!important;background:#f5f8f6!important;color:#345058!important;padding:3px 5px!important;cursor:pointer!important;max-width:160px!important}",
     ".vision-order-result-cell [data-vlo-grade]{display:block!important}"
   ].join("\n");
-  var node = (tag, text, cls) => {
+  var node = (tag, text2, cls) => {
     const el = document.createElement(tag);
     if (cls) el.className = cls;
-    if (text !== void 0) el.textContent = text;
+    if (text2 !== void 0) el.textContent = text2;
     return el;
   };
   var safeNumber = (n) => Number.isFinite(n) ? n.toFixed(3) + " \u043C\u043C" : "\u043D\u0435 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043E";
@@ -2891,8 +3072,8 @@
       return "SVG: " + res.detected_regions + " \u043C\u0435\u0441\u0442; \u043B\u0438\u043D\u0438\u044F " + safeNumber(res.min_line_document_mm) + ", \u043F\u0440\u043E\u0431\u0435\u043B " + safeNumber(res.min_gap_document_mm) + " (\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D \u043C\u0430\u0441\u0448\u0442\u0430\u0431 \u0437\u0430\u043A\u0430\u0437\u0430)";
     return "\u0420\u0430\u0441\u0442\u0440: " + res.detected_regions + " \u043A\u0430\u043D\u0434\u0438\u0434\u0430\u0442\u043E\u0432 (\u0441\u0438\u043D\u0442\u0435\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0439 MLP; \u043C\u0430\u0441\u0448\u0442\u0430\u0431 \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u0435\u043D)";
   }
-  var makeButton = (text, fn) => {
-    const b = node("button", text);
+  var makeButton = (text2, fn) => {
+    const b = node("button", text2);
     b.type = "button";
     b.addEventListener("click", (event) => {
       event.preventDefault();
@@ -3112,14 +3293,14 @@
         const gradeLabel = node("label", "\u041C\u0435\u0442\u043A\u0430 \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u0430: ");
         gradeLabel.setAttribute("data-vlo-grade", "");
         const grade = node("select");
-        for (const [value, text] of [
+        for (const [value, text2] of [
           ["unreviewed", "\u041D\u0435 \u0440\u0430\u0437\u043C\u0435\u0447\u0435\u043D\u043E"],
           ["confirmed_defect", "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D \u0434\u0435\u0444\u0435\u043A\u0442"],
           ["false_positive", "\u041B\u043E\u0436\u043D\u043E\u0435 \u0441\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u043D\u0438\u0435"],
           ["missed_defect", "\u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D \u0434\u0435\u0444\u0435\u043A\u0442"],
           ["expert_clear", "\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0432\u0440\u0443\u0447\u043D\u0443\u044E"]
         ]) {
-          const option = node("option", text);
+          const option = node("option", text2);
           option.value = value;
           grade.append(option);
         }
