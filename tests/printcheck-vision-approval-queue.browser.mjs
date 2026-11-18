@@ -57,6 +57,9 @@ try{
  await page.waitForFunction(()=>
   document.querySelector('#vision-local-order-overlay .vlo-stats')
     ?.textContent?.includes('Обход согласований завершён'),null,{timeout:45000});
+ console.log('SYNTHETIC_QUEUE_DIAGNOSTIC',JSON.stringify({
+  status:await page.locator('#vision-local-order-overlay .vlo-stats').innerText(),
+  requestKinds:requests.map(x=>x.type)}));
  assert.equal(page.url(),list);
  assert.equal(requests.filter(x=>x.type==='order').length,1);
  assert.ok(requests.some(x=>x.type==='image'));
