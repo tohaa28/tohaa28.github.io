@@ -215,6 +215,8 @@ def stage(manifest_path: Path, output_dir: Path, group_key_path: Path,
                   "P2_ERROR_CLAIM" if label == "error_claim_in_filename"
                   else "P3_CLEAN_CLAIM"))
         queue_rows.append({
+            # Stable lookup inside the PRIVATE manifest, not an order number.
+            "source_slot": "A%d:F%04d" % (row["archive"], row["sequence"]),
             "sample_token": tag(key, "sample", "%d:%04d" % (row["archive"], row["sequence"])),
             "family_token": tag(key, "family", family),
             "content_token": tag(key, "content", sha),
