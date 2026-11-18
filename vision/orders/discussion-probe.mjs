@@ -7,9 +7,10 @@
  * words of a designer, screenshots, URLs, names and article IDs stay private.
  * All possible defect terms are weak "topic candidates", NEVER expert labels.
  */
-const CONTROL_SELECTOR='a[href],button,[role="button"],[data-action],[data-toggle]';
+const CONTROL_SELECTOR='a[href],button,[role="button"],[data-action],'+
+  '[data-toggle],[onclick],[class*="discuss"],[class*="comment"],[class*="chat"]';
 const THREAD_SELECTOR='[data-discussion-id],[data-thread-id],[data-comments-id],'+
-  '.discussion,.discussion-list,.discussion-dialog,.comments-list,'+
+  '.discussion,.discussion-list,.discussion-dialog,.order-discussion,.comments-list,'+
   '.comment-list,.chat-messages,.messages-list,.j_discussion,.j_comments';
 const MESSAGE_SELECTOR='[data-comment-id],[data-message-id],.comment-item,'+
   '.message-item,.discussion-message,.chat-message';
@@ -52,7 +53,8 @@ const inForbiddenBlock=el=>Boolean(el?.closest?.(
 function controlLabel(el){
  const label=[safeAttr(el,'title'),safeAttr(el,'aria-label'),
   safeAttr(el,'data-action'),safeAttr(el,'data-toggle'),
-  safeAttr(el,'data-target'),String(el?.textContent||'').slice(0,180)].join(' ');
+  safeAttr(el,'data-target'),safeAttr(el,'class'),
+  safeAttr(el,'href'),String(el?.textContent||'').slice(0,180)].join(' ');
  // Keep all text in memory, never in the return object.
  return label;
 }
@@ -90,6 +92,14 @@ export function inspectOrderDiscussionDom(doc,{baseUrl='http://psk.testgifts.loc
  const controls=all(doc,CONTROL_SELECTOR);
  for(const el of controls){
    if(inForbiddenBlock(el))continue;
+   const tag=String(el.tagName||'').toUpperCase();
+   const role=safeAttr(el,'role');
+   const action=safeAttr(el,'data-action')||safeAttr(el,'data-toggle')||
+     safeAttr(el,'onclick');
+   const className=safeAttr(el,'class');
+   const isNative=['A','BUTTON','INPUT','SPAN','I'].includes(tag);
+   if(!isNative&&role!=='button'&&!action&&
+      !/(?:button|trigger|toggle|open|link|btn)/i.test(className))continue;
    // Skip approval/sign-off controls. Discussion of a PRINT APPLICATION
    // must not be confused with the prohibited "Согласования макетов" flow.
    const label=controlLabel(el);
@@ -122,11 +132,13 @@ export function inspectOrderDiscussionDom(doc,{baseUrl='http://psk.testgifts.loc
  report.visible_message_candidates=limit(seen.size);
  const photos=new Set();
  for(const root of threads){
-   for(const el of all(root,'img,picture,video,a[href]')){
-     if(el.tagName==='IMG'||el.tagName==='PICTURE'||el.tagName==='VIDEO'){
+   for(const el of all(root,'img,picture,video,a[href],[data-vision-media-candidate]')){
+     if(el.tagName==='IMG'||el.tagName==='PICTURE'||el.tagName==='VIDEO'||
+        el.getAttribute?.('data-vision-media-candidate')!=null){
        photos.add(el);continue;
      }
-     if(/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el,'href')))
+     if(/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el,'href'))&&
+        !all(el,'img,picture,video,[data-vision-media-candidate]').length)
        photos.add(el);
    }
  }
