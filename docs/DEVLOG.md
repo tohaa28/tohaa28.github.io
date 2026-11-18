@@ -1350,3 +1350,19 @@ PDF вне GitHub провести локальный audit-all и незави�
   a refreshed extension ZIP. Experiments remain on
   `feature/printcheck-vision-copy-v01`, draft PR #4 not merged.
   Production Maketnaya not modified, training_ready=false.
+
+
+- **M3.14 CI/release confirmation:** Release workflow
+  `44281844810` **SUCCESS** for source code head
+  `2cad24c7a01c9943baad18b817f46587e9f57b3d`.
+  It built Chromium synthetic tests, including 13/1/2 badge
+  filtering, lazy native Discussion tab, and stale hidden previous
+  approval-modal regression. Main isolated preview contains the
+  packaged MV3 `vision-local-lan-extension.zip` (63,718 bytes) and
+  `vision-order-approval.js` (36,094 bytes) with local-only private and
+  anonymous exports. Three independent CI suites (rules/dataset,
+  raster safety, experimental UI smoke) also passed on head
+  `2cad24c7`. Draft PR #4 remained open/unmerged.
+  This is a **synthetic-browser confirmation**, NOT evidence the
+  authenticated real test site has successfully processed an
+  actual order yet. End-user field trial remains required.
