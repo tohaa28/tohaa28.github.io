@@ -79,5 +79,19 @@ class ThreefoldPrivateCorpusTests(unittest.TestCase):
                 self.assertFalse(changed["automatic_training_enabled"])
 
 
+    def test_hmac_namespace_and_key_rotation_are_isolated(self):
+        # Synthetic tokens must be deterministic only for the same private key.
+        # A different key must not preserve corpus identity or family tokens.
+        key_a = bytes(range(32))
+        key_b = bytes(reversed(range(32)))
+        for cycle in range(3):
+            family = f"synthetic-family-{cycle}"
+            first = corpus.tag(key_a, "family", family)
+            self.assertEqual(first, corpus.tag(key_a, "family", family))
+            self.assertNotEqual(first, corpus.tag(key_b, "family", family))
+            self.assertNotEqual(first, corpus.tag(key_a, "content", family))
+            self.assertNotIn(family, first)
+            self.assertNotIn(key_a.hex(), first)
+
 if __name__ == "__main__":
     unittest.main()
