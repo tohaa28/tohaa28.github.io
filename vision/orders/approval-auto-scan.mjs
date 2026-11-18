@@ -126,6 +126,7 @@ const waitForArticleModal=async(doc,itemId,badge,{
  stop=()=>false,timeoutMs=16000,pollMs=150}={})=>{
  const deadline=Date.now()+timeoutMs;
  let modalOpenedAt=0,discussionTabOpened=false;
+ let stableHistoryAt=0,stableHistoryCount=-1;
  while(Date.now()<deadline){
   if(stop())return {status:'STOP_REQUESTED'};
   const modal=visibleModal(doc);
@@ -138,8 +139,15 @@ const waitForArticleModal=async(doc,itemId,badge,{
     if(!modalOpenedAt)modalOpenedAt=Date.now();
     if(list){
      const probe=inspectOpenMaketApprovalDom(doc);
-     if(probe.human_comment_count===badge)
-      return {status:'READY'};
+     if(probe.human_comment_count===badge){
+      if(stableHistoryCount!==probe.history_entry_count){
+       stableHistoryCount=probe.history_entry_count;
+       stableHistoryAt=Date.now();
+      }else if(Date.now()-stableHistoryAt>=350)
+       return {status:'READY'};
+     }else{
+      stableHistoryAt=0;stableHistoryCount=-1;
+     }
     }
     // Native Gifts loads the comments tab lazily in some orders.
     // Exactly one label click per opened modal: UI navigation only.
