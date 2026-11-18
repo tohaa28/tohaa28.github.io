@@ -29,6 +29,7 @@ try{
  // itself create or edit the native modal, checkbox or comment list.
  await page.evaluate(()=>{
   window.__nativeClicks=[];
+  window.__tabClicks=[];
   const modal=document.getElementById('approval-modal');
   for(const a of document.querySelectorAll('li[data-itemid] a.j_maketadjusting')){
    a.addEventListener('click',event=>{
@@ -57,7 +58,17 @@ try{
       '<textarea name="ma_description">Дополнительное описание #'+id+
       '</textarea></form>'+
       '<div id="j_maketadjustingcomments_counter">'+messages+'</div>'+
-      '<ul id="j_maketadjusting_comments_list">'+history.join('')+'</ul>';
+      '<input id="j_ma_comments" type="radio">'+
+      '<label for="j_ma_comments">Обсуждение</label>'+
+      '<ul id="j_maketadjusting_comments_list">'+
+      (id==='1003'?'':history.join(''))+'</ul>';
+    if(id==='1003'){
+     modal.querySelector('label[for="j_ma_comments"]').addEventListener('click',()=>{
+      window.__tabClicks.push(id);
+      setTimeout(()=>{modal.querySelector('#j_maketadjusting_comments_list').innerHTML=
+        history.join('')},80);
+     });
+    }
     modal.setAttribute('visible','');
    });
   }
@@ -69,6 +80,8 @@ try{
    ?.textContent?.includes('Обход: COMPLETE'),{timeout:15000});
  assert.deepEqual(await page.evaluate(()=>window.__nativeClicks),['1001','1003'],
   'Only 13 and 2, not 1; one native click each, strict sequential order');
+ assert.deepEqual(await page.evaluate(()=>window.__tabClicks),['1003'],
+  'Lazy-loaded comments need exactly one safe native Discussion tab click');
  assert.equal(await page.locator('#approval-modal').getAttribute('visible'),null,
   'Native modal closed after final article');
  page.once('dialog',d=>d.accept());
