@@ -18,6 +18,7 @@ class PrivateCorpusStageTests(unittest.TestCase):
         (self.root / "private_originals").mkdir()
         self.key = self.root / "private_grouping_key.bin"
         self.key.write_bytes(bytes(range(32)))
+        self.key.chmod(0o600)
         self.out = self.root / "output"
         self.manifest = self.root / "private_full_manifest.json"
 
@@ -129,6 +130,17 @@ class PrivateCorpusStageTests(unittest.TestCase):
         self.save([row,row])
         with self.assertRaisesRegex(ValueError,"PRIVATE_ENTRY_DUPLICATED"):
             stage.stage(self.manifest,self.out,self.key)
+
+    def test_posix_public_grouping_key_permissions_are_refused(self):
+        import os
+        if os.name != "posix":
+            self.skipTest("POSIX file permission test")
+        row = self.add(1,1,"7771769","unlabeled_reference")
+        self.save([row])
+        self.key.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, "PRIVATE_GROUP_KEY_PERMISSIONS_UNSAFE"):
+            stage.stage(self.manifest,self.out,self.key)
+        self.assertFalse((self.out/"private-review-tasks.json").exists())
 
     def test_symlink_source_refused_and_unchanged_source_is_not_exfiltrated(self):
         row = self.add(1,1,"7771769","unlabeled_reference")
