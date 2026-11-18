@@ -1486,3 +1486,25 @@ PDF вне GitHub провести локальный audit-all и незави�
 - New tests: NIST standard empty and `abc` vectors, independently computed Node `createHash('sha256')` results for PDF, PSD and 1,000,001-byte binary; plus digest change on same-length mutation. The algorithm was independently prototyped in Node v22 for 0, 3, 1000, 1,000,000 and 16,000,000 bytes: all PASS versus Node crypto; 16 MB software digest measured ~507 ms on the local tool runtime. This prototype is not an end-to-end browser approval test.
 - GitHub Actions and CircleCI for this new commit must be checked separately. Unverified live server GET/attachment provenance, PDF revision, designer labels and expert ROI remain MANUAL. Hash equality only detects byte identity, not network provenance or source authenticity. `training_ready=false`, `production_approved=false`.
 
+
+
+## M3.19 — Vision Check v0.1.4 release metadata (2026-11-18)
+
+- Prior changes: `54ee2d55` M3.17 strict attachment count/ZIP caps;
+  `45d77630` M3.18 portable SHA-256 for HTTP test pages.
+- Version bump `20ccdda5`: `vision/orders/extension/manifest.json`
+  changed 0.1.3 → 0.1.4.
+- Version shown in page panel: `9493915d` changed the header to
+  `Vision AI · Согласование макета · v0.1.4`.
+- Local extension installation notes: `742ee2d1` appended v0.1.4
+  instructions, source-byte integrity caveat and stable isolated ZIP URL.
+- The working Maketnaya, production site, Chrome host permissions and
+  GET-only site operations have not been modified.
+- M3.17 all four GitHub Actions workflows SUCCESS on `54ee2d5`.
+  M3.18 rules, raster and UI smoke SUCCESS on `45d7763`;
+  isolated preview still IN_PROGRESS at the last check.
+- Do not claim v0.1.4 ZIP published until a matching successful isolated
+  workflow and manifest version are independently verified.
+- Live testgifts.local native attachment bytes and their association
+  to designer comments/PDF revisions are NOT proven by synthetic tests.
+  Keep `training_ready=false`, `production_approved=false`.
