@@ -37,7 +37,7 @@ foreach ($part in $paths) {
 }
 $installedPython = Join-Path $base 'tools\vision_local_lab.py'
 Copy-Item -LiteralPath $source -Destination $installedPython -Force
-foreach ($module in @('vision_roi_review.py', 'vision_pdf_audit.py')) {
+foreach ($module in @('vision_roi_review.py', 'vision_pdf_audit.py', 'vision_private_corpus_stage.py')) {
   $moduleSource = Join-Path $PSScriptRoot $module
   if (-not (Test-Path -LiteralPath $moduleSource)) {
     throw "Required local review/audit module missing: $module"
@@ -130,6 +130,7 @@ visionlab.sqlite3 — учёт SHA-256 и экспертных ROI
 tools/vision_local_lab.py — автономное приложение Python (стандартная библиотека)
 tools/vision_roi_review.py — независимая ROI-разметка, голоса и разбор конфликтов
 tools/vision_pdf_audit.py — опциональный локальный PDF-аудит (без автодопуска)
+tools/vision_private_corpus_stage.py — потоковая проверка частного корпуса до 512 МБ/PDF
 tools/vision-roi-annotator.html — локальное выделение ROI в браузере
 
 НЕТ автоматического обучения. Метка строки — не подтверждённый дефект
