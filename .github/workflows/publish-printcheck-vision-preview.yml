@@ -13,6 +13,9 @@ on:
       - vision-vector.html
       - vision-local-orders.html
       - vision/orders/row-scanner.mjs
+      - vision/orders/discussion-probe.mjs
+      - tests/printcheck-vision-discussions.test.mjs
+      - tests/printcheck-vision-discussions.browser.mjs
       - vision/orders/order-page-discovery.mjs
       - vision/orders/extension/**
       - tests/printcheck-vision-lan-failure-stages.test.mjs
@@ -102,6 +105,10 @@ jobs:
           node --check vision/geometry/svg-dom-vector-bridge.mjs
           node --check tests/printcheck-vision-vector.browser.mjs
           node --check vision/orders/row-scanner.mjs
+          node --check vision/orders/discussion-probe.mjs
+          node --check tests/printcheck-vision-discussions.test.mjs
+          node --test tests/printcheck-vision-discussions.test.mjs
+          node --check tests/printcheck-vision-discussions.browser.mjs
           node --check vision/orders/order-page-discovery.mjs
           node --check tests/printcheck-vision-order-detail.browser.mjs
           node --check tests/printcheck-vision-order-404.browser.mjs
@@ -169,6 +176,7 @@ jobs:
           node tests/printcheck-vision-local-orders.browser.mjs
           node tests/printcheck-vision-order-detail.browser.mjs
           node tests/printcheck-vision-order-404.browser.mjs
+          node tests/printcheck-vision-discussions.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
