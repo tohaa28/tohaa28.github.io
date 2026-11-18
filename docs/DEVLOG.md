@@ -1687,3 +1687,10 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Privately, a **saved order HTML provided in the chat** was parsed and linked into a separate local candidate dataset (23 chronology entries, eight user comments, five linked screenshot URLs, two active problem checkboxes). Since HTML carries URLs only, **zero image bytes were acquired**. The local private bundle was not uploaded to GitHub, and it is not training ground truth.
 - Documentation: `docs/VISION_APPROVAL_TRAINING_PIPELINE_RU.md`. Real authenticated end-to-end GET success across a full live order list remains a manual-on-site check.
 
+
+
+### M3.31 — bounded private ZIP copying and post-audit integrity (2026-11-19)
+
+- Starting draft PR #4 OPEN, draft=true, merged=false; HEAD a608749d5a05ff3c5c95c4c798d685b6b5162729. Changed only experimental tools/vision_approval_training_corpus.py and tests/test_vision_approval_training_corpus.py.
+- ZIP sources are hashed in 1 MiB chunks with a 512 MiB per-file limit before audit; copying is streamed into private 0600 files and rechecks SHA after audit. On mismatch returns SOURCE_ZIP_CHANGED_AFTER_AUDIT and removes the partial ZIP. New synthetic tests cover oversized source and post-audit mutation.
+- GitHub commits: code bf174385560a50f3aacbad6474fcf057c6409866; tests ed87bdcd043dc7940b9dc8eb448b318801fff9c0. Tests and new-head CI were not yet confirmed at journal write; verify independently. Other binary extraction paths still use zipfile.read and require further memory hardening. No customer material uploaded; no real ROI/scale/ICC verification; training_ready=false, production_approved=false, MANUAL.
