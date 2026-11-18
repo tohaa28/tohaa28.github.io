@@ -46,7 +46,7 @@ test('detects scoped discussion UI and categorizes visible text without exposing
    control('Согласования макетов',{title:'Обсуждение и согласование',
        scope:'order',href:'/private/approve'}),
    control('other',{action:'openDiscussion',scope:'unresolved'}),
-   control('Написать в обсуждение',{href:'https://customer.example/secret'})
+   control('Написать в обсуждение',{href:'https://customer.example/secret',scope:'unresolved'})
  ],[
    thread([message(raw)], [image()])
  ]);
