@@ -22,6 +22,7 @@ on:
       - tests/printcheck-vision-approval-attachments.test.mjs
       - tests/printcheck-vision-approval-inline-images.test.mjs
       - tests/printcheck-vision-approval-auto.browser.mjs
+      - tests/printcheck-vision-approval-queue.browser.mjs
       - tests/printcheck-vision-maket-approval.browser.mjs
       - tests/printcheck-vision-discussions.test.mjs
       - tests/printcheck-vision-discussions.browser.mjs
@@ -219,6 +220,7 @@ jobs:
           node tests/printcheck-vision-discussions.browser.mjs
           node tests/printcheck-vision-maket-approval.browser.mjs
           node tests/printcheck-vision-approval-auto.browser.mjs
+          node tests/printcheck-vision-approval-queue.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
