@@ -1282,3 +1282,15 @@ PDF вне GitHub провести локальный audit-all и незави�
   corroborated defect vs resolution. Those all remain MANUAL.
   `training_ready=false`, `production_approved=false`.
   Draft PR #4 is not merged; no production code altered.
+
+- **M3.13 release verification:** `44278921326` / code SHA
+  `3e9043304efa39d1fb0e8fd3809f60d8064c89ba` —
+  isolated publication **SUCCESS**, including synthetic native-approval
+  Chromium browser test and real MV3 manifest injection.
+  Independently checked public `main` preview:
+  `gifts-layout-workbench-vision/vision-order-approval.js` exists
+  (bundle includes known native form selectors and local anonymous JSON
+  export); `vision-local-lan-extension.zip` exists (58,227 bytes),
+  landing HTML exists. Draft PR #4 remains unmerged; no private HTML
+  or client artifacts in GitHub. Last three standard suites on
+  code SHA `3e9043304` also succeeded.
