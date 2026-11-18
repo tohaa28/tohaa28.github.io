@@ -1055,3 +1055,11 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `eb327364610a427c1eb25cbb94ecab1000c1f03f`: synthetic batch PDF test asserts mode `0700` on POSIX, while preserving the 20-sample sequential/atomic report checks. On Windows the POSIX mode assertion is skipped.
 - Local clone and direct regression execution blocked by GitHub DNS resolution in this runtime. New HEAD CI, three independent two-reviewer/adjudicator cycles, Chromium 404, and preview publish remain to be verified; do not infer their success from the baseline.
 - Still blocked: anonymous live 404 `reference_state`/MV3 failure evidence; two verified expert ROI, family holdout, certified physical scale, ICC/spot, transparency, process tolerances and real-world AI accuracy. Customer source files, filenames, private labels, source hashes and secrets were not uploaded. Unknown => MANUAL; training/production OK disabled.
+
+## M3.7 — fail-closed permissions on existing PDF report directory (2026-11-18)
+
+- Baseline experimental HEAD `be902d11ead9f15b85eef5077c6e1c538e6f493e`; PR #4 OPEN/DRAFT/unmerged. GitHub Actions UI smoke/raster safety/rules-dataset safety SUCCESS (runs 44230114173, 44230114201, 44230114209); CircleCI vision-contract and vision-raster SUCCESS. Preview publish on baseline SHA not confirmed.
+- `07118fc14f02fcf2ac80d5ef6abb9197a52613be`: optional offline PDF `--all` returns MANUAL `REPORT_DIRECTORY_PERMISSIONS_UNSAFE` if a pre-existing reports directory permits group/other access on POSIX. No silent chmod; no reports written. Windows ACL validation remains out of scope.
+- `025c2b2e8b1792cae4b08acd202478ef5cde7718`: synthetic POSIX regression verifies fail-closed status, unchanged directory mode, no reports, no production approval or training.
+- New HEAD CI and three independent ROI/adjudication + Chromium 404 regressions remain unverified at publication time. Do not claim real-world accuracy or infer CI success from baseline.
+- Blockers: preview publish, real anonymous 404 reference_state/MV3 category, verified two-reviewer ROI/family holdout, physical scale, ICC/spot, transparency, process tolerances, Windows report ACL assurance. Customer source files and private annotations were not published. Unknown => MANUAL; automatic training and production OK disabled.
