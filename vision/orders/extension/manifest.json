@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vision Check — тестовая сеть (локальный адаптер)",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Vision: из списка заказов автоматически читает согласования 2+, тексты дизайнеров, PDF и скриншоты галерей в локальные приватные JSON/ZIP. Только тестовая сеть.",
   "host_permissions": [
     "http://psk.testgifts.local/*",
