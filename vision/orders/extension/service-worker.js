@@ -160,3 +160,76 @@ function installPortListener(runtime){
 if(typeof chrome!=='undefined'&&chrome.runtime?.onConnect)
  installPortListener(chrome.runtime);
 // Pure hooks are available to synthetic Node tests via vm; no unsafe eval.
+
+
+/** M3.21: explicit list-page button -> one hidden AUTHORIZED order tab.
+ * The native website's own GET-only clicks load discussion data into DOM.
+ * No guessed AJAX parameters, no POST, no cloud/extension storage.
+ * A single order is processed at a time; results returned are counts only.
+ */
+const QUEUE_RUN='vision-approval-order-queue-v1';
+const ORDER_URL=/^http:\/\/testgifts\.local\/private\/order\/[0-9]{5,12}$/;
+let queueRunning=false;
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function runNativeApprovalOrder(url){
+ let tab=null;
+ try{
+  tab=await chrome.tabs.create({url,active:false});
+  if(!Number.isInteger(tab?.id))return {status:'MANUAL_BACKGROUND_TAB_FAILED'};
+  let result=null,ready=false;
+  // An MV3 document_idle content script may register after tab completed.
+  for(let attempt=0;attempt<40;attempt++){
+   try{
+    result=await Promise.race([
+      chrome.tabs.sendMessage(tab.id,{op:'vision-approval-order-collect-v1',
+       order_url:url}),
+      new Promise((_,reject)=>setTimeout(()=>reject(Error('QUEUE_ORDER_TIMEOUT')),180000))
+    ]);
+    ready=true;break;
+   }catch{
+    // Retry ONLY while content script has not yet attached. Once it accepts
+    // the message, its async response is awaited by sendMessage.
+    let present=false;
+    try{present=!!(await chrome.tabs.get(tab.id)).status}catch{}
+    if(!present)return {status:'MANUAL_TAB_CLOSED'};
+    await pause(250);
+   }
+  }
+  if(!ready||!result||typeof result!=='object')
+   return {status:'MANUAL_ORDER_CONTENT_SCRIPT_UNAVAILABLE'};
+  // Close only our own tab, after browser has initiated local downloads.
+  await pause(1400);
+  const safeStatus=/^[A-Z][A-Z0-9_]{2,70}$/.test(result.status||'')?
+    result.status:'MANUAL_UNKNOWN_RESULT';
+  const count=x=>Number.isSafeInteger(x)&&x>=0&&x<=10000?x:0;
+  return {status:safeStatus,eligible_articles:count(result.eligible_articles),
+   verified_articles:count(result.verified_articles),files:count(result.files),
+   zip_parts:count(result.zip_parts),failures:count(result.failures),
+   private_text_saved:result.private_text_saved===true};
+ }catch{return {status:'MANUAL_BACKGROUND_ORDER_FAILED'}}
+ finally{if(tab?.id)try{await chrome.tabs.remove(tab.id)}catch{}}
+}
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==QUEUE_RUN)return false;
+  const url=message.order_url;
+  let sourceOK=false;
+  try{
+   const u=new URL(sender?.url||'');
+   sourceOK=sender?.frameId===0&&u.origin===TABLE_ORIGIN&&
+    (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/'));
+  }catch{}
+  if(!sourceOK||typeof url!=='string'||!ORDER_URL.test(url)){
+   respond({status:'MANUAL_QUEUE_SOURCE_DENIED'});return false;
+  }
+  if(queueRunning){
+   respond({status:'MANUAL_QUEUE_ALREADY_RUNNING'});return false;
+  }
+  queueRunning=true;
+  runNativeApprovalOrder(url).then(respond,()=>
+   respond({status:'MANUAL_BACKGROUND_ORDER_FAILED'})).finally(()=>{
+    queueRunning=false;
+  });
+  return true;
+ });
+}
