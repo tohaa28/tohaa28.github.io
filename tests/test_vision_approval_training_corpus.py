@@ -7,9 +7,11 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from vision_approval_training_corpus import transform
+import vision_approval_training_corpus as corpus
+from vision_approval_training_corpus import transform, CorpusError
 from vision_approval_archive_audit import AuditError
 
 ORDER = "8001111"
@@ -124,6 +126,26 @@ class TrainingCorpusTests(unittest.TestCase):
         with self.assertRaises(AuditError):
             transform([self.evidence], [self.archive], out)
         self.assertFalse(out.exists())
+
+    def test_rejects_oversized_source_before_creating_corpus(self):
+        out = self.root / "limited"
+        with patch.object(corpus, "MAX_PRIVATE_ZIP_BYTES", 32):
+            with self.assertRaisesRegex(CorpusError, "PRIVATE_ZIP_SIZE_LIMIT"):
+                transform([self.evidence], [self.archive], out)
+        self.assertFalse(out.exists())
+
+    def test_rejects_source_changed_after_archive_audit(self):
+        out = self.root / "changed"
+        real_audit = corpus.audit_archives
+        def mutate_after_audit(parts, evidence):
+            result = real_audit(parts, evidence)
+            with open(self.archive, "ab") as handle:
+                handle.write(b"post-audit-mutation")
+            return result
+        with patch.object(corpus, "audit_archives", side_effect=mutate_after_audit):
+            with self.assertRaisesRegex(CorpusError, "SOURCE_ZIP_CHANGED_AFTER_AUDIT"):
+                transform([self.evidence], [self.archive], out)
+        self.assertFalse((out / "raw" / f"attachments-{ORDER}-part-0001.zip").exists())
 
     def test_missing_binary_keeps_case_unapproved_with_explicit_reason(self):
         self.source["articles"][0]["history"][1]["attachments"][0].update({
