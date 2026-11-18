@@ -186,9 +186,13 @@ async function runNativeApprovalOrder(url){
       new Promise((_,reject)=>setTimeout(()=>reject(Error('QUEUE_ORDER_TIMEOUT')),180000))
     ]);
     ready=true;break;
-   }catch{
-    // Retry ONLY while content script has not yet attached. Once it accepts
-    // the message, its async response is awaited by sendMessage.
+   }catch(error){
+    const reason=String(error?.message||error||'');
+    // Never retry a native scan after it has started: duplicated exports
+    // could overwrite files or repeat authenticated GETs.
+    if(!/Receiving end does not exist|Could not establish connection/i.test(reason))
+     return {status:/QUEUE_ORDER_TIMEOUT/.test(reason)?
+      'MANUAL_ORDER_TIMEOUT':'MANUAL_ORDER_SCAN_FAILED'};
     let present=false;
     try{present=!!(await chrome.tabs.get(tab.id)).status}catch{}
     if(!present)return {status:'MANUAL_TAB_CLOSED'};
