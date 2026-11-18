@@ -260,12 +260,23 @@ def transform(evidences, archives, output):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--evidence", action="append", required=True)
+    ap.add_argument("--input-dir", help="Directory of downloaded Vision Check files")
+    ap.add_argument("--evidence", action="append", default=[])
     ap.add_argument("--archive", action="append", default=[])
     ap.add_argument("--output", required=True)
     args = ap.parse_args()
     try:
-        result = transform(args.evidence, args.archive, args.output)
+        evidences = list(args.evidence)
+        archives = list(args.archive)
+        if args.input_dir:
+            source_dir = Path(args.input_dir)
+            need(source_dir.is_dir() and not source_dir.is_symlink(),
+                 "SOURCE_DIRECTORY_INVALID")
+            evidences += sorted(source_dir.glob(
+                "vision-private-approval-evidence-*.json"))
+            archives += sorted(source_dir.glob(
+                "vision-private-approval-attachments-*-part-*.zip"))
+        result = transform(evidences, archives, args.output)
     except (CorpusError, AuditError, ValueError, OSError, zipfile.BadZipFile) as exc:
         code = str(exc) if isinstance(exc, (CorpusError, AuditError)) else "LOCAL_IO_FAILED"
         result = {"status": "MANUAL_CORPUS_TRANSFORM_FAILED",
