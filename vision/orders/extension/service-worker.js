@@ -5,7 +5,7 @@
  * No response data is stored, logged, uploaded, cached, or posted to the site.
  */
 'use strict';
-const TEST_HOSTS=new Set(['psk.testgifts.local','testgifts.local']);
+const TEST_HOSTS=new Set(['psk.testgifts.local','testgifts.local','files.testgifts.local']);
 const TABLE_ORIGIN='http://psk.testgifts.local';
 const PORT_NAME='vision-order-lan-readonly-v1';
 const MAX_DOCUMENT_BYTES=3_000_000,MAX_ARTWORK_BYTES=16_000_000;
@@ -13,12 +13,14 @@ const CHUNK_BYTES=48*1024;
 function sourceAllowed(sender){
  try{
   const u=new URL(sender?.url||sender?.tab?.url||'');
-  return u.origin===TABLE_ORIGIN&&
-   (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/'))&&
-   sender.frameId===0;
+  return sender.frameId===0&&(
+    (u.origin===TABLE_ORIGIN&&
+     (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/')))||
+    (u.origin==='http://testgifts.local'&&
+     /^\/private\/order\/\d{5,12}\/?$/.test(u.pathname)));
  }catch{return false}
 }
-function validatedTarget(raw){
+function validatedTarget(raw,sender){
  if(typeof raw!=='string'||raw.length>2048)return null;
  let u;
  try{u=new URL(raw)}catch{return null}
@@ -26,6 +28,19 @@ function validatedTarget(raw){
     u.username||u.password||u.port||u.hash)return null;
  if(!/^[\x20-\x7e]*$/.test(u.pathname+u.search))return null;
  const p=u.pathname,q=u.searchParams;
+ const fromOrder=/^\/private\/order\/(\d{5,12})\/?$/.exec(
+   new URL(sender?.url||sender?.tab?.url||TABLE_ORIGIN).pathname);
+ const senderHost=new URL(sender?.url||sender?.tab?.url||TABLE_ORIGIN).hostname;
+ // Only a real order-page extension can load native review files.
+ if(fromOrder&&senderHost==='testgifts.local'){
+  if(u.hostname==='testgifts.local'&&p==='/ajax/gifts/order'&&
+     q.size===2&&q.get('action')==='download_maketadjusting_attachment'&&
+     /^\d{1,20}$/.test(q.get('id')||''))
+   return {url:u.href,kind:'native_approval_attachment',limit:MAX_ARTWORK_BYTES};
+  const img=/^\/maketadjusting\/[0-9]{1,20}\/([0-9]{5,12})\/[0-9]{1,20}\/[^/]{1,180}\.(?:png|jpe?g|webp|gif)$/i.exec(p);
+  if(u.hostname==='files.testgifts.local'&&!u.search&&img&&img[1]===fromOrder[1])
+   return {url:u.href,kind:'approval_image',limit:MAX_ARTWORK_BYTES};
+ }
  if(/^\/private\/order\/\d{5,12}\/?$/.test(p)&&!u.search)
   return {url:u.href,kind:'order_card',limit:MAX_DOCUMENT_BYTES};
  if(p==='/ajax/gifts/order'&&q.size===2&&q.get('action')==='makets_popup'&&
@@ -62,7 +77,7 @@ function installPortListener(runtime){
    if(message.method!=='GET'){
     send({op:'error',code:'EXTENSION_GET_ONLY'});clear();return;
    }
-   const target=validatedTarget(message.url);
+   const target=validatedTarget(message.url,port.sender);
    if(!target){
     send({op:'error',code:'EXTENSION_READ_ONLY_PATH_DENIED'});clear();return;
    }
@@ -78,8 +93,9 @@ function installPortListener(runtime){
      headers:target.kind==='popup'?
        {accept:'text/html,application/json',
         'x-requested-with':'XMLHttpRequest'}:
-       {accept:target.kind==='artwork'?
+       {accept:target.kind==='artwork'||target.kind==='native_approval_attachment'?
          'application/pdf,application/octet-stream,*/*':
+         target.kind==='approval_image'?'image/*,*/*':
          'text/html,application/json'}
     });
     // A successful redirect is accepted only when the final URL is the
