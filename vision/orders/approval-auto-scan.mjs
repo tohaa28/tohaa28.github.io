@@ -12,6 +12,7 @@
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
 
 const MAX_TARGETS=100,MAX_MESSAGES=1500,MAX_TEXT=12000;
+const MAX_LOCAL_PRIVATE_CHARS=24_000_000;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const all=(root,selector)=>{try{return [...root.querySelectorAll(selector)]}catch{return []}};
 const str=node=>String(node?.textContent||'').trim();
@@ -183,6 +184,7 @@ export async function collectMaketApprovalsOnOrderPage(doc,{
  if(all(doc,'g-modal[visible]').length){
   result.status='EXISTING_NATIVE_MODAL_OPEN';return result;
  }
+ let retainedPrivateChars=0;
  for(let i=0;i<discovered.eligible.length;i++){
   if(stop()){result.status='STOPPED';break}
   const target=discovered.eligible[i];
@@ -199,7 +201,14 @@ export async function collectMaketApprovalsOnOrderPage(doc,{
    if(ready.status==='READY'){
     const data=extractMaketApprovalEvidence(doc,{
      itemId:target.itemId,orderNumber,badge:target.badge});
-    result.articles.push({...stub,...data});
+    const estimated=JSON.stringify(data).length;
+    if(retainedPrivateChars+estimated>MAX_LOCAL_PRIVATE_CHARS){
+     result.status='LOCAL_PRIVATE_BUDGET_REACHED';
+     result.articles.push({...stub,status:'LOCAL_PRIVATE_BUDGET_REACHED'});
+    }else{
+     retainedPrivateChars+=estimated;
+     result.articles.push({...stub,...data});
+    }
    }else result.articles.push({...stub,status:ready.status});
   }catch{result.articles.push({...stub,status:'NATIVE_MODAL_UNAVAILABLE'})}
   finally{
@@ -210,6 +219,7 @@ export async function collectMaketApprovalsOnOrderPage(doc,{
      attr(modal?.querySelector('input[name="oiid"]'),'value'));
    if(modal&&activeId===target.itemId)modal.removeAttribute('visible');
   }
+  if(result.status==='LOCAL_PRIVATE_BUDGET_REACHED')break;
   if(stop()){result.status='STOPPED';break}
   await sleep(pauseMs);
  }
@@ -226,7 +236,7 @@ export function anonymousApprovalCollection(report){
   'TIMEOUT_OR_INCOMPLETE_COMMENTS','STOP_REQUESTED',
   'ARTICLE_MISMATCH_OR_MISSING','MODAL_STRUCTURE_INCOMPLETE',
   'HISTORY_TOO_LONG','HISTORY_STRUCTURE_UNREADABLE',
-  'NATIVE_MODAL_UNAVAILABLE']);
+  'NATIVE_MODAL_UNAVAILABLE','LOCAL_PRIVATE_BUDGET_REACHED']);
  const nums=['history_entry_count','human_comment_count',
   'history_system_entry_count','problems_available_count',
   'problems_checked_current_count','attachments_total','attachments_pdf',
