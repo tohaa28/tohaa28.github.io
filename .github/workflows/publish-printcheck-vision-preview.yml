@@ -18,7 +18,9 @@ on:
       - vision/orders/approval-page-entry.mjs
       - vision/orders/approval-auto-scan.mjs
       - vision/orders/approval-attachments.mjs
+      - vision/orders/approval-inline-images.mjs
       - tests/printcheck-vision-approval-attachments.test.mjs
+      - tests/printcheck-vision-approval-inline-images.test.mjs
       - tests/printcheck-vision-approval-auto.browser.mjs
       - tests/printcheck-vision-maket-approval.browser.mjs
       - tests/printcheck-vision-discussions.test.mjs
@@ -119,6 +121,7 @@ jobs:
           node --check vision/orders/approval-attachments.mjs
           node --check tests/printcheck-vision-approval-attachments.test.mjs
           node --test tests/printcheck-vision-approval-attachments.test.mjs
+          node --test tests/printcheck-vision-approval-inline-images.test.mjs
           python3 - <<'PY'
           import json,zipfile
           path='/tmp/vision-synthetic-approval-attachment.zip'
