@@ -1063,3 +1063,11 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `025c2b2e8b1792cae4b08acd202478ef5cde7718`: synthetic POSIX regression verifies fail-closed status, unchanged directory mode, no reports, no production approval or training.
 - New HEAD CI and three independent ROI/adjudication + Chromium 404 regressions remain unverified at publication time. Do not claim real-world accuracy or infer CI success from baseline.
 - Blockers: preview publish, real anonymous 404 reference_state/MV3 category, verified two-reviewer ROI/family holdout, physical scale, ICC/spot, transparency, process tolerances, Windows report ACL assurance. Customer source files and private annotations were not published. Unknown => MANUAL; automatic training and production OK disabled.
+
+## M3.8 — PDF report directory collision fails closed (2026-11-18)
+
+- Pre-change experimental HEAD `ac87feb4a4bae5818631c9b0647803e234ff1b87`; PR #4 OPEN/DRAFT/unmerged. GitHub Actions rules/dataset safety 44236846844, UI smoke 44236846938, raster safety 44236846895 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on this SHA not independently confirmed.
+- `8aaa9dfbdee83c38d775a4d72f1718b8d54daa26`: optional offline PDF `--all` returns fixed MANUAL `REPORT_DIRECTORY_UNAVAILABLE` if local report directory cannot be created/stat'ed or is not a directory. Filesystem exception text (possibly containing private paths) is not exposed.
+- `1460e7e83a5930493369fe32824e8bf5d1bacf94`: synthetic regression creates a regular file at the report directory location; expects MANUAL, no training/production approval, no private marker leakage or alteration of existing file.
+- No customer sources, private labels, source identifiers or secrets committed. New SHA CI and three independent two-reviewer/adjudication, PDF batch and Chromium 404 regressions require separate confirmation; no local pass claim. Preview publish unverified.
+- Blockers: live anonymous 404 reference_state/MV3 category, verified ROI/family holdout, physical scale, ICC/spot, PDF transparency, technology tolerances, Windows ACL verification, real-world accuracy. Unknown => MANUAL. Automatic training and production OK disabled.
