@@ -69,6 +69,8 @@ on:
       - "tools/vision_local_lab.py"
       - "tools/vision_roi_review.py"
       - "tools/vision_pdf_audit.py"
+      - "tools/vision_private_corpus_stage.py"
+      - "tests/test_vision_private_corpus_stage.py"
       - "tests/test_vision_roi_review.py"
       - "tests/test_vision_pdf_audit.py"
       - "docs/DEVLOG.md"
@@ -171,6 +173,13 @@ jobs:
             echo "Review/PDF independent cycle $cycle/3"
             python tests/test_vision_roi_review.py
             python tests/test_vision_pdf_audit.py
+          done
+      - name: Verify private large-file corpus staging and grouped review safety
+        run: |
+          python -m py_compile tools/vision_private_corpus_stage.py
+          for cycle in 1 2 3; do
+            echo "Private corpus safety cycle $cycle/3"
+            python tests/test_vision_private_corpus_stage.py
           done
       - name: Verify private archive inventory utility on synthetic ZIPs
         run: python -m unittest discover -s tests -p 'test_printcheck_vision_inventory.py' -v
