@@ -1140,3 +1140,62 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `ead1c64fab23a20990731471bf45f5c757e7e676`: three synthetic iterations assert HMAC family-token determinism with the same key, rotation with a distinct key, family/content namespace separation and absence of synthetic family identifiers or raw key hex in tokens. No customer files or keys were used.
 - New HEAD CI and independent local execution are pending verification; do not treat test presence as a PASS. No production changes, PR merge, client data upload or training.
 - Still blocked: anonymous real 404 reference_state/MV3 evidence, two verified independent ROI votes/adjudication, artwork-to-constructor/technology association, certified physical scale, ICC/spot/transparency, Windows ACL, verified family holdout and real-world AI accuracy. Filename-derived claims are not expert labels. Unknown => MANUAL; training_ready=false; production OK disabled.
+
+
+## M3.12 — safe discovery of designer discussions by article (2026-11-18)
+
+- Requirement: when a technical designer finds an issue in a customer's layout,
+  they may open an **article-level discussion** in the order card, write an
+  explanation and attach a screenshot. Unlike coarse filename-derived labels,
+  this is potentially rich supervision **after** verifying which article,
+  print method, specific source PDF revision and screenshot ROI were discussed.
+  It may also include questions, replies, revised files and personal data.
+- Investigation: existing allowed test workflow can obtain a card with a
+  read-only GET `/private/order/{order}`. Current public Vision/Maketnaya
+  source confirms `makets_popup` for attached artwork, **NOT** a verified
+  backend discussion GET. Public product/site search has not identified
+  the authenticated article conversation service. Browser tab context was
+  unavailable in this execution environment. Therefore no genuine customer
+  discussion, screenshot or message was fetched or read.
+- `dfe61ec643c8`: passive `vision/orders/discussion-probe.mjs` recognizes
+  DOM discussion/comment/chat triggers, article vs order/unresolved scopes,
+  previously inlined message and screenshot candidates, and weak fixed
+  technology-topic enums (positive/negative elements, field edge, colors,
+  text, raster, gradients and constructor alignment). Exports counts/enums,
+  never message text, author, order or article identifier, media URL or media.
+- `436a6462c6d5`: `inspectOrderDiscussionFromRow` uses **one existing**
+  authenticated order-card GET. Does not open the discussion modal,
+  follow unknown attachment links, trigger click handlers or guess APIs.
+- `81010470104a`: explicit experimental UI controls
+  **«Найти обсуждения»** (ordered read-only cards) and
+  **«Обсуждения JSON»** (anonymous categorical local download).
+  Existing file scanning and 16 MB customer artwork guard unchanged.
+- `4e7652a69089` / `74d51eff4b9e`: synthetic Node and Chromium tests:
+  preloaded mock discussion text, article marker, media candidate, no
+  original personal text/URL in download, no POST, no implicit file request.
+- `d53bfe3a4e5a` / `aa6e4424a137`: CI validation and preview browser
+  test inclusion. Initial rules/publish CI failed because a synthetic
+  fixture accidentally scoped an unscoped control to an article. Fixed in
+  `1ad8879ec533`; subsequent fixture selector change initially failed
+  its screenshot count assertion until `b115a9ee9a6e`. Do not assert
+  every intermediate failing run was green.
+- `96e766244671`: icon-only/class-based discussion triggers supported.
+  Duplicate <a>/<img> references count as one media candidate.
+- `bfa34d6830de`: media/style/script source stripping for order card
+  before detached DOMParser to avoid browser resource loads during
+  passive HTML analysis. `7252dabf6339` adds synthetic stripping tests.
+- `771b576cdc4c`: investigation and privacy/ROI workflow in
+  `docs/VISION_ARTICLE_DISCUSSIONS_RU.md`. `9c3b46476...`:
+  landing page documents the opt-in buttons.
+- Evidence: rules/dataset safety, independent raster safety and UI smoke
+  SUCCESS at `9c3b46476` (runs 44269355010, 44269355044 and
+  44269355035). Exact final preview deployment must be checked
+  separately; Chromium discussion E2E is part of the preview pipeline.
+- Next: run updated isolated local extension on an authenticated test orders
+  page, collect **only** anonymous `vision-local-discussion-probe.json`,
+  verify the actual DOM trigger/item relation and whether messages
+  are loaded in existing card HTML or exclusively from a modal.
+  Only after independently confirming a safe read-only route, consider
+  privacy-filtered local extraction and expert ROI attachment links.
+  No real discussion extracted, no training labels approved, no model
+  training, no production acceptance, no PR merge. Unknown=>MANUAL.
