@@ -4,6 +4,7 @@ import {mkdtemp,cp,readFile,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright';
+import {createServer} from 'node:http';
 const extensionDir=await mkdtemp(path.join(os.tmpdir(),'vision-approval-queue-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-approval-queue-profile-'));
 for(const name of ['manifest.json','service-worker.js','content-transport.js'])
@@ -27,27 +28,36 @@ const orderHtml='<html><body><div id="j_cart_host" data-orderid="550"></div>'+
  "window.nativeClicks=0;\ndocument.querySelector('a.j_maketadjusting').addEventListener('click',event=>{\nevent.preventDefault();window.nativeClicks++;\nconst modal=document.createElement('g-modal');\nmodal.innerHTML='<form id=\"j_maketAdjustingForm\"><input type=\"hidden\" name=\"oiid\" value=\"77\">'+\n'<label><input type=\"checkbox\" name=\"ma_problem[]\" value=\"55\" checked>Тонкие линии</label></form>'+\n'<div id=\"j_maketadjustingcomments_counter\">2</div>'+\n'<ul id=\"j_maketadjusting_comments_list\">'+window.fixtureComments+'</ul>';\ndocument.body.append(modal);\nconst gallery=modal.querySelector('g-gallery');\ngallery.attachShadow({mode:'open'}).innerHTML='<section><picture><img src=\"'+\nwindow.fixtureImage+'\"></picture></section><nav><img src=\"'+window.fixtureImage+'\"></nav>';\nmodal.setAttribute('visible','');\n});"+
  '</script></body></html>';
 const png=Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0,0,0,0,0]);
+// A local HTTP proxy exercises Chrome extension-created tabs too. Playwright
+// route() can miss navigation initiated before a new target is attached.
+const requests=[];
+const proxy=createServer((req,res)=>{
+ const url=req.url?.startsWith('http://')?req.url:
+   'http://'+req.headers.host+req.url;
+ const method=req.method;
+ let type='unexpected',body=Buffer.from('denied'),mime='text/plain',status=404;
+ if(url===list){type='list';body=Buffer.from(listing);mime='text/html';status=200}
+ else if(url===order){type='order';body=Buffer.from(orderHtml);mime='text/html';status=200}
+ else if(url===image){type='image';body=png;mime='image/png';status=200}
+ requests.push({type,method});
+ res.writeHead(status,{'content-type':mime,'content-length':body.length,
+  'cache-control':'no-store'});
+ res.end(body);
+});
+await new Promise(resolve=>proxy.listen(0,'127.0.0.1',resolve));
+const proxyPort=proxy.address().port;
 let browserContext;
 try{
  browserContext=await chromium.launchPersistentContext(profile,{
   channel:'chromium',headless:true,acceptDownloads:true,
-  args:['--disable-extensions-except='+extensionDir,'--load-extension='+extensionDir]
+  args:['--disable-extensions-except='+extensionDir,'--load-extension='+extensionDir,
+   '--proxy-server=http://127.0.0.1:'+proxyPort,
+   '--proxy-bypass-list=<-loopback>']
  });
- const downloads=[],errors=[],requests=[];
+ const downloads=[],errors=[];
  browserContext.on('page',page=>{
   page.on('download',d=>downloads.push(d));
   page.on('pageerror',e=>errors.push(String(e)));
- });
- await browserContext.route('**/*',route=>{
-  const url=route.request().url(),method=route.request().method();
-  if(url===list){requests.push({type:'list',method});
-   return route.fulfill({status:200,contentType:'text/html',body:listing});}
-  if(url===order){requests.push({type:'order',method});
-   return route.fulfill({status:200,contentType:'text/html',body:orderHtml});}
-  if(url===image){requests.push({type:'image',method});
-   return route.fulfill({status:200,contentType:'image/png',body:png});}
-  if(url.startsWith('chrome-extension://'))return route.continue();
-  requests.push({type:'unexpected',method});return route.abort();
  });
  const page=await browserContext.newPage();
  await page.goto(list);
@@ -97,6 +107,7 @@ try{
  console.log('Vision M3.21 list->native approval->gallery PNG->private JSON/ZIP PASS');
 }finally{
  if(browserContext)await browserContext.close();
+ await new Promise(resolve=>proxy.close(resolve));
  await rm(extensionDir,{recursive:true,force:true});
  await rm(profile,{recursive:true,force:true});
 }
