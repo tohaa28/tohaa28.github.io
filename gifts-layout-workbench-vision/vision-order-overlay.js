@@ -1562,6 +1562,18 @@
     };
   }
 
+  // vision/orders/discussion-probe.mjs
+  var TOPICS = Object.freeze({
+    positive_min: /(?:тонк(?:ая|ие|их|ий)|толщин[ауы]|мелки[ех]|перемычк[аие]|линия\s+тонк)/i,
+    negative_min: /(?:пробел[ауы]?|выворотк|зазор[ауы]?|просвет[ауы]?)/i,
+    out_of_field: /(?:вне\s+(?:поля|зоны)|за\s+(?:пределы|границ)|выходит\s+за|охранн(?:ое|ая)\s+поле)/i,
+    color: /(?:\brgb\b|\bcmyk\b|\bpantone\b|цветоделени|цветов(?:ое|ые)|цвет\s+не)/i,
+    font: /(?:шрифт[ауы]?|в\s+кривы[ех]|текст\s+не\s+перев)/i,
+    raster_resolution: /(?:разрешени[ея]|dpi|пикселизац|растров(?:ый|ое)|пиксел[ья])/i,
+    gradient_transparency: /(?:градиент[ауы]?|прозрачност[ьи]|эффект[ауы]?|тень\b)/i,
+    constructor_alignment: /(?:конструктор[ауы]?|шаблон[ауы]?|масштаб[ауы]?|смещени[ея]|совмещени[ея])/i
+  });
+
   // vision/orders/order-page-discovery.mjs
   var TEST_HOSTS = Object.freeze(["psk.testgifts.local", "testgifts.local"]);
   var REFUSE = (reason, extra = {}) => ({ status: "MANUAL", reason, production_approved: false, ...extra });
