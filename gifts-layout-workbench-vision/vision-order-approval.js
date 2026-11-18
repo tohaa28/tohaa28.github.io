@@ -172,6 +172,7 @@
   var MAX_TARGETS = 100;
   var MAX_MESSAGES = 1500;
   var MAX_TEXT = 12e3;
+  var MAX_LOCAL_PRIVATE_CHARS = 24e6;
   var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   var all = (root, selector) => {
     try {
@@ -293,6 +294,7 @@
   } = {}) => {
     const deadline = Date.now() + timeoutMs;
     let modalOpenedAt = 0, discussionTabOpened = false;
+    let stableHistoryAt = 0, stableHistoryCount = -1;
     while (Date.now() < deadline) {
       if (stop()) return { status: "STOP_REQUESTED" };
       const modal = visibleModal(doc);
@@ -305,8 +307,16 @@
           if (!modalOpenedAt) modalOpenedAt = Date.now();
           if (list) {
             const probe = inspectOpenMaketApprovalDom(doc);
-            if (probe.human_comment_count === badge)
-              return { status: "READY" };
+            if (probe.human_comment_count === badge) {
+              if (stableHistoryCount !== probe.history_entry_count) {
+                stableHistoryCount = probe.history_entry_count;
+                stableHistoryAt = Date.now();
+              } else if (Date.now() - stableHistoryAt >= 350)
+                return { status: "READY" };
+            } else {
+              stableHistoryAt = 0;
+              stableHistoryCount = -1;
+            }
           }
           if (!discussionTabOpened && Date.now() - modalOpenedAt >= 450) {
             const tab = modal.querySelector('label[for="j_ma_comments"]');
@@ -355,6 +365,7 @@
       result.status = "EXISTING_NATIVE_MODAL_OPEN";
       return result;
     }
+    let retainedPrivateChars = 0;
     for (let i = 0; i < discovered.eligible.length; i++) {
       if (stop()) {
         result.status = "STOPPED";
@@ -379,7 +390,14 @@
             orderNumber,
             badge: target.badge
           });
-          result.articles.push({ ...stub, ...data });
+          const estimated = JSON.stringify(data).length;
+          if (retainedPrivateChars + estimated > MAX_LOCAL_PRIVATE_CHARS) {
+            result.status = "LOCAL_PRIVATE_BUDGET_REACHED";
+            result.articles.push({ ...stub, status: "LOCAL_PRIVATE_BUDGET_REACHED" });
+          } else {
+            retainedPrivateChars += estimated;
+            result.articles.push({ ...stub, ...data });
+          }
         } else result.articles.push({ ...stub, status: ready.status });
       } catch {
         result.articles.push({ ...stub, status: "NATIVE_MODAL_UNAVAILABLE" });
@@ -388,6 +406,7 @@
         const activeId = String(modal?.querySelector('input[name="oiid"]')?.value || attr2(modal?.querySelector('input[name="oiid"]'), "value"));
         if (modal && activeId === target.itemId) modal.removeAttribute("visible");
       }
+      if (result.status === "LOCAL_PRIVATE_BUDGET_REACHED") break;
       if (stop()) {
         result.status = "STOPPED";
         break;
@@ -413,7 +432,8 @@
       "MODAL_STRUCTURE_INCOMPLETE",
       "HISTORY_TOO_LONG",
       "HISTORY_STRUCTURE_UNREADABLE",
-      "NATIVE_MODAL_UNAVAILABLE"
+      "NATIVE_MODAL_UNAVAILABLE",
+      "LOCAL_PRIVATE_BUDGET_REACHED"
     ]);
     const nums = [
       "history_entry_count",
