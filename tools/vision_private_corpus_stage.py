@@ -147,6 +147,10 @@ def stage(manifest_path: Path, output_dir: Path, group_key_path: Path,
     key_path = group_key_path.expanduser().resolve(strict=True)
     if group_key_path.is_symlink():
         raise ValueError("PRIVATE_GROUP_KEY_UNSAFE")
+    # Fail closed if the private family-pseudonymisation key is readable by
+    # other users on POSIX. Windows ACLs require separate local inspection.
+    if os.name == "posix" and stat.S_IMODE(key_path.stat().st_mode) & 0o077:
+        raise ValueError("PRIVATE_GROUP_KEY_PERMISSIONS_UNSAFE")
     key = key_path.read_bytes()
     if len(key) != 32:
         raise ValueError("PRIVATE_GROUP_KEY_LENGTH_INVALID")
