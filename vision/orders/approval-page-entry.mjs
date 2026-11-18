@@ -159,8 +159,8 @@ export function initApprovalPageEntry(){
   return {status:files?'LOCAL_ZIP_PARTS_PREPARED':'NO_ATTACHMENTS',
    files,parts,processed,failures};
  }
- autoScan.addEventListener('click',async event=>{
-  stop(event);if(busy)return;
+ async function performAutomaticApprovalScan(queueMode=false){
+  if(busy)return {status:'BUSY'};
   busy=true;stopRequested=false;collection=null;
   scan.disabled=autoScan.disabled=exportButton.disabled=true;
   stopScan.disabled=false;
@@ -199,14 +199,42 @@ export function initApprovalPageEntry(){
      '\nПриватный JSON содержит текст замечаний. Сохраните его отдельно.'+
      ' Chrome может запросить разрешение на несколько скачиваний.';
    privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=false;
+   if(queueMode&&collection?.articles?.length){
+    // Explicit list-page action authorizes only LOCAL PRIVATE downloads.
+    // Every order gets its own JSON, preventing filename overwrite.
+    downloadJson(collection,'vision-private-approval-evidence-'+
+      location.pathname.split('/').filter(Boolean).at(-1)+'.json');
+    await new Promise(resolve=>setTimeout(resolve,500));
+   }
+   return {status:collection.status,eligible_articles:collection.selected_by_badge,
+     verified_articles:done,files:attachmentReport.files,
+     zip_parts:attachmentReport.parts,failures:attachmentReport.failures,
+     private_text_saved:!!(queueMode&&collection?.articles?.length)};
   }catch{
    if(panel.isConnected)stats.textContent='MANUAL: ошибка автоматического обхода.';
+   return {status:'MANUAL_AUTO_SCAN_FAILED'};
   }finally{
    busy=false;scan.disabled=autoScan.disabled=false;
    stopScan.disabled=true;
    exportButton.disabled=last?.status!=='VISIBLE_MODAL_STRUCTURE_ONLY';
   }
+ }
+ autoScan.addEventListener('click',event=>{
+  stop(event);void performAutomaticApprovalScan();
  });
+ // The service worker opens a background tab only after an explicit button
+ // on the local orders list. Do not derive automation from URL query strings.
+ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+  chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
+   if(message?.op!=='vision-approval-order-collect-v1')return false;
+   if(!isOrderPage()||message.order_url!==location.href){
+    respond({status:'MANUAL_ORDER_URL_MISMATCH'});return false;
+   }
+   performAutomaticApprovalScan(true).then(respond,()=>
+     respond({status:'MANUAL_AUTO_SCAN_FAILED'}));
+   return true;
+  });
+ }
  attachmentRetry.addEventListener('click',async event=>{
   stop(event);
   if(busy||!collection)return;
