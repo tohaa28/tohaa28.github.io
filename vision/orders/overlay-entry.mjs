@@ -192,7 +192,106 @@ export function initLocalOrdersOverlay(){
      updateBatchControls();
    }
  });
- actions.append(refreshBtn,scanBtn,discussionBtn,pauseBtn,
+
+ // Native designer discussions are NOT on the devorders HTML itself.
+ // Explicit user action opens each authorized order in a hidden tab,
+ // collects only badge>1 approvals, and saves private text/images locally.
+ let approvalQueueIndex=0,approvalQueueStop=false;
+ const approvalQueueReports=[];
+ const approvalQueueBtn=makeButton('Собрать согласования из всех заказов',()=>{
+  void collectFromOrdersList();
+ });
+ const approvalQueueStopBtn=makeButton('Остановить согласования',()=>{
+  approvalQueueStop=true;
+  renderStats('Остановка запрошена; текущий заказ завершается безопасно.');
+ });
+ const approvalQueueDiagBtn=makeButton('Отчёт согласований JSON',()=>{
+  const data={
+   schema:'printcheck.vision.anonymous-list-approval-queue.v1',
+   orders_attempted:approvalQueueReports.length,
+   totals:approvalQueueReports.reduce((total,r)=>{
+    for(const key of ['eligible_articles','verified_articles','files','zip_parts','failures'])
+     total[key]+=r[key]||0;
+    return total;
+   },{eligible_articles:0,verified_articles:0,files:0,zip_parts:0,failures:0}),
+   results:approvalQueueReports.map((r,i)=>({
+    row_index:i+1,status:r.status,eligible_articles:r.eligible_articles||0,
+    verified_articles:r.verified_articles||0,files:r.files||0,
+    zip_parts:r.zip_parts||0,failures:r.failures||0,
+    private_text_saved:r.private_text_saved===true
+   })),
+   raw_text_included:false,order_ids_included:false,
+   attachment_names_or_urls_included:false,training_ready:false
+  };
+  const uri=URL.createObjectURL(new Blob(
+   [JSON.stringify(data,null,2)+'\n'],{type:'application/json'}));
+  const a=node('a');a.href=uri;
+  a.download='vision-anonymous-approval-queue.json';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(uri),2000);
+ });
+ approvalQueueStopBtn.disabled=true;
+ async function collectFromOrdersList(){
+  if(busy||closed)return;
+  if(typeof chrome==='undefined'||!chrome.runtime?.sendMessage){
+   renderStats('MANUAL: для чтения штатных согласований требуется расширение Chrome MV3.');
+   return;
+  }
+  busy=true;approvalQueueStop=false;
+  approvalQueueBtn.disabled=true;approvalQueueStopBtn.disabled=false;
+  pauseBtn.disabled=true;
+  const ordered=new Map();
+  for(const row of rows){
+   const target=rowOrderTarget(row.element,window.location.href);
+   if(target.status==='ORDER_LINK_FOUND'&&
+       target.url?.origin==='http://testgifts.local'&&
+       /^\/private\/order\/[0-9]{5,12}$/.test(target.url.pathname)&&
+       !target.url.search&&!target.url.hash)
+    ordered.set(target.url.href,target.url.href);
+  }
+  const urls=[...ordered.values()];
+  let done=0,verified=0,imagesAndFiles=0,errors=0;
+  try{
+   while(approvalQueueIndex<urls.length&&!closed&&!approvalQueueStop){
+    const url=urls[approvalQueueIndex];
+    renderStats('Согласования из списка: '+done+' / '+urls.length+
+      '\nОткрывается следующий заказ во временной вкладке. Страница списка остаётся открытой.');
+    let result;
+    try{
+     result=await chrome.runtime.sendMessage({
+      op:'vision-approval-order-queue-v1',order_url:url
+     });
+    }catch{result={status:'MANUAL_BACKGROUND_ORDER_FAILED'}}
+    const safeStatus=/^[A-Z0-9_]{3,70}$/.test(result?.status||'')?
+      result.status:'MANUAL_UNKNOWN_RESULT';
+    const num=x=>Number.isSafeInteger(x)&&x>=0&&x<=10000?x:0;
+    const entry={status:safeStatus,eligible_articles:num(result?.eligible_articles),
+     verified_articles:num(result?.verified_articles),files:num(result?.files),
+     zip_parts:num(result?.zip_parts),failures:num(result?.failures),
+     private_text_saved:result?.private_text_saved===true};
+    approvalQueueReports.push(entry);
+    approvalQueueIndex++;done++;
+    verified+=entry.verified_articles;
+    imagesAndFiles+=entry.files;
+    if(safeStatus.startsWith('MANUAL'))errors++;
+    renderStats('Согласования из списка: '+approvalQueueIndex+' / '+urls.length+
+      '\nПрочитано обсуждений: '+verified+' · вложений: '+imagesAndFiles+
+      ' · ручных проверок: '+errors+
+      '\nПриватные тексты и изображения сохраняются отдельно для каждого заказа.');
+    await new Promise(resolve=>setTimeout(resolve,100));
+   }
+   if(!closed)renderStats(approvalQueueStop?
+    'Обход согласований приостановлен. Нажмите «Собрать согласования», чтобы продолжить.':
+    'Обход согласований завершён. Приватные JSON и ZIP находятся в загрузках Chrome. '+
+    '«Отчёт согласований JSON» не содержит клиентских данных.');
+  }finally{
+   busy=false;approvalQueueBtn.disabled=false;
+   approvalQueueStopBtn.disabled=true;updateBatchControls();
+  }
+ }
+
+ actions.append(approvalQueueBtn,approvalQueueStopBtn,approvalQueueDiagBtn,
+   refreshBtn,scanBtn,discussionBtn,pauseBtn,
    exportBtn,discussionExportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
