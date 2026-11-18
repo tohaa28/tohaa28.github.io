@@ -242,6 +242,34 @@ class PDFAuditTests(unittest.TestCase):
                 self.assertFalse(result["production_approved"])
                 self.assertFalse(result["training_ready"])
 
+    def test_pdf_path_item_complexity_limit_is_fail_closed(self):
+        class ItemPage(Page):
+            def __init__(self, count):
+                self.count = count
+            def get_drawings(self):
+                return [{"type": "s", "width": .2, "rect": Rect(0, 0, 5, 5),
+                         "items": [("l", "synthetic")] * self.count}]
+        class ItemEngine:
+            def __init__(self, count):
+                self.count = count
+            def open(self, _):
+                count = self.count
+                class ItemDocument(Document):
+                    def __iter__(self):
+                        return iter([ItemPage(count)])
+                return ItemDocument()
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        for count, expected in ((pdf.MAX_ITEMS_PER_PATH, "RESEARCH_ONLY"),
+                                (pdf.MAX_ITEMS_PER_PATH + 1, "MANUAL")):
+            with self.subTest(count=count):
+                result = pdf.audit_document(source, engine=ItemEngine(count))
+                self.assertEqual(result["status"], expected)
+                self.assertFalse(result["production_approved"])
+                self.assertFalse(result["training_ready"])
+                if expected == "MANUAL":
+                    self.assertEqual(result["reason"], "PDF_PATH_ITEMS_UNSUPPORTED")
+                self.assertNotIn("synthetic", json.dumps(result))
+
     def test_narrow_filled_bounding_box_is_only_a_research_candidate(self):
         class FilledPage(Page):
             def get_drawings(self):
