@@ -44,6 +44,41 @@ def private_write(path, contents):
     with os.fdopen(handle, "wb") as file:
         file.write(contents)
 
+MAX_PRIVATE_ZIP_BYTES = 512 * 1024 * 1024
+COPY_CHUNK_BYTES = 1024 * 1024
+
+def file_digest(path):
+    digest = hashlib.sha256()
+    total = 0
+    with open(path, "rb") as source:
+        while True:
+            block = source.read(COPY_CHUNK_BYTES)
+            if not block:
+                break
+            total += len(block)
+            need(total <= MAX_PRIVATE_ZIP_BYTES, "PRIVATE_ZIP_SIZE_LIMIT")
+            digest.update(block)
+    return digest.hexdigest()
+
+def copy_verified_zip(source, destination, expected_digest):
+    digest = hashlib.sha256()
+    total = 0
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as target, open(source, "rb") as origin:
+            while True:
+                block = origin.read(COPY_CHUNK_BYTES)
+                if not block:
+                    break
+                total += len(block)
+                need(total <= MAX_PRIVATE_ZIP_BYTES, "PRIVATE_ZIP_SIZE_LIMIT")
+                target.write(block)
+                digest.update(block)
+        need(digest.hexdigest() == expected_digest, "SOURCE_ZIP_CHANGED_AFTER_AUDIT")
+    except BaseException:
+        destination.unlink(missing_ok=True)
+        raise
+
 def jsonl(rows):
     return ("".join(json.dumps(x, ensure_ascii=False, sort_keys=True) + "\n"
                     for x in rows)).encode("utf-8")
@@ -75,6 +110,7 @@ def transform(evidences, archives, output):
              "ARCHIVE_ORDER_OR_NAME_INVALID")
         need(file.is_file(), "ARCHIVE_UNAVAILABLE")
         by_zip.setdefault(match[1], []).append(file)
+    zip_digests = {str(src): file_digest(src) for parts in by_zip.values() for src in parts}
     # Verify all available ZIP parts and exact message attachment links BEFORE
     # the first output write. The existing auditor checks SHA, sizes, paths,
     # duplicate JSON keys, source scope and attachment-to-message identity.
@@ -103,7 +139,7 @@ def transform(evidences, archives, output):
         for src in sorted(by_zip.get(order, [])):
             part = int(ZIP.fullmatch(src.name)[2])
             raw_zip = f"raw/attachments-{order}-part-{part:04d}.zip"
-            private_write(out / raw_zip, src.read_bytes())
+            copy_verified_zip(src, out / raw_zip, zip_digests[str(src)])
             with zipfile.ZipFile(src, "r") as zip_file:
                 manifest = read_json(zip_file.read("manifest.json"))
                 for entry in manifest["items"]:
