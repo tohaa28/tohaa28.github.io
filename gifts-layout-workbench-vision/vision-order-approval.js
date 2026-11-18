@@ -722,6 +722,55 @@
     onProgress({ processed, total: jobs.length, successful, complete: true });
   }
 
+  // vision/orders/approval-inline-images.mjs
+  var imagePath = /^\/maketadjusting\/([0-9]{1,20})\/([0-9]{5,12})\/([0-9]{1,20})\/([^/?#]+)\.(png|jpe?g|webp|gif)$/i;
+  var safeOriginal = /^[^\\/:*?"<>|\x00-\x1f\x7f]{1,180}$/;
+  function verifiedApprovalGalleryImageUrl(raw, { orderNumber, itemId } = {}) {
+    if (typeof raw !== "string" || raw.length > 1800 || !/^[0-9]{5,12}$/.test(String(orderNumber)) || !/^[0-9]{1,20}$/.test(String(itemId))) return null;
+    try {
+      const u = new URL(raw);
+      if (u.origin !== "http://files.testgifts.local" || u.search || u.hash || u.username || u.password || u.port) return null;
+      const m = imagePath.exec(u.pathname);
+      if (!m || m[2] !== String(orderNumber) || m[3] !== String(itemId)) return null;
+      const filename = decodeURIComponent(m[4]) + "." + m[5];
+      if (!safeOriginal.test(filename) || /[. ]$/.test(filename)) return null;
+      return { url: u.href, filename, extension: m[5].toLowerCase() };
+    } catch {
+      return null;
+    }
+  }
+  function galleryOriginals(gallery) {
+    const root = gallery.shadowRoot || gallery.querySelector?.('template[shadowrootmode="open"]')?.content;
+    return root ? [...root.querySelectorAll("section picture img")] : [...gallery.querySelectorAll(":scope > img")];
+  }
+  function extractApprovalGalleryImages(messageMain, scope) {
+    if (!messageMain?.querySelectorAll) return [];
+    const found = [], seen = /* @__PURE__ */ new Set();
+    for (const gallery of messageMain.querySelectorAll("g-gallery")) {
+      for (const image of galleryOriginals(gallery)) {
+        const raw = image.getAttribute("data-hd") || image.getAttribute("src") || image.getAttribute("data-src") || "";
+        const candidate = verifiedApprovalGalleryImageUrl(raw, scope);
+        if (!candidate || seen.has(candidate.url)) continue;
+        seen.add(candidate.url);
+        const record = {
+          source: "native_approval_gallery",
+          attachment_id: null,
+          filename: candidate.filename,
+          kind: "image",
+          downloaded: false
+        };
+        Object.defineProperty(record, "inline_image_url", {
+          value: candidate.url,
+          enumerable: false,
+          writable: false
+        });
+        found.push(record);
+        if (found.length >= 40) return found;
+      }
+    }
+    return found;
+  }
+
   // vision/orders/approval-auto-scan.mjs
   var MAX_TARGETS = 100;
   var MAX_MESSAGES = 1500;
@@ -834,6 +883,8 @@
         kind: attachedFileType(str(a)),
         downloaded: false
       })).slice(0, 40);
+      const screenshots = extractApprovalGalleryImages(main, { orderNumber, itemId });
+      attachments.push(...screenshots.slice(0, Math.max(0, 40 - attachments.length)));
       const clone = main.cloneNode(true);
       for (const anchor of all(clone, "a.j_maketadjusting_attachment"))
         anchor.remove();
