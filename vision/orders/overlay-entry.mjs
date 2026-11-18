@@ -7,7 +7,8 @@ import {LOCAL_ORDERS,isAllowedTestOrderPage,discoverOrderRows,
   inspectSameOriginArtwork,inspectOrderArtworkBytes,
   diagnoseTestOrderTable} from './row-scanner.mjs';
 import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes,
-  recheckOrderPopupReferences} from './order-page-discovery.mjs';
+  recheckOrderPopupReferences,inspectOrderDiscussionFromRow}
+  from './order-page-discovery.mjs';
 import {makeLocalExpertDataset,exportLocalDatasetParts} from './local-training-zip.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
@@ -90,6 +91,8 @@ export function initLocalOrdersOverlay(){
      transport_kind:typeof globalThis.__visionLocalTrustedTransport==='function'?'mv3_background':'browser_fetch',
      source_artwork_included:false,
      order_urls_included:false,raw_artwork_bytes_included:false,
+     private_discussion_text_included:false,
+     private_discussion_attachment_urls_included:false,
      production_approved:false,real_world_accuracy_verified:false,
      rows:rows.map(r=>({
        row_index:r.row_index,discovered_links:r.anchors.length,
@@ -100,6 +103,7 @@ export function initLocalOrdersOverlay(){
          Math.max(0,r.partial.candidates.length-r.partial.nextIndex):0,
        customer_uploaded_artworks:r.orderUploads?.length??null,
        constructor_template_count:r.orderTemplates??null,
+       discussion_probe:r.discussionProbe||{status:'NOT_SCANNED',training_ready:false},
        excluded_links:r.local_only_excluded,
        expert_label:r.grade?.value||'unreviewed',
        artifacts:(r.results||[]).map((result,i)=>({
@@ -147,6 +151,8 @@ export function initLocalOrdersOverlay(){
    const a=node('a');a.href=url;a.download='vision-local-table-diagnostic.json';
    a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  });
+ const discussionBtn=makeButton('Найти обсуждения',()=>scanDiscussions());
+ const discussionExportBtn=makeButton('Обсуждения JSON',saveDiscussionReport);
  const bundleBtn=makeButton('Локальные примеры ZIP — все',async()=>{
    if(busy||closed)return;
    if(!window.confirm('Скачать ВСЕ доступные оригиналы тестовых макетов в последовательные локальные ZIP-части? Имена и файлы конфиденциальны; браузер может запросить разрешение на несколько загрузок. В архивах нет подтверждённых ROI для обучения. НЕ загружайте их в публичный GitHub.'))return;
@@ -186,7 +192,8 @@ export function initLocalOrdersOverlay(){
      updateBatchControls();
    }
  });
- actions.append(refreshBtn,scanBtn,pauseBtn,exportBtn,diagnosticBtn,bundleBtn,
+ actions.append(refreshBtn,scanBtn,discussionBtn,pauseBtn,
+   exportBtn,discussionExportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
  panel.append(title,description,actions,stats,warning);
  document.body.append(panel);
@@ -389,7 +396,90 @@ export function initLocalOrdersOverlay(){
    try{await scanRowContents(r)}
    finally{busy=false;refreshBtn.disabled=false;updateBatchControls()}
  }
+ /**
+  * Export only categorical structure, never full message bodies or screenshot
+  * URLs. Row indices are local sequential counters, not customer order IDs.
+  */
+ function saveDiscussionReport(){
+   const safe=rows.map(r=>{
+     const probe=r.discussionProbe;
+     if(!probe||probe.status!=='STRUCTURE_ONLY_UNVERIFIED')
+       return {row_index:r.row_index,status:probe?.status||'NOT_SCANNED',
+         reason:/^[A-Z0-9_]+$/.test(probe?.reason||'')?probe.reason:null,
+         training_ready:false};
+     const fields=['controls_total','article_scoped_controls','order_scoped_controls',
+       'unresolved_scope_controls','link_targets_internal_test',
+       'link_targets_untrusted_or_external','link_targets_fragments',
+       'js_or_opaque_controls','inline_thread_candidates',
+       'visible_message_candidates','screenshot_or_image_candidates'];
+     const categorical=Object.fromEntries(fields.map(field=>
+       [field,Number.isSafeInteger(probe[field])?
+         Math.min(10000,Math.max(0,probe[field])):0]));
+     const topics=['positive_min','negative_min','out_of_field','color','font',
+       'raster_resolution','gradient_transparency','constructor_alignment'];
+     return {row_index:r.row_index,status:'STRUCTURE_ONLY_UNVERIFIED',
+       ...categorical,
+       weak_topic_candidates:topics.filter(x=>probe.weak_topic_candidates?.includes(x)),
+       discussion_content_complete:false,expert_label_verified:false,
+       screenshot_roi_verified:false,training_ready:false};
+   });
+   const report={
+     schema:'printcheck.vision.anonymous-article-discussion-probe.v1',
+     scope:'test_order_card_only',created_at:new Date().toISOString(),
+     rows_scanned:safe.filter(x=>x.status!=='NOT_SCANNED').length,
+     rows:safe,raw_messages_included:false,authors_included:false,
+     attachments_included:false,attachment_urls_included:false,
+     order_identifiers_included:false,training_ready:false,
+     note:'DOM structural heuristics only; collapsed discussion content is not fetched.'
+   };
+   const blob=new Blob([JSON.stringify(report,null,2)+'\n'],{type:'application/json'});
+   const url=URL.createObjectURL(blob),a=node('a');
+   a.href=url;a.download='vision-local-discussion-probe.json';a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
+ /**
+  * Exactly one previously authorized card GET per row. No opening modal,
+  * attachment download, mutation, guessed endpoints or training labels.
+  */
+ async function scanDiscussions(){
+   if(busy||closed)return;
+   busy=true;pauseRequested=false;
+   refreshBtn.disabled=scanBtn.disabled=discussionBtn.disabled=true;
+   pauseBtn.disabled=false;
+   let attempted=0,markers=0,threads=0;
+   try{
+     for(const r of rows){
+       if(closed||pauseRequested)break;
+       if(r.discussionProbe)continue;
+       if(!r.hasOrderLink){
+         r.discussionProbe={status:'MANUAL',reason:'ORDER_DETAIL_LINK_REQUIRED',
+           training_ready:false};continue;
+       }
+       try{r.discussionProbe=await inspectOrderDiscussionFromRow(r.element)}
+       catch{r.discussionProbe={status:'MANUAL',reason:'DISCUSSION_SCAN_FAILED',
+         training_ready:false}}
+       attempted++;
+       if(r.discussionProbe.status==='STRUCTURE_ONLY_UNVERIFIED'){
+         markers+=r.discussionProbe.controls_total;
+         threads+=r.discussionProbe.inline_thread_candidates;
+       }
+       if(!closed)stats.textContent='Обсуждения: прочитано карточек '+
+         attempted+' · элементов UI '+markers+
+         ' · встроенных веток '+threads+
+         '\nТолько структура: текст, ссылки и изображения не экспортируются.';
+       if(!closed&&!pauseRequested)await new Promise(resolve=>
+         setTimeout(resolve,LOCAL_ORDERS.fetchPaceMs));
+     }
+     if(!closed)renderStats(pauseRequested?
+       'Поиск обсуждений приостановлен. Повторное нажатие продолжит непрочитанные карточки.':
+       'Диагностика обсуждений завершена. Нажмите «Обсуждения JSON». '+
+       'Найденные элементы не подтверждают доступ к тексту или вложениям.');
+   }finally{
+     busy=false;refreshBtn.disabled=false;updateBatchControls();
+   }
+ }
  function updateBatchControls(){
+   discussionBtn.disabled=busy||closed;
    pauseBtn.disabled=!busy||closed||pauseRequested;
    scanBtn.disabled=busy||closed||nextRowIndex>=rows.length;
    scanBtn.textContent=nextRowIndex>=rows.length?'Все строки обработаны':
