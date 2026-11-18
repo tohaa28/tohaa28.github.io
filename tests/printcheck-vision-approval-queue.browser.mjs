@@ -57,9 +57,13 @@ try{
  await page.waitForFunction(()=>
   document.querySelector('#vision-local-order-overlay .vlo-stats')
     ?.textContent?.includes('Обход согласований завершён'),null,{timeout:45000});
+ const debugDownload=page.waitForEvent('download');
+ await page.locator('#vision-local-order-overlay button')
+  .filter({hasText:'Отчёт согласований JSON'}).click();
+ const debugQueue=JSON.parse(await readFile(await (await debugDownload).path(),'utf8'));
  console.log('SYNTHETIC_QUEUE_DIAGNOSTIC',JSON.stringify({
   status:await page.locator('#vision-local-order-overlay .vlo-stats').innerText(),
-  requestKinds:requests.map(x=>x.type)}));
+  requestKinds:requests.map(x=>x.type),report:debugQueue}));
  assert.equal(page.url(),list);
  assert.equal(requests.filter(x=>x.type==='order').length,1);
  assert.ok(requests.some(x=>x.type==='image'));
