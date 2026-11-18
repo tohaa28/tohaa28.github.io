@@ -1438,3 +1438,32 @@ PDF вне GitHub провести локальный audit-all и незави�
   eligibility are NOT confirmed. File bytes remain local/private;
   model training is OFF, no production acceptance, no PR #4 merge.
 - CI publication status **to be confirmed on final code HEAD**.
+
+
+- **M3.15 release checkpoint verified:** isolated publishing run
+  `44292885181` completed **SUCCESS** for code SHA
+  `d63b6983321a6a45f03159716402ff266e42a925`.
+  GitHub main-branch isolated preview contains the refreshed
+  `gifts-layout-workbench-vision/vision-local-lan-extension.zip`
+  (71,711 bytes), `vision-order-approval.js` (61,574 bytes), and
+  preview landing HTML. Inspected published bundled JS and confirmed
+  exact native attachment GET handling, local ZIP auto-export,
+  method/placement extraction, safe anonymous GET status aggregation,
+  and truncated-binary detection. Experimental MV3 manifest is v0.1.3.
+  Draft PR #4 remains unmerged, production Maketnaya unchanged.
+- A prior publication attempt `44291420719` and another
+  `44292625827` correctly FAILED the browser integration assertion
+  because the synthetic 13+2-article example associated the same
+  attachment ID with **two** article discussions; the test had
+  incorrectly expected one read. Corrected in
+  `d63b6983321a` to preserve both article→message→attachment links
+  and expect two GETs, not silently discard repeated references.
+  The corrected synthetic Chromium run and Python ZIP decode are
+  GREEN in `44292885181`.
+- Live first-party test-server delivery of attachment binaries
+  is **not** established by CI. First real on-site run should review
+  `vision-anonymous-approval-collection.json` for
+  `attachment_reads_by_status` and compare counts to collected
+  source references. If the server requires another query contract
+  or redirects to a different endpoint, remain MANUAL and inspect
+  network evidence; do not guess or bypass access control.
