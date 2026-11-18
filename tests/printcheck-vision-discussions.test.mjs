@@ -30,7 +30,7 @@ function thread(messages=[],images=[]){
   return {
     closest:()=>null,
     querySelectorAll:selector=>selector.startsWith('[data-comment-id]')?
-      messages:selector==='img,picture,video,a[href]'?images:[]
+      messages:selector.startsWith('img,picture,video,a[href]')?images:[]
   };
 }
 function doc(controls=[],threads=[]){
