@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 const bundle=await readFile('vision-order-approval.js','utf8');
-const base='http://testgifts.local',route=base+'/private/order/8001555';
+const base='http://testgifts.local',targetUrl=base+'/private/order/8001555';
 const checkbox=(i,checked=false)=>
  '<label><input type="checkbox" name="ma_problem[]" value="'+(20+i)+'"'+
  (checked?' checked':'')+' disabled>'+
@@ -51,12 +51,12 @@ try{
  const page=await context.newPage();
  const forbidden=[];
  await page.route('**/*',route=>{
-  if(route.request().url()===route&&route.request().method()==='GET')
+  if(route.request().url()===targetUrl&&route.request().method()==='GET')
    return route.fulfill({status:200,contentType:'text/html',body:pageHtml});
   forbidden.push({method:route.request().method(),url:route.request().url()});
   return route.abort();
  });
- await page.goto(route);
+ await page.goto(targetUrl);
  await page.addScriptTag({content:bundle});
  await page.locator('#vision-approval-inspector').waitFor();
  await page.locator('#vision-approval-inspector button')
@@ -109,7 +109,7 @@ try{
  assert.deepEqual(updated.checked_problem_topic_hints,['positive_min']);
  assert.equal(updated.history_entry_count,40);
  assert.equal(updated.training_ready,false);
- assert.equal(page.url(),route);
+ assert.equal(page.url(),targetUrl);
  assert.deepEqual(forbidden,[],'No network access from inspector');
  await context.close();
  console.log('Vision native approval: 25 options/0 selected; 13+27 timeline; 6PDF+1PSD; zero requests PASS');
