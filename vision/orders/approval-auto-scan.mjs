@@ -2,8 +2,10 @@
  * M3.14 — client-side, explicit user-initiated, READ-ONLY native modal walker.
  * It clicks ONLY an exact a.j_maketadjusting within li[data-itemid],
  * when the trigger has a numeric badge strictly greater than 1.
- * Site-owned click may perform the site's documented GETs to render the modal.
- * Never click form controls, comment/attachment links or send POST.
+ * If the message list is lazy, it switches to the exact native
+ * label[for=j_ma_comments] (a GET-only UI tab) once.
+ * Site-owned clicks may perform documented GETs to render the modal.
+ * Never click form-save controls, attachment links or send POST.
  * Private messages, article/order IDs and attachment filenames may appear
  * only in an explicitly downloaded LOCAL PRIVATE JSON, not in GitHub/CI.
  */
@@ -122,6 +124,7 @@ export function extractMaketApprovalEvidence(doc,{itemId,orderNumber,badge}={}){
 const waitForArticleModal=async(doc,itemId,badge,{
  stop=()=>false,timeoutMs=16000,pollMs=150}={})=>{
  const deadline=Date.now()+timeoutMs;
+ let modalOpenedAt=0,discussionTabOpened=false;
  while(Date.now()<deadline){
   if(stop())return {status:'STOP_REQUESTED'};
   const modal=visibleModal(doc);
@@ -130,10 +133,22 @@ const waitForArticleModal=async(doc,itemId,badge,{
    const input=form?.querySelector('input[name="oiid"]');
    const modalId=String(input?.value||attr(input,'value'));
    const list=modal.querySelector('#j_maketadjusting_comments_list');
-   if(modalId===itemId&&list){
-    const probe=inspectOpenMaketApprovalDom(doc);
-    if(probe.human_comment_count===badge)
-     return {status:'READY'};
+   if(modalId===itemId){
+    if(!modalOpenedAt)modalOpenedAt=Date.now();
+    if(list){
+     const probe=inspectOpenMaketApprovalDom(doc);
+     if(probe.human_comment_count===badge)
+      return {status:'READY'};
+    }
+    // Native Gifts loads the comments tab lazily in some orders.
+    // Exactly one label click per opened modal: UI navigation only.
+    // The site's documented load_maketadjusting_comments is a GET.
+    if(!discussionTabOpened&&Date.now()-modalOpenedAt>=450){
+     const tab=modal.querySelector('label[for="j_ma_comments"]');
+     if(tab&&modal.querySelector('input#j_ma_comments')){
+      discussionTabOpened=true;tab.click();
+     }else discussionTabOpened=true;
+    }
    }
   }
   await sleep(pollMs);
