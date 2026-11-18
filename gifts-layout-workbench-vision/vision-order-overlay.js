@@ -1563,8 +1563,8 @@
   }
 
   // vision/orders/discussion-probe.mjs
-  var CONTROL_SELECTOR = 'a[href],button,[role="button"],[data-action],[data-toggle]';
-  var THREAD_SELECTOR = "[data-discussion-id],[data-thread-id],[data-comments-id],.discussion,.discussion-list,.discussion-dialog,.comments-list,.comment-list,.chat-messages,.messages-list,.j_discussion,.j_comments";
+  var CONTROL_SELECTOR = 'a[href],button,[role="button"],[data-action],[data-toggle],[onclick],[class*="discuss"],[class*="comment"],[class*="chat"]';
+  var THREAD_SELECTOR = "[data-discussion-id],[data-thread-id],[data-comments-id],.discussion,.discussion-list,.discussion-dialog,.order-discussion,.comments-list,.comment-list,.chat-messages,.messages-list,.j_discussion,.j_comments";
   var MESSAGE_SELECTOR = "[data-comment-id],[data-message-id],.comment-item,.message-item,.discussion-message,.chat-message";
   var BODY_SELECTOR = ".comment-body,.comment-text,.message-text,.message-body,[data-comment-text],[data-message-text]";
   var ARTICLE_SELECTOR = "[data-orderitemid],[data-orderitem-id],[data-item-id],[data-article],.orderitem,.order-item,.cart-order-item,.cart-item,.j_order_item";
@@ -1619,6 +1619,8 @@
       safeAttr(el, "data-action"),
       safeAttr(el, "data-toggle"),
       safeAttr(el, "data-target"),
+      safeAttr(el, "class"),
+      safeAttr(el, "href"),
       String(el?.textContent || "").slice(0, 180)
     ].join(" ");
     return label;
@@ -1657,6 +1659,12 @@
     const controls = all(doc, CONTROL_SELECTOR);
     for (const el of controls) {
       if (inForbiddenBlock(el)) continue;
+      const tag = String(el.tagName || "").toUpperCase();
+      const role = safeAttr(el, "role");
+      const action = safeAttr(el, "data-action") || safeAttr(el, "data-toggle") || safeAttr(el, "onclick");
+      const className = safeAttr(el, "class");
+      const isNative = ["A", "BUTTON", "INPUT", "SPAN", "I"].includes(tag);
+      if (!isNative && role !== "button" && !action && !/(?:button|trigger|toggle|open|link|btn)/i.test(className)) continue;
       const label = controlLabel(el);
       if (!DISCUSS.test(label) || AGREEMENT.test(label)) continue;
       report.controls_total++;
@@ -1687,12 +1695,12 @@
     report.visible_message_candidates = limit2(seen.size);
     const photos = /* @__PURE__ */ new Set();
     for (const root of threads) {
-      for (const el of all(root, "img,picture,video,a[href]")) {
-        if (el.tagName === "IMG" || el.tagName === "PICTURE" || el.tagName === "VIDEO") {
+      for (const el of all(root, "img,picture,video,a[href],[data-vision-media-candidate]")) {
+        if (el.tagName === "IMG" || el.tagName === "PICTURE" || el.tagName === "VIDEO" || el.getAttribute?.("data-vision-media-candidate") != null) {
           photos.add(el);
           continue;
         }
-        if (/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el, "href")))
+        if (/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el, "href")) && !all(el, "img,picture,video,[data-vision-media-candidate]").length)
           photos.add(el);
       }
     }
@@ -2071,6 +2079,20 @@
       return classifiedError(error, phase, originRelation);
     }
   }
+  function inertOrderDiscussionHtml(source) {
+    if (typeof source !== "string" || source.length > 3e6) return null;
+    const withoutScripts = source.replace(
+      /<\s*(script|style)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,
+      ""
+    );
+    const withoutMedia = withoutScripts.replace(
+      /<\s*(?:img|image|iframe|source|video|audio|track|embed|object|link)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi,
+      '<span data-vision-media-candidate=""></span>'
+    );
+    if (/<\s*(?:img|image|iframe|source|video|audio|track|embed|object|link)\b/i.test(withoutMedia))
+      return null;
+    return withoutMedia;
+  }
   async function inspectOrderDiscussionFromRow(row, {
     loc = globalThis.location,
     fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
@@ -2083,7 +2105,12 @@
     const originRelation = target.url.origin === loc.origin ? "same_origin" : "approved_other_test_origin";
     try {
       const source = await getText(target.url.href, fetcher, loc.origin, "order_card");
-      const doc = parse(source, DOMParserClass);
+      const inert = inertOrderDiscussionHtml(source);
+      if (inert === null) return REFUSE(
+        "ORDER_DISCUSSION_HTML_UNSAFE",
+        { stage: "order_card" }
+      );
+      const doc = parse(inert, DOMParserClass);
       if (!doc) return REFUSE(
         "ORDER_DISCUSSION_HTML_UNREADABLE",
         { stage: "order_card" }
@@ -3294,7 +3321,7 @@
           row_index: r.row_index,
           status: "STRUCTURE_ONLY_UNVERIFIED",
           ...categorical,
-          weak_topic_candidates: topics.filter((x) => probe.weak_topic_candidates?.includes(x)),
+          weak_topic_candidates: topics.filter((x) => probe.weak_topic_candidates?.includes(x)).sort(),
           discussion_content_complete: false,
           expert_label_verified: false,
           screenshot_roi_verified: false,
