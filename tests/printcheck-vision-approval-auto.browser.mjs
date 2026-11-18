@@ -128,7 +128,7 @@ try{
  assert.equal(privateReport.articles[0].history[0].attachments[0].downloaded,false);
  assert.equal(privateReport.articles[0].history[0].attachments[0].local_get_status,
   'LOCAL_ATTACHMENT_BYTES_ONLY');
- assert.equal(privateReport.attachment_download_summary.verified_files,1);
+ assert.equal(privateReport.attachment_download_summary.verified_files,2);
  assert.equal(privateReport.attachment_download_summary.local_zip_parts,1);
  assert.equal(privateReport.articles[1].observed_human_comments,2);
  assert.equal(privateReport.training_ready,false);
@@ -139,11 +139,11 @@ try{
  const anon=JSON.parse(await readFile(await (await anonEvent).path(),'utf8'));
  assert.equal(anon.schema,'printcheck.vision.anonymous-approval-collection.v1');
  assert.equal(anon.eligible_articles,2);
- assert.equal(anon.attachment_reads_attempted,1);
- assert.equal(anon.attachment_reads_verified,1);
+ assert.equal(anon.attachment_reads_attempted,2);
+ assert.equal(anon.attachment_reads_verified,2);
  assert.equal(anon.local_zip_parts_prepared,1);
  assert.deepEqual(anon.attachment_reads_by_status,
-  {LOCAL_ATTACHMENT_BYTES_ONLY:1});
+  {LOCAL_ATTACHMENT_BYTES_ONLY:2});
  assert.equal(anon.articles[0].history_entry_count,15);
  assert.equal(anon.articles[0].human_comment_count,13);
  assert.equal(anon.articles[1].human_comment_count,2);
