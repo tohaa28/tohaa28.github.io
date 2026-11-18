@@ -106,6 +106,8 @@ export async function readNativeApprovalAttachment(attachment,{
   if(resp?.redirected||resp?.type==='opaqueredirect')
    return code('MANUAL_REDIRECT_OR_PATH_CHANGED');
   if(!resp?.ok)return code('MANUAL_HTTP_ERROR',{http_status:resp?.status??null});
+  if(resp.status!==200)return code('MANUAL_HTTP_UNEXPECTED_STATUS',
+   {http_status:resp.status});
   const ct=String(resp.headers?.get?.('content-type')||'').toLowerCase();
   if(/(?:text\/html|application\/json|text\/plain|application\/xhtml)/.test(ct))
    return code('MANUAL_UNEXPECTED_CONTENT_TYPE');
@@ -125,6 +127,8 @@ export async function readNativeApprovalAttachment(attachment,{
    chunks.push(value);
   }
   if(total<8)return code('MANUAL_ATTACHMENT_EMPTY');
+  if(/^\d+$/.test(declared)&&Number(declared)!==total)
+   return code('MANUAL_ATTACHMENT_TRUNCATED');
   const bytes=new Uint8Array(total);
   let off=0;
   for(const part of chunks){bytes.set(part,off);off+=part.length}
