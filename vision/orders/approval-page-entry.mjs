@@ -5,6 +5,8 @@
  * zero training labels, zero customer details in the downloadable JSON.
  */
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
+import {collectMaketApprovalsOnOrderPage,anonymousApprovalCollection}
+ from './approval-auto-scan.mjs';
 const BOX_ID='vision-approval-inspector',STYLE_ID='vision-approval-inspector-css';
 const ACCEPTED=['testgifts.local'];
 function isOrderPage(loc=globalThis.location){
@@ -34,17 +36,24 @@ export function initApprovalPageEntry(){
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
  const header=make('strong','Vision AI · Согласование макета');
- const note=make('p','Откройте штатной кнопкой «Согласование макета» у нужного артикула. Затем проверьте уже открытое окно. Ничего на сайте не изменяется.');
+ const note=make('p','Автообход по артикулам: Vision самостоятельно нажмёт только «Согласование макета» со счётчиком сообщений больше 1, прочитает открывшееся окно и закроет его. Без сохранения или отправки сообщений. Можно также проверить одно вручную открытое окно.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
  const exportButton=make('button','Скачать анонимный JSON');
+ const autoScan=make('button','Автообход согласований >1');
+ const stopScan=make('button','Остановить обход');
+ const privateSave=make('button','Сохранить приватные данные');
+ const anonymousSave=make('button','Анонимный отчёт обхода');
  const close=make('button','Закрыть Vision');
  exportButton.disabled=true;
- let last=null;
- scan.type=exportButton.type=close.type='button';
+ stopScan.disabled=privateSave.disabled=anonymousSave.disabled=true;
+ let last=null,collection=null,busy=false,stopRequested=false;
+ for(const b of [scan,exportButton,autoScan,stopScan,privateSave,anonymousSave,close])
+  b.type='button';
  const stop=e=>{e.preventDefault();e.stopPropagation()};
  scan.addEventListener('click',event=>{
   stop(event);
+  if(busy)return;
   last=inspectOpenMaketApprovalDom(document);
   const r=last;
   if(r.status!=='VISIBLE_MODAL_STRUCTURE_ONLY'){
@@ -101,10 +110,65 @@ export function initApprovalPageEntry(){
   document.body.append(anchor);anchor.click();anchor.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
  });
- close.addEventListener('click',event=>{
-  stop(event);panel.remove();style.remove();
+ function downloadJson(data,filename){
+  const uri=URL.createObjectURL(new Blob(
+   [JSON.stringify(data,null,2)+'\n'],{type:'application/json'}));
+  const a=make('a');a.href=uri;a.download=filename;
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(uri),2500);
+ }
+ autoScan.addEventListener('click',async event=>{
+  stop(event);if(busy)return;
+  busy=true;stopRequested=false;collection=null;
+  scan.disabled=autoScan.disabled=exportButton.disabled=true;
+  stopScan.disabled=false;privateSave.disabled=anonymousSave.disabled=true;
+  try{
+   collection=await collectMaketApprovalsOnOrderPage(document,{
+    orderNumber:location.pathname.split('/').filter(Boolean).at(-1),
+    stop:()=>stopRequested||!panel.isConnected,
+    onProgress:p=>{
+     if(!panel.isConnected)return;
+     stats.textContent=p.complete?
+      'Автообход завершён. Проверено: '+p.processed+' / '+p.total:
+      'Автообход: '+p.processed+' / '+p.total+
+      ' · проверка следующего согласования; сообщений '+p.badge;
+    }
+   });
+   if(!panel.isConnected)return;
+   const done=collection.articles.filter(x=>x.status==='PRIVATE_REVIEW_ONLY').length;
+   const skipped=collection.skipped.length;
+   stats.textContent='Обход: '+collection.status+
+     '\nОбработано: '+collection.articles.length+
+     ' · успешно: '+done+' · пропущено по счётчику/без доступа: '+
+     skipped+'\nПриватный JSON содержит тексты замечаний и имена файлов — храните локально.';
+   privateSave.disabled=anonymousSave.disabled=false;
+  }catch{
+   if(panel.isConnected)stats.textContent='MANUAL: ошибка автоматического обхода.';
+  }finally{
+   busy=false;scan.disabled=autoScan.disabled=false;
+   stopScan.disabled=true;
+   exportButton.disabled=last?.status!=='VISIBLE_MODAL_STRUCTURE_ONLY';
+  }
  });
- panel.append(header,note,scan,exportButton,close,stats);
+ stopScan.addEventListener('click',event=>{
+  stop(event);stopRequested=true;stopScan.disabled=true;
+  stats.textContent='Остановка запрошена. Текущий шаг завершится безопасно.';
+ });
+ privateSave.addEventListener('click',event=>{
+  stop(event);if(!collection)return;
+  if(!window.confirm('В приватном JSON находятся сообщения о заказе, идентификаторы артикулов и имена вложений. Сохранить только на свой компьютер? Не публикуйте файл в GitHub и не отправляйте в общедоступные сервисы.'))return;
+  downloadJson(collection,'vision-private-approval-evidence.json');
+ });
+ anonymousSave.addEventListener('click',event=>{
+  stop(event);if(!collection)return;
+  downloadJson(anonymousApprovalCollection(collection),
+   'vision-anonymous-approval-collection.json');
+ });
+ close.addEventListener('click',event=>{
+  stop(event);stopRequested=true;panel.remove();style.remove();
+ });
+ panel.append(header,note,autoScan,stopScan,privateSave,anonymousSave,
+  scan,exportButton,close,stats);
  document.body.append(panel);
  return true;
 }
