@@ -7,6 +7,7 @@ on:
     paths:
       - "vision/**"
       - "tests/printcheck-vision-discussions.test.mjs"
+      - "tests/printcheck-vision-approval-inline-images.test.mjs"
       - "tests/printcheck-vision-discussions.browser.mjs"
       - "tests/printcheck-vision-rules.test.mjs"
       - "tests/printcheck-vision-topology.test.mjs"
@@ -99,6 +100,8 @@ jobs:
       - name: Verify source and tests syntax
         run: |
           node --check vision/orders/discussion-probe.mjs
+          node --check vision/orders/approval-inline-images.mjs
+          node --test tests/printcheck-vision-approval-inline-images.test.mjs
           node --check tests/printcheck-vision-discussions.test.mjs
           node --test tests/printcheck-vision-discussions.test.mjs
           node --check vision/rules/resolver.mjs
