@@ -86,7 +86,7 @@ try{
  assert.ok(requests.some(x=>x.type==='image'));
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
  const status=await page.locator('#vision-local-order-overlay .vlo-stats').innerText();
- assert.match(status,/Прочитано обсуждений: 1/);
+ assert.match(status,/историй: 1/);
  const privateDownload=downloads.find(x=>
   x.suggestedFilename()==='vision-private-approval-evidence-8001111.json');
  assert.ok(privateDownload,'list action automatically downloads private text JSON');
