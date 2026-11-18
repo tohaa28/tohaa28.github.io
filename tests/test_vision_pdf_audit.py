@@ -206,6 +206,42 @@ class PDFAuditTests(unittest.TestCase):
                 self.assertFalse(result['production_approved'])
                 self.assertNotIn('PRIVATE', json.dumps(result))
 
+    def test_unknown_pdf_item_operators_fail_closed_without_private_leakage(self):
+        class OperatorPage(Page):
+            def __init__(self, items):
+                self.items = items
+            def get_drawings(self):
+                return [{"type": "s", "width": .2, "rect": Rect(0, 0, 5, 5),
+                         "items": self.items}]
+
+        class OperatorEngine:
+            def __init__(self, items):
+                self.items = items
+            def open(self, _):
+                items = self.items
+                class OperatorDocument(Document):
+                    def __iter__(self):
+                        return iter([OperatorPage(items)])
+                return OperatorDocument()
+
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        for operator in ("PRIVATE CUSTOMER DATA", "m", "v", "y", "", "C"):
+            with self.subTest(operator=operator):
+                result = pdf.audit_document(source, engine=OperatorEngine(
+                    [(operator, "PRIVATE CUSTOMER DATA")]))
+                self.assertEqual(result["status"], "MANUAL")
+                self.assertEqual(result["reason"], "PDF_PATH_ITEMS_UNSUPPORTED")
+                self.assertFalse(result["production_approved"])
+                self.assertFalse(result["training_ready"])
+                self.assertNotIn("PRIVATE CUSTOMER DATA", json.dumps(result))
+        for operator in ("l", "c", "re", "qu"):
+            with self.subTest(supported=operator):
+                result = pdf.audit_document(source, engine=OperatorEngine(
+                    [(operator, "synthetic")]))
+                self.assertEqual(result["status"], "RESEARCH_ONLY")
+                self.assertFalse(result["production_approved"])
+                self.assertFalse(result["training_ready"])
+
     def test_narrow_filled_bounding_box_is_only_a_research_candidate(self):
         class FilledPage(Page):
             def get_drawings(self):
