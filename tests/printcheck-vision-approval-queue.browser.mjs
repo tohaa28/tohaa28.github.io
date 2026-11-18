@@ -94,7 +94,7 @@ try{
  assert.ok(JSON.stringify(report).includes('Синтетическая ошибка'));
  assert.equal(JSON.stringify(report).includes('files.testgifts.local'),false);
  assert.ok(downloads.some(x=>
-  x.suggestedFilename()==='vision-private-approval-attachments-part-0001.zip'));
+  x.suggestedFilename()==='vision-private-approval-attachments-8001111-part-0001.zip'));
  const anonEvent=page.waitForEvent('download');
  await page.locator('#vision-local-order-overlay button')
   .filter({hasText:'Отчёт согласований JSON'}).click();
