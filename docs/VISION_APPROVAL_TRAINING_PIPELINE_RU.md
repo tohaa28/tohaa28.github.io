@@ -19,8 +19,8 @@
 
 ```powershell
 python tools/vision_approval_training_corpus.py `
-  --input-dir "D:\\VisionPrivate\\Downloads" `
-  --output "D:\\VisionPrivate\\Corpus-001"
+  --input-dir "D:\VisionPrivate\Downloads" `
+  --output "D:\VisionPrivate\Corpus-001"
 ```
 
 Также допустим повторяемый ввод `--evidence <json>` и `--archive <zip>` вместо `--input-dir`. Папка вывода должна **отсутствовать** до запуска. Не выбирайте каталог проекта/публичного репозитория.
