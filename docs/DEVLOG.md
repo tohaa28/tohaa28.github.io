@@ -1220,3 +1220,65 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Commit `d43bb85ea7e0aff6f372edc64f55cec9e2f8e4d2`: fixed synthetic fixture paths and mutation target; added assertions that both initial files reach `SOURCE_VERIFIED_RESEARCH_ONLY` and that the changed source is rejected as `SOURCE_SIZE_MISMATCH`. No production code, real PDF, private manifest, source filename, original SHA or HMAC key was uploaded.
 - Local Python execution was not possible because git clone from github.com failed DNS resolution. New-HEAD CI must be checked independently. This change does NOT establish 512 MB fixture coverage, three independent expert ROI votes, real customer correctness or training readiness.
 - Still blocked: verified layout/constructor/print-method association, physical mm, ICC/spot/transparency, two independent expert ROI reviews and adjudication, verified family holdout, anonymous real 404 reference_state/MV3, Windows ACL, preview publish on this HEAD and real-world accuracy. Candidate partitions remain unverified; unknown => MANUAL, `training_ready=false`, production OK disabled.
+
+
+## M3.13 — article "Согласование макета": confirmed HTML, modal inspector, 18.11.2026
+
+- User clarified the **real** entrypoint: article-row
+  `li[data-itemid] a.j_maketadjusting`, titled «Согласование макета».
+  Modal contains `#j_maketAdjustingForm` («Проблемы») plus
+  `#j_maketadjusting_comments_list` («Обсуждение»).
+  This corrects prior logic that excluded all approval/soglаsovanie UI:
+  the native article's approval editor IS the wanted discussion source.
+- Privately inspected one user-supplied **already-open saved HTML**, locally
+  only. It revealed 25 **available** problem checkboxes, 0 checked
+  in the saved state, 40 chronological entries composed of 13 human
+  replies and 27 audit events (4 add-problem, 4 remove-problem,
+  13 status changes, 6 other), plus 6 PDF and 1 PSD attachments.
+  The visible 13 badge counts human comments, NOT all 40 events.
+  All these are non-identifying aggregated numbers. The saved customer
+  HTML, identifiers, participant names, original comments and files
+  were not added to GitHub or Actions.
+- Confirmed from saved page config: existing action names
+  `load_maketadjusting_editor`, `load_maketadjusting_comments` and
+  `download_maketadjusting_attachment`. Query parameters of the
+  read-only AJAX operations have **not** been independently verified.
+  Do not guess them. `save_maketadjusting` and
+  `add_maketadjusting_comment` use POST and are forbidden to this probe.
+- `bbb1c03caa45` / `b16cc76bfafa`:
+  `vision/orders/maket-approval-probe.mjs` parses **already loaded**
+  modal DOM. Separates available/currently checked problem options,
+  user messages, add/remove events, status events and attachment
+  categories. Exports only safe count/weak-topic enums; no source
+  content, messages, filenames, authors or item IDs; never training-ready.
+- `d4ed0beff059`: article `data-itemid` / exact
+  `j_maketadjusting` trigger discovery added to existing
+  `discussion-probe.mjs`; avatar images no longer counted as
+  comment screenshots when modal is available.
+- `1cbb58bcd276` / `1a13380f2591`:
+  independent on-page inspector `approval-page-entry.mjs`,
+  MV3 v0.1.1 on exactly `http://testgifts.local/private/order/*`.
+  The designer/user manually opens the site's native modal,
+  then Vision **«Прочитать открытое согласование»** and
+  **«Скачать анонимный JSON»**. No GET/POST, downloads of private
+  attachments, button clicks, server writes or untrusted URLs.
+- `9b5df2674108`: Chromium synthetic regression recreates
+  25 options, 40 timeline events, 13 human comments, 6PDF+1PSD,
+  verifies a separate selected checkbox, no training, and zero
+  personal-data leakage. `806151a79682` bundles new script,
+  adds browser regression to isolated preview workflow and packages it
+  into extension ZIP. `3e9043304efa` verifies actual MV3 injection
+  on a synthetic order page, in addition to existing devorders scan.
+- `a9b60052bb96` / `8b02d383ce50` / `da1383bd6098`:
+  extension README, research document and preview landing page
+  updated with exact workflow and data-safety limits.
+- Current status: isolated preview run `44278921326` was pending
+  at initial journal entry. Verify its completion before offering the
+  updated ZIP as published. Other three CI suites SUCCESS on
+  `3e9043304` (rules, independent raster, UI smoke).
+- Unknown: actual runtime on authenticated testgifts browser; full
+  text/media extraction, attachment-image ROI coordinates, matching
+  discussion to historical uploaded PDF revisions, independently
+  corroborated defect vs resolution. Those all remain MANUAL.
+  `training_ready=false`, `production_approved=false`.
+  Draft PR #4 is not merged; no production code altered.
