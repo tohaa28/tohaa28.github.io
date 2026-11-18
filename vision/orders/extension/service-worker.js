@@ -199,8 +199,16 @@ async function runNativeApprovalOrder(url){
     await pause(250);
    }
   }
-  if(!ready||!result||typeof result!=='object')
-   return {status:'MANUAL_ORDER_CONTENT_SCRIPT_UNAVAILABLE'};
+  if(!ready||!result||typeof result!=='object'){
+   let stage='UNKNOWN';
+   try{
+    const current=await chrome.tabs.get(tab.id);
+    const location=new URL(current.url||current.pendingUrl||'about:blank');
+    stage=location.href===url?'EXPECTED':location.protocol==='chrome-error:'?
+      'ERROR_PAGE':'OTHER';
+   }catch{stage='TAB_UNREADABLE'}
+   return {status:'MANUAL_ORDER_TAB_'+stage};
+  }
   // Close only our own tab, after browser has initiated local downloads.
   await pause(1400);
   const safeStatus=/^[A-Z][A-Z0-9_]{2,70}$/.test(result.status||'')?
