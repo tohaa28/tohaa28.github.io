@@ -33,6 +33,17 @@ const attachedFileType=name=>{
 };
 const visibleModal=doc=>all(doc,'g-modal[visible]').find(m=>
  m.querySelector?.('#j_maketAdjustingForm'));
+function isCurrentOrderApprovalLink(raw,doc){
+ if(raw==='#'||raw==='')return true;
+ try{
+  const page=new URL(doc?.location?.href||globalThis.location?.href);
+  const target=new URL(raw,page.href);
+  return page.protocol==='http:'&&page.hostname==='testgifts.local'&&
+    target.origin===page.origin&&target.pathname===page.pathname&&
+    target.hash==='#'&&!target.search&&
+    !target.username&&!target.password;
+ }catch{return false}
+}
 const humanOrSystem=(body,wrapper)=>{
  if(/^Добавлены проблемы\s*:/i.test(body))return 'problem_added';
  if(/^Удалены проблемы\s*:/i.test(body))return 'problem_removed';
@@ -50,9 +61,7 @@ export function discoverMaketApprovalTargets(doc){
   const element=anchors[index],li=element.closest('li[data-itemid]');
   const itemId=attr(li,'data-itemid'),badge=badgeNumber(element);
   const anchorHref=attr(element,'href');
-  const linkOk=anchorHref==='#'||anchorHref===''||
-     (anchorHref.startsWith('http://testgifts.local/private/order/')&&
-       anchorHref.endsWith('#'));
+  const linkOk=isCurrentOrderApprovalLink(anchorHref,doc);
   const approved=digits(itemId)&&linkOk;
   const info={index:index+1,element,itemId,badge};
   if(!approved)skipped.push({index:index+1,reason:'UNSAFE_NATIVE_TRIGGER'});
@@ -234,7 +243,12 @@ export async function collectMaketApprovalsOnOrderPage(doc,{
    // matches, preventing accidental closing of an unrelated user modal.
    const activeId=String(modal?.querySelector('input[name="oiid"]')?.value||
      attr(modal?.querySelector('input[name="oiid"]'),'value'));
-   if(modal&&activeId===target.itemId)modal.removeAttribute('visible');
+   if(modal&&activeId===target.itemId){
+    const nativeClose=modal.shadowRoot?.querySelector?.('.close[close]');
+    if(nativeClose)nativeClose.click();
+    // Fallback: native close is not exposed in all site revisions.
+    if(modal.hasAttribute('visible'))modal.removeAttribute('visible');
+   }
   }
   if(result.status==='LOCAL_PRIVATE_BUDGET_REACHED')break;
   if(stop()){result.status='STOPPED';break}
