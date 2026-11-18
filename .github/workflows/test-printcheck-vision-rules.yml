@@ -75,6 +75,8 @@ on:
       - "tests/test_vision_private_corpus_stage.py"
       - "tests/test_vision_roi_review.py"
       - "tests/test_vision_pdf_audit.py"
+      - "tools/vision_approval_archive_audit.py"
+      - "tests/test_vision_approval_archive_audit.py"
       - "docs/DEVLOG.md"
       - ".github/workflows/test-printcheck-vision-rules.yml"
   pull_request:
@@ -179,6 +181,8 @@ jobs:
             python tests/test_vision_roi_review.py
             python tests/test_vision_pdf_audit.py
           done
+      - name: Verify offline native approval archive integrity and source mapping
+        run: python -m unittest discover -s tests -p 'test_vision_approval_archive_audit.py' -v
       - name: Verify private large-file corpus staging and grouped review safety
         run: |
           python -m py_compile tools/vision_private_corpus_stage.py
