@@ -15,7 +15,10 @@ const attachmentUrl=origin+'/ajax/gifts/order?'+
  'action=download_maketadjusting_attachment&id=889900';
 const html='<!doctype html><html><head><meta charset="utf-8"></head>'+
  '<body><div class="cart-order"><ul>'+item(1001,13)+
- item(1002,1)+item(1003,2)+'</ul></div>'+
+ item(1002,1)+item(1003,2)+
+ '<li data-itemid="9999"><a class="j_maketadjusting" '+
+ 'href="http://testgifts.local/private/order/1234567#">'+
+ '<span class="gifts-badge">3</span></a></li>'+'</ul></div>'+
  '<g-modal id="approval-modal"></g-modal></body></html>';
 const browser=await chromium.launch({headless:true});
 try{
@@ -58,9 +61,13 @@ try{
       '</div></li>');
     modal.innerHTML='<form id="j_maketAdjustingForm">'+
       '<input name="oiid" value="'+id+'" type="hidden">'+
+      '<div class="grid"><div class="col-3-12">'+
+      '<span class="bold-500">SB1: Сублимация/посуда,1</span>'+
+      '<span class="color-text color--dark">Место: по периметру</span>'+
+      '</div><div class="col-9-12">'+
       '<label><input type="checkbox" name="ma_problem[]" value="73"'+
       (id==='1001'?' checked':'')+'><span class="form-check-text">'+
-      'Толщина линий меньше 0,25 мм</span></label>'+
+      'Толщина линий меньше 0,25 мм</span></label></div></div>'+
       '<textarea name="ma_description">Дополнительное описание #'+id+
       '</textarea></form>'+
       '<div id="j_maketadjustingcomments_counter">'+messages+'</div>'+
@@ -105,13 +112,18 @@ try{
   await (await privateEvent).path(),'utf8'));
  assert.equal(privateReport.schema,'printcheck.vision.private-approval-collection.v1');
  assert.equal(privateReport.selected_by_badge,2);
- assert.equal(privateReport.skipped.length,1);
+ assert.equal(privateReport.skipped.length,2);
  assert.equal(privateReport.skipped[0].reason,'BELOW_MESSAGE_THRESHOLD');
+ assert.equal(privateReport.skipped[1].reason,'UNSAFE_NATIVE_TRIGGER');
  assert.equal(privateReport.articles.length,2);
  assert.equal(privateReport.articles[0].status,'PRIVATE_REVIEW_ONLY');
  assert.equal(privateReport.articles[0].observed_human_comments,13);
  assert.equal(privateReport.articles[0].history.length,15);
  assert.equal(privateReport.articles[0].current_problems.length,1);
+ assert.equal(privateReport.articles[0].current_problems[0].print_method,
+  'SB1: Сублимация/посуда,1');
+ assert.equal(privateReport.articles[0].current_problems[0].print_placement,
+  'Место: по периметру');
  assert.equal(privateReport.articles[0].history[0].attachments[0].kind,'image');
  assert.equal(privateReport.articles[0].history[0].attachments[0].downloaded,false);
  assert.equal(privateReport.articles[0].history[0].attachments[0].local_get_status,
