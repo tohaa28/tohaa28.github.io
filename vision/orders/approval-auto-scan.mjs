@@ -10,6 +10,7 @@
  * only in an explicitly downloaded LOCAL PRIVATE JSON, not in GitHub/CI.
  */
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
+import {extractApprovalGalleryImages} from './approval-inline-images.mjs';
 
 const MAX_TARGETS=100,MAX_MESSAGES=1500,MAX_TEXT=12000;
 const MAX_LOCAL_PRIVATE_CHARS=24_000_000;
@@ -119,6 +120,10 @@ export function extractMaketApprovalEvidence(doc,{itemId,orderNumber,badge}={}){
    kind:attachedFileType(str(a)),
    downloaded:false
   })).slice(0,40);
+  const screenshots=extractApprovalGalleryImages(main,{orderNumber,itemId});
+  // Gallery screenshots are files too, even without anchor[data-id].
+  // Keep their verified URL nonenumerable, never leak it to private JSON.
+  attachments.push(...screenshots.slice(0,Math.max(0,40-attachments.length)));
   const clone=main.cloneNode(true);
   for(const anchor of all(clone,'a.j_maketadjusting_attachment'))
    anchor.remove();
