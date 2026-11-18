@@ -1476,3 +1476,13 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Local executable tests not run: container cannot resolve github.com, so source checkout is unavailable. CI status must be verified on the resulting commit; do not claim a successful production/browser test.
 - Real authorized attachment HTTP responses and physical-PDF revision matching remain unverified; `training_ready=false` and `production_approved=false`.
 
+
+
+## M3.18 — SHA-256 provenance without SubtleCrypto on HTTP test pages (2026-11-18)
+
+- Parent `54ee2d55d9087b1a8b8d55ffcccfcb97045eadd5`; draft PR #4, only the isolated experimental branch.
+- Found a provenance gap: the authorized `http://testgifts.local` page is not generally a secure context, so `crypto.subtle` may be absent and the existing attachment reader silently recorded `sha256:null` after successful GET.
+- Keep native `crypto.subtle.digest('SHA-256', bytes)` when supported; otherwise run the bounded dependency-free SHA-256 implementation from the same module. The software code operates on the already capped 16 MB file bytes. Both paths return the same 64-char hexadecimal digest.
+- New tests: NIST standard empty and `abc` vectors, independently computed Node `createHash('sha256')` results for PDF, PSD and 1,000,001-byte binary; plus digest change on same-length mutation. The algorithm was independently prototyped in Node v22 for 0, 3, 1000, 1,000,000 and 16,000,000 bytes: all PASS versus Node crypto; 16 MB software digest measured ~507 ms on the local tool runtime. This prototype is not an end-to-end browser approval test.
+- GitHub Actions and CircleCI for this new commit must be checked separately. Unverified live server GET/attachment provenance, PDF revision, designer labels and expert ROI remain MANUAL. Hash equality only detects byte identity, not network provenance or source authenticity. `training_ready=false`, `production_approved=false`.
+

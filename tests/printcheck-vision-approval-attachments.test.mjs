@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {writeFileSync} from 'node:fs';
-import {nativeApprovalAttachmentUrl,nativeAttachmentSignature,
+import {nativeApprovalAttachmentUrl,nativeAttachmentSignature,portableSha256Hex,
  readNativeApprovalAttachment,exportNativeApprovalAttachmentParts}
  from '../vision/orders/approval-attachments.mjs';
 
@@ -195,4 +196,26 @@ test('caller maxPartFiles enforces bounded local ZIP splits',async()=>{
  assert.deepEqual(parts.map(p=>p.files),[1,1]);
  assert.deepEqual(parts.map(p=>p.manifest.package_part),[1,2]);
  assert.deepEqual(parts.map(p=>p.manifest.training_ready),[false,false]);
+});
+
+test('portable SHA-256 matches native SHA-256 for empty, short and large binary',async()=>{
+ const empty=new Uint8Array();
+ const abc=new TextEncoder().encode('abc');
+ const binary=new Uint8Array(1_000_001).fill(0x61);
+ assert.equal(portableSha256Hex(empty),
+  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+ assert.equal(portableSha256Hex(abc),
+  'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+ for(const value of [pdf,psd,binary]){
+  assert.equal(portableSha256Hex(value),
+   createHash('sha256').update(value).digest('hex'));
+ }
+ const result=await readNativeApprovalAttachment(attachment('15','original.pdf'),{
+  origin:'http://testgifts.local',fetcher:async()=>response(pdf)});
+ assert.equal(result.status,'LOCAL_ATTACHMENT_BYTES_ONLY');
+ assert.equal(result.sha256,portableSha256Hex(pdf));
+ const changed=Uint8Array.from(pdf);
+ changed[7]^=1;
+ assert.notEqual(portableSha256Hex(changed),portableSha256Hex(pdf));
+ assert.equal(changed.length,pdf.length);
 });
