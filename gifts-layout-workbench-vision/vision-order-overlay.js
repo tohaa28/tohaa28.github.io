@@ -1562,6 +1562,55 @@
     };
   }
 
+  // vision/orders/approval-inline-images.mjs
+  var imagePath = /^\/maketadjusting\/([0-9]{1,20})\/([0-9]{5,12})\/([0-9]{1,20})\/([^/?#]+)\.(png|jpe?g|webp|gif)$/i;
+  var safeOriginal = /^[^\\/:*?"<>|\x00-\x1f\x7f]{1,180}$/;
+  function verifiedApprovalGalleryImageUrl(raw, { orderNumber, itemId } = {}) {
+    if (typeof raw !== "string" || raw.length > 1800 || !/^[0-9]{5,12}$/.test(String(orderNumber)) || !/^[0-9]{1,20}$/.test(String(itemId))) return null;
+    try {
+      const u = new URL(raw);
+      if (u.origin !== "http://files.testgifts.local" || u.search || u.hash || u.username || u.password || u.port) return null;
+      const m = imagePath.exec(u.pathname);
+      if (!m || m[2] !== String(orderNumber) || m[3] !== String(itemId)) return null;
+      const filename = decodeURIComponent(m[4]) + "." + m[5];
+      if (!safeOriginal.test(filename) || /[. ]$/.test(filename)) return null;
+      return { url: u.href, filename, extension: m[5].toLowerCase() };
+    } catch {
+      return null;
+    }
+  }
+  function galleryOriginals(gallery) {
+    const root = gallery.shadowRoot || gallery.querySelector?.('template[shadowrootmode="open"]')?.content;
+    return root ? [...root.querySelectorAll("section picture img")] : [...gallery.querySelectorAll(":scope > img")];
+  }
+  function extractApprovalGalleryImages(messageMain, scope) {
+    if (!messageMain?.querySelectorAll) return [];
+    const found = [], seen = /* @__PURE__ */ new Set();
+    for (const gallery of messageMain.querySelectorAll("g-gallery")) {
+      for (const image of galleryOriginals(gallery)) {
+        const raw = image.getAttribute("data-hd") || image.getAttribute("src") || image.getAttribute("data-src") || "";
+        const candidate = verifiedApprovalGalleryImageUrl(raw, scope);
+        if (!candidate || seen.has(candidate.url)) continue;
+        seen.add(candidate.url);
+        const record = {
+          source: "native_approval_gallery",
+          attachment_id: null,
+          filename: candidate.filename,
+          kind: "image",
+          downloaded: false
+        };
+        Object.defineProperty(record, "inline_image_url", {
+          value: candidate.url,
+          enumerable: false,
+          writable: false
+        });
+        found.push(record);
+        if (found.length >= 40) return found;
+      }
+    }
+    return found;
+  }
+
   // vision/orders/maket-approval-probe.mjs
   var MAX = 1e4;
   var count = (n) => Math.min(MAX, Math.max(0, n));
@@ -1705,6 +1754,13 @@
         humans++;
         categorize(content, weakMessages);
       }
+      const orderNumber = String(doc?.location?.pathname || "").match(
+        /^\/private\/order\/(\d{5,12})\/?$/
+      )?.[1];
+      const itemId = String(form?.querySelector('input[name="oiid"]')?.value || "");
+      const gallery = extractApprovalGalleryImages(main, { orderNumber, itemId });
+      result.attachments_total += gallery.length;
+      result.attachments_image_candidates += gallery.length;
       for (const anchor of nodes(main, "a.j_maketadjusting_attachment")) {
         result.attachments_total++;
         const type = typeFromAttachment(anchor);
@@ -3245,7 +3301,116 @@
         updateBatchControls();
       }
     });
+    let approvalQueueIndex = 0, approvalQueueStop = false;
+    const approvalQueueReports = [];
+    const approvalQueueBtn = makeButton("\u0421\u043E\u0431\u0440\u0430\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0432\u0441\u0435\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432", () => {
+      void collectFromOrdersList();
+    });
+    const approvalQueueStopBtn = makeButton("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F", () => {
+      approvalQueueStop = true;
+      renderStats("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u0437\u0430\u043F\u0440\u043E\u0448\u0435\u043D\u0430; \u0442\u0435\u043A\u0443\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437 \u0437\u0430\u0432\u0435\u0440\u0448\u0430\u0435\u0442\u0441\u044F \u0431\u0435\u0437\u043E\u043F\u0430\u0441\u043D\u043E.");
+    });
+    const approvalQueueDiagBtn = makeButton("\u041E\u0442\u0447\u0451\u0442 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 JSON", () => {
+      const data = {
+        schema: "printcheck.vision.anonymous-list-approval-queue.v1",
+        orders_attempted: approvalQueueReports.length,
+        totals: approvalQueueReports.reduce((total, r) => {
+          for (const key of ["eligible_articles", "verified_articles", "files", "zip_parts", "failures"])
+            total[key] += r[key] || 0;
+          return total;
+        }, { eligible_articles: 0, verified_articles: 0, files: 0, zip_parts: 0, failures: 0 }),
+        results: approvalQueueReports.map((r, i) => ({
+          row_index: i + 1,
+          status: r.status,
+          eligible_articles: r.eligible_articles || 0,
+          verified_articles: r.verified_articles || 0,
+          files: r.files || 0,
+          zip_parts: r.zip_parts || 0,
+          failures: r.failures || 0,
+          private_text_saved: r.private_text_saved === true
+        })),
+        raw_text_included: false,
+        order_ids_included: false,
+        attachment_names_or_urls_included: false,
+        training_ready: false
+      };
+      const uri = URL.createObjectURL(new Blob(
+        [JSON.stringify(data, null, 2) + "\n"],
+        { type: "application/json" }
+      ));
+      const a = node("a");
+      a.href = uri;
+      a.download = "vision-anonymous-approval-queue.json";
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(uri), 2e3);
+    });
+    approvalQueueStopBtn.disabled = true;
+    async function collectFromOrdersList() {
+      if (busy || closed) return;
+      if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) {
+        renderStats("MANUAL: \u0434\u043B\u044F \u0447\u0442\u0435\u043D\u0438\u044F \u0448\u0442\u0430\u0442\u043D\u044B\u0445 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0440\u0430\u0441\u0448\u0438\u0440\u0435\u043D\u0438\u0435 Chrome MV3.");
+        return;
+      }
+      busy = true;
+      approvalQueueStop = false;
+      approvalQueueBtn.disabled = true;
+      approvalQueueStopBtn.disabled = false;
+      pauseBtn.disabled = true;
+      const ordered = /* @__PURE__ */ new Map();
+      for (const row of rows) {
+        const target = rowOrderTarget(row.element, window.location.href);
+        if (target.status === "ORDER_LINK_FOUND" && target.url?.origin === "http://testgifts.local" && /^\/private\/order\/[0-9]{5,12}$/.test(target.url.pathname) && !target.url.search && !target.url.hash)
+          ordered.set(target.url.href, target.url.href);
+      }
+      const urls = [...ordered.values()];
+      let done = 0, verified = 0, imagesAndFiles = 0, errors = 0;
+      try {
+        while (approvalQueueIndex < urls.length && !closed && !approvalQueueStop) {
+          const url = urls[approvalQueueIndex];
+          renderStats("\u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0441\u043F\u0438\u0441\u043A\u0430: " + done + " / " + urls.length + "\n\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437 \u0432\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E\u0439 \u0432\u043A\u043B\u0430\u0434\u043A\u0435. \u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0439.");
+          let result;
+          try {
+            result = await chrome.runtime.sendMessage({
+              op: "vision-approval-order-queue-v1",
+              order_url: url
+            });
+          } catch {
+            result = { status: "MANUAL_BACKGROUND_ORDER_FAILED" };
+          }
+          const safeStatus = /^[A-Z0-9_]{3,70}$/.test(result?.status || "") ? result.status : "MANUAL_UNKNOWN_RESULT";
+          const num = (x) => Number.isSafeInteger(x) && x >= 0 && x <= 1e4 ? x : 0;
+          const entry = {
+            status: safeStatus,
+            eligible_articles: num(result?.eligible_articles),
+            verified_articles: num(result?.verified_articles),
+            files: num(result?.files),
+            zip_parts: num(result?.zip_parts),
+            failures: num(result?.failures),
+            private_text_saved: result?.private_text_saved === true
+          };
+          approvalQueueReports.push(entry);
+          approvalQueueIndex++;
+          done++;
+          verified += entry.verified_articles;
+          imagesAndFiles += entry.files;
+          if (safeStatus.startsWith("MANUAL")) errors++;
+          renderStats("\u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0441\u043F\u0438\u0441\u043A\u0430: " + approvalQueueIndex + " / " + urls.length + "\n\u041F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u0439: " + verified + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439: " + imagesAndFiles + " \xB7 \u0440\u0443\u0447\u043D\u044B\u0445 \u043F\u0440\u043E\u0432\u0435\u0440\u043E\u043A: " + errors + "\n\u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0435 \u0442\u0435\u043A\u0441\u0442\u044B \u0438 \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E \u0434\u043B\u044F \u043A\u0430\u0436\u0434\u043E\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430.");
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        if (!closed) renderStats(approvalQueueStop ? "\u041E\u0431\u0445\u043E\u0434 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u043E\u0431\u0440\u0430\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F\xBB, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C." : "\u041E\u0431\u0445\u043E\u0434 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D. \u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0435 JSON \u0438 ZIP \u043D\u0430\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u0432 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u0445 Chrome. \xAB\u041E\u0442\u0447\u0451\u0442 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 JSON\xBB \u043D\u0435 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u043A\u043B\u0438\u0435\u043D\u0442\u0441\u043A\u0438\u0445 \u0434\u0430\u043D\u043D\u044B\u0445.");
+      } finally {
+        busy = false;
+        approvalQueueBtn.disabled = false;
+        approvalQueueStopBtn.disabled = true;
+        updateBatchControls();
+      }
+    }
     actions.append(
+      approvalQueueBtn,
+      approvalQueueStopBtn,
+      approvalQueueDiagBtn,
       refreshBtn,
       scanBtn,
       discussionBtn,

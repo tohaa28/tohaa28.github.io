@@ -1,4 +1,53 @@
 (() => {
+  // vision/orders/approval-inline-images.mjs
+  var imagePath = /^\/maketadjusting\/([0-9]{1,20})\/([0-9]{5,12})\/([0-9]{1,20})\/([^/?#]+)\.(png|jpe?g|webp|gif)$/i;
+  var safeOriginal = /^[^\\/:*?"<>|\x00-\x1f\x7f]{1,180}$/;
+  function verifiedApprovalGalleryImageUrl(raw, { orderNumber, itemId } = {}) {
+    if (typeof raw !== "string" || raw.length > 1800 || !/^[0-9]{5,12}$/.test(String(orderNumber)) || !/^[0-9]{1,20}$/.test(String(itemId))) return null;
+    try {
+      const u = new URL(raw);
+      if (u.origin !== "http://files.testgifts.local" || u.search || u.hash || u.username || u.password || u.port) return null;
+      const m = imagePath.exec(u.pathname);
+      if (!m || m[2] !== String(orderNumber) || m[3] !== String(itemId)) return null;
+      const filename = decodeURIComponent(m[4]) + "." + m[5];
+      if (!safeOriginal.test(filename) || /[. ]$/.test(filename)) return null;
+      return { url: u.href, filename, extension: m[5].toLowerCase() };
+    } catch {
+      return null;
+    }
+  }
+  function galleryOriginals(gallery) {
+    const root = gallery.shadowRoot || gallery.querySelector?.('template[shadowrootmode="open"]')?.content;
+    return root ? [...root.querySelectorAll("section picture img")] : [...gallery.querySelectorAll(":scope > img")];
+  }
+  function extractApprovalGalleryImages(messageMain, scope) {
+    if (!messageMain?.querySelectorAll) return [];
+    const found = [], seen = /* @__PURE__ */ new Set();
+    for (const gallery of messageMain.querySelectorAll("g-gallery")) {
+      for (const image of galleryOriginals(gallery)) {
+        const raw = image.getAttribute("data-hd") || image.getAttribute("src") || image.getAttribute("data-src") || "";
+        const candidate = verifiedApprovalGalleryImageUrl(raw, scope);
+        if (!candidate || seen.has(candidate.url)) continue;
+        seen.add(candidate.url);
+        const record = {
+          source: "native_approval_gallery",
+          attachment_id: null,
+          filename: candidate.filename,
+          kind: "image",
+          downloaded: false
+        };
+        Object.defineProperty(record, "inline_image_url", {
+          value: candidate.url,
+          enumerable: false,
+          writable: false
+        });
+        found.push(record);
+        if (found.length >= 40) return found;
+      }
+    }
+    return found;
+  }
+
   // vision/orders/maket-approval-probe.mjs
   var MAX = 1e4;
   var count = (n) => Math.min(MAX, Math.max(0, n));
@@ -142,6 +191,13 @@
         humans++;
         categorize(content, weakMessages);
       }
+      const orderNumber = String(doc?.location?.pathname || "").match(
+        /^\/private\/order\/(\d{5,12})\/?$/
+      )?.[1];
+      const itemId = String(form?.querySelector('input[name="oiid"]')?.value || "");
+      const gallery = extractApprovalGalleryImages(main, { orderNumber, itemId });
+      result.attachments_total += gallery.length;
+      result.attachments_image_candidates += gallery.length;
       for (const anchor of nodes(main, "a.j_maketadjusting_attachment")) {
         result.attachments_total++;
         const type = typeFromAttachment(anchor);
@@ -296,55 +352,6 @@
     size32(e, 16, offset);
     size16(e, 20, 0);
     return new Blob([...data, ...central, end], { type: "application/zip" });
-  }
-
-  // vision/orders/approval-inline-images.mjs
-  var imagePath = /^\/maketadjusting\/([0-9]{1,20})\/([0-9]{5,12})\/([0-9]{1,20})\/([^/?#]+)\.(png|jpe?g|webp|gif)$/i;
-  var safeOriginal = /^[^\\/:*?"<>|\x00-\x1f\x7f]{1,180}$/;
-  function verifiedApprovalGalleryImageUrl(raw, { orderNumber, itemId } = {}) {
-    if (typeof raw !== "string" || raw.length > 1800 || !/^[0-9]{5,12}$/.test(String(orderNumber)) || !/^[0-9]{1,20}$/.test(String(itemId))) return null;
-    try {
-      const u = new URL(raw);
-      if (u.origin !== "http://files.testgifts.local" || u.search || u.hash || u.username || u.password || u.port) return null;
-      const m = imagePath.exec(u.pathname);
-      if (!m || m[2] !== String(orderNumber) || m[3] !== String(itemId)) return null;
-      const filename = decodeURIComponent(m[4]) + "." + m[5];
-      if (!safeOriginal.test(filename) || /[. ]$/.test(filename)) return null;
-      return { url: u.href, filename, extension: m[5].toLowerCase() };
-    } catch {
-      return null;
-    }
-  }
-  function galleryOriginals(gallery) {
-    const root = gallery.shadowRoot || gallery.querySelector?.('template[shadowrootmode="open"]')?.content;
-    return root ? [...root.querySelectorAll("section picture img")] : [...gallery.querySelectorAll(":scope > img")];
-  }
-  function extractApprovalGalleryImages(messageMain, scope) {
-    if (!messageMain?.querySelectorAll) return [];
-    const found = [], seen = /* @__PURE__ */ new Set();
-    for (const gallery of messageMain.querySelectorAll("g-gallery")) {
-      for (const image of galleryOriginals(gallery)) {
-        const raw = image.getAttribute("data-hd") || image.getAttribute("src") || image.getAttribute("data-src") || "";
-        const candidate = verifiedApprovalGalleryImageUrl(raw, scope);
-        if (!candidate || seen.has(candidate.url)) continue;
-        seen.add(candidate.url);
-        const record = {
-          source: "native_approval_gallery",
-          attachment_id: null,
-          filename: candidate.filename,
-          kind: "image",
-          downloaded: false
-        };
-        Object.defineProperty(record, "inline_image_url", {
-          value: candidate.url,
-          enumerable: false,
-          writable: false
-        });
-        found.push(record);
-        if (found.length >= 40) return found;
-      }
-    }
-    return found;
   }
 
   // vision/orders/approval-attachments.mjs
@@ -1177,7 +1184,7 @@
     const panel = make("section");
     panel.id = BOX_ID;
     panel.setAttribute("aria-label", "Vision AI \u2014 \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F");
-    const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430 \xB7 v0.1.4");
+    const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430 \xB7 v0.1.5");
     const note = make("p", "\u0410\u0432\u0442\u043E\u043E\u0431\u0445\u043E\u0434: \u0434\u043B\u044F \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u0441 2+ \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F\u043C\u0438 \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0430 \u0447\u0438\u0442\u0430\u0435\u0442 \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u044B, \u0432\u0441\u044E \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u0438 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E \u043F\u043E\u043B\u0443\u0447\u0430\u0435\u0442 \u0444\u0430\u0439\u043B\u044B \u0447\u0435\u0440\u0435\u0437 \u0440\u0430\u0437\u0440\u0435\u0448\u0451\u043D\u043D\u044B\u0439 GET. \u0410\u0440\u0445\u0438\u0432\u044B \u0441 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F\u043C\u0438 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u0430 \u044D\u0442\u043E\u0442 \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0431\u043E\u0440. \u041D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0439\u0442\u0435 \u043F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0435 ZIP \u0438 JSON \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.");
     const stats = make("p", "\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u043E\u043A\u043D\u043E.");
     stats.setAttribute("role", "status");
