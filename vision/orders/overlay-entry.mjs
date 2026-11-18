@@ -419,7 +419,7 @@ export function initLocalOrdersOverlay(){
        'raster_resolution','gradient_transparency','constructor_alignment'];
      return {row_index:r.row_index,status:'STRUCTURE_ONLY_UNVERIFIED',
        ...categorical,
-       weak_topic_candidates:topics.filter(x=>probe.weak_topic_candidates?.includes(x)),
+       weak_topic_candidates:topics.filter(x=>probe.weak_topic_candidates?.includes(x)).sort(),
        discussion_content_complete:false,expert_label_verified:false,
        screenshot_roi_verified:false,training_ready:false};
    });
