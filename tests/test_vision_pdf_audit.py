@@ -382,6 +382,22 @@ class PDFAuditTests(unittest.TestCase):
         self.assertEqual(again["processed"], 20)
         self.assertEqual(len(list(location.glob("*.json"))), 20)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX permission semantics only")
+    def test_existing_public_pdf_report_directory_fails_closed(self):
+        location = self.root / "reports" / "pdf-audits"
+        location.mkdir(parents=True, exist_ok=True)
+        location.chmod(0o755)
+        try:
+            result = pdf.audit_all_samples(self.root, engine=Engine())
+            self.assertEqual(result["status"], "MANUAL")
+            self.assertEqual(result["reason"], "REPORT_DIRECTORY_PERMISSIONS_UNSAFE")
+            self.assertFalse(result["production_approved"])
+            self.assertFalse(result["training_ready"])
+            self.assertFalse(list(location.glob("*.json")))
+            self.assertEqual(stat.S_IMODE(location.stat().st_mode), 0o755)
+        finally:
+            location.chmod(0o700)
+
     def test_batch_cannot_treat_modified_original_as_valid_pdf(self):
         source = self.root / lab.list_samples(self.root)[0]["path"]
         source.write_bytes(self.pdf + b"tampered")
