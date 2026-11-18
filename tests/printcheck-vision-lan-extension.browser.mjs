@@ -12,6 +12,7 @@ const files=['manifest.json','content-transport.js','service-worker.js'];
 for(const file of files)
  await cp(path.resolve('vision/orders/extension',file),path.join(extDir,file));
 await cp(path.resolve('vision-order-overlay.js'),path.join(extDir,'vision-order-overlay.js'));
+await cp(path.resolve('vision-order-approval.js'),path.join(extDir,'vision-order-approval.js'));
 const table='http://psk.testgifts.local';
 const mirror='http://testgifts.local';
 const listing='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
@@ -99,6 +100,22 @@ try{
  assert.ok(zipBytes.includes(Buffer.from('samples/0001/Исходный  файл.SvG','utf8')));
  assert.deepEqual(requests.map(x=>x.kind),['order','popup','artwork','artwork']);
  assert.deepEqual(errors,[]);
+ // A separate native article order page should get the second content
+ // script via the MANIFEST, without remote script injection or chat GETs.
+ const beforeOpenOrder=requests.length;
+ const approvalPage=await context.newPage();
+ await approvalPage.goto(mirror+'/private/order/8001111');
+ await approvalPage.locator('#vision-approval-inspector').waitFor({timeout:15000});
+ await approvalPage.locator('#vision-approval-inspector button')
+   .filter({hasText:'Прочитать открытое согласование'}).click();
+ assert.match(await approvalPage.locator('#vision-approval-inspector').innerText(),
+  /MODAL_NOT_LOADED/);
+ assert.equal(await approvalPage.locator('#vision-approval-inspector button')
+   .filter({hasText:'Скачать анонимный JSON'}).isDisabled(),true);
+ assert.equal(requests.length,beforeOpenOrder+1,
+  'Only the user-opened order page GET; extension never requests discussions');
+ assert.equal(requests.at(-1).kind,'order');
+ await approvalPage.close();
  console.log('MV3 extension Chromium end-to-end: separate test origin order->popup->original SVG via restricted background fetch, anonymous report PASS');
 }finally{
  if(context)await context.close();
