@@ -251,7 +251,9 @@ def audit_all_samples(root: Path, *, engine=None,
     if (report_dir.is_symlink() or
         any(p.is_symlink() for p in (root / "reports", root))):
         return manual("REPORT_DIRECTORY_SYMLINK_DENIED")
-    report_dir.mkdir(parents=True, exist_ok=True)
+    # New private reports directory must not be traversable by other local users.
+    # Existing directory permissions are not silently changed.
+    report_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     with lab.open_db(root) as db:
         samples = db.execute("SELECT id,source_sha256 FROM samples "
                              "WHERE extension='pdf' ORDER BY id").fetchall()
