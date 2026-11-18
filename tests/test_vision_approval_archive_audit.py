@@ -75,6 +75,8 @@ class ArchiveAuditTests(unittest.TestCase):
         self.assertTrue(summary["evidence_crosschecked"])
         self.assertFalse(summary["training_ready"])
         self.assertEqual(summary["contains_private_ids"], False)
+        self.assertEqual(audit.audit_archives([self.zip])["status"],
+                         "LOCAL_PARTS_ONLY_VERIFIED")
 
     def test_same_length_byte_change_with_recomputed_zip_crc_fails_sha256(self):
         changed = PDF.replace(b"synthetic", b"synthetiC")
