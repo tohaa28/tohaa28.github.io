@@ -174,7 +174,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function runNativeApprovalOrder(url){
  let tab=null;
  try{
-  tab=await chrome.tabs.create({url,active:false});
+  tab=await chrome.tabs.create({url,active:true});
   if(!Number.isInteger(tab?.id))return {status:'MANUAL_BACKGROUND_TAB_FAILED'};
   let result=null,ready=false;
   // An MV3 document_idle content script may register after tab completed.
