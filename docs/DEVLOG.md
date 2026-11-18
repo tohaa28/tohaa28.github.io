@@ -1132,3 +1132,11 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `3c49aae5531abf9cf6bad9c1dc1f24acd99b12c4`: added `tests/test_vision_private_corpus_threefold.py` with three isolated synthetic 16 MB+ streaming runs under the configured 512 MB cap; duplicate-content family coalescence, SHA mutation fail-closed, HMAC token agreement, private-output redaction, no training/production approval. This tests the 512 MB *limit setting*, not a full 512 MB fixture.
 - Direct local tests unavailable: github.com DNS resolution failed in the execution container. New SHA CI is not yet verified; this is not a PASS assertion. No customer PDFs, original filenames, SHA lists, HMAC keys, ROI answers or private manifests were uploaded.
 - Still blocked: real 404 reference_state/MV3 evidence, two independent verified expert ROI, real layout-to-constructor/print-method binding, verified physical mm, ICC/spot, PDF transparency, technology rules, Windows ACL and verified family holdout. Filename claims are not expert conflict labels. Unknown => MANUAL; training and production OK disabled.
+
+
+## M3.11 — synthetic HMAC namespace/key-rotation regression (2026-11-18)
+
+- Before edit PR #4 was OPEN, draft=true, merged=false; HEAD `2c1c94e5423c5a84719ff1250a724e77a0d3d340`. GitHub Actions UI smoke/raster safety/rules-dataset safety all SUCCESS on baseline (runs 44258194484, 44258194559, 44258194511); CircleCI vision-contract/vision-raster SUCCESS. Preview publish not established for baseline SHA.
+- `ead1c64fab23a20990731471bf45f5c757e7e676`: three synthetic iterations assert HMAC family-token determinism with the same key, rotation with a distinct key, family/content namespace separation and absence of synthetic family identifiers or raw key hex in tokens. No customer files or keys were used.
+- New HEAD CI and independent local execution are pending verification; do not treat test presence as a PASS. No production changes, PR merge, client data upload or training.
+- Still blocked: anonymous real 404 reference_state/MV3 evidence, two verified independent ROI votes/adjudication, artwork-to-constructor/technology association, certified physical scale, ICC/spot/transparency, Windows ACL, verified family holdout and real-world AI accuracy. Filename-derived claims are not expert labels. Unknown => MANUAL; training_ready=false; production OK disabled.
