@@ -398,6 +398,19 @@ class PDFAuditTests(unittest.TestCase):
         finally:
             location.chmod(0o700)
 
+    def test_report_directory_blocked_by_regular_file_fails_closed(self):
+        reports = self.root / "reports"
+        reports.mkdir(exist_ok=True)
+        blocked = reports / "pdf-audits"
+        blocked.write_text("PRIVATE LOCAL MARKER", encoding="utf-8")
+        result = pdf.audit_all_samples(self.root, engine=Engine())
+        self.assertEqual(result["status"], "MANUAL")
+        self.assertEqual(result["reason"], "REPORT_DIRECTORY_UNAVAILABLE")
+        self.assertFalse(result["production_approved"])
+        self.assertFalse(result["training_ready"])
+        self.assertNotIn("PRIVATE LOCAL MARKER", json.dumps(result))
+        self.assertEqual(blocked.read_text(encoding="utf-8"), "PRIVATE LOCAL MARKER")
+
     def test_batch_cannot_treat_modified_original_as_valid_pdf(self):
         source = self.root / lab.list_samples(self.root)[0]["path"]
         source.write_bytes(self.pdf + b"tampered")
