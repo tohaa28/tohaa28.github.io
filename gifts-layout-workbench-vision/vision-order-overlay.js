@@ -2830,6 +2830,7 @@
   }
   function safeEntryName(name) {
     if (name === "manifest.json") return true;
+    if (/^attachments\/[0-9]{4}\/[0-9]{4}\.(?:pdf|psd|psb|png|jpg|jpeg|webp|tif|tiff|gif|svg|eps|ai|cdr|zip)$/.test(name)) return true;
     if (/^samples\/[0-9]{4}\.(?:svg|pdf|png|jpg|jpeg|webp|cdr|eps|ai|bin)$/.test(name)) return true;
     const m = /^samples\/[0-9]{4}\/([^/]+)$/.exec(name);
     return !!m && exactLocalFilename(m[1]) === m[1];
