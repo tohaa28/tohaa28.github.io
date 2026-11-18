@@ -73,6 +73,15 @@ test('fail closed on unrelated origin, HTML login, spoofed PDF, redirects, size'
   attachment('14','file.pdf'),{origin:'http://testgifts.local',fetcher:async()=>
     new Response(null,{status:200,headers:{'content-length':'16000001'}})});
  assert.equal(oversize.status,'MANUAL_ATTACHMENT_TOO_LARGE');
+ const partial=await readNativeApprovalAttachment(
+  attachment('14','file.pdf'),{origin:'http://testgifts.local',fetcher:async()=>
+    new Response(pdf,{status:206,headers:{'content-type':'application/pdf'}})});
+ assert.equal(partial.status,'MANUAL_HTTP_UNEXPECTED_STATUS');
+ const truncated=await readNativeApprovalAttachment(
+  attachment('14','file.pdf'),{origin:'http://testgifts.local',fetcher:async()=>
+    new Response(pdf,{status:200,headers:{
+     'content-type':'application/pdf','content-length':String(pdf.length+9)}})});
+ assert.equal(truncated.status,'MANUAL_ATTACHMENT_TRUNCATED');
  const redirect=await readNativeApprovalAttachment(
   attachment('14','file.pdf'),{origin:'http://testgifts.local',fetcher:async()=>{
     const r=response(pdf);Object.defineProperty(r,'url',{value:'http://evil.example/path'});
