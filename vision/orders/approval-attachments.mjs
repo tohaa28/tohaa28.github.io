@@ -200,6 +200,14 @@ export async function* exportNativeApprovalAttachmentParts(report,{
   const file=await readNativeApprovalAttachment(job.attachment,{
    origin,fetcher,maxFileBytes:maxPerFile});
   processed++;
+  // Link each binary GET result back to its exact comment in the
+  // LOCAL PRIVATE evidence report; never place bytes in JSON.
+  job.attachment.local_get_status=file.status;
+  if(file.status==='LOCAL_ATTACHMENT_BYTES_ONLY'){
+   job.attachment.byte_count=file.size;
+   job.attachment.sha256=file.sha256;
+   job.attachment.signature_status=file.signature_status;
+  }
   if(file.status!=='LOCAL_ATTACHMENT_BYTES_ONLY'){
    skipped.push({article_index:job.articleIndex,
     comment_sequence:job.message.sequence,
@@ -221,6 +229,8 @@ export async function* exportNativeApprovalAttachmentParts(report,{
     '/'+n+'.'+ext;
   entries.push({name:filename,bytes:file.bytes});
   total+=file.size;successful++;
+  job.attachment.private_zip_part=partNo+1;
+  job.attachment.private_zip_entry=filename;
   items.push({entry:filename,article_index:job.articleIndex,
    order_item_id:job.article.item_id,
    comment_sequence:job.message.sequence,
@@ -229,6 +239,8 @@ export async function* exportNativeApprovalAttachmentParts(report,{
    sha256:file.sha256,signature_status:file.signature_status,
    version_and_print_method_verified:false,training_ready:false});
  }
+ report.attachment_gets_completed=processed;
+ report.attachment_gets_verified=successful;
  const last=createPart();
  if(last)yield last;
  else yield code('NO_ATTACHMENT_FILES_VERIFIED',{processed,successful,
