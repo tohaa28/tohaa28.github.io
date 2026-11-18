@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {writeFileSync} from 'node:fs';
 import {nativeApprovalAttachmentUrl,nativeAttachmentSignature,
  readNativeApprovalAttachment,exportNativeApprovalAttachmentParts}
  from '../vision/orders/approval-attachments.mjs';
@@ -135,6 +136,7 @@ test('local-only ZIP with source-message mapping, failures and no training appro
  assert.equal(visited.every(v=>v.method==='GET'),true);
  const bytes=new Uint8Array(await parts[0].zip.arrayBuffer());
  assert.equal(String.fromCharCode(...bytes.subarray(0,2)),'PK');
+ writeFileSync('/tmp/vision-synthetic-approval-attachment.zip',bytes);
  // The archive is PRIVATE, so filenames/IDs may occur only within it.
  assert.ok(Buffer.from(bytes).includes(Buffer.from('original.psd')));
  assert.equal(report.training_ready,undefined);
