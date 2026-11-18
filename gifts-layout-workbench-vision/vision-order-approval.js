@@ -106,9 +106,11 @@
     result.article_scoped_trigger_count = count(triggers.filter((el) => Boolean(el.closest?.("li[data-itemid]"))).length);
     const forms = nodes(doc, "#j_maketAdjustingForm");
     const verified = forms.map(inRealModal).filter(Boolean);
-    if (verified.length !== 1)
-      return { ...result, status: verified.length > 1 ? "AMBIGUOUS_APPROVAL_MODAL" : "MODAL_NOT_LOADED" };
-    const modal = verified[0], form = forms.find((x) => x.closest?.("g-modal") === modal);
+    const visible = verified.filter(isVisible);
+    const candidates = visible.length ? visible : verified;
+    if (candidates.length !== 1)
+      return { ...result, status: candidates.length > 1 ? "AMBIGUOUS_APPROVAL_MODAL" : "MODAL_NOT_LOADED" };
+    const modal = candidates[0], form = forms.find((x) => x.closest?.("g-modal") === modal);
     result.modal_loaded = true;
     result.modal_currently_visible = isVisible(modal);
     result.status = result.modal_currently_visible ? "VISIBLE_MODAL_STRUCTURE_ONLY" : "PRELOADED_MODAL_STRUCTURE_ONLY";
