@@ -21,6 +21,8 @@ on:
       - tools/vision_local_lab.py
       - tools/vision_roi_review.py
       - tools/vision_pdf_audit.py
+      - tools/vision_private_corpus_stage.py
+      - tests/test_vision_private_corpus_stage.py
       - tools/vision-roi-annotator.html
       - tests/test_vision_roi_annotator.browser.mjs
       - tests/test_vision_roi_review.py
@@ -110,7 +112,8 @@ jobs:
           node --check vision/orders/extension/service-worker.js
           node --test tests/printcheck-vision-extension-worker.test.mjs
           node --check tests/printcheck-vision-lan-extension.browser.mjs
-          python3 -m py_compile tools/vision_local_lab.py tools/vision_roi_review.py tools/vision_pdf_audit.py
+          python3 -m py_compile tools/vision_local_lab.py tools/vision_roi_review.py tools/vision_pdf_audit.py tools/vision_private_corpus_stage.py
+          python3 tests/test_vision_private_corpus_stage.py
           python3 tests/test_vision_local_lab.py
           # Three consecutive independent ROI/PDF regression cycles.
           for cycle in 1 2 3; do
@@ -227,7 +230,8 @@ jobs:
           python3 - <<'PY'
           import zipfile
           paths=['tools/vision_local_lab.py','tools/vision_roi_review.py',
-                 'tools/vision_pdf_audit.py','tools/vision-roi-annotator.html',
+                 'tools/vision_pdf_audit.py','tools/vision_private_corpus_stage.py',
+                 'tools/vision-roi-annotator.html',
                  'tools/install-vision-local-lab.ps1',
                  'docs/VISION_LOCAL_LAB_SETUP_RU.md']
           with zipfile.ZipFile('vision-local-lab.zip','w',
@@ -235,7 +239,7 @@ jobs:
               for path in paths:z.write(path)
           with zipfile.ZipFile('vision-local-lab.zip') as z:
               assert z.testzip() is None
-              assert len(z.namelist())==6
+              assert len(z.namelist())==7
           print('Offline Windows D: lab package verified')
           PY
           cp vision-local-lab.zip "$PREVIEW/"
