@@ -36,7 +36,7 @@ export function initApprovalPageEntry(){
  document.head.append(style);
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
- const header=make('strong','Vision AI · Согласование макета');
+ const header=make('strong','Vision AI · Согласование макета · v0.1.4');
  const note=make('p','Автообход: для согласований с 2+ сообщениями программа читает проблемы, всю историю и отдельно получает файлы через разрешённый GET. Архивы с вложениями скачиваются только на этот компьютер. Можно остановить сбор. Не отправляйте приватные ZIP и JSON в публичный GitHub.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
