@@ -859,7 +859,7 @@
       total_triggers: anchors.length
     };
   }
-  function extractMaketApprovalEvidence(doc, { itemId, orderNumber, badge } = {}) {
+  function extractMaketApprovalEvidence(doc, { itemId, orderNumber, badge, actorAliases = null } = {}) {
     const modal = visibleModal(doc);
     if (!modal) return { status: "MODAL_NOT_VISIBLE" };
     const form = modal.querySelector("#j_maketAdjustingForm");
@@ -890,6 +890,7 @@
     if (entries.length > MAX_MESSAGES)
       return { status: "HISTORY_TOO_LONG", summary: summary2 };
     const messages = [];
+    const actors = actorAliases instanceof Map ? actorAliases : /* @__PURE__ */ new Map();
     for (let i = 0; i < entries.length; i++) {
       const wrap = entries[i].querySelector(".comment_wrap");
       const main = wrap?.querySelector(".flex-main");
@@ -911,7 +912,18 @@
       const kind = humanOrSystem(body, wrap);
       const at = str(wrap.querySelector(".comment_info"));
       const timestamp = at.match(/\b\d{2}\.\d{2}\.\d{2,4}\s+\d{2}:\d{2}\b/)?.[0] || null;
-      messages.push({ sequence: i + 1, kind, text: body, date_time: timestamp, attachments });
+      const actorLabel = at.replace(timestamp || "", "").trim();
+      if (actorLabel && !actors.has(actorLabel)) actors.set(actorLabel, "actor_" + (actors.size + 1));
+      const nativeRef = /^maketadjusting_commentid_(\d{1,20})$/.exec(attr2(wrap, "id"));
+      messages.push({
+        sequence: i + 1,
+        kind,
+        text: body,
+        date_time: timestamp,
+        native_comment_id: nativeRef?.[1] || null,
+        actor_ref: actorLabel ? actors.get(actorLabel) : null,
+        attachments
+      });
     }
     const humans = messages.filter((m) => m.kind === "human").length;
     return {
@@ -1010,6 +1022,7 @@
       return result;
     }
     let retainedPrivateChars = 0;
+    const actorAliases = /* @__PURE__ */ new Map();
     for (let i = 0; i < discovered.eligible.length; i++) {
       if (stop()) {
         result.status = "STOPPED";
@@ -1032,7 +1045,8 @@
           const data = extractMaketApprovalEvidence(doc, {
             itemId: target.itemId,
             orderNumber,
-            badge: target.badge
+            badge: target.badge,
+            actorAliases
           });
           const estimated = JSON.stringify(data).length;
           if (retainedPrivateChars + estimated > MAX_LOCAL_PRIVATE_CHARS) {
