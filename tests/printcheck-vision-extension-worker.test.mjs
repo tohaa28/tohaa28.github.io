@@ -162,3 +162,43 @@ test('refuse a redirect to an external host or login without returning its body'
   assert.equal(JSON.stringify(m).includes(finalUrl),false);
  }
 });
+
+
+test('native order-page may fetch ONLY matching review screenshot and native attachment GET',async()=>{
+ const sender={url:'http://testgifts.local/private/order/8001111',frameId:0};
+ const png=Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,0,0,0]);
+ const h=harness({sender,fetcher:async()=>new Response(png,{
+  headers:{'content-type':'image/png'}
+ })});
+ assert.equal(h.isConnected(),true);
+ const image='http://files.testgifts.local/maketadjusting/11313/8001111/77/capture.png';
+ const result=await h.invoke({op:'fetch',method:'GET',url:image});
+ assert.equal(result[0].op,'meta');
+ assert.equal(result.at(-1).op,'end');
+ assert.equal(h.requests.length,1);
+ assert.equal(h.requests[0].url,image);
+ assert.equal(h.requests[0].options.credentials,'include');
+ assert.equal(h.requests[0].options.headers.accept,'image/*,*/*');
+ const h2=harness({sender});
+ const original=await h2.invoke({op:'fetch',method:'GET',
+  url:'http://testgifts.local/ajax/gifts/order?'+
+  'action=download_maketadjusting_attachment&id=14'});
+ assert.equal(original[0].op,'meta');
+ assert.equal(h2.requests.length,1);
+ for(const blocked of [
+  'http://files.testgifts.local/maketadjusting/11313/8002222/77/capture.png',
+  'http://files.testgifts.local/maketadjusting/11313/8001111/77/capture.png?q=1',
+  'https://files.testgifts.local/maketadjusting/11313/8001111/77/capture.png',
+  'http://files.testgifts.local/public/anything.png',
+  'http://testgifts.local/ajax/gifts/order?action=save_maketadjusting&id=14'
+ ]){
+  const invalid=harness({sender});
+  const m=await invalid.invoke({op:'fetch',method:'GET',url:blocked});
+  assert.equal(m[0].code,'EXTENSION_READ_ONLY_PATH_DENIED',blocked);
+  assert.equal(invalid.requests.length,0);
+ }
+ const fromList=harness();
+ const denied=await fromList.invoke({op:'fetch',method:'GET',url:image});
+ assert.equal(denied[0].code,'EXTENSION_READ_ONLY_PATH_DENIED');
+ assert.equal(fromList.requests.length,0);
+});
