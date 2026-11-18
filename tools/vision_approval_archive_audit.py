@@ -190,7 +190,8 @@ def audit_archives(paths, evidence=None):
                     and item["bytes"] == attachment.get("byte_count")
                     and item["sha256"] == attachment.get("sha256"),
                     "EVIDENCE_SOURCE_MAPPING_MISMATCH")
-    return {"status": "LOCAL_ARCHIVES_VERIFIED", "parts": len(parts),
+    status = "LOCAL_ARCHIVES_VERIFIED" if evidence is not None else "LOCAL_PARTS_ONLY_VERIFIED"
+    return {"status": status, "parts": len(parts),
             "attachments": len(archive_items), "payload_bytes": checked_bytes,
             "evidence_crosschecked": evidence is not None,
             "training_ready": False, "production_approved": False,
