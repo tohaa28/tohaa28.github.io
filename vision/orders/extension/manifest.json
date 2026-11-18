@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Vision Check — тестовая сеть (локальный адаптер)",
-  "version": "0.1.4",
-  "description": "Vision: автоматическое считывание выбранных проблем, обсуждений и вложенных макетов из согласований по артикулам. Только тестовая сеть, только локальный ZIP.",
+  "version": "0.1.5",
+  "description": "Vision: из списка заказов автоматически читает согласования 2+, тексты дизайнеров, PDF и скриншоты галерей в локальные приватные JSON/ZIP. Только тестовая сеть.",
   "host_permissions": [
     "http://psk.testgifts.local/*",
-    "http://testgifts.local/*"
+    "http://testgifts.local/*",
+    "http://files.testgifts.local/*"
   ],
   "background": {
     "service_worker": "service-worker.js"
@@ -27,10 +28,14 @@
         "http://testgifts.local/private/order/*"
       ],
       "js": [
+        "content-transport.js",
         "vision-order-approval.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
     }
+  ],
+  "permissions": [
+    "tabs"
   ]
 }
