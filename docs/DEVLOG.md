@@ -1047,3 +1047,11 @@ PDF вне GitHub провести локальный audit-all и незави�
 - `e3d4efb2195bed782a849e956bda31a0207253d7`: synthetic tests for unsupported operators, non-disclosure of private marker text and supported operators. No real PDFs or expert labels committed.
 - Local git clone/test execution blocked by DNS resolution of github.com. These new tests have NOT been claimed to pass locally; verify new SHA in CI. Three independent ROI reviewer/adjudication cycles, batch PDF --all and Chromium 404 were not executed locally in this edit.
 - Unresolved: preview publish, anonymous real 404 reference_state/MV3 category, two verified ROI votes and family holdout, physical mm, ICC/spot and PDF transparency, print process, real-world accuracy. Unknown => MANUAL; no automatic training or production OK. Production modules and PR merge untouched.
+
+## M3.6 — private local PDF batch report directory (2026-11-18)
+
+- Before edit: experimental PR #4 OPEN/DRAFT/unmerged, HEAD `f6e98ba2a482989062f25dddaaca73e039b447bf`. GitHub Actions UI smoke/raster safety/rules-dataset safety SUCCESS (runs 44229726828, 44229726869, 44229726923); CircleCI vision-contract/vision-raster SUCCESS. Preview publish on this SHA not confirmed.
+- `a021cc0883d711c947ab9c1ac07addbb39309e09`: optional offline `tools/vision_pdf_audit.py --all` creates new `reports/pdf-audits` with POSIX owner-only mode `0700` (subject to process umask). Existing directory permissions are intentionally not modified; no network or production changes.
+- `eb327364610a427c1eb25cbb94ecab1000c1f03f`: synthetic batch PDF test asserts mode `0700` on POSIX, while preserving the 20-sample sequential/atomic report checks. On Windows the POSIX mode assertion is skipped.
+- Local clone and direct regression execution blocked by GitHub DNS resolution in this runtime. New HEAD CI, three independent two-reviewer/adjudicator cycles, Chromium 404, and preview publish remain to be verified; do not infer their success from the baseline.
+- Still blocked: anonymous live 404 `reference_state`/MV3 failure evidence; two verified expert ROI, family holdout, certified physical scale, ICC/spot, transparency, process tolerances and real-world AI accuracy. Customer source files, filenames, private labels, source hashes and secrets were not uploaded. Unknown => MANUAL; training/production OK disabled.
