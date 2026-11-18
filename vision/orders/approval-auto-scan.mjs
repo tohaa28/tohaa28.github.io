@@ -282,8 +282,40 @@ export function anonymousApprovalCollection(report){
    Math.max(0,Math.min(10000,summary[key])):null;
   return safe;
  });
+ const allowedReadStatuses=new Set([
+  'LOCAL_ATTACHMENT_BYTES_ONLY','MANUAL_UNSAFE_ATTACHMENT_METADATA',
+  'MANUAL_ATTACHMENT_TOO_LARGE','MANUAL_HTTP_ERROR',
+  'MANUAL_REDIRECT_OR_PATH_CHANGED','MANUAL_UNEXPECTED_CONTENT_TYPE',
+  'MANUAL_BODY_UNREADABLE','MANUAL_ATTACHMENT_EMPTY',
+  'MANUAL_ATTACHMENT_FORMAT_MISMATCH',
+  'MANUAL_ATTACHMENT_HTML_OR_AUTH_RESPONSE',
+  'MANUAL_ATTACHMENT_EXECUTABLE_MISMATCH',
+  'MANUAL_ATTACHMENT_FILE_TOO_SMALL',
+  'MANUAL_ATTACHMENT_TIMEOUT','MANUAL_ATTACHMENT_FETCH_FAILED',
+  'MANUAL_BAD_BINARY_CHUNK','MANUAL_FETCH_UNAVAILABLE',
+  'MANUAL_LIMIT_INVALID'
+ ]);
+ const byStatus={};
+ let attemptCount=0,confirmed=0;
+ for(const row of report?.articles||[]){
+  for(const message of row.history||[]){
+   for(const attachment of message.attachments||[]){
+    const raw=attachment.local_get_status;
+    const state=!raw?'NOT_ATTEMPTED':
+      allowedReadStatuses.has(raw)?raw:'MANUAL_UNKNOWN';
+    byStatus[state]=(byStatus[state]||0)+1;
+    if(raw){attemptCount++;if(state==='LOCAL_ATTACHMENT_BYTES_ONLY')confirmed++}
+   }
+  }
+ }
  return {
   schema:'printcheck.vision.anonymous-approval-collection.v1',
+  attachment_reads_attempted:attemptCount,
+  attachment_reads_verified:confirmed,
+  attachment_reads_by_status:byStatus,
+  local_zip_parts_prepared:Number.isSafeInteger(
+   report?.attachment_download_summary?.local_zip_parts)?
+    Math.min(1000,report.attachment_download_summary.local_zip_parts):0,
   eligible_articles:rows.length,articles:rows,
   skipped_below_or_unknown:(report?.skipped||[]).length,
   training_ready:false,remote_upload:false,
