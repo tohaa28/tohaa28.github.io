@@ -107,7 +107,8 @@ def audit_document(pdf_path: Path, *, engine=None,
                 items = path.get("items")
                 if not isinstance(items, (list, tuple)) or any(
                     not isinstance(item, (list, tuple)) or not item or
-                    type(item[0]) is not str for item in items
+                    type(item[0]) is not str or item[0] not in ("l", "c", "re", "qu")
+                    for item in items
                 ):
                     return manual("PDF_PATH_ITEMS_UNSUPPORTED")
                 if kind in ("s", "fs"):
