@@ -150,3 +150,49 @@ test('local-only ZIP with source-message mapping, failures and no training appro
  assert.ok(Buffer.from(bytes).includes(Buffer.from('original.psd')));
  assert.equal(report.training_ready,undefined);
 });
+
+test('numeric caps reject NaN, coercions, fractions and enforce maxFiles before GET',async()=>{
+ const makeReport=()=>({schema:'printcheck.vision.private-approval-collection.v1',
+  order_number:'9000000',articles:[{status:'PRIVATE_REVIEW_ONLY',
+   item_id:'77',history:[{sequence:1,attachments:[
+    attachment('1','first.pdf'),attachment('2','second.pdf')]}]}]});
+ let calls=0;
+ const getter=async()=>{calls++;return response(pdf)};
+ for(const [options,reason] of [
+  [{maxFiles:1},'MANUAL_TOO_MANY_ATTACHMENTS'],
+  [{maxFiles:Number.NaN},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxFiles:'2'},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxFiles:1.5},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxPerFile:Number.NaN},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxPartBytes:Number.NaN},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxPartBytes:16_000_000.5},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxPartFiles:Number.NaN},'MANUAL_INVALID_ATTACHMENT_LIMITS'],
+  [{maxPartFiles:1.5},'MANUAL_INVALID_ATTACHMENT_LIMITS']
+ ]){
+  const results=[];
+  for await(const part of exportNativeApprovalAttachmentParts(makeReport(),{
+   origin:'http://testgifts.local',fetcher:getter,...options
+  }))results.push(part);
+  assert.equal(results.length,1);
+  assert.equal(results[0].status,reason);
+  assert.equal(results[0].training_ready,false);
+ }
+ assert.equal(calls,0,'bad limits must not trigger native GETs');
+});
+
+test('caller maxPartFiles enforces bounded local ZIP splits',async()=>{
+ const report={schema:'printcheck.vision.private-approval-collection.v1',
+  order_number:'9000001',articles:[{status:'PRIVATE_REVIEW_ONLY',
+   item_id:'77',history:[{sequence:1,attachments:[
+    attachment('1','first.pdf'),attachment('2','second.pdf')]}]}]};
+ const parts=[];
+ for await(const part of exportNativeApprovalAttachmentParts(report,{
+  origin:'http://testgifts.local',fetcher:async()=>response(pdf),
+  maxFiles:2,maxPartFiles:1
+ }))parts.push(part);
+ assert.equal(parts.length,2);
+ assert.equal(parts.every(p=>p.status==='PRIVATE_LOCAL_ZIP_READY'),true);
+ assert.deepEqual(parts.map(p=>p.files),[1,1]);
+ assert.deepEqual(parts.map(p=>p.manifest.package_part),[1,2]);
+ assert.deepEqual(parts.map(p=>p.manifest.training_ready),[false,false]);
+});

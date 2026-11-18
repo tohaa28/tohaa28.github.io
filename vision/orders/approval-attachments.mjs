@@ -169,13 +169,15 @@ export async function* exportNativeApprovalAttachmentParts(report,{
  if(origin!==TEST_ORIGIN||report?.schema!==
    'printcheck.vision.private-approval-collection.v1')
   {yield code('MANUAL_UNAUTHORIZED_SCOPE');return}
- if(maxFiles<1||maxFiles>MAX_FILES||maxPerFile<1||
-    maxPerFile>LIMIT_PER_FILE||maxPartBytes<maxPerFile||
-    maxPartBytes>MAX_PART_BYTES||maxPartFiles<1||
+ if(!Number.isInteger(maxFiles)||maxFiles<1||maxFiles>MAX_FILES||
+    !Number.isInteger(maxPerFile)||maxPerFile<1||
+    maxPerFile>LIMIT_PER_FILE||!Number.isInteger(maxPartBytes)||
+    maxPartBytes<maxPerFile||maxPartBytes>MAX_PART_BYTES||
+    !Number.isInteger(maxPartFiles)||maxPartFiles<1||
     maxPartFiles>MAX_PART_FILES)
   {yield code('MANUAL_INVALID_ATTACHMENT_LIMITS');return}
  const jobs=[...targets(report)];
- if(jobs.length>MAX_FILES){
+ if(jobs.length>maxFiles){
   yield code('MANUAL_TOO_MANY_ATTACHMENTS',{found:jobs.length});return;
  }
  let partNo=0,processed=0,successful=0,entries=[],items=[],skipped=[],total=0;

@@ -1465,3 +1465,14 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Before change: GitHub Actions UI smoke run `44293748086` IN_PROGRESS; raster run `44293748011` SUCCESS; rules/dataset run `44293747877` SUCCESS; CircleCI vision-contract and vision-raster SUCCESS on `6591f6a`. Isolated preview publish run `44292885181` SUCCESS for earlier code SHA `d63b698`, not for current HEAD.
 - Immediately after test commit: no completed GitHub Actions runs yet; CircleCI vision-contract and vision-raster PENDING for `09548af`. No local Python test execution: container git fetch failed DNS resolution of github.com. Do not claim the new test passed.
 - Open: verified real constructor/method/physical scale, independent blind ROI votes and adjudication, verified family holdout, ICC/spot/PDF transparency, anonymous real 404 reference_state/MV3 report, Windows ACL and production accuracy. Local private source PDFs/registry/HMAC keys remain outside GitHub. No training or production OK; unknown => MANUAL.
+
+
+## M3.17 — fail-closed limits for private approval attachments (2026-11-18)
+
+- Parent experimental SHA: `b8188c94a91817772856116536a7ac6b708ca07f`; only `feature/printcheck-vision-copy-v01`, PR #4 remains Draft. No changes to production Maketnaya.
+- Corrected `exportNativeApprovalAttachmentParts`: caller-provided `maxFiles` now actually limits the number of eligible attachments rather than silently using the fixed maximum 64.
+- All four numeric limits (`maxFiles`, `maxPerFile`, `maxPartBytes`, `maxPartFiles`) must now be integers in their existing permitted ranges. NaN, numeric strings, fractions and other invalid values fail closed as `MANUAL_INVALID_ATTACHMENT_LIMITS` before any GET or ZIP construction.
+- New synthetic Node regression tests verify refusal without requests or training approval and the actual split into ZIP parts when `maxPartFiles=1`.
+- Local executable tests not run: container cannot resolve github.com, so source checkout is unavailable. CI status must be verified on the resulting commit; do not claim a successful production/browser test.
+- Real authorized attachment HTTP responses and physical-PDF revision matching remain unverified; `training_ready=false` and `production_approved=false`.
+
