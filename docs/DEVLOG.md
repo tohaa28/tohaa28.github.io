@@ -1294,3 +1294,59 @@ PDF вне GitHub провести локальный audit-all и незави�
   landing HTML exists. Draft PR #4 remains unmerged; no private HTML
   or client artifacts in GitHub. Last three standard suites on
   code SHA `3e9043304` also succeeded.
+
+
+## M3.14 — autonomous native approval traversal by message badge (2026-11-18)
+
+- User request: Vision must **itself** navigate each article's native
+  **«Согласование макета»** when the numeric badge is **strictly >1**
+  and collect evidence. Previous M3.13 required the user to open
+  each approval modal manually, which did NOT meet this requirement.
+- `894a4b18ca61` introduced `vision/orders/approval-auto-scan.mjs`:
+  exact selector `li[data-itemid] a.j_maketadjusting .gifts-badge`,
+  single sequential click per eligible article, skip 0/1/missing
+  counters, validate order-item ID `oiid` inside native modal, wait for
+  HTML comments, close only matching owned modal, continue. Stop action,
+  100-article limit, 16s per modal timeout, bounded private in-memory
+  collection (24M chars). This is a per-**open-order-page** collector:
+  no cross-order background tab orchestration has been implemented.
+- `2371b6ef3e4` modified the on-page extension UI: **«Автообход
+  согласований >1»**, **«Остановить обход»**,
+  **«Сохранить приватные данные»**, **«Анонимный отчёт обхода»**.
+  The private LOCAL JSON contains messages, checked selected problems,
+  additional description, chronological add/remove events, article/order
+  IDs for future local revision matching and attachment metadata
+  (original name, type, local site data-id). It never automatically
+  downloads attachment bytes and never sends the file to GitHub.
+  The anonymized JSON exposes only fixed status enums and counts.
+  Private download requires separate user consent. No print/ML approval.
+- `fa2ce8b545d6`: synthetic Chromium case with badges **13,1,2**;
+  only 13 and 2 may open. Checks private chronology and selected
+  problem extraction, zero network mutation and no IDs/text/names
+  in anonymized JSON. `3d3117abe751` adds browser regression to
+  isolated CI packaging.
+- `221541beb8bf` / `95693d900482`: when native modal loads only
+  «Проблемы», the agent clicks **only**
+  `label[for=j_ma_comments]` once (known GET-only tab) to populate
+  «Обсуждение». The synthetic test requires exactly one native
+  discussion-tab click for the lazy-loaded case.
+- `d494fee2e291` limits per-order retained private data to
+  24,000,000 characters; `d2aaddece7a3` requires 350ms stable
+  history length after reaching the declared number of human comments,
+  preventing a truncated audit trail.
+- `f2307e0d5e5a` increments MV3 extension to v0.1.2.
+  `029556bac0c6` / `c1ba60e3dedb` / `b60d0f9aa32` document
+  automatic local workflow and privacy separation.
+- READ-ONLY safety: only the native editor link and native comments-tab
+  label may be clicked; no save/add/edit controls, no POST, no
+  attachment link clicks, no unknown backend endpoints.
+  Unknown/nonsensical count=>skip; comment/badge/item mismatch=>MANUAL.
+  The badge is an opening filter, **not a trusted error label**.
+  No source file/version, screenshot bytes or ROI is confirmed.
+  Customer/private JSON MUST NOT be published or uploaded to public
+  Github/CI; no customer HTML or raw test artwork committed.
+- CI & distribution: v0.1.2 preview build must finish
+  **successfully on the final implementation commit** before reporting
+  a refreshed extension ZIP. Experiments remain on
+  `feature/printcheck-vision-copy-v01`, draft PR #4 not merged.
+  Production Maketnaya not modified, training_ready=false.
