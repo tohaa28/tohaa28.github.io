@@ -3,6 +3,8 @@ from pathlib import Path
 import hashlib
 import io
 import json
+import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -363,6 +365,9 @@ class PDFAuditTests(unittest.TestCase):
         self.assertFalse(result["remote_uploads"])
         self.assertFalse(result["training_ready"])
         location = self.root / "reports" / "pdf-audits"
+        if os.name == "posix":
+            self.assertEqual(stat.S_IMODE(location.stat().st_mode), 0o700,
+                             "New local report directory must be owner-only")
         outputs = sorted(location.glob("*.json"))
         self.assertEqual(len(outputs), 20)
         self.assertFalse(list(location.glob("*.tmp")))
