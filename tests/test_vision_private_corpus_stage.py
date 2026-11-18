@@ -63,11 +63,14 @@ class PrivateCorpusStageTests(unittest.TestCase):
         self.assertEqual(summary["unique_sha256_contents"],3)
         self.assertEqual(summary["duplicate_sha256_groups"],1)
         self.assertEqual(summary["duplicate_extra_copies"],1)
-        self.assertEqual(summary["conflicting_provisional_label_sha256_groups"],1)
+        self.assertEqual(summary["sha256_groups_with_mixed_filename_claims"],1)
+        self.assertEqual(summary["sha256_error_claim_plus_unlabeled_groups"],1)
+        self.assertEqual(summary["sha256_clean_claim_plus_unlabeled_groups"],0)
+        self.assertEqual(summary["sha256_opposing_error_clean_claim_groups"],0)
         queue = output["review_tasks"]
         self.assertEqual(len(queue),4)
-        self.assertEqual(queue[0]["priority"],"P0_HASH_LABEL_CONFLICT")
-        self.assertEqual(queue[1]["priority"],"P0_HASH_LABEL_CONFLICT")
+        self.assertEqual(queue[0]["priority"],"P0_MIXED_FILENAME_CLAIMS")
+        self.assertEqual(queue[1]["priority"],"P0_MIXED_FILENAME_CLAIMS")
         self.assertEqual(queue[0]["family_token"],queue[1]["family_token"])
         self.assertEqual(queue[0]["content_token"],queue[1]["content_token"])
         self.assertEqual(queue[0]["candidate_review_partition"],
