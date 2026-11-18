@@ -315,6 +315,26 @@ export async function inspectOrderPageFromRow(row,{
 
 
 /**
+ * DOMParser('text/html') can initiate network loads for media even while
+ * disconnected. Strip active media tags and links before parsing a private
+ * discussion card, replacing image media with inert countable placeholders.
+ * This is an extra safety barrier, NOT a general-purpose HTML sanitizer.
+ */
+export function inertOrderDiscussionHtml(source){
+ if(typeof source!=='string'||source.length>3_000_000)return null;
+ const withoutScripts=source.replace(
+   /<\s*(script|style)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'');
+ const withoutMedia=withoutScripts.replace(
+   /<\s*(?:img|image|iframe|source|video|audio|track|embed|object|link)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi,
+   '<span data-vision-media-candidate=""></span>');
+ // Defensive check against incomplete open tags or unsupported resource tags.
+ // If a media opening tag survives, reject rather than risk a fetch.
+ if(/<\s*(?:img|image|iframe|source|video|audio|track|embed|object|link)\b/i.test(withoutMedia))
+   return null;
+ return withoutMedia;
+}
+
+/**
  * One already-allowed order-card GET per explicit user request. Never fetch
  * alleged discussion endpoints, click controls or retrieve screenshots.
  * Private message text is read transiently in the local page and reduced to
@@ -334,7 +354,10 @@ export async function inspectOrderDiscussionFromRow(row,{
    'same_origin':'approved_other_test_origin';
  try{
    const source=await getText(target.url.href,fetcher,loc.origin,'order_card');
-   const doc=parse(source,DOMParserClass);
+   const inert=inertOrderDiscussionHtml(source);
+   if(inert===null)return REFUSE('ORDER_DISCUSSION_HTML_UNSAFE',
+     {stage:'order_card'});
+   const doc=parse(inert,DOMParserClass);
    if(!doc)return REFUSE('ORDER_DISCUSSION_HTML_UNREADABLE',
      {stage:'order_card'});
    return inspectOrderDiscussionDom(doc,{baseUrl:target.url.href});
