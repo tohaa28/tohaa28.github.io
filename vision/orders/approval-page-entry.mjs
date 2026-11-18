@@ -5,6 +5,7 @@
  * zero training labels, zero customer details in the downloadable JSON.
  */
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
+import {exportNativeApprovalAttachmentParts} from './approval-attachments.mjs';
 import {collectMaketApprovalsOnOrderPage,anonymousApprovalCollection}
  from './approval-auto-scan.mjs';
 const BOX_ID='vision-approval-inspector',STYLE_ID='vision-approval-inspector-css';
@@ -36,7 +37,7 @@ export function initApprovalPageEntry(){
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
  const header=make('strong','Vision AI · Согласование макета');
- const note=make('p','Автообход по артикулам: Vision самостоятельно нажмёт только «Согласование макета» со счётчиком сообщений больше 1, прочитает открывшееся окно и закроет его. Без сохранения или отправки сообщений. Можно также проверить одно вручную открытое окно.');
+ const note=make('p','Автообход: для согласований с 2+ сообщениями программа читает проблемы, всю историю и отдельно получает файлы через разрешённый GET. Архивы с вложениями скачиваются только на этот компьютер. Можно остановить сбор. Не отправляйте приватные ZIP и JSON в публичный GitHub.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
  const exportButton=make('button','Скачать анонимный JSON');
@@ -44,11 +45,13 @@ export function initApprovalPageEntry(){
  const stopScan=make('button','Остановить обход');
  const privateSave=make('button','Сохранить приватные данные');
  const anonymousSave=make('button','Анонимный отчёт обхода');
+ const attachmentRetry=make('button','Повторить скачивание вложений');
  const close=make('button','Закрыть Vision');
  exportButton.disabled=true;
- stopScan.disabled=privateSave.disabled=anonymousSave.disabled=true;
+ stopScan.disabled=privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=true;
  let last=null,collection=null,busy=false,stopRequested=false;
- for(const b of [scan,exportButton,autoScan,stopScan,privateSave,anonymousSave,close])
+ for(const b of [scan,exportButton,autoScan,stopScan,privateSave,anonymousSave,
+  attachmentRetry,close])
   b.type='button';
  const stop=e=>{e.preventDefault();e.stopPropagation()};
  scan.addEventListener('click',event=>{
@@ -117,11 +120,51 @@ export function initApprovalPageEntry(){
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(uri),2500);
  }
+ /**
+  * Native attachment GETs are separate from the approval dialog.
+  * All bytes are confined to short-lived numbered local ZIP parts.
+  * No payloads, customer identifiers, or errors are sent to GitHub.
+  */
+ async function savePrivateAttachmentParts(){
+  if(!collection)return {status:'NO_COLLECTION',files:0,parts:0};
+  let files=0,parts=0,processed=0,failures=0;
+  for await(const item of exportNativeApprovalAttachmentParts(collection,{
+   stop:()=>stopRequested||!panel.isConnected,
+   onProgress:p=>{
+    if(panel.isConnected)stats.textContent='Файлы из обсуждений: '+
+     p.processed+' / '+p.total+' · считано '+p.successful+
+     '\nТолько авторизованные GET, без сохранения на сайте.';
+   }
+  })){
+   if(item.status==='PRIVATE_LOCAL_ZIP_READY'){
+    files+=item.files;parts++;
+    const u=URL.createObjectURL(item.zip),a=make('a');
+    a.href=u;a.download='vision-private-approval-attachments-part-'+
+     String(item.part).padStart(4,'0')+'.zip';
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),30000);
+    processed=item.processed;
+    failures+=item.manifest.skipped.length;
+    // Let Chrome register separate local downloads between ZIP parts.
+    await new Promise(resolve=>setTimeout(resolve,300));
+   }else if(item.status==='STOPPED'){
+    return {status:'STOPPED',files,parts,processed,failures};
+   }else if(item.status==='NO_ATTACHMENT_FILES_VERIFIED'){
+    processed=item.processed;failures+=item.skipped_count;
+    return {status:'MANUAL_NO_FILE_BYTES',files,parts,processed,failures};
+   }else{
+    return {status:item.status,files,parts,processed,failures};
+   }
+  }
+  return {status:files?'LOCAL_ZIP_PARTS_PREPARED':'NO_ATTACHMENTS',
+   files,parts,processed,failures};
+ }
  autoScan.addEventListener('click',async event=>{
   stop(event);if(busy)return;
   busy=true;stopRequested=false;collection=null;
   scan.disabled=autoScan.disabled=exportButton.disabled=true;
-  stopScan.disabled=false;privateSave.disabled=anonymousSave.disabled=true;
+  stopScan.disabled=false;
+  privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=true;
   try{
    collection=await collectMaketApprovalsOnOrderPage(document,{
     orderNumber:location.pathname.split('/').filter(Boolean).at(-1),
@@ -137,17 +180,47 @@ export function initApprovalPageEntry(){
    if(!panel.isConnected)return;
    const done=collection.articles.filter(x=>x.status==='PRIVATE_REVIEW_ONLY').length;
    const skipped=collection.skipped.length;
+   const attachmentReport=stopRequested?
+    {status:'STOPPED',files:0,parts:0,failures:0}:
+    await savePrivateAttachmentParts();
+   collection.attachment_download_summary={
+    status:attachmentReport.status,verified_files:attachmentReport.files,
+    local_zip_parts:attachmentReport.parts,
+    read_failures:attachmentReport.failures,
+    source_pdf_revision_confirmed:false,training_ready:false};
+   if(!panel.isConnected)return;
    stats.textContent='Обход: '+collection.status+
-     '\nОбработано: '+collection.articles.length+
-     ' · успешно: '+done+' · пропущено по счётчику/без доступа: '+
-     skipped+'\nПриватный JSON содержит тексты замечаний и имена файлов — храните локально.';
-   privateSave.disabled=anonymousSave.disabled=false;
+     '\nАртикулов: '+collection.articles.length+
+     ' · история проверена: '+done+' · пропущено: '+skipped+
+     '\nФайлы: '+attachmentReport.files+
+     ' · ZIP-частей: '+attachmentReport.parts+
+     ' · ошибок чтения: '+attachmentReport.failures+
+     ' · статус: '+attachmentReport.status+
+     '\nПриватный JSON содержит текст замечаний. Сохраните его отдельно.'+
+     ' Chrome может запросить разрешение на несколько скачиваний.';
+   privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=false;
   }catch{
    if(panel.isConnected)stats.textContent='MANUAL: ошибка автоматического обхода.';
   }finally{
    busy=false;scan.disabled=autoScan.disabled=false;
    stopScan.disabled=true;
    exportButton.disabled=last?.status!=='VISIBLE_MODAL_STRUCTURE_ONLY';
+  }
+ });
+ attachmentRetry.addEventListener('click',async event=>{
+  stop(event);
+  if(busy||!collection)return;
+  busy=true;stopRequested=false;
+  autoScan.disabled=attachmentRetry.disabled=true;
+  stopScan.disabled=false;
+  try{
+   const res=await savePrivateAttachmentParts();
+   if(panel.isConnected)stats.textContent='Повторное чтение файлов: '+
+    res.status+' · считано '+res.files+
+    ' · ZIP-частей '+res.parts+' · отказов '+res.failures;
+  }finally{
+   busy=false;autoScan.disabled=attachmentRetry.disabled=false;
+   stopScan.disabled=true;
   }
  });
  stopScan.addEventListener('click',event=>{
@@ -168,7 +241,7 @@ export function initApprovalPageEntry(){
   stop(event);stopRequested=true;panel.remove();style.remove();
  });
  panel.append(header,note,autoScan,stopScan,privateSave,anonymousSave,
-  scan,exportButton,close,stats);
+  attachmentRetry,scan,exportButton,close,stats);
  document.body.append(panel);
  return true;
 }
