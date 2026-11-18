@@ -219,3 +219,44 @@ test('portable SHA-256 matches native SHA-256 for empty, short and large binary'
  assert.notEqual(portableSha256Hex(changed),portableSha256Hex(pdf));
  assert.equal(changed.length,pdf.length);
 });
+
+
+test('read shadow gallery PNG via restricted MV3 imageFetcher, no URL in private ZIP manifest',async()=>{
+ const imageBytes=Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,0,0,0,0,0]);
+ const imageUrl='http://files.testgifts.local/maketadjusting/11313/8001111/77/capture.png';
+ const source={source:'native_approval_gallery',attachment_id:null,
+  filename:'capture.png',kind:'image'};
+ Object.defineProperty(source,'inline_image_url',{value:imageUrl,enumerable:false});
+ let imageGET=0,nativeGET=0;
+ const imageFetcher=async(url,options)=>{
+  imageGET++;
+  assert.equal(url,imageUrl);
+  assert.equal(options.method,'GET');
+  return response(imageBytes,'image/png');
+ };
+ const fetched=await readNativeApprovalAttachment(source,{
+  origin:'http://testgifts.local',orderNumber:'8001111',itemId:'77',
+  fetcher:async()=>{nativeGET++;return response(pdf)},imageFetcher
+ });
+ assert.equal(fetched.status,'LOCAL_ATTACHMENT_BYTES_ONLY');
+ assert.equal(fetched.sha256,createHash('sha256').update(imageBytes).digest('hex'));
+ assert.equal(imageGET,1);
+ assert.equal(nativeGET,0);
+ assert.equal(JSON.stringify(source).includes('files.testgifts.local'),false);
+ const report={schema:'printcheck.vision.private-approval-collection.v1',
+  order_number:'8001111',articles:[{status:'PRIVATE_REVIEW_ONLY',
+   item_id:'77',history:[{sequence:2,attachments:[source]}]}]};
+ const outputs=[];
+ for await(const item of exportNativeApprovalAttachmentParts(report,{
+  origin:'http://testgifts.local',imageFetcher,
+  fetcher:async()=>{nativeGET++;return response(pdf)}
+ }))outputs.push(item);
+ assert.equal(outputs.length,1);
+ assert.equal(outputs[0].status,'PRIVATE_LOCAL_ZIP_READY');
+ assert.equal(outputs[0].manifest.items[0].source,'native_approval_gallery');
+ assert.equal(outputs[0].manifest.items[0].attachment_id,null);
+ assert.equal(outputs[0].manifest.items[0].original_filename,'capture.png');
+ assert.equal(JSON.stringify(outputs[0].manifest).includes('files.testgifts.local'),false);
+ assert.equal(imageGET,2);
+ assert.equal(nativeGET,0);
+});
