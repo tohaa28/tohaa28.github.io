@@ -292,6 +292,7 @@
     pollMs = 150
   } = {}) => {
     const deadline = Date.now() + timeoutMs;
+    let modalOpenedAt = 0, discussionTabOpened = false;
     while (Date.now() < deadline) {
       if (stop()) return { status: "STOP_REQUESTED" };
       const modal = visibleModal(doc);
@@ -300,10 +301,20 @@
         const input = form?.querySelector('input[name="oiid"]');
         const modalId = String(input?.value || attr2(input, "value"));
         const list = modal.querySelector("#j_maketadjusting_comments_list");
-        if (modalId === itemId && list) {
-          const probe = inspectOpenMaketApprovalDom(doc);
-          if (probe.human_comment_count === badge)
-            return { status: "READY" };
+        if (modalId === itemId) {
+          if (!modalOpenedAt) modalOpenedAt = Date.now();
+          if (list) {
+            const probe = inspectOpenMaketApprovalDom(doc);
+            if (probe.human_comment_count === badge)
+              return { status: "READY" };
+          }
+          if (!discussionTabOpened && Date.now() - modalOpenedAt >= 450) {
+            const tab = modal.querySelector('label[for="j_ma_comments"]');
+            if (tab && modal.querySelector("input#j_ma_comments")) {
+              discussionTabOpened = true;
+              tab.click();
+            } else discussionTabOpened = true;
+          }
         }
       }
       await sleep(pollMs);
