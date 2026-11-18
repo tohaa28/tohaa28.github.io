@@ -35,6 +35,13 @@ const proxy=createServer((req,res)=>{
  const url=req.url?.startsWith('http://')?req.url:
    'http://'+req.headers.host+req.url;
  const method=req.method;
+ // Chromium's automatic favicon probes are not Vision requests.
+ // Keep rejecting any unknown application endpoint on test hosts.
+ let path;
+ try{path=new URL(url).pathname}catch{path=''}
+ if(path==='/favicon.ico'){
+  res.writeHead(204,{'cache-control':'no-store'});res.end();return;
+ }
  let type='unexpected',body=Buffer.from('denied'),mime='text/plain',status=404;
  if(url===list){type='list';body=Buffer.from(listing);mime='text/html';status=200}
  else if(url===order){type='order';body=Buffer.from(orderHtml);mime='text/html';status=200}
