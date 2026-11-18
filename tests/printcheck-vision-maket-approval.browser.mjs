@@ -109,6 +109,23 @@ try{
  assert.deepEqual(updated.checked_problem_topic_hints,['positive_min']);
  assert.equal(updated.history_entry_count,40);
  assert.equal(updated.training_ready,false);
+ // The native site may leave an older closed modal in DOM; its form and
+ // comments must never be mistaken for the current visible article.
+ await page.evaluate(()=>{
+  const stale=document.querySelector('g-modal').cloneNode(true);
+  stale.id='hidden-old-approval';
+  stale.removeAttribute('visible');
+  document.body.append(stale);
+ });
+ await page.locator('#vision-approval-inspector button')
+   .filter({hasText:'Прочитать открытое согласование'}).click();
+ const finalEvent=page.waitForEvent('download');
+ await page.locator('#vision-approval-inspector button')
+   .filter({hasText:'Скачать анонимный JSON'}).click();
+ const current=JSON.parse(await readFile(await (await finalEvent).path(),'utf8'));
+ assert.equal(current.status,'VISIBLE_MODAL_STRUCTURE_ONLY');
+ assert.equal(current.history_entry_count,40);
+ assert.equal(current.problems_checked_current_count,1);
  assert.equal(page.url(),targetUrl);
  assert.deepEqual(forbidden,[],'No network access from inspector');
  await context.close();
