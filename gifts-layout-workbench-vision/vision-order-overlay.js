@@ -1408,10 +1408,10 @@
   }
   function getPatchFeatures(mask, width, height, x, y, target = 1) {
     if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || mask?.length !== width * height || x < 4 || y < 4 || x >= width - 4 || y >= height - 4) return null;
-    let row = 0, col = 0, diag = 0, anti = 0, b3 = 0, b5 = 0, all = 0, center = 0;
+    let row = 0, col = 0, diag = 0, anti = 0, b3 = 0, b5 = 0, all2 = 0, center = 0;
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
       const v = mask[(y + dy) * width + x + dx] === target ? 1 : 0;
-      all += v;
+      all2 += v;
       if (dy === 0) {
         row += v;
         if (dx >= -1 && dx <= 1) center += v;
@@ -1422,7 +1422,7 @@
       if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) b3 += v;
       if (Math.abs(dx) <= 2 && Math.abs(dy) <= 2) b5 += v;
     }
-    return [row / 9, col / 9, diag / 9, anti / 9, b3 / 9, b5 / 25, all / 81, center / 3];
+    return [row / 9, col / 9, diag / 9, anti / 9, b3 / 9, b5 / 25, all2 / 81, center / 3];
   }
   function makeInkMask({ width, height, data }, { inkColor = null, tolerance = 42 } = {}) {
     const size = width * height;
@@ -1563,6 +1563,13 @@
   }
 
   // vision/orders/discussion-probe.mjs
+  var CONTROL_SELECTOR = 'a[href],button,[role="button"],[data-action],[data-toggle]';
+  var THREAD_SELECTOR = "[data-discussion-id],[data-thread-id],[data-comments-id],.discussion,.discussion-list,.discussion-dialog,.comments-list,.comment-list,.chat-messages,.messages-list,.j_discussion,.j_comments";
+  var MESSAGE_SELECTOR = "[data-comment-id],[data-message-id],.comment-item,.message-item,.discussion-message,.chat-message";
+  var BODY_SELECTOR = ".comment-body,.comment-text,.message-text,.message-body,[data-comment-text],[data-message-text]";
+  var ARTICLE_SELECTOR = "[data-orderitemid],[data-orderitem-id],[data-item-id],[data-article],.orderitem,.order-item,.cart-order-item,.cart-item,.j_order_item";
+  var DISCUSS = /(?:обсуждени[еяй]|комментар(?:ии|ий|ия|иев)|переписк[ауе]|discuss(?:ion)?|comments?|messages?|conversation|чат\b)/i;
+  var AGREEMENT = /(?:согласовани[ея]|утверждени[ея]|approval|approve)/i;
   var TOPICS = Object.freeze({
     positive_min: /(?:тонк(?:ая|ие|их|ий)|толщин[ауы]|мелки[ех]|перемычк[аие]|линия\s+тонк)/i,
     negative_min: /(?:пробел[ауы]?|выворотк|зазор[ауы]?|просвет[ауы]?)/i,
@@ -1573,6 +1580,126 @@
     gradient_transparency: /(?:градиент[ауы]?|прозрачност[ьи]|эффект[ауы]?|тень\b)/i,
     constructor_alignment: /(?:конструктор[ауы]?|шаблон[ауы]?|масштаб[ауы]?|смещени[ея]|совмещени[ея])/i
   });
+  var limit2 = (n, max = 1e4) => Math.min(max, n);
+  var empty = () => ({
+    schema: "printcheck.vision.article-discussion-structure.v1",
+    status: "STRUCTURE_ONLY_UNVERIFIED",
+    controls_total: 0,
+    article_scoped_controls: 0,
+    order_scoped_controls: 0,
+    unresolved_scope_controls: 0,
+    link_targets_internal_test: 0,
+    link_targets_untrusted_or_external: 0,
+    link_targets_fragments: 0,
+    js_or_opaque_controls: 0,
+    inline_thread_candidates: 0,
+    visible_message_candidates: 0,
+    screenshot_or_image_candidates: 0,
+    weak_topic_candidates: [],
+    discussion_endpoint_verified: false,
+    discussion_content_complete: false,
+    discussion_artwork_link_verified: false,
+    expert_label_verified: false,
+    screenshot_roi_verified: false,
+    training_ready: false,
+    customer_text_included: false,
+    attachment_urls_included: false,
+    order_ids_included: false,
+    author_names_included: false,
+    source_artwork_included: false
+  });
+  var safeAttr = (el, name) => String(el?.getAttribute?.(name) || "").slice(0, 260);
+  var inForbiddenBlock = (el) => Boolean(el?.closest?.(
+    "#vision-local-order-overlay,[data-vision-order-cell]"
+  ));
+  function controlLabel(el) {
+    const label = [
+      safeAttr(el, "title"),
+      safeAttr(el, "aria-label"),
+      safeAttr(el, "data-action"),
+      safeAttr(el, "data-toggle"),
+      safeAttr(el, "data-target"),
+      String(el?.textContent || "").slice(0, 180)
+    ].join(" ");
+    return label;
+  }
+  function targetClass(el, base) {
+    const raw = safeAttr(el, "href").trim();
+    if (!raw) return "OPAQUE";
+    if (raw.startsWith("#")) return "FRAGMENT";
+    if (/^javascript:/i.test(raw)) return "OPAQUE";
+    try {
+      const href = new URL(raw, base);
+      if (href.protocol !== "http:" && href.protocol !== "https:") return "OPAQUE";
+      if (href.protocol === "http:" && ["psk.testgifts.local", "testgifts.local"].includes(href.hostname) && (!href.port || href.port === "80") && !href.username && !href.password)
+        return "INTERNAL_TEST";
+      return "EXTERNAL";
+    } catch {
+      return "OPAQUE";
+    }
+  }
+  function all(scope, selector) {
+    try {
+      return [...scope?.querySelectorAll?.(selector) || []];
+    } catch {
+      return [];
+    }
+  }
+  function messageText(node2) {
+    const bodies = all(node2, BODY_SELECTOR);
+    if (bodies.length) return bodies.slice(0, 15).map((x) => String(x.textContent || "").slice(0, 2500)).join(" ");
+    return String(node2?.textContent || "").slice(0, 2500);
+  }
+  function inspectOrderDiscussionDom(doc, { baseUrl = "http://psk.testgifts.local/private/order/8000001" } = {}) {
+    const report = empty();
+    if (!doc?.querySelectorAll) return { ...report, status: "ORDER_DOCUMENT_INVALID" };
+    const topics = /* @__PURE__ */ new Set();
+    const controls = all(doc, CONTROL_SELECTOR);
+    for (const el of controls) {
+      if (inForbiddenBlock(el)) continue;
+      const label = controlLabel(el);
+      if (!DISCUSS.test(label) || AGREEMENT.test(label)) continue;
+      report.controls_total++;
+      const scope = el.closest?.(ARTICLE_SELECTOR);
+      if (scope) report.article_scoped_controls++;
+      else if (el.closest?.(".cart-order,.order-card,#j_cart_host"))
+        report.order_scoped_controls++;
+      else report.unresolved_scope_controls++;
+      const kind = targetClass(el, baseUrl);
+      if (kind === "INTERNAL_TEST") report.link_targets_internal_test++;
+      else if (kind === "FRAGMENT") report.link_targets_fragments++;
+      else if (kind === "EXTERNAL") report.link_targets_untrusted_or_external++;
+      else report.js_or_opaque_controls++;
+    }
+    const threads = all(doc, THREAD_SELECTOR).filter((x) => !inForbiddenBlock(x));
+    report.inline_thread_candidates = limit2(threads.length);
+    const seen = /* @__PURE__ */ new Set();
+    for (const root of threads) {
+      const messages = all(root, MESSAGE_SELECTOR);
+      for (const message of messages) {
+        if (seen.has(message)) continue;
+        seen.add(message);
+        const body = messageText(message);
+        for (const [topic, re] of Object.entries(TOPICS))
+          if (re.test(body)) topics.add(topic);
+      }
+    }
+    report.visible_message_candidates = limit2(seen.size);
+    const photos = /* @__PURE__ */ new Set();
+    for (const root of threads) {
+      for (const el of all(root, "img,picture,video,a[href]")) {
+        if (el.tagName === "IMG" || el.tagName === "PICTURE" || el.tagName === "VIDEO") {
+          photos.add(el);
+          continue;
+        }
+        if (/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el, "href")))
+          photos.add(el);
+      }
+    }
+    report.screenshot_or_image_candidates = limit2(photos.size);
+    report.weak_topic_candidates = [...topics].sort();
+    return report;
+  }
 
   // vision/orders/order-page-discovery.mjs
   var TEST_HOSTS = Object.freeze(["psk.testgifts.local", "testgifts.local"]);
@@ -1723,16 +1850,16 @@
   function isAuthHtml(text) {
     return /<form[^>]+name=["']authform["']/i.test(text) || /Авторизация\s*-\s*Проект\s*111/i.test(text);
   }
-  async function boundedText(response, limit2 = 3e6) {
+  async function boundedText(response, limit3 = 3e6) {
     if (!response.ok) throw Error("HTTP_" + response.status);
     const type = response.headers.get("content-type") || "";
     if (!/(?:html|json|text)/i.test(type)) throw Error("UNEXPECTED_DOCUMENT_CONTENT_TYPE");
     const length2 = response.headers.get("content-length");
-    if (length2 && Number(length2) > limit2) throw Error("DOCUMENT_TOO_LARGE");
+    if (length2 && Number(length2) > limit3) throw Error("DOCUMENT_TOO_LARGE");
     const reader = response.body?.getReader();
     if (!reader) {
       const s = await response.text();
-      if (s.length > limit2) throw Error("DOCUMENT_TOO_LARGE");
+      if (s.length > limit3) throw Error("DOCUMENT_TOO_LARGE");
       return s;
     }
     const parts = [];
@@ -1742,7 +1869,7 @@
         const { done, value } = await reader.read();
         if (done) break;
         count += value.length;
-        if (count > limit2) throw Error("DOCUMENT_TOO_LARGE");
+        if (count > limit3) throw Error("DOCUMENT_TOO_LARGE");
         parts.push(value);
       }
     } catch (err) {
@@ -1944,6 +2071,28 @@
       return classifiedError(error, phase, originRelation);
     }
   }
+  async function inspectOrderDiscussionFromRow(row, {
+    loc = globalThis.location,
+    fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
+    DOMParserClass = globalThis.DOMParser
+  } = {}) {
+    if (!loc || loc.protocol !== "http:" || loc.hostname !== "psk.testgifts.local" || !/^\/devorders(?:\/|$)/.test(loc.pathname))
+      return REFUSE("NOT_TEST_ORDER_PAGE");
+    const target = rowOrderTarget(row, loc.href);
+    if (target.status !== "ORDER_LINK_FOUND") return target;
+    const originRelation = target.url.origin === loc.origin ? "same_origin" : "approved_other_test_origin";
+    try {
+      const source = await getText(target.url.href, fetcher, loc.origin, "order_card");
+      const doc = parse(source, DOMParserClass);
+      if (!doc) return REFUSE(
+        "ORDER_DISCUSSION_HTML_UNREADABLE",
+        { stage: "order_card" }
+      );
+      return inspectOrderDiscussionDom(doc, { baseUrl: target.url.href });
+    } catch (error) {
+      return classifiedError(error, "order_card", originRelation);
+    }
+  }
   async function recheckOrderPopupReferences(resources, {
     loc = globalThis.location,
     fetcher = globalThis.__visionLocalTrustedTransport || globalThis.fetch,
@@ -2140,9 +2289,9 @@
   }
   function discoverOrderRows(doc = globalThis.document) {
     if (!doc || !isAllowedTestOrderPage(doc.defaultView?.location)) return [];
-    const all = [...doc.querySelectorAll("table tbody tr, table tr, [data-order-id]")];
+    const all2 = [...doc.querySelectorAll("table tbody tr, table tr, [data-order-id]")];
     const seen = /* @__PURE__ */ new Set(), rows = [];
-    for (const node2 of all) {
+    for (const node2 of all2) {
       if (seen.has(node2) || node2.closest("#vision-local-order-overlay")) continue;
       seen.add(node2);
       if (node2.tagName === "TR") {
@@ -2589,8 +2738,8 @@
       yield refused2("LOCAL_EXPORT_SETTINGS_INVALID");
       return;
     }
-    const all = rows.flatMap((r) => (r.orderUploads?.length ? r.orderUploads : r.files || []).map((a) => ({ file: a, row: r })));
-    if (!all.length) {
+    const all2 = rows.flatMap((r) => (r.orderUploads?.length ? r.orderUploads : r.files || []).map((a) => ({ file: a, row: r })));
+    if (!all2.length) {
       yield refused2("NO_SOURCE_ARTWORK");
       return;
     }
@@ -2625,7 +2774,7 @@
         sample_count: samples.length,
         skipped_count: skipped.length,
         processed_files: processed,
-        total_files: all.length
+        total_files: all2.length
       };
       entries = [];
       samples = [];
@@ -2633,9 +2782,9 @@
       bytes = 0;
       return output;
     };
-    for (const { file: a, row: r } of all) {
+    for (const { file: a, row: r } of all2) {
       processed++;
-      onProgress({ processed, total: all.length, saved, part: part + 1 });
+      onProgress({ processed, total: all2.length, saved, part: part + 1 });
       const response = a.role === "customer_uploaded_artwork" ? await fetchOrderResourceBytes(a, { fetcher, loc, maxBytes: maxPerFile }) : await fetchSameOriginArtworkBytes(a, { fetcher, loc, maxFileBytes: maxPerFile });
       if (response.status !== "LOCAL_BYTES_ONLY") {
         skipped.push({ row_index: r.row_index, reason: response.reason || "FILE_UNAVAILABLE" });
@@ -2773,6 +2922,8 @@
         source_artwork_included: false,
         order_urls_included: false,
         raw_artwork_bytes_included: false,
+        private_discussion_text_included: false,
+        private_discussion_attachment_urls_included: false,
         production_approved: false,
         real_world_accuracy_verified: false,
         rows: rows.map((r) => ({
@@ -2784,6 +2935,7 @@
           pending_file_count: r.partial ? Math.max(0, r.partial.candidates.length - r.partial.nextIndex) : 0,
           customer_uploaded_artworks: r.orderUploads?.length ?? null,
           constructor_template_count: r.orderTemplates ?? null,
+          discussion_probe: r.discussionProbe || { status: "NOT_SCANNED", training_ready: false },
           excluded_links: r.local_only_excluded,
           expert_label: r.grade?.value || "unreviewed",
           artifacts: (r.results || []).map((result, i) => ({
@@ -2839,6 +2991,8 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1e3);
     });
+    const discussionBtn = makeButton("\u041D\u0430\u0439\u0442\u0438 \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u044F", () => scanDiscussions());
+    const discussionExportBtn = makeButton("\u041E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u044F JSON", saveDiscussionReport);
     const bundleBtn = makeButton("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u0440\u0438\u043C\u0435\u0440\u044B ZIP \u2014 \u0432\u0441\u0435", async () => {
       if (busy || closed) return;
       if (!window.confirm("\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u0412\u0421\u0415 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0435 \u043E\u0440\u0438\u0433\u0438\u043D\u0430\u043B\u044B \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u043C\u0430\u043A\u0435\u0442\u043E\u0432 \u0432 \u043F\u043E\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 ZIP-\u0447\u0430\u0441\u0442\u0438? \u0418\u043C\u0435\u043D\u0430 \u0438 \u0444\u0430\u0439\u043B\u044B \u043A\u043E\u043D\u0444\u0438\u0434\u0435\u043D\u0446\u0438\u0430\u043B\u044C\u043D\u044B; \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A. \u0412 \u0430\u0440\u0445\u0438\u0432\u0430\u0445 \u043D\u0435\u0442 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 ROI \u0434\u043B\u044F \u043E\u0431\u0443\u0447\u0435\u043D\u0438\u044F. \u041D\u0415 \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0439\u0442\u0435 \u0438\u0445 \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.")) return;
@@ -2883,8 +3037,10 @@
     actions.append(
       refreshBtn,
       scanBtn,
+      discussionBtn,
       pauseBtn,
       exportBtn,
+      discussionExportBtn,
       diagnosticBtn,
       bundleBtn,
       makeButton("\u0417\u0430\u043A\u0440\u044B\u0442\u044C", close2)
@@ -3100,7 +3256,117 @@
         updateBatchControls();
       }
     }
+    function saveDiscussionReport() {
+      const safe = rows.map((r) => {
+        const probe = r.discussionProbe;
+        if (!probe || probe.status !== "STRUCTURE_ONLY_UNVERIFIED")
+          return {
+            row_index: r.row_index,
+            status: probe?.status || "NOT_SCANNED",
+            reason: /^[A-Z0-9_]+$/.test(probe?.reason || "") ? probe.reason : null,
+            training_ready: false
+          };
+        const fields = [
+          "controls_total",
+          "article_scoped_controls",
+          "order_scoped_controls",
+          "unresolved_scope_controls",
+          "link_targets_internal_test",
+          "link_targets_untrusted_or_external",
+          "link_targets_fragments",
+          "js_or_opaque_controls",
+          "inline_thread_candidates",
+          "visible_message_candidates",
+          "screenshot_or_image_candidates"
+        ];
+        const categorical = Object.fromEntries(fields.map((field) => [field, Number.isSafeInteger(probe[field]) ? Math.min(1e4, Math.max(0, probe[field])) : 0]));
+        const topics = [
+          "positive_min",
+          "negative_min",
+          "out_of_field",
+          "color",
+          "font",
+          "raster_resolution",
+          "gradient_transparency",
+          "constructor_alignment"
+        ];
+        return {
+          row_index: r.row_index,
+          status: "STRUCTURE_ONLY_UNVERIFIED",
+          ...categorical,
+          weak_topic_candidates: topics.filter((x) => probe.weak_topic_candidates?.includes(x)),
+          discussion_content_complete: false,
+          expert_label_verified: false,
+          screenshot_roi_verified: false,
+          training_ready: false
+        };
+      });
+      const report = {
+        schema: "printcheck.vision.anonymous-article-discussion-probe.v1",
+        scope: "test_order_card_only",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        rows_scanned: safe.filter((x) => x.status !== "NOT_SCANNED").length,
+        rows: safe,
+        raw_messages_included: false,
+        authors_included: false,
+        attachments_included: false,
+        attachment_urls_included: false,
+        order_identifiers_included: false,
+        training_ready: false,
+        note: "DOM structural heuristics only; collapsed discussion content is not fetched."
+      };
+      const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], { type: "application/json" });
+      const url = URL.createObjectURL(blob), a = node("a");
+      a.href = url;
+      a.download = "vision-local-discussion-probe.json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+    }
+    async function scanDiscussions() {
+      if (busy || closed) return;
+      busy = true;
+      pauseRequested = false;
+      refreshBtn.disabled = scanBtn.disabled = discussionBtn.disabled = true;
+      pauseBtn.disabled = false;
+      let attempted = 0, markers = 0, threads = 0;
+      try {
+        for (const r of rows) {
+          if (closed || pauseRequested) break;
+          if (r.discussionProbe) continue;
+          if (!r.hasOrderLink) {
+            r.discussionProbe = {
+              status: "MANUAL",
+              reason: "ORDER_DETAIL_LINK_REQUIRED",
+              training_ready: false
+            };
+            continue;
+          }
+          try {
+            r.discussionProbe = await inspectOrderDiscussionFromRow(r.element);
+          } catch {
+            r.discussionProbe = {
+              status: "MANUAL",
+              reason: "DISCUSSION_SCAN_FAILED",
+              training_ready: false
+            };
+          }
+          attempted++;
+          if (r.discussionProbe.status === "STRUCTURE_ONLY_UNVERIFIED") {
+            markers += r.discussionProbe.controls_total;
+            threads += r.discussionProbe.inline_thread_candidates;
+          }
+          if (!closed) stats.textContent = "\u041E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u044F: \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A " + attempted + " \xB7 \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u043E\u0432 UI " + markers + " \xB7 \u0432\u0441\u0442\u0440\u043E\u0435\u043D\u043D\u044B\u0445 \u0432\u0435\u0442\u043E\u043A " + threads + "\n\u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430: \u0442\u0435\u043A\u0441\u0442, \u0441\u0441\u044B\u043B\u043A\u0438 \u0438 \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u043D\u0435 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0438\u0440\u0443\u044E\u0442\u0441\u044F.";
+          if (!closed && !pauseRequested) await new Promise((resolve) => setTimeout(resolve, LOCAL_ORDERS.fetchPaceMs));
+        }
+        if (!closed) renderStats(pauseRequested ? "\u041F\u043E\u0438\u0441\u043A \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u0439 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D. \u041F\u043E\u0432\u0442\u043E\u0440\u043D\u043E\u0435 \u043D\u0430\u0436\u0430\u0442\u0438\u0435 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442 \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438." : "\u0414\u0438\u0430\u0433\u043D\u043E\u0441\u0442\u0438\u043A\u0430 \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u0439 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u044F JSON\xBB. \u041D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u044B \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0430\u044E\u0442 \u0434\u043E\u0441\u0442\u0443\u043F \u043A \u0442\u0435\u043A\u0441\u0442\u0443 \u0438\u043B\u0438 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F\u043C.");
+      } finally {
+        busy = false;
+        refreshBtn.disabled = false;
+        updateBatchControls();
+      }
+    }
     function updateBatchControls() {
+      discussionBtn.disabled = busy || closed;
       pauseBtn.disabled = !busy || closed || pauseRequested;
       scanBtn.disabled = busy || closed || nextRowIndex >= rows.length;
       scanBtn.textContent = nextRowIndex >= rows.length ? "\u0412\u0441\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u044B" : pauseRequested ? "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043E\u0447\u0435\u0440\u0435\u0434\u044C (" + (rows.length - nextRowIndex) + ")" : "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0432\u0441\u0435 \u0437\u0430\u043A\u0430\u0437\u044B (" + (rows.length - nextRowIndex) + ")";
