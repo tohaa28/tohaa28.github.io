@@ -1039,3 +1039,11 @@ PDF вне GitHub провести локальный audit-all и незави�
 - 4b70347e7af3aa21bb77f63f520130b1d46b594e: synthetic regression covers invalid types, invalid items, no production approval and no private string leakage.
 - New SHA CI and threefold independent ROI/adjudication regression remain unverified until independently checked. Do not infer success from baseline.
 - Blockers: live anonymous 404 reference_state and MV3 network classification missing; real verified ROI/family holdout, physical mm, ICC/spot, print process and real-world AI accuracy not established. Local PDF --all must not upload inputs or source identifiers. Training and production OK remain disabled.
+
+## M3.5 — PDF item operator allowlist (2026-11-18)
+
+- Pre-change experimental HEAD `7f44701b29fda01e679593a8a2bb63aa13c48736`; PR #4 OPEN/DRAFT/unmerged. GitHub Actions UI smoke, raster safety and rules/dataset safety SUCCESS on this baseline SHA (runs 44168338984, 44168339055, 44168339083); CircleCI vision-contract and vision-raster SUCCESS. Preview publish for this SHA not independently confirmed.
+- `a3731eb092943a5859dbd9f30bd8f0ee1925a1db`: optional offline PDF audit rejects unrecognized drawing item operators with fixed `PDF_PATH_ITEMS_UNSUPPORTED` and `MANUAL`; allowlist is `l`, `c`, `re`, `qu`. The PDF path type and item container checks remain fail-closed.
+- `e3d4efb2195bed782a849e956bda31a0207253d7`: synthetic tests for unsupported operators, non-disclosure of private marker text and supported operators. No real PDFs or expert labels committed.
+- Local git clone/test execution blocked by DNS resolution of github.com. These new tests have NOT been claimed to pass locally; verify new SHA in CI. Three independent ROI reviewer/adjudication cycles, batch PDF --all and Chromium 404 were not executed locally in this edit.
+- Unresolved: preview publish, anonymous real 404 reference_state/MV3 category, two verified ROI votes and family holdout, physical mm, ICC/spot and PDF transparency, print process, real-world accuracy. Unknown => MANUAL; no automatic training or production OK. Production modules and PR merge untouched.
