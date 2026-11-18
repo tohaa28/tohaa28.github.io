@@ -125,7 +125,7 @@ export function initApprovalPageEntry(){
   * All bytes are confined to short-lived numbered local ZIP parts.
   * No payloads, customer identifiers, or errors are sent to GitHub.
   */
- async function savePrivateAttachmentParts(){
+ async function savePrivateAttachmentParts({queueMode=false}={}){
   if(!collection)return {status:'NO_COLLECTION',files:0,parts:0};
   let files=0,parts=0,processed=0,failures=0;
   for await(const item of exportNativeApprovalAttachmentParts(collection,{
@@ -139,8 +139,9 @@ export function initApprovalPageEntry(){
    if(item.status==='PRIVATE_LOCAL_ZIP_READY'){
     files+=item.files;parts++;
     const u=URL.createObjectURL(item.zip),a=make('a');
-    a.href=u;a.download='vision-private-approval-attachments-part-'+
-     String(item.part).padStart(4,'0')+'.zip';
+    a.href=u;a.download='vision-private-approval-attachments-'+
+     (queueMode?location.pathname.split('/').filter(Boolean).at(-1)+'-':'')+
+     'part-'+String(item.part).padStart(4,'0')+'.zip';
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),30000);
     processed=item.processed;
@@ -182,7 +183,7 @@ export function initApprovalPageEntry(){
    const skipped=collection.skipped.length;
    const attachmentReport=stopRequested?
     {status:'STOPPED',files:0,parts:0,failures:0}:
-    await savePrivateAttachmentParts();
+    await savePrivateAttachmentParts({queueMode});
    collection.attachment_download_summary={
     status:attachmentReport.status,verified_files:attachmentReport.files,
     local_zip_parts:attachmentReport.parts,
