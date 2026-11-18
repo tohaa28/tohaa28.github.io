@@ -1211,3 +1211,12 @@ PDF вне GitHub провести локальный audit-all и незави�
   and `vision-local-discussion-probe.json` export. Draft PR #4 still
   OPEN/unmerged; production Maketnaya source and original customer
   data unchanged. No real authorized discussion HTML has been inspected.
+
+
+## M3.13 — repair canonical synthetic corpus paths (2026-11-18)
+
+- Before change: draft PR #4 OPEN/unmerged, branch HEAD `29eeb9361762d24aadeca3d919b9bd465297acdc`. GitHub Actions UI smoke, independent raster safety, rules/dataset safety SUCCESS on that SHA; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on that SHA not established.
+- Found in `tests/test_vision_private_corpus_threefold.py`: the threefold fixture used `private_originals/sample1.pdf` and `sample2.pdf`, while `validate_manifest()` only accepts canonical `private_originals/archiveN_fileNNNN.pdf`. Thus the threefold test could fail before exercising streaming, duplicate family merging, SHA mutation and privacy checks. Existing green CI alone does not prove this test was executed.
+- Commit `d43bb85ea7e0aff6f372edc64f55cec9e2f8e4d2`: fixed synthetic fixture paths and mutation target; added assertions that both initial files reach `SOURCE_VERIFIED_RESEARCH_ONLY` and that the changed source is rejected as `SOURCE_SIZE_MISMATCH`. No production code, real PDF, private manifest, source filename, original SHA or HMAC key was uploaded.
+- Local Python execution was not possible because git clone from github.com failed DNS resolution. New-HEAD CI must be checked independently. This change does NOT establish 512 MB fixture coverage, three independent expert ROI votes, real customer correctness or training readiness.
+- Still blocked: verified layout/constructor/print-method association, physical mm, ICC/spot/transparency, two independent expert ROI reviews and adjudication, verified family holdout, anonymous real 404 reference_state/MV3, Windows ACL, preview publish on this HEAD and real-world accuracy. Candidate partitions remain unverified; unknown => MANUAL, `training_ready=false`, production OK disabled.
