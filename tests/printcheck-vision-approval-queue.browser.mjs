@@ -17,12 +17,21 @@ const image='http://files.testgifts.local/maketadjusting/11313/8001111/77/captur
 const listing='<html><body><table><tbody><tr><td>'+
  '<a href="'+order+'">8001111</a></td><td>Согласование</td></tr></tbody></table></body></html>';
 const comments='<li><div class="comment_wrap"><div class="flex-main">'+
- 'Синтетическая ошибка толщины <g-gallery></g-gallery></div></div></li>'+
+ 'Синтетическая ошибка толщины <g-gallery></g-gallery></div>'+ 
+ '  <div class="comment_info">Дизайнер Тестовый 11.11.26 12:34</div></div></li>'+
  '<li><div class="comment_wrap"><div class="flex-main">'+
- 'Синтетический ответ о правке.</div></div></li>';
-const orderHtml='<html><body><div id="j_cart_host" data-orderid="550"></div>'+
- '<li data-itemid="77"><a class="j_maketadjusting" href="#">'+
- '<span class="gifts-badge">2</span></a></li><script>'+
+ 'Синтетический ответ о правке.</div>'+ 
+ '  <div class="comment_info">Менеджер Пример 11.11.26 12:50</div></div></li>';
+const orderHtml='<html><body><div id="j_cart_host" data-orderid="550">'+
+ '<div class="cart-header"><span class="cart-header-date">11 ноя 2026</span>'+
+ '<div class="cart-header-number">Заказ 8001111 <span class="note">Клиент Тестовый</span></div></div>'+
+ '<li data-itemid="77">'+
+ '<div class="cart-tbl-id"><a class="cart-tbl-name" href="http://testgifts.local/id/121">Артикул TEST.21</a>'+
+ '<div class="cart-tbl-lbl vsbl-dk-lg">Синтетическая медаль</div></div>'+
+ '<div class="cart-tbl-qty">16 шт. Цена 338,00</div>'+
+ '<div class="cart-tbl-imp">UV2: УФ-печать, 1. Толщина 0,15 мм</div>'+
+ '<a class="j_maketadjusting" href="#">'+
+ '<span class="gifts-badge">2</span></a></li></div><script>'+
  'window.fixtureComments='+JSON.stringify(comments)+';'+
  'window.fixtureImage='+JSON.stringify(image)+';'+
  "window.nativeClicks=0;\ndocument.querySelector('a.j_maketadjusting').addEventListener('click',event=>{\nevent.preventDefault();window.nativeClicks++;\nconst modal=document.createElement('g-modal');\nmodal.innerHTML='<form id=\"j_maketAdjustingForm\"><input type=\"hidden\" name=\"oiid\" value=\"77\">'+\n'<label><input type=\"checkbox\" name=\"ma_problem[]\" value=\"55\" checked>Тонкие линии</label></form>'+\n'<div id=\"j_maketadjustingcomments_counter\">2</div>'+\n'<ul id=\"j_maketadjusting_comments_list\">'+window.fixtureComments+'</ul>';\ndocument.body.append(modal);\nconst gallery=modal.querySelector('g-gallery');\ngallery.attachShadow({mode:'open'}).innerHTML='<section><picture><img src=\"'+\nwindow.fixtureImage+'\"></picture></section><nav><img src=\"'+window.fixtureImage+'\"></nav>';\nmodal.setAttribute('visible','');\n});"+
@@ -87,12 +96,29 @@ try{
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
  const status=await page.locator('#vision-local-order-overlay .vlo-stats').innerText();
  assert.match(status,/историй: 1/);
- const privateDownload=downloads.find(x=>
-  x.suggestedFilename()==='vision-private-approval-evidence-8001111.json');
- assert.ok(privateDownload,'list action automatically downloads private text JSON');
- const report=JSON.parse(await readFile(await privateDownload.path(),'utf8'));
+ const sw=browserContext.serviceWorkers().find(x=>x.url().includes('service-worker.js'));
+ assert.ok(sw,'MV3 worker available for verified downloads');
+ const evidenceDownloads=await sw.evaluate(async()=>{
+  return (await chrome.downloads.search({})).filter(x=>
+   /vision-private-approval-evidence-8001111(?:-raw)?\\.json$/.test(x.filename||''))
+   .map(x=>({filename:x.filename,state:x.state}));
+ });
+ assert.equal(evidenceDownloads.length,2,'raw and final JSON both saved by Chrome');
+ assert.ok(evidenceDownloads.every(x=>x.state==='complete'),
+  'background tab closes only after Chrome verified both JSON downloads');
+ const finalDownload=evidenceDownloads.find(x=>
+  x.filename.endsWith('vision-private-approval-evidence-8001111.json'));
+ assert.ok(finalDownload,'final evidence exists');
+ const report=JSON.parse(await readFile(finalDownload.filename,'utf8'));
  assert.equal(report.articles[0].observed_human_comments,2);
  assert.equal(report.articles[0].current_problems.length,1);
+ assert.equal(report.order_facts.order.internal_order_id,'550');
+ assert.equal(report.order_facts.order.customer_display,'Клиент Тестовый');
+ assert.equal(report.order_facts.articles[0].article_code,'TEST.21');
+ assert.equal(report.order_facts.articles[0].product_name,'Синтетическая медаль');
+ assert.match(report.order_facts.articles[0].imprint_and_technical_requirements_text,/0,15 мм/);
+ assert.equal(report.articles[0].history[0].author_name,'Дизайнер Тестовый');
+ assert.equal(report.articles[0].history[1].author_name,'Менеджер Пример');
  assert.equal(report.articles[0].history.length,2);
  const attachment=report.articles[0].history[0].attachments[0];
  assert.equal(attachment.source,'native_approval_gallery');
@@ -108,10 +134,11 @@ try{
  const anon=JSON.parse(await readFile(await (await anonEvent).path(),'utf8'));
  assert.equal(anon.totals.verified_articles,1);
  assert.equal(anon.totals.files,1);
+ assert.equal(anon.results[0].private_text_saved,true);
  assert.equal(JSON.stringify(anon).includes('8001111'),false);
  assert.equal(JSON.stringify(anon).includes('capture.png'),false);
  assert.deepEqual(errors,[]);
- console.log('Vision M3.21 list->native approval->gallery PNG->private JSON/ZIP PASS');
+ console.log('Vision M3.23 list->approval->complete raw/final JSON+order facts+PNG ZIP PASS');
 }finally{
  if(browserContext)await browserContext.close();
  await new Promise(resolve=>proxy.close(resolve));
