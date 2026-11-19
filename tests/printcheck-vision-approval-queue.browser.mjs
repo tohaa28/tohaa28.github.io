@@ -100,7 +100,7 @@ try{
  assert.ok(sw,'MV3 worker available for verified downloads');
  const evidenceDownloads=await sw.evaluate(async()=>{
   return (await chrome.downloads.search({})).filter(x=>
-   /vision-private-approval-evidence-8001111(?:-raw)?\\.json$/.test(x.filename||''))
+   /vision-private-approval-evidence-8001111(?:-raw)?\.json$/.test(x.filename||''))
    .map(x=>({filename:x.filename,state:x.state}));
  });
  assert.equal(evidenceDownloads.length,2,'raw and final JSON both saved by Chrome');
