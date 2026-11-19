@@ -271,6 +271,53 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   return true;
  });
 }
+
+/**
+ * Read-only Chrome Downloads audit for range ZIP. Never claims that clicking
+ * an <a download> guarantees persistence. The list tab polls the download
+ * state and advances the checkpoint only after COMPLETE.
+ */
+const RANGE_DOWNLOAD_AUDIT='vision-range-download-audit-v1';
+function isApprovedListSender(sender){
+ try{
+  const u=new URL(sender?.url||'');
+  return sender?.frameId===0&&Number.isInteger(sender?.tab?.id)&&
+   u.origin===TABLE_ORIGIN&&/^\/devorders(?:\/|$)/.test(u.pathname);
+ }catch{return false}
+}
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==RANGE_DOWNLOAD_AUDIT)return false;
+  if(!isApprovedListSender(sender)||typeof chrome.downloads?.search!=='function'){
+   respond({status:'MANUAL_RANGE_AUDIT_DENIED'});return false;
+  }
+  const phase=message.phase;
+  if(phase!=='baseline'&&phase!=='check'){
+   respond({status:'MANUAL_RANGE_AUDIT_PHASE'});return false;
+  }
+  chrome.downloads.search({}).then(items=>{
+   if(phase==='baseline'){
+    respond({status:'RANGE_DOWNLOAD_BASELINE',
+     highest_id:Math.max(0,...items.map(x=>x.id).filter(Number.isSafeInteger))});
+    return;
+   }
+   const after=message.after_id,expected=message.byte_length;
+   if(!Number.isSafeInteger(after)||after<0||
+     !Number.isSafeInteger(expected)||expected<100||expected>200_000_000){
+    respond({status:'MANUAL_RANGE_AUDIT_ARGS'});return;
+   }
+   const matching=items.filter(x=>x.id>after&&
+    x.mime==='application/zip'&&
+    (x.totalBytes===expected||x.fileSize===expected)&&
+    (x.url||'').startsWith('blob:http://psk.testgifts.local/'));
+   const status=matching.some(x=>x.state==='complete')?
+    'RANGE_DOWNLOAD_COMPLETE':matching.some(x=>x.state==='interrupted')?
+    'MANUAL_RANGE_DOWNLOAD_INTERRUPTED':'RANGE_DOWNLOAD_PENDING';
+   respond({status,matched:matching.length});
+  },()=>respond({status:'MANUAL_RANGE_AUDIT_FAILED'}));
+  return true;
+ });
+}
 const QUEUE_RUN='vision-approval-order-queue-v1';
 const ORDER_URL=/^http:\/\/testgifts\.local\/private\/order\/[0-9]{5,12}$/;
 let queueRunning=false;
