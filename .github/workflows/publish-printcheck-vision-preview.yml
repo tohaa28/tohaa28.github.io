@@ -18,6 +18,8 @@ on:
       - vision/orders/approval-page-entry.mjs
       - vision/orders/approval-auto-scan.mjs
       - vision/orders/approval-order-facts.mjs
+      - vision/orders/approval-batch-archive.mjs
+      - tests/printcheck-vision-approval-batch-archive.test.mjs
       - tests/printcheck-vision-approval-order-facts.test.mjs
       - vision/orders/approval-attachments.mjs
       - vision/orders/approval-inline-images.mjs
@@ -120,6 +122,8 @@ jobs:
           node --check vision/orders/discussion-probe.mjs
           node --check vision/orders/maket-approval-probe.mjs
           node --check vision/orders/approval-page-entry.mjs
+          node --check vision/orders/approval-batch-archive.mjs
+          node --test tests/printcheck-vision-approval-batch-archive.test.mjs
           node --check vision/orders/approval-order-facts.mjs
           node --test tests/printcheck-vision-approval-order-facts.test.mjs
           node --check vision/orders/approval-auto-scan.mjs
