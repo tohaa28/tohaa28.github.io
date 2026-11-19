@@ -8,7 +8,7 @@ import {chromium} from 'playwright';
 const ext=await mkdtemp(path.join(os.tmpdir(),'vision-overlap-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-overlap-profile-'));
 for(const file of ['manifest.json','service-worker.js','content-transport.js',
- 'vision-order-launcher.js'])
+ 'vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js'])
  await cp(path.resolve('vision/orders/extension',file),path.join(ext,file));
 for(const file of ['vision-order-overlay.js','vision-order-approval.js'])
  await cp(path.resolve(file),path.join(ext,file));
