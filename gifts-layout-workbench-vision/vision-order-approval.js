@@ -380,11 +380,11 @@
   var te2 = new TextEncoder();
   var numeric = (v) => typeof v === "string" && /^\d{1,20}$/.test(v);
   var code = (status, extra = {}) => ({ status, training_ready: false, ...extra });
-  function nativeApprovalAttachmentUrl(id, { origin = TEST_ORIGIN } = {}) {
-    if (origin !== TEST_ORIGIN || !numeric(id)) return null;
+  function nativeApprovalAttachmentUrl(id2, { origin = TEST_ORIGIN } = {}) {
+    if (origin !== TEST_ORIGIN || !numeric(id2)) return null;
     const url = new URL("/ajax/gifts/order", origin);
     url.searchParams.set("action", "download_maketadjusting_attachment");
-    url.searchParams.set("id", id);
+    url.searchParams.set("id", id2);
     return url.href;
   }
   function safeName(name) {
@@ -790,6 +790,74 @@
     onProgress({ processed, total: jobs.length, successful, complete: true });
   }
 
+  // vision/orders/approval-order-facts.mjs
+  var limit = (value, n = 12e3) => String(value || "").replace(/\s+/g, " ").trim().slice(0, n);
+  var txt = (root, selector, n) => limit(root?.querySelector?.(selector)?.textContent, n);
+  var id = (value) => /^\d{1,20}$/.test(value || "") ? value : null;
+  var safeLink = (raw, pattern) => {
+    try {
+      const u = new URL(raw, "http://testgifts.local");
+      return u.origin === "http://testgifts.local" && !u.search && !u.username && !u.password && pattern.test(u.pathname) ? u.href : null;
+    } catch {
+      return null;
+    }
+  };
+  function extractOrderFacts(doc, orderNumber) {
+    const root = doc?.querySelector?.("#j_cart_host");
+    const number = id(String(orderNumber || "")) || null;
+    const date = txt(root, ".cart-header-date", 160);
+    const header = txt(root, ".cart-header-number", 3200);
+    const order = {
+      order_number: number,
+      internal_order_id: id(root?.getAttribute?.("data-orderid")),
+      order_date_display: date || null,
+      header_text: header || null,
+      customer_display: txt(root, ".cart-header-number .note", 1500) || null,
+      header_full_text: txt(root, ".cart-header", 4e3) || null,
+      order_status_timeline: limit([...root?.querySelectorAll?.(".cart-log") || []].map((n) => n.textContent).join(" | "), 8e3) || null,
+      source: "current_native_order_dom",
+      facts_verified_with_customer_system: false
+    };
+    const articles = [];
+    for (const li of root?.querySelectorAll?.("li[data-itemid]") || []) {
+      if (articles.length >= 250) break;
+      const item = id(li.getAttribute("data-itemid"));
+      if (!item) continue;
+      const product = li.querySelector(".cart-tbl-id");
+      const code2 = txt(product, "a.cart-tbl-name", 180).replace(/^Артикул\s*/i, "") || null;
+      const title = txt(product, ".cart-tbl-lbl.vsbl-dk-lg", 800) || txt(product, ".cart-tbl-lbl", 800) || null;
+      const productLink = safeLink(
+        product?.querySelector("a.cart-tbl-name")?.getAttribute("href"),
+        /^\/id\/\d+\/?$/
+      );
+      const print = li.querySelector(".cart-tbl-imp");
+      const quantity = txt(li, ".cart-tbl-qty", 2400) || null;
+      const article = {
+        item_id: item,
+        article_code: code2,
+        product_name: title,
+        product_page: productLink,
+        product_description_text: txt(product, ".cart-tbl-id", 1200) || limit(product?.textContent, 1400),
+        quantity_and_pricing_text: quantity,
+        imprint_and_technical_requirements_text: limit(print?.textContent, 14e3) || null,
+        order_item_status_text: limit(li.querySelector(".tbl-col.no-wrp")?.textContent, 800) || null,
+        drawtask_ids: limit(li.getAttribute("data-drawtaskids"), 350) || null,
+        native_approval_badge: txt(li, "a.j_maketadjusting .gifts-badge", 50) || null,
+        fact_source: "native_order_item_dom"
+      };
+      articles.push(article);
+    }
+    return {
+      schema: "printcheck.vision.private-order-facts.v1",
+      order,
+      articles,
+      capture_status: root && number ? "ORDER_DOM_CAPTURED" : "ORDER_DOM_INCOMPLETE",
+      private_local_only: true,
+      training_ready: false,
+      production_approved: false
+    };
+  }
+
   // vision/orders/approval-auto-scan.mjs
   var MAX_TARGETS = 100;
   var MAX_MESSAGES = 1500;
@@ -922,6 +990,8 @@
         date_time: timestamp,
         native_comment_id: nativeRef?.[1] || null,
         actor_ref: actorLabel ? actors.get(actorLabel) : null,
+        author_name: actorLabel || null,
+        author_display_text: at || null,
         attachments
       });
     }
@@ -1000,6 +1070,9 @@
       schema: "printcheck.vision.private-approval-collection.v1",
       scope: "LOCAL_AUTHORIZED_TEST_ORDER",
       order_number: digits(orderNumber) ? orderNumber : null,
+      order_facts: extractOrderFacts(doc, orderNumber),
+      collected_at: (/* @__PURE__ */ new Date()).toISOString(),
+      source_page: "http://testgifts.local/private/order/" + String(orderNumber),
       total_triggers: discovered.total_triggers,
       selected_by_badge: discovered.eligible.length,
       skipped: discovered.skipped,
@@ -1198,8 +1271,8 @@
     const panel = make("section");
     panel.id = BOX_ID;
     panel.setAttribute("aria-label", "Vision AI \u2014 \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F");
-    const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430 \xB7 v0.1.6");
-    const note = make("p", "\u0410\u0432\u0442\u043E\u043E\u0431\u0445\u043E\u0434: \u0434\u043B\u044F \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u0441 2+ \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F\u043C\u0438 \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0430 \u0447\u0438\u0442\u0430\u0435\u0442 \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u044B, \u0432\u0441\u044E \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u0438 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E \u043F\u043E\u043B\u0443\u0447\u0430\u0435\u0442 \u0444\u0430\u0439\u043B\u044B \u0447\u0435\u0440\u0435\u0437 \u0440\u0430\u0437\u0440\u0435\u0448\u0451\u043D\u043D\u044B\u0439 GET. \u0410\u0440\u0445\u0438\u0432\u044B \u0441 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F\u043C\u0438 \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u0430 \u044D\u0442\u043E\u0442 \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0431\u043E\u0440. \u041D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0439\u0442\u0435 \u043F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0435 ZIP \u0438 JSON \u0432 \u043F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 GitHub.");
+    const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430 \xB7 v0.1.7");
+    const note = make("p", "\u0410\u0432\u0442\u043E\u043E\u0431\u0445\u043E\u0434: \u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438 \u0441 \u0438\u043C\u0435\u043D\u0430\u043C\u0438 \u0443\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u043E\u0432, \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u043F\u0440\u043E\u0431\u043B\u0435\u043C, \u0441\u0432\u0435\u0434\u0435\u043D\u0438\u044F \u043E \u0437\u0430\u043A\u0430\u0437\u0435 \u0438 \u043A\u0430\u0436\u0434\u043E\u043C \u0430\u0440\u0442\u0438\u043A\u0443\u043B\u0435. \u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F JSON \u0441 \u0442\u0435\u043A\u0441\u0442\u043E\u043C, \u0437\u0430\u0442\u0435\u043C \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F, \u0437\u0430\u0442\u0435\u043C \u043E\u043A\u043E\u043D\u0447\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0439 JSON \u0441 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430\u043C\u0438 \u043A ZIP. \u0412\u0441\u0435 \u0444\u0430\u0439\u043B\u044B \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440\u0435.");
     const stats = make("p", "\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u043E\u043A\u043D\u043E.");
     stats.setAttribute("role", "status");
     const scan = make("button", "\u041F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435");
@@ -1325,6 +1398,27 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(uri), 2500);
     }
+    async function persistOrderEvidence(stage) {
+      if (!collection || !Array.isArray(collection.articles)) return {
+        status: "MANUAL_NO_ORDER_EVIDENCE"
+      };
+      const order = String(collection.order_number || "");
+      if (!/^\d{5,12}$/.test(order)) return {
+        status: "MANUAL_ORDER_IDENTIFIER_INVALID"
+      };
+      if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage)
+        return { status: "MANUAL_EXTENSION_DOWNLOAD_UNAVAILABLE" };
+      try {
+        return await chrome.runtime.sendMessage({
+          op: "vision-approval-save-evidence-v1",
+          stage,
+          order_number: order,
+          evidence: collection
+        }) || { status: "MANUAL_EVIDENCE_DOWNLOAD_NO_RESPONSE" };
+      } catch {
+        return { status: "MANUAL_EVIDENCE_DOWNLOAD_NO_RESPONSE" };
+      }
+    }
     async function savePrivateAttachmentParts({ queueMode = false } = {}) {
       if (!collection) return { status: "NO_COLLECTION", files: 0, parts: 0 };
       let files = 0, parts = 0, processed = 0, failures = 0;
@@ -1385,6 +1479,7 @@
         if (!panel.isConnected) return;
         const done = collection.articles.filter((x) => x.status === "PRIVATE_REVIEW_ONLY").length;
         const skipped = collection.skipped.length;
+        const rawEvidence = queueMode ? await persistOrderEvidence("raw") : { status: "MANUAL_SAVE_ON_DEMAND" };
         const attachmentReport = stopRequested ? { status: "STOPPED", files: 0, parts: 0, failures: 0 } : await savePrivateAttachmentParts({ queueMode });
         collection.attachment_download_summary = {
           status: attachmentReport.status,
@@ -1397,9 +1492,10 @@
         if (!panel.isConnected) return;
         stats.textContent = "\u041E\u0431\u0445\u043E\u0434: " + collection.status + "\n\u0410\u0440\u0442\u0438\u043A\u0443\u043B\u043E\u0432: " + collection.articles.length + " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u0430: " + done + " \xB7 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E: " + skipped + "\n\u0424\u0430\u0439\u043B\u044B: " + attachmentReport.files + " \xB7 ZIP-\u0447\u0430\u0441\u0442\u0435\u0439: " + attachmentReport.parts + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u0447\u0442\u0435\u043D\u0438\u044F: " + attachmentReport.failures + " \xB7 \u0441\u0442\u0430\u0442\u0443\u0441: " + attachmentReport.status + "\n\u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0439 JSON \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043C\u0435\u0447\u0430\u043D\u0438\u0439. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0435\u0433\u043E \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. Chrome \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0439.";
         privateSave.disabled = anonymousSave.disabled = attachmentRetry.disabled = false;
-        if (queueMode && collection?.articles?.length) {
-          downloadJson(collection, "vision-private-approval-evidence-" + location.pathname.split("/").filter(Boolean).at(-1) + ".json");
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        const finalEvidence = queueMode ? await persistOrderEvidence("final") : { status: "MANUAL_SAVE_ON_DEMAND" };
+        const textSaved = rawEvidence.status === "EVIDENCE_DOWNLOAD_COMPLETE" || finalEvidence.status === "EVIDENCE_DOWNLOAD_COMPLETE";
+        if (queueMode) {
+          stats.textContent += "\n\u041F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438 \u0438 \u0434\u0430\u043D\u043D\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u0430: " + (textSaved ? "\u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B" : "\u041E\u0428\u0418\u0411\u041A\u0410 \u0421\u041E\u0425\u0420\u0410\u041D\u0415\u041D\u0418\u042F") + " \xB7 \u043F\u0440\u0435\u0434\u0432\u0430\u0440\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 " + rawEvidence.status + " \xB7 \u0438\u0442\u043E\u0433\u043E\u0432\u044B\u0439 " + finalEvidence.status;
         }
         return {
           status: collection.status,
@@ -1408,7 +1504,9 @@
           files: attachmentReport.files,
           zip_parts: attachmentReport.parts,
           failures: attachmentReport.failures,
-          private_text_saved: !!(queueMode && collection?.articles?.length)
+          private_text_saved: textSaved,
+          raw_evidence_status: rawEvidence.status,
+          final_evidence_status: finalEvidence.status
         };
       } catch {
         if (panel.isConnected) stats.textContent = "MANUAL: \u043E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u043E\u0433\u043E \u043E\u0431\u0445\u043E\u0434\u0430.";
@@ -1461,7 +1559,7 @@
       stop(event);
       if (!collection) return;
       if (!window.confirm("\u0412 \u043F\u0440\u0438\u0432\u0430\u0442\u043D\u043E\u043C JSON \u043D\u0430\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F \u043E \u0437\u0430\u043A\u0430\u0437\u0435, \u0438\u0434\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0442\u043E\u0440\u044B \u0430\u0440\u0442\u0438\u043A\u0443\u043B\u043E\u0432 \u0438 \u0438\u043C\u0435\u043D\u0430 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u0430 \u0441\u0432\u043E\u0439 \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440? \u041D\u0435 \u043F\u0443\u0431\u043B\u0438\u043A\u0443\u0439\u0442\u0435 \u0444\u0430\u0439\u043B \u0432 GitHub \u0438 \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0439\u0442\u0435 \u0432 \u043E\u0431\u0449\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u044B.")) return;
-      downloadJson(collection, "vision-private-approval-evidence.json");
+      downloadJson(collection, "vision-private-approval-evidence-" + (collection.order_number || "order") + ".json");
     });
     anonymousSave.addEventListener("click", (event) => {
       stop(event);
