@@ -281,7 +281,9 @@ export function initLocalOrdersOverlay(){
        !target.url.search&&!target.url.hash)
     ordered.set(target.url.href,target.url.href);
   }
-  const urls=[...ordered.values()];
+  if(!approvalQueueUrls||approvalQueueIndex===0)
+   approvalQueueUrls=[...ordered.values()];
+  const urls=approvalQueueUrls;
   if(!urls.length){
    busy=false;approvalQueueBtn.disabled=false;approvalQueueStopBtn.disabled=true;
    refreshBtn.disabled=false;updateBatchControls();
@@ -289,21 +291,25 @@ export function initLocalOrdersOverlay(){
    return;
   }
   let done=0,verified=0,imagesAndFiles=0,errors=0,finalSaved=0,rawOnly=0,textFailures=0;
+  if(approvalQueueIndex===0){approvalBatch=new ApprovalBatchSession();preparedBundle=null;approvalZipBtn.disabled=true;}
   try{
    while(approvalQueueIndex<urls.length&&!closed&&!approvalQueueStop){
     const url=urls[approvalQueueIndex];
     renderStats('Согласования из списка: '+done+' / '+urls.length+
       '\nОткрывается следующий заказ во временной вкладке. Страница списка остаётся открытой.');
     let result;
+    activeBatchOrder=new URL(url).pathname.split('/').at(-1);
     try{
      result=await chrome.runtime.sendMessage({
       op:'vision-approval-order-queue-v1',order_url:url
      });
     }catch{result={status:'MANUAL_BACKGROUND_ORDER_FAILED'}}
+    finally{activeBatchOrder=null}
     const safeStatus=/^[A-Z0-9_]{3,70}$/.test(result?.status||'')?
       result.status:'MANUAL_UNKNOWN_RESULT';
     const num=x=>Number.isSafeInteger(x)&&x>=0&&x<=10000?x:0;
-    const entry={status:safeStatus,eligible_articles:num(result?.eligible_articles),
+    const entry={order_number:new URL(url).pathname.split('/').at(-1),
+     status:safeStatus,eligible_articles:num(result?.eligible_articles),
      verified_articles:num(result?.verified_articles),files:num(result?.files),
      zip_parts:num(result?.zip_parts),failures:num(result?.failures),
      private_text_saved:result?.private_text_saved===true,
@@ -326,15 +332,34 @@ export function initLocalOrdersOverlay(){
       '\nТексты, имена, проблемы, артикулы и сведения заказа — в JSON; вложения — в ZIP.');
     await new Promise(resolve=>setTimeout(resolve,100));
    }
-   if(!closed)renderStats(approvalQueueStop?
-    'Обход согласований приостановлен: '+approvalQueueIndex+' / '+urls.length+'. Нажмите «Собрать согласования», чтобы продолжить.':
-    'Обход согласований завершён: '+approvalQueueIndex+' / '+urls.length+
-    ' · историй: '+verified+' · вложений: '+imagesAndFiles+
-    ' · итоговых JSON: '+finalSaved+
-    ' · только резервных: '+rawOnly+
-    ' · без переписки: '+textFailures+' · ошибок: '+errors+
-    '. '+(textFailures||rawOnly?'ВНИМАНИЕ: некоторые JSON не подтверждены — проверьте загрузки Chrome и анонимный отчёт.':
-      'Переписки и материалы сохранены локально.'));
+   let finalStatus='';
+   if(approvalQueueIndex===urls.length&&!approvalQueueStop&&!closed){
+    try{
+     preparedBundle=approvalBatch.finalize(approvalQueueReports);
+     approvalZipBtn.disabled=false;
+     downloadApprovalBatch();
+     finalStatus='Единый ZIP: '+preparedBundle.entry_count+
+      ' записей, '+preparedBundle.counts.with_evidence+' заказов с данными, '+
+      preparedBundle.counts.verified_files+' вложений, '+
+      preparedBundle.counts.missing_files+' недоступных файлов. '+
+      'Инициирована ОДНА загрузка; проверьте её завершение в Chrome.';
+    }catch(e){
+     finalStatus='MANUAL: единый ZIP не сформирован ('+
+      String(e?.message||'UNKNOWN').slice(0,85)+
+      '). Данные находятся в этой вкладке — не обновляйте её.';
+    }
+   }else if(approvalQueueStop){
+    try{
+     preparedBundle=approvalBatch.finalize(approvalQueueReports);
+     approvalZipBtn.disabled=false;
+     finalStatus='Обход приостановлен: '+approvalQueueIndex+' / '+urls.length+
+      '. Можно скачать частичный архив кнопкой либо продолжить обход.';
+    }catch(e){
+     finalStatus='Пауза: архив не готов ('+
+      String(e?.message||'UNKNOWN').slice(0,80)+').';
+    }
+   }
+   if(!closed)renderStats(finalStatus||'MANUAL: архив не подтверждён.');
   }finally{
    busy=false;approvalQueueBtn.disabled=false;
    approvalQueueStopBtn.disabled=true;refreshBtn.disabled=false;
@@ -369,6 +394,8 @@ export function initLocalOrdersOverlay(){
    rows=discoverOrderRows(document);
    nextRowIndex=0;
    approvalQueueIndex=0;approvalQueueReports.length=0;
+   approvalQueueUrls=null;approvalBatch=new ApprovalBatchSession();preparedBundle=null;
+   approvalZipBtn.disabled=true;
    pauseRequested=false;
    for(const r of rows){
      const cell=node(r.element.tagName==='TR'?'td':'div',undefined,
