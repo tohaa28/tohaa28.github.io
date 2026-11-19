@@ -362,6 +362,9 @@ export function makeApprovalRangeController({
    await persistJournal(currentMode());
    const a=create('a');a.href=blobUrl;a.download=filename;
    document.body.append(a);a.click();a.remove();
+   // Keep validated binary transfers durably in IndexedDB, not duplicated
+   // in the memory budget while the next batch is being collected.
+   for(const row of rows)batch.discardOrder(row.order_number);
    show('ZIP №'+part+' загружается; просмотр следующих номеров продолжается.');
    return true;
   }catch(error){
@@ -560,7 +563,10 @@ export function makeApprovalRangeController({
    failedPending=journal.failed_pending.slice();
    cursor=journal.cursor;
    inflightDownload=journal.download||null;
-   for(const item of orders)batch.restoreOrder(item.order_number,item.transfers);
+   for(const item of orders){
+    if(!inflightDownload?.order_numbers?.includes(item.order_number))
+     batch.restoreOrder(item.order_number,item.transfers);
+   }
   }
   saveBtn.disabled=!pending.length;
   show(journal?'Сканирование восстановлено после обновления страницы.':
