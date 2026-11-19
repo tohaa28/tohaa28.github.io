@@ -208,11 +208,19 @@ try{
   'live 1500ms delay must be reflected between next two probes');
  assert.ok(requests.some(x=>x.type==='image'));
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
- const zip=downloads.find(x=>x.suggestedFilename().startsWith(
-  'vision-ai-range-3200000-3200004-part-00001-'));
- assert.ok(zip,'one verified batch file');
- assert.equal(downloads.filter(x=>x.suggestedFilename().endsWith('.zip')).length,1);
- const files=readZip(new Uint8Array(await readFile(await zip.path())));
+ const swForZip=browser.serviceWorkers().find(w=>w.url().endsWith('service-worker.js'));
+ assert.ok(swForZip);
+ // ZIP is now created and downloaded by the extension service worker, not a
+ // web page anchor. Playwright page.on('download') deliberately does not see
+ // extension-owned downloads; Chrome Downloads API is authoritative instead.
+ const completed=await swForZip.evaluate(async()=>(
+  await chrome.downloads.search({})
+ ).filter(x=>x.state==='complete'&&x.mime==='application/zip'&&
+   x.url.startsWith('blob:chrome-extension://')).map(x=>({
+   filename:x.filename,id:x.id,bytes:x.fileSize,danger:x.danger
+ })));
+ assert.equal(completed.length,1,'one verified extension-owned ZIP');
+ const files=readZip(new Uint8Array(await readFile(completed[0].filename)));
  const manifest=JSON.parse(Buffer.from(files.get('manifest.json')).toString());
  assert.equal(manifest.counts.orders,1);
  assert.equal(manifest.counts.verified_files,1);
