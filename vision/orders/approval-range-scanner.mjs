@@ -128,6 +128,19 @@ export function freshRangeCheckpoint(config){
   registry:[],created_at:new Date().toISOString(),updated_at:new Date().toISOString()
  };
 }
+/**
+ * Skips/nonexistent orders may advance the cursor only when the collector has
+ * NO unarchived approved order evidence. This makes restart idempotent.
+ */
+export function commitOnlySkipped(checkpoint,next){
+ if(checkpoint?.schema!=='printcheck.vision.range-checkpoint.v1'||
+  !Number.isSafeInteger(next)||next<checkpoint.committed_next||
+  next>checkpoint.config.end+1)throw Error('MANUAL_SKIPPED_CHECKPOINT_INVALID');
+ return {...checkpoint,committed_next:next,
+  checked_committed:checkpoint.checked_committed+
+   (next-checkpoint.committed_next),
+  updated_at:new Date().toISOString()};
+}
 /** Only advance durable cursor after a batch ZIP has actually saved. */
 export function commitRangeArchive(checkpoint,record){
  if(checkpoint?.schema!=='printcheck.vision.range-checkpoint.v1'||
