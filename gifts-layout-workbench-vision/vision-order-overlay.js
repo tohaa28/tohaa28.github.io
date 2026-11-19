@@ -3828,7 +3828,7 @@
     const progress = create("p", "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D.");
     progress.style.whiteSpace = "pre-line";
     let running = false, paused = false, stopped = false, activeOrder = null;
-    let checkpoint = null, config = null, cursor = null, pending = [], pendingRegistry = [];
+    let checkpoint = null, config = null, cursor = null, pending = [], pendingRegistry = [], failedPending = [];
     let batch = new ApprovalBatchSession(), testedThisSession = 0, lastError = null;
     const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
       void start();
@@ -3856,7 +3856,7 @@
     const storage = () => globalThis.chrome?.storage?.local;
     function show(message = "") {
       const cp = checkpoint;
-      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + cp.config.delay_ms + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + cp.config.delay_ms + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     async function saveCheckpoint(next) {
       if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
@@ -3886,6 +3886,8 @@
         checked_committed: checkpoint.checked_committed,
         found_archived: checkpoint.registry,
         found_pending: pendingRegistry,
+        failed_orders: checkpoint.failed_orders || [],
+        failed_pending: failedPending,
         training_ready: false
       };
     }
@@ -3926,6 +3928,7 @@
         cursor = null;
         pending = [];
         pendingRegistry = [];
+        failedPending = [];
         testedThisSession = 0;
         batch = new ApprovalBatchSession();
         lastError = null;
@@ -3973,10 +3976,15 @@
         anchor.remove();
         show("\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 ZIP \u2116" + part + " (" + pending.length + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432). \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F Chrome...");
         await waitForChrome(before.highest_id, result.blob.size);
-        const next = commitRangeArchive(checkpoint, { next: cursor, found: pendingRegistry });
+        const next = commitRangeArchive(checkpoint, {
+          next: cursor,
+          found: pendingRegistry,
+          failed_orders: failedPending
+        });
         await saveCheckpoint(next);
         pending = [];
         pendingRegistry = [];
+        failedPending = [];
         batch = new ApprovalBatchSession();
         saveBtn.disabled = true;
         lastError = null;
@@ -4028,6 +4036,7 @@
         while (cursor <= config.end && !paused && !stopped && !isClosed()) {
           const order = cursor;
           const inspected = await probeTzForOrder(order);
+          let failure2 = null;
           if (inspected.status === "TZ_APPROVED") {
             activeOrder = String(order);
             let collected;
@@ -4039,42 +4048,58 @@
               activeOrder = null;
             }
             if (collected?.status !== "COMPLETE" || collected?.final_evidence_saved !== true) {
-              lastError = "MANUAL_APPROVAL_NOT_COMPLETE " + String(collected?.status || "UNKNOWN");
+              const reason = isRecoverableRangeFailure(collected?.status) ? collected.status : "MANUAL_APPROVAL_COLLECTION_INCOMPLETE";
+              failure2 = {
+                order_number: String(order),
+                reason,
+                phase: "native_approval",
+                observed_status: String(collected?.status || "UNKNOWN").slice(0, 80)
+              };
+            } else {
+              const record = {
+                order_number: String(order),
+                status: "TZ_APPROVED",
+                native_status_id: "59",
+                eligible_articles: collected.eligible_articles || 0,
+                verified_articles: collected.verified_articles || 0,
+                files: collected.files || 0,
+                collected_at: (/* @__PURE__ */ new Date()).toISOString()
+              };
+              pending.push(record);
+              pendingRegistry.push(record);
+            }
+          } else if (inspected.status !== "TZ_NOT_APPROVED" && inspected.status !== "ORDER_NOT_FOUND") {
+            if (!isRecoverableRangeFailure(inspected.status)) {
+              lastError = "MANUAL_ORDER_PROBE " + String(inspected.status);
               break;
             }
-            const record = {
+            failure2 = {
               order_number: String(order),
-              status: "TZ_APPROVED",
-              native_status_id: "59",
-              eligible_articles: collected.eligible_articles || 0,
-              verified_articles: collected.verified_articles || 0,
-              files: collected.files || 0,
-              collected_at: (/* @__PURE__ */ new Date()).toISOString()
+              reason: inspected.status,
+              phase: "order_card",
+              ...Number.isInteger(inspected.http_status) ? { http_status: inspected.http_status } : {}
             };
-            pending.push(record);
-            pendingRegistry.push(record);
-          } else if (inspected.status !== "TZ_NOT_APPROVED" && inspected.status !== "ORDER_NOT_FOUND") {
-            lastError = "MANUAL_ORDER_PROBE " + String(inspected.status);
-            break;
           }
+          if (failure2) failedPending.push(failure2);
           cursor++;
           testedThisSession++;
           if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
             if (!await saveBatch("100 orders / byte threshold")) break;
           } else if (!pending.length && cursor - checkpoint.committed_next >= 50) {
-            await saveCheckpoint(commitOnlySkipped(checkpoint, cursor));
+            await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
+            failedPending = [];
           }
-          show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430: " + order + " \u2014 " + inspected.status);
+          show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430: " + order + " \u2014 " + (failure2 ? "\u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430, \u0432\u043D\u0435\u0441\u0435\u043D\u0430 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043E\u0448\u0438\u0431\u043E\u043A (" + failure2.reason + ")" : inspected.status));
           if (!paused && !stopped) await delay(config.delay_ms);
         }
         if ((stopped || cursor > config.end) && pending.length) {
           if (!await saveBatch(stopped ? "stopped partial" : "final partial")) paused = true;
         }
-        if (cursor > config.end && !pending.length)
-          await saveCheckpoint(commitOnlySkipped(checkpoint, cursor));
-        else if ((stopped || paused) && !pending.length && cursor > checkpoint.committed_next)
-          await saveCheckpoint(commitOnlySkipped(checkpoint, cursor));
-        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410 \u041F\u041E \u041E\u0428\u0418\u0411\u041A\u0415; \u043D\u0435\u0443\u0434\u0430\u0447\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440 \u0431\u0443\u0434\u0435\u0442 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D \u0432\u043D\u043E\u0432\u044C." : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C; \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E, \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432." : cursor > config.end ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E.";
+        if (!pending.length && (cursor > config.end || stopped || paused) && cursor > checkpoint.committed_next) {
+          await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
+          failedPending = [];
+        }
+        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410: \u043E\u0431\u0449\u0438\u0439 \u0441\u0431\u043E\u0439 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438, \u043B\u0438\u043C\u0438\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432 \u0438\u043B\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F." : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C; \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E, \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432." : cursor > config.end ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E.";
       } catch (error) {
         lastError = String(error?.message || "MANUAL_RANGE_SCAN_FAILED");
         message = "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u043F\u043E \u043E\u0448\u0438\u0431\u043A\u0435: " + lastError;
@@ -4185,7 +4210,7 @@
     const panel = node("section");
     panel.id = ID;
     panel.setAttribute("aria-label", "Vision Check \u2014 \u0442\u0430\u0431\u043B\u0438\u0446\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432");
-    const title = node("h2", "Vision Check v0.1.9 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
+    const title = node("h2", "Vision Check v0.1.10 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
     const description = node(
       "p",
       "\u0422\u043E\u043B\u044C\u043A\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0441\u0435\u0442\u044C. \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u044C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043F\u043E\u0441\u043B\u0435 \u0432\u0430\u0448\u0435\u0433\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044F; \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u043D\u0430 GitHub."
