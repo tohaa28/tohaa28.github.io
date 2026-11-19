@@ -83,7 +83,7 @@ test('inaccessible order pages remain retryable without blocking next ID',async(
   'MANUAL_MV3_TRANSPORT_REQUIRED','MANUAL_PROBE_CANCELLED'])
   assert.equal(isRecoverableRangeFailure(status),false,status);
  const attempts=[];
- for(const code of [503,404,200]){
+ for(const [index,code] of [503,404,200].entries()){
   const fetcher=async url=>{
    attempts.push(url);
    return code===200?{
@@ -91,7 +91,7 @@ test('inaccessible order pages remain retryable without blocking next ID',async(
     text:async()=>'<html><body>No order</body></html>'
    }:{status:code};
   };
-  const result=await probeTzForOrder(3200000+attempts.length-1,{fetcher,
+  const result=await probeTzForOrder(3200000+index,{fetcher,
    DOMParserClass:class{parseFromString(){
     return {querySelector:()=>null};
    }}
