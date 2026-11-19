@@ -119,6 +119,32 @@ class TrainingCorpusTests(unittest.TestCase):
             self.assertEqual(out.stat().st_mode & 0o777, 0o700)
             self.assertEqual((out/"messages.jsonl").stat().st_mode & 0o777, 0o600)
 
+    def test_duplicate_binary_uses_streaming_digest_for_existing_asset(self):
+        """Two distinct ZIP entries with identical bytes reuse one private asset."""
+        duplicate = "attachments/0001/0002.png"
+        second = dict(self.source["articles"][0]["history"][1]["attachments"][0])
+        second["private_zip_entry"] = duplicate
+        self.source["articles"][0]["history"][1]["attachments"].append(second)
+        second_manifest = dict(self.manifest["items"][0])
+        second_manifest["entry"] = duplicate
+        self.manifest["items"].append(second_manifest)
+        self.evidence.write_text(json.dumps(self.source), encoding="utf-8")
+        with zipfile.ZipFile(self.archive, "w") as z:
+            z.writestr("manifest.json", json.dumps(self.manifest))
+            z.writestr(ENTRY, PNG)
+            z.writestr(duplicate, PNG)
+        out = self.root / "deduplicated"
+        original_read = Path.read_bytes
+        def guard_asset_read(path):
+            if path.parent.name == "assets":
+                raise AssertionError("asset must be hashed in streaming mode")
+            return original_read(path)
+        with patch.object(Path, "read_bytes", guard_asset_read):
+            result = transform([self.evidence], [self.archive], out)
+        self.assertEqual(result["verified_attachment_links"], 2)
+        self.assertEqual(len(list((out / "assets").iterdir())), 1)
+        self.assertFalse(result["training_ready"])
+
     def test_rejects_tampered_archive_before_writing_output(self):
         self.manifest["items"][0]["sha256"] = "0"*64
         self._save()
