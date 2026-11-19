@@ -812,6 +812,33 @@
     return chunks.length ? chunks : [""];
   }
 
+  // vision/orders/approval-range-scanner.mjs
+  var digits = (s) => /^\d{5,12}$/.test(String(s || ""));
+  var clear = (s) => String(s || "").replace(/\s+/g, " ").trim().toLocaleUpperCase("ru-RU");
+  var exactText = (s) => clear(s) === "\u0422\u0417 \u0423\u0422\u0412\u0415\u0420\u0416\u0414\u0415\u041D\u041E";
+  function readTzApprovedStatus(doc, orderNumber) {
+    if (!digits(orderNumber) || !doc?.querySelector) return { status: "MANUAL_ORDER_ID_INVALID" };
+    const root = doc.querySelector("#j_cart_host[data-orderid]");
+    if (!root) return { status: "MANUAL_ORDER_CARD_MISSING" };
+    const shown = root.querySelector(".cart-header-number [data-clipboard-text]")?.getAttribute("data-clipboard-text")?.trim();
+    if (shown !== String(orderNumber)) return { status: "MANUAL_ORDER_NUMBER_MISMATCH" };
+    const fields = [...root.querySelectorAll(
+      '.cart-log label input.j_toggle_status[data-id="59"][type="checkbox"]'
+    )];
+    if (fields.length !== 1) return { status: "MANUAL_TZ_STATUS_MISSING_OR_AMBIGUOUS" };
+    const input = fields[0], label = input.closest("label");
+    const texts = [...label?.querySelectorAll(".btn--toggle .on,.btn--toggle .off") || []].map((node) => node.textContent);
+    if (texts.length !== 2 || !texts.every(exactText))
+      return { status: "MANUAL_TZ_LABEL_UNVERIFIED" };
+    return {
+      status: input.checked === true ? "TZ_APPROVED" : "TZ_NOT_APPROVED",
+      native_status_id: "59",
+      status_text: "\u0422\u0417 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
+      status_checked: input.checked === true,
+      native_order_id: root.getAttribute("data-orderid") || null
+    };
+  }
+
   // vision/orders/approval-order-facts.mjs
   var limit = (value, n = 12e3) => String(value || "").replace(/\s+/g, " ").trim().slice(0, n);
   var txt = (root, selector, n) => limit(root?.querySelector?.(selector)?.textContent, n);
@@ -895,7 +922,7 @@
   };
   var str = (node) => String(node?.textContent || "").trim();
   var attr2 = (node, name) => String(node?.getAttribute?.(name) || "");
-  var digits = (v) => /^\d{1,20}$/.test(v);
+  var digits2 = (v) => /^\d{1,20}$/.test(v);
   var safeText = (s) => String(s || "").slice(0, MAX_TEXT);
   var badgeNumber = (a) => {
     const badge = a?.querySelector?.(".gifts-badge");
@@ -935,7 +962,7 @@
       const itemId = attr2(li, "data-itemid"), badge = badgeNumber(element);
       const anchorHref = attr2(element, "href");
       const linkOk = isCurrentOrderApprovalLink(anchorHref, doc);
-      const approved = digits(itemId) && linkOk;
+      const approved = digits2(itemId) && linkOk;
       const info = { index: index + 1, element, itemId, badge };
       if (!approved) skipped.push({ index: index + 1, reason: "UNSAFE_NATIVE_TRIGGER" });
       else if (badge === null) skipped.push({ index: index + 1, reason: "BADGE_UNKNOWN" });
@@ -954,7 +981,7 @@
     if (!modal) return { status: "MODAL_NOT_VISIBLE" };
     const form = modal.querySelector("#j_maketAdjustingForm");
     const formItem = attr2(form?.querySelector('input[name="oiid"]'), "value") || String(form?.querySelector('input[name="oiid"]')?.value || "");
-    if (!form || !digits(itemId) || formItem !== itemId)
+    if (!form || !digits2(itemId) || formItem !== itemId)
       return { status: "ARTICLE_MISMATCH_OR_MISSING" };
     const summary2 = inspectOpenMaketApprovalDom(doc);
     if (summary2.status !== "VISIBLE_MODAL_STRUCTURE_ONLY")
@@ -966,7 +993,7 @@
       const method = str(tech?.querySelector(".bold-500"));
       const placement = str(tech?.querySelector(".color-text.color--dark"));
       return {
-        code: digits(String(c.value || attr2(c, "value"))) ? String(c.value || attr2(c, "value")) : null,
+        code: digits2(String(c.value || attr2(c, "value"))) ? String(c.value || attr2(c, "value")) : null,
         label: safeText(str(c.closest("label") || c.parentElement)),
         print_method: safeText(method),
         print_placement: safeText(placement),
@@ -988,7 +1015,7 @@
       const attachments = all(main, "a.j_maketadjusting_attachment").map((a) => ({
         // Saved only in LOCAL PRIVATE JSON to link the comment to a source,
         // but no href/URL, cookie, author identity or binary is collected.
-        attachment_id: digits(attr2(a, "data-id")) ? attr2(a, "data-id") : null,
+        attachment_id: digits2(attr2(a, "data-id")) ? attr2(a, "data-id") : null,
         filename: safeText(str(a)),
         kind: attachedFileType(str(a)),
         downloaded: false
@@ -1020,7 +1047,7 @@
     const humans = messages.filter((m) => m.kind === "human").length;
     return {
       status: humans === badge ? "PRIVATE_REVIEW_ONLY" : "PRIVATE_HISTORY_UNVERIFIED",
-      order_number: digits(orderNumber) ? orderNumber : null,
+      order_number: digits2(orderNumber) ? orderNumber : null,
       item_id: itemId,
       declared_message_badge: badge,
       observed_human_comments: humans,
@@ -1091,7 +1118,7 @@
     const result = {
       schema: "printcheck.vision.private-approval-collection.v1",
       scope: "LOCAL_AUTHORIZED_TEST_ORDER",
-      order_number: digits(orderNumber) ? orderNumber : null,
+      order_number: digits2(orderNumber) ? orderNumber : null,
       order_facts: extractOrderFacts(doc, orderNumber),
       collected_at: (/* @__PURE__ */ new Date()).toISOString(),
       source_page: "http://testgifts.local/private/order/" + String(orderNumber),
@@ -1595,6 +1622,14 @@
         if (!isOrderPage() || message.order_url !== location.href) {
           respond({ status: "MANUAL_ORDER_URL_MISMATCH" });
           return false;
+        }
+        if (message.require_tz_approved === true) {
+          const order = location.pathname.split("/").filter(Boolean).at(-1);
+          const gate = readTzApprovedStatus(document, order);
+          if (gate.status !== "TZ_APPROVED") {
+            respond({ status: gate.status === "TZ_NOT_APPROVED" ? "MANUAL_TZ_CHANGED_BEFORE_SCAN" : "MANUAL_TZ_RECHECK_FAILED" });
+            return false;
+          }
         }
         performAutomaticApprovalScan(true).then(respond, () => respond({ status: "MANUAL_AUTO_SCAN_FAILED" }));
         return true;
