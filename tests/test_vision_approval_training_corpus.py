@@ -165,6 +165,17 @@ class TrainingCorpusTests(unittest.TestCase):
         self.assertEqual(len(list((out / "assets").iterdir())), 1)
         self.assertFalse(result["training_ready"])
 
+    def test_streaming_stage_never_uses_in_memory_entry_reader(self):
+        """A valid ZIP must be staged without bounded_zip_entry or leftover staging."""
+        out = self.root / "streamed"
+        with patch.object(corpus, "bounded_zip_entry",
+                          side_effect=AssertionError("in-memory extraction forbidden")):
+            result = transform([self.evidence], [self.archive], out)
+        self.assertEqual(result["verified_attachment_links"], 1)
+        self.assertFalse((out / "entry-stage").exists())
+        self.assertEqual(len(list((out / "assets").iterdir())), 1)
+        self.assertFalse(result["training_ready"])
+
     def test_rejects_tampered_archive_before_writing_output(self):
         self.manifest["items"][0]["sha256"] = "0"*64
         self._save()
