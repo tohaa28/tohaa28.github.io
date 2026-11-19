@@ -3970,17 +3970,20 @@
       });
     }, factory);
   }
-  async function replaceRangeJournal(state, factory) {
-    verifyJournal(state);
-    return transaction("readwrite", (tx) => {
-      tx.objectStore(ORDERS).clear();
-      tx.objectStore(JOURNAL).put({ ...state, id: ACTIVE });
-    }, factory);
-  }
   async function clearRangeJournal(factory) {
     return transaction("readwrite", (tx) => {
       tx.objectStore(JOURNAL).clear();
       tx.objectStore(ORDERS).clear();
+    }, factory);
+  }
+  async function pruneRangeJournalOrders(state, orderNumbers, factory) {
+    verifyJournal(state);
+    if (!Array.isArray(orderNumbers) || orderNumbers.length < 1 || orderNumbers.length > 100 || orderNumbers.some((n) => !/^\d{7}$/.test(n)))
+      throw Error("MANUAL_RANGE_PRUNE_INVALID");
+    return transaction("readwrite", (tx) => {
+      const store = tx.objectStore(ORDERS);
+      for (const id of orderNumbers) store.delete(id);
+      tx.objectStore(JOURNAL).put({ ...state, id: ACTIVE });
     }, factory);
   }
 
@@ -4047,6 +4050,8 @@
     let liveDelayMs = 1200, delayDirty = false, checkpointWrite = Promise.resolve();
     let journalWrite = Promise.resolve(), initialLoadPromise = Promise.resolve();
     let inflightDownload = null, restoreBlocked = false;
+    const activePending = () => pending.filter((x) => !inflightDownload?.order_numbers?.includes(x.order_number));
+    const activeBytes = () => [...batch.transfers.values()].reduce((n, t) => n + (inflightDownload?.order_numbers?.includes(t.order) ? 0 : t.size || 0), 0);
     const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
       void start();
     });
@@ -4123,7 +4128,7 @@
     }
     function show(message = "") {
       const cp = checkpoint;
-      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 (\u0444\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F) " + liveDelayMs + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 (\u0444\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F) " + liveDelayMs + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0442\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F: " + activePending().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (inflightDownload ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     async function saveCheckpoint(next) {
       if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
@@ -4275,23 +4280,31 @@
       throw Error("MANUAL_RANGE_DOWNLOAD_TIMEOUT");
     }
     async function commitConfirmedArchive(reason) {
+      const info = inflightDownload;
+      if (!info) return;
+      const ids = info.order_numbers || pendingRegistry.map((x) => x.order_number);
+      const selected = new Set(ids);
+      const found = pendingRegistry.filter((x) => selected.has(x.order_number));
+      if (found.length !== ids.length || !found.length)
+        throw Error("MANUAL_RANGE_ARCHIVE_ROWS_LOST");
       const next = commitRangeArchive(checkpoint, {
-        next: cursor,
-        found: pendingRegistry,
-        failed_orders: failedPending
+        next: info.end_cursor ?? cursor,
+        found,
+        failed_orders: info.failed_orders || failedPending
       });
       await saveCheckpoint(next);
-      pending = [];
-      pendingRegistry = [];
-      failedPending = [];
-      batch = new ApprovalBatchSession();
+      pendingRegistry = pendingRegistry.filter((x) => !selected.has(x.order_number));
+      pending = pendingRegistry.slice();
+      const oldFailures = info.failed_orders || failedPending;
+      failedPending = failedPending.filter((x) => !oldFailures.some((y) => y.order_number === x.order_number));
       inflightDownload = null;
+      for (const id of ids) batch.discardOrder(id);
       await journalWrite.catch(() => {
       });
-      await replaceRangeJournal(journalSnapshot(currentMode()));
-      saveBtn.disabled = true;
+      await pruneRangeJournalOrders(journalSnapshot(currentMode()), ids);
+      saveBtn.disabled = running || !pending.length;
       lastError = null;
-      show("ZIP \u2116" + next.archives_completed + " \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D: " + reason + ". \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u0438 \u043D\u043E\u0432\u044B\u0439 \u0436\u0443\u0440\u043D\u0430\u043B \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u044B.");
+      show("ZIP \u2116" + next.archives_completed + " \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D: " + reason + ". \u041D\u043E\u0432\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u0438 \u043A\u0443\u0440\u0441\u043E\u0440 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
     }
     async function waitForPreviousOrderTab() {
       for (let i = 0; i < 210; i++) {
@@ -4305,32 +4318,50 @@
       }
       throw Error("MANUAL_OLD_ORDER_TAB_STILL_RUNNING");
     }
-    async function recoverDownload() {
+    async function recoverDownload(waitForCompletion = false) {
       if (!inflightDownload) return true;
       const d = inflightDownload;
       try {
-        await waitForChrome(d.after_id, d.byte_length, d.filename);
-        await commitConfirmedArchive("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B");
-        return true;
+        if (waitForCompletion) {
+          await waitForChrome(d.after_id, d.byte_length, d.filename);
+          await commitConfirmedArchive("Chrome \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043B \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 ZIP");
+          return true;
+        }
+        const res = await audit("check", {
+          after_id: d.after_id,
+          byte_length: d.byte_length,
+          expected_filename: d.filename
+        });
+        if (res?.status === "RANGE_DOWNLOAD_COMPLETE") {
+          await commitConfirmedArchive("Chrome \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043B \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 ZIP");
+          return true;
+        }
+        if (res?.status === "RANGE_DOWNLOAD_PENDING") return true;
+        throw Error(res?.status || "MANUAL_RANGE_DOWNLOAD_AUDIT_FAILED");
       } catch (error) {
         lastError = "MANUAL_ZIP_DOWNLOAD_UNCONFIRMED_" + String(error?.message || "UNKNOWN").slice(0, 50);
-        show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C ZIP \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0438 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E; \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E \u0441\u043A\u0430\u0447\u0430\u0439\u0442\u0435 \u0430\u0440\u0445\u0438\u0432 \u0432\u0440\u0443\u0447\u043D\u0443\u044E.");
+        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D, \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
         return false;
       }
     }
     async function saveBatch(reason = "full") {
-      if (!pending.length) return true;
-      if (inflightDownload) return recoverDownload();
+      let rows = activePending();
+      if (!rows.length) return true;
+      if (inflightDownload) {
+        if (!await recoverDownload(true)) return false;
+        rows = activePending();
+        if (!rows.length) return true;
+      }
       let result;
       try {
-        result = batch.finalize(pending);
+        result = batch.finalize(rows);
       } catch (error) {
         lastError = String(error?.message || "MANUAL_BATCH_ZIP_INVALID");
-        show("\u0410\u0440\u0445\u0438\u0432 \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D, \u0432\u0441\u0435 \u0442\u0435\u043A\u0443\u0449\u0438\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438.");
+        show("\u0410\u0440\u0445\u0438\u0432 \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D, \u0434\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u0432 IndexedDB.");
         return false;
       }
       const part = checkpoint.archives_completed + 1;
-      const filename = "vision-ai-range-" + config.start + "-" + config.end + "-part-" + String(part).padStart(5, "0") + "-" + pending[0].order_number + "-" + pending.at(-1).order_number + ".zip";
+      const filename = "vision-ai-range-" + config.start + "-" + config.end + "-part-" + String(part).padStart(5, "0") + "-" + rows[0].order_number + "-" + rows.at(-1).order_number + ".zip";
       const blobUrl = URL.createObjectURL(result.blob);
       try {
         const before = await audit("baseline");
@@ -4339,23 +4370,25 @@
         inflightDownload = {
           after_id: before.highest_id,
           byte_length: result.blob.size,
-          filename
+          filename,
+          part,
+          end_cursor: cursor,
+          order_numbers: rows.map((x) => x.order_number),
+          failed_orders: failedPending.slice()
         };
-        await persistJournal("downloading");
-        const anchor = create("a");
-        anchor.href = blobUrl;
-        anchor.download = filename;
-        document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-        show("\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 ZIP \u2116" + part + " (" + pending.length + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432). \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F Chrome...");
-        await waitForChrome(before.highest_id, result.blob.size, filename);
-        await commitConfirmedArchive(reason);
+        await persistJournal(currentMode());
+        const a = create("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        for (const row of rows) batch.discardOrder(row.order_number);
+        show("ZIP \u2116" + part + " \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F; \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u0442\u0441\u044F.");
         return true;
       } catch (error) {
         lastError = String(error?.message || "MANUAL_RANGE_DOWNLOAD_UNCONFIRMED");
-        saveBtn.disabled = false;
-        show("\u0410\u0440\u0445\u0438\u0432 \u041D\u0415 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D; \u0441\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 Chrome, \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043A\u043D\u043E\u043F\u043A\u043E\u0439.");
+        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D, \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
         return false;
       } finally {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 125e3);
@@ -4398,10 +4431,10 @@
       pauseBtn.disabled = stopBtn.disabled = false;
       let message = "";
       try {
-        if (inflightDownload && !await recoverDownload())
+        if (inflightDownload && !await recoverDownload(false))
           throw Error("MANUAL_ZIP_DOWNLOAD_REQUIRES_REVIEW");
         await persistJournal("running");
-        if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
+        if (activePending().length >= RANGE_ARCHIVE_SIZE || activeBytes() > 12e7) {
           if (!await saveBatch("recovered")) throw Error("MANUAL_BATCH_NOT_SAVED");
         }
         while (cursor <= config.end && !paused && !stopped && !isClosed()) {
@@ -4461,9 +4494,10 @@
           cursor++;
           testedThisSession++;
           await persistJournal(currentMode(), orderRecord);
-          if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
+          if (inflightDownload && !await recoverDownload(false)) break;
+          if (activePending().length >= RANGE_ARCHIVE_SIZE || activeBytes() > 12e7 || inflightDownload && batch.bytesReceived > 16e7) {
             if (!await saveBatch("100 orders / byte threshold")) break;
-          } else if (!pending.length && cursor - checkpoint.committed_next >= 50) {
+          } else if (!pending.length && !inflightDownload && cursor - checkpoint.committed_next >= 50) {
             await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
             failedPending = [];
             await persistJournal(currentMode());
@@ -4475,9 +4509,10 @@
           if (!paused && !stopped) await waitDynamicDelay();
         }
         if ((stopped || cursor > config.end) && pending.length) {
-          if (!await saveBatch(stopped ? "stopped partial" : "final partial")) paused = true;
+          if (activePending().length && !await saveBatch(stopped ? "stopped partial" : "final partial")) paused = true;
+          if (inflightDownload && !await recoverDownload(true)) paused = true;
         }
-        if (!pending.length && (cursor > config.end || stopped || paused) && cursor > checkpoint.committed_next) {
+        if (!pending.length && !inflightDownload && (cursor > config.end || stopped || paused) && cursor > checkpoint.committed_next) {
           await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
           failedPending = [];
           await persistJournal(currentMode());
@@ -4493,7 +4528,7 @@
         activeOrder = null;
         running = false;
         setBusy(false);
-        if (checkpoint && !inflightDownload) {
+        if (checkpoint) {
           try {
             await persistJournal(stopped || cursor > config.end ? "stopped" : "paused");
           } catch (error) {
@@ -4518,26 +4553,52 @@
       rateInput.value = String(cp.config.delay_ms);
       liveDelayMs = cp.config.delay_ms;
       let autoResume = false;
-      const { journal, orders } = await loadRangeJournal();
+      const loaded = await loadRangeJournal();
+      let journal = loaded.journal, orders = loaded.orders;
       if (journal) {
         const same3 = sameRange(journal.config, cp.config);
-        const compatible = same3 && journal.archives_completed === cp.archives_completed && journal.cursor >= cp.committed_next && journal.cursor <= cp.config.end + 1;
+        if (!same3) throw Error("MANUAL_RANGE_JOURNAL_DIFFERENT_CONFIG");
         autoResume = journal.mode === "running" || journal.mode === "downloading";
-        if (compatible) {
-          if (journal.pending_registry.length !== orders.length || journal.pending_registry.length > RANGE_ARCHIVE_SIZE || !journal.pending_registry.every((r) => orders.some((o) => o.order_number === r.order_number)))
-            throw Error("MANUAL_RANGE_JOURNAL_INCOMPLETE");
-          const rate = rangeConfig(cp.config.start, cp.config.end, journal.delay_ms);
-          liveDelayMs = rate.delay_ms;
-          rateInput.value = String(liveDelayMs);
-          pendingRegistry = journal.pending_registry.slice();
-          pending = pendingRegistry.slice();
-          failedPending = journal.failed_pending.slice();
-          cursor = journal.cursor;
-          inflightDownload = journal.download || null;
-          for (const item of orders) batch.restoreOrder(item.order_number, item.transfers);
-        } else {
-          await clearRangeJournal();
-          autoResume = autoResume && same3;
+        if (journal.download && !Array.isArray(journal.download.order_numbers)) {
+          journal = { ...journal, download: {
+            ...journal.download,
+            order_numbers: journal.pending_registry.map((x) => x.order_number),
+            end_cursor: journal.cursor,
+            part: journal.archives_completed + 1,
+            failed_orders: journal.failed_pending.slice()
+          } };
+          await saveRangeJournal(journal);
+        }
+        const d = journal.download;
+        if (journal.archives_completed + 1 === cp.archives_completed && d && d.part === cp.archives_completed && d.end_cursor === cp.committed_next) {
+          const ids = new Set(d.order_numbers);
+          const old = new Set((d.failed_orders || []).map((x) => x.order_number));
+          journal = {
+            ...journal,
+            archives_completed: cp.archives_completed,
+            committed_next: cp.committed_next,
+            download: null,
+            pending_registry: journal.pending_registry.filter((x) => !ids.has(x.order_number)),
+            failed_pending: journal.failed_pending.filter((x) => !old.has(x.order_number))
+          };
+          await pruneRangeJournalOrders(journal, [...ids]);
+          orders = orders.filter((x) => !ids.has(x.order_number));
+        }
+        const compatible = journal.archives_completed === cp.archives_completed && journal.cursor >= cp.committed_next && journal.cursor <= cp.config.end + 1;
+        if (!compatible) throw Error("MANUAL_RANGE_JOURNAL_RECONCILE_REQUIRED");
+        if (journal.pending_registry.length !== orders.length || journal.pending_registry.length > RANGE_ARCHIVE_SIZE * 2 || !journal.pending_registry.every((r) => orders.some((o) => o.order_number === r.order_number)))
+          throw Error("MANUAL_RANGE_JOURNAL_INCOMPLETE");
+        const rate = rangeConfig(cp.config.start, cp.config.end, journal.delay_ms);
+        liveDelayMs = rate.delay_ms;
+        rateInput.value = String(liveDelayMs);
+        pendingRegistry = journal.pending_registry.slice();
+        pending = pendingRegistry.slice();
+        failedPending = journal.failed_pending.slice();
+        cursor = journal.cursor;
+        inflightDownload = journal.download || null;
+        for (const item of orders) {
+          if (!inflightDownload?.order_numbers?.includes(item.order_number))
+            batch.restoreOrder(item.order_number, item.transfers);
         }
       }
       saveBtn.disabled = !pending.length;
@@ -4641,7 +4702,7 @@
         if (!(queue.result.numbers instanceof Uint32Array) || queue.result.numbers.length !== state.result.total || state.result.index > state.result.total)
           throw Error("MANUAL_ORDER_LIST_QUEUE_CORRUPTED");
         const orders = pending.result || [];
-        if (orders.length > 100 || orders.some((x) => !/^[0-9]{7}$/.test(x.id) || !Array.isArray(x.transfers)))
+        if (orders.length > 200 || orders.some((x) => !/^[0-9]{7}$/.test(x.id) || !Array.isArray(x.transfers)))
           throw Error("MANUAL_ORDER_LIST_PENDING_CORRUPTED");
         return { queue: queue.result.numbers, state: state.result, pending: orders };
       };
@@ -4695,16 +4756,18 @@
     if (state.download !== null) throw Error("MANUAL_ORDER_LIST_DOWNLOAD_NOT_CLEARED");
     return transact([STORE_STATE, STORE_PENDING, STORE_SUCCESS], "readwrite", (tx) => {
       tx.objectStore(STORE_STATE).put({ ...state, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
-      tx.objectStore(STORE_PENDING).clear();
-      for (const row of records) tx.objectStore(STORE_SUCCESS).put({
-        id: row.id,
-        order_number: row.id,
-        collection_status: "TZ_APPROVED",
-        collected_at: row.collected_at,
-        files: row.files,
-        eligible_articles: row.eligible_articles,
-        verified_articles: row.verified_articles
-      });
+      for (const row of records) {
+        tx.objectStore(STORE_PENDING).delete(row.id);
+        tx.objectStore(STORE_SUCCESS).put({
+          id: row.id,
+          order_number: row.id,
+          collection_status: "TZ_APPROVED",
+          collected_at: row.collected_at,
+          files: row.files,
+          eligible_articles: row.eligible_articles,
+          verified_articles: row.verified_articles
+        });
+      }
     }, factory);
   }
   async function exportOrderFileRegistry(factory) {
@@ -4812,8 +4875,10 @@
     const currentMode = () => stopped ? "stopped" : paused ? "paused" : running ? "running" : "paused";
     function show(message = "") {
       const next = state && state.index < state.total ? String(queue[state.index]) : "\u2014";
-      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0434\u043E \u0430\u0440\u0445\u0438\u0432\u0430: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438: " + activeRows().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (state?.download ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
+    const activeRows = () => pending.filter((row) => !state?.download?.order_ids?.includes(row.id));
+    const activeBytes = () => activeRows().reduce((sum, row) => sum + row.transfers.reduce((n, t) => n + (t.data?.byteLength || 0), 0), 0);
     const captureMode = (mode) => {
       if (!state) return null;
       state = { ...state, mode, delay_ms: currentDelay };
@@ -4885,8 +4950,12 @@
       throw Error("MANUAL_ORDER_LIST_OLD_WORKER_BUSY");
     }
     async function commitDownloaded() {
-      const rows = pending.slice();
-      if (!rows.length) throw Error("MANUAL_ORDER_LIST_EMPTY_ZIP");
+      const info = state?.download;
+      if (!info) return;
+      const ids = info.order_ids || pending.map((x) => x.id);
+      const selected = new Set(ids), rows = pending.filter((x) => selected.has(x.id));
+      if (rows.length !== ids.length || !rows.length)
+        throw Error("MANUAL_ORDER_LIST_DOWNLOAD_ROWS_MISSING");
       const updated = {
         ...state,
         download: null,
@@ -4896,44 +4965,67 @@
       };
       await write(() => commitOrderFileArchive(updated, rows));
       state = updated;
-      pending = [];
-      batch = new ApprovalBatchSession();
-      saveBtn.disabled = true;
+      pending = pending.filter((x) => !selected.has(x.id));
+      for (const id of ids) batch.discardOrder(id);
+      saveBtn.disabled = running || !activeRows().length;
       lastError = null;
-      show("ZIP \u2116" + state.archive_count + " \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D Chrome; \u0434\u0430\u043D\u043D\u044B\u0435 \u0437\u0430\u0444\u0438\u043A\u0441\u0438\u0440\u043E\u0432\u0430\u043D\u044B");
+      show("ZIP \u2116" + state.archive_count + " \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D; \u043D\u043E\u0432\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430.");
     }
-    async function recoverDownload() {
+    async function recoverDownload(waitForCompletion = false) {
       const info = state?.download;
       if (!info) return true;
       try {
-        await waitForChrome(info.after_id, info.bytes, info.filename);
-        await commitDownloaded();
-        return true;
+        if (waitForCompletion) {
+          await waitForChrome(info.after_id, info.bytes, info.filename);
+          await commitDownloaded();
+          return true;
+        }
+        const result = await audit("check", {
+          after_id: info.after_id,
+          byte_length: info.bytes,
+          expected_filename: info.filename
+        });
+        if (result?.status === "RANGE_DOWNLOAD_COMPLETE") {
+          await commitDownloaded();
+          return true;
+        }
+        if (result?.status === "RANGE_DOWNLOAD_PENDING") return true;
+        throw Error(result?.status || "MANUAL_ORDER_LIST_ZIP_AUDIT_FAILED");
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
-        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D. \u0412\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432\u0440\u0443\u0447\u043D\u0443\u044E.");
+        show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C ZIP. \u041D\u0435\u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0435 \u0437\u0430\u043F\u0438\u0441\u0438 \u0438 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
         return false;
       }
     }
     async function saveBatch(reason) {
-      if (!pending.length) return true;
-      if (state.download) return recoverDownload();
+      let rows = activeRows();
+      if (!rows.length) return true;
+      if (state.download) {
+        if (!await recoverDownload(true)) return false;
+        rows = activeRows();
+        if (!rows.length) return true;
+      }
       let result;
       try {
-        result = batch.finalize(pending);
+        result = batch.finalize(rows);
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_ZIP_INVALID");
         show();
         return false;
       }
-      const filename = "vision-ai-list-part-" + pad(state.archive_count + 1) + "-" + pending[0].id + "-" + pending.at(-1).id + ".zip";
+      const filename = "vision-ai-list-part-" + pad(state.archive_count + 1) + "-" + rows[0].id + "-" + rows.at(-1).id + ".zip";
       const url = URL.createObjectURL(result.blob);
       try {
         const before = await audit("baseline");
         if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
           throw Error("MANUAL_ORDER_LIST_DOWNLOAD_BASELINE");
-        const download = { after_id: before.highest_id, bytes: result.blob.size, filename };
-        const snapshot = { ...state, download, mode: "downloading" };
+        const download = {
+          after_id: before.highest_id,
+          bytes: result.blob.size,
+          filename,
+          order_ids: rows.map((x) => x.id)
+        };
+        const snapshot = { ...state, download, mode: currentMode() };
         await write(() => saveOrderFileStatus(snapshot));
         state = snapshot;
         const a = el("a");
@@ -4942,13 +5034,12 @@
         document.body.append(a);
         a.click();
         a.remove();
-        show("\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 ZIP (" + reason + "): " + pending.length + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432.");
-        await waitForChrome(download.after_id, download.bytes, filename);
-        await commitDownloaded();
+        for (const row of rows) batch.discardOrder(row.id);
+        show("ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F (" + reason + "); \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u0442\u0441\u044F.");
         return true;
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_DOWNLOAD_FAILED");
-        show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C ZIP; \u0434\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u0432 IndexedDB");
+        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D; \u0434\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u0432 IndexedDB");
         return false;
       } finally {
         setTimeout(() => URL.revokeObjectURL(url), 125e3);
@@ -4956,15 +5047,9 @@
     }
     async function manualSave() {
       if (running || !pending.length) return;
-      if (state.download) {
-        if (typeof globalThis.confirm === "function" && !globalThis.confirm(
-          "\u041F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F ZIP-\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0430. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 Chrome: \u043F\u043E\u0432\u0442\u043E\u0440 \u043C\u043E\u0436\u0435\u0442 \u0441\u043E\u0437\u0434\u0430\u0442\u044C \u0434\u0443\u0431\u043B\u0438\u043A\u0430\u0442. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E?"
-        )) return;
-        const snapshot = { ...state, download: null, mode: "paused" };
-        await write(() => saveOrderFileStatus(snapshot));
-        state = snapshot;
-      }
+      if (state.download && !await recoverDownload(true)) return;
       await saveBatch("\u0432\u0440\u0443\u0447\u043D\u0443\u044E");
+      if (state.download) await recoverDownload(true);
     }
     async function importFile(file) {
       await init;
@@ -5112,7 +5197,7 @@
         if (state.download && !await recoverDownload())
           throw Error("MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
         await setMode("running");
-        if (pending.length >= 100 || batch.bytesReceived > 12e7) {
+        if (activeRows().length >= 100 || activeBytes() > 12e7) {
           if (!await saveBatch("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F"))
             throw Error("MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW");
         }
@@ -5182,14 +5267,17 @@
           if (record) pending.push(record);
           else batch.discardOrder(order_number);
           checkedSession++;
-          if (pending.length >= 100 || batch.bytesReceived > 12e7) {
+          if (state.download && !await recoverDownload(false)) break;
+          if (activeRows().length >= 100 || activeBytes() > 12e7) {
             if (!await saveBatch("100 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 / \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u0438\u0435 \u0440\u0430\u0437\u043C\u0435\u0440\u0430")) break;
           }
           show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440: " + order_number + " \u2014 " + (failure2 ? failure2.reason : inspected.status));
           if (!paused && !stopped) await dynamicDelay();
         }
         if ((stopped || state.index >= state.total) && pending.length) {
-          if (!await saveBatch(stopped ? "\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430" : "\u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430")) paused = true;
+          if (activeRows().length && !await saveBatch(stopped ? "\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430" : "\u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430"))
+            paused = true;
+          if (state.download && !await recoverDownload(true)) paused = true;
         }
         message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041B\u0415\u041D\u041E: " + lastError : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C. \u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u0420\u0435\u0435\u0441\u0442\u0440 \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : state.index >= state.total ? "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E.";
       } catch (error) {
@@ -5199,7 +5287,7 @@
         activeOrder = null;
         running = false;
         setBusy(false);
-        if (state && !state.download) await setMode(stopped || state.index >= state.total ? "stopped" : "paused");
+        if (state) await setMode(stopped || state.index >= state.total ? "stopped" : "paused");
         startBtn.disabled = resetBtn.disabled = false;
         pauseBtn.disabled = stopBtn.disabled = true;
         saveBtn.disabled = !pending.length;
@@ -5212,13 +5300,21 @@
       if (!saved) return false;
       state = saved.state;
       queue = saved.queue;
+      if (state.download && !Array.isArray(state.download.order_ids)) {
+        state = { ...state, download: {
+          ...state.download,
+          order_ids: saved.pending.map((x) => x.id)
+        } };
+        await saveOrderFileStatus(state);
+      }
       currentDelay = state.delay_ms;
       rateInput.value = String(currentDelay);
       if (saved.pending.some((x) => !Array.isArray(x.transfers) || !x.transfers.length))
         throw Error("MANUAL_ORDER_LIST_PENDING_INVALID");
       batch = new ApprovalBatchSession();
       for (const record of saved.pending) {
-        batch.restoreOrder(record.id, record.transfers);
+        if (!state.download?.order_ids?.includes(record.id))
+          batch.restoreOrder(record.id, record.transfers);
         pending.push(record);
       }
       saveBtn.disabled = !pending.length;
