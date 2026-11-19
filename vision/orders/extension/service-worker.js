@@ -242,22 +242,53 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
  });
 }
 
+/**
+ * Explicit list page <-- background worker <-- exact current order page.
+ * No standalone files from a transient hidden tab in batch mode.
+ */
+const BATCH_TRANSFER='vision-approval-batch-transfer-v1';
+const BATCH_ACCEPT='vision-approval-batch-accept-v1';
+let activeBatch=null;
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==BATCH_TRANSFER)return false;
+  const order=String(message.order_number||''),data=message.chunk||'';
+  const running=activeBatch;
+  if(!running||!queueRunning||!exactEvidenceSender(sender,order)||
+    sender.tab?.id!==running.orderTabId||
+    running.orderUrl!=='http://testgifts.local/private/order/'+order||
+    typeof data!=='string'||data.length>70_000||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(data)||
+    !Number.isInteger(message.sequence)||!Number.isInteger(message.chunk_count)){
+   respond({status:'MANUAL_BATCH_RELAY_DENIED'});return false;
+  }
+  chrome.tabs.sendMessage(running.listTabId,{
+   op:BATCH_ACCEPT,order_number:order,kind:message.kind,
+   stage:message.stage,part:message.part,
+   sequence:message.sequence,chunk_count:message.chunk_count,chunk:data
+  }).then(result=>respond(result||{status:'MANUAL_BATCH_LIST_NOT_READY'}),
+   ()=>respond({status:'MANUAL_BATCH_LIST_NOT_READY'}));
+  return true;
+ });
+}
 const QUEUE_RUN='vision-approval-order-queue-v1';
 const ORDER_URL=/^http:\/\/testgifts\.local\/private\/order\/[0-9]{5,12}$/;
 let queueRunning=false;
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function runNativeApprovalOrder(url){
+async function runNativeApprovalOrder(url,listTabId){
  let tab=null;
  try{
   tab=await chrome.tabs.create({url,active:false});
   if(!Number.isInteger(tab?.id))return {status:'MANUAL_BACKGROUND_TAB_FAILED'};
+  if(!Number.isInteger(listTabId))return {status:'MANUAL_SOURCE_TAB_UNKNOWN'};
+  activeBatch={orderTabId:tab.id,listTabId,orderUrl:url};
   let result=null,ready=false;
   // An MV3 document_idle content script may register after tab completed.
   for(let attempt=0;attempt<40;attempt++){
    try{
     result=await Promise.race([
       chrome.tabs.sendMessage(tab.id,{op:'vision-approval-order-collect-v1',
-       order_url:url}),
+       order_url:url,batch_mode:true}),
       new Promise((_,reject)=>setTimeout(()=>reject(Error('QUEUE_ORDER_TIMEOUT')),180000))
     ]);
     ready=true;break;
@@ -294,10 +325,14 @@ async function runNativeApprovalOrder(url){
    verified_articles:count(result.verified_articles),files:count(result.files),
    zip_parts:count(result.zip_parts),failures:count(result.failures),
    private_text_saved:result.private_text_saved===true,
-   final_evidence_saved:result.final_evidence_status==='EVIDENCE_DOWNLOAD_COMPLETE',
-   raw_evidence_saved:result.raw_evidence_status==='EVIDENCE_DOWNLOAD_COMPLETE'};
+   final_evidence_saved:result.final_evidence_status==='BATCH_EVIDENCE_STAGED',
+   raw_evidence_saved:result.raw_evidence_status==='BATCH_EVIDENCE_STAGED',
+    batch_staged:result.batch_mode===true};
  }catch{return {status:'MANUAL_BACKGROUND_ORDER_FAILED'}}
- finally{if(tab?.id)try{await chrome.tabs.remove(tab.id)}catch{}}
+ finally{
+  if(activeBatch?.orderTabId===tab?.id)activeBatch=null;
+  if(tab?.id)try{await chrome.tabs.remove(tab.id)}catch{}
+ }
 }
 if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
  chrome.runtime.onMessage.addListener((message,sender,respond)=>{
@@ -316,7 +351,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
    respond({status:'MANUAL_QUEUE_ALREADY_RUNNING'});return false;
   }
   queueRunning=true;
-  runNativeApprovalOrder(url).then(respond,()=>
+  runNativeApprovalOrder(url,sender?.tab?.id).then(respond,()=>
    respond({status:'MANUAL_BACKGROUND_ORDER_FAILED'})).finally(()=>{
     queueRunning=false;
   });
