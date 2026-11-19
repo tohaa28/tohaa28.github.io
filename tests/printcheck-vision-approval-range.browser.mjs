@@ -101,11 +101,12 @@ try{
    '--proxy-server=http://127.0.0.1:'+proxy.address().port,
    '--proxy-bypass-list=<-loopback>']
  });
- const page=await browser.newPage(),downloads=[],errors=[];
+ const downloads=[],errors=[];
  browser.on('page',p=>{
   p.on('download',d=>downloads.push(d));
   p.on('pageerror',e=>errors.push(String(e)));
  });
+ const page=await browser.newPage();
  await page.goto(list);
  await page.locator('.vlo-range').waitFor({timeout:15000});
  const inputs=page.locator('.vlo-range input');
