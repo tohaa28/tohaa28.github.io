@@ -562,6 +562,32 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
 const SECURE_ZIP_PORT='vision-ai-zip-secure-v1';
 let creatingZipOffscreen=null,zipTransferOwner=null;
 const zipUrls=new Map();
+const ZIP_URL_MAP_KEY='vision-ai-active-zip-blob-urls-v1';
+async function keepZipBlobUntilChromeCompletes(id,url){
+ zipUrls.set(id,url);
+ if(chrome.storage?.session){
+  const state=(await chrome.storage.session.get(ZIP_URL_MAP_KEY))[ZIP_URL_MAP_KEY]||{};
+  await chrome.storage.session.set({[ZIP_URL_MAP_KEY]:{...state,[id]:url}});
+ }
+ // Chrome may finish a tiny ZIP before the above session write completes.
+ const downloads=await chrome.downloads.search({id});
+ if(downloads.some(x=>x.state==='complete'||x.state==='interrupted'))
+  await releaseZipBlob(id);
+}
+async function releaseZipBlob(id){
+ let saved={};
+ if(chrome.storage?.session){
+  saved=(await chrome.storage.session.get(ZIP_URL_MAP_KEY))[ZIP_URL_MAP_KEY]||{};
+ }
+ const url=zipUrls.get(id)||saved[id];
+ zipUrls.delete(id);
+ if(saved[id]){
+  delete saved[id];
+  await chrome.storage.session.set({[ZIP_URL_MAP_KEY]:saved});
+ }
+ if(url)await sendZipOffscreen('release',{url}).catch(()=>{});
+}
+
 const zipFileName=/^vision-ai-(?:range-\d{7}-\d{7}-part|list-part)-\d{5}-\d{7}-\d{7}\.zip$/;
 async function getZipOffscreen(){
  if(!chrome.offscreen?.createDocument||!chrome.runtime?.getContexts)
@@ -634,7 +660,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
     await sendZipOffscreen('release',{url:result.url}).catch(()=>{});
     throw Error('VISION_ZIP_DOWNLOAD_FAILED');
    }
-   zipUrls.set(id,result.url);
+   await keepZipBlobUntilChromeCompletes(id,result.url);
    return {status:'ZIP_DOWNLOAD_STARTED',download_id:id};
   })().then(respond,error=>{
    console.error('VISION_ZIP_TRANSFER',String(error?.message||'UNKNOWN').slice(0,100));
@@ -646,9 +672,8 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
 if(typeof chrome!=='undefined'&&chrome.downloads?.onChanged){
  chrome.downloads.onChanged.addListener(delta=>{
   if(!['complete','interrupted'].includes(delta?.state?.current))return;
-  const url=zipUrls.get(delta.id);
-  if(!url)return;
-  zipUrls.delete(delta.id);
-  void sendZipOffscreen('release',{url}).catch(()=>{});
+  // The onChanged event wakes a previously stopped MV3 worker; recover
+  // transient Blob mapping from storage.session, then release its memory.
+  void releaseZipBlob(delta.id).catch(()=>{});
  });
 }
