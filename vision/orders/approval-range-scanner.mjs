@@ -37,11 +37,11 @@ export function readTzApprovedStatus(doc,orderNumber){
  if(texts.length!==2||!texts.every(exactText))
   return {status:'MANUAL_TZ_LABEL_UNVERIFIED'};
  return {
-  status:input.checked===true||input.hasAttribute('checked')?
+  status:input.checked===true?
    'TZ_APPROVED':'TZ_NOT_APPROVED',
   native_status_id:'59',
   status_text:'ТЗ утверждено',
-  status_checked:input.checked===true||input.hasAttribute('checked'),
+  status_checked:input.checked===true,
   native_order_id:root.getAttribute('data-orderid')||null
  };
 }
