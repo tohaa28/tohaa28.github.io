@@ -9,7 +9,7 @@ import {createServer} from 'node:http';
 
 const ext=await mkdtemp(path.join(os.tmpdir(),'vision-range-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-range-profile-'));
-for(const name of ['manifest.json','service-worker.js','content-transport.js'])
+for(const name of ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js'])
  await cp(path.resolve('vision/orders/extension',name),path.join(ext,name));
 for(const name of ['vision-order-overlay.js','vision-order-approval.js'])
  await cp(path.resolve(name),path.join(ext,name));
