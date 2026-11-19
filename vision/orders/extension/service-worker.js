@@ -542,3 +542,126 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   return true;
  });
 }
+
+
+/**
+ * Vision 0.1.15: native Chrome Downloads from an extension-origin ZIP blob.
+ * The HTTP portal does NOT initiate the download. We do not override Chrome
+ * danger verdicts or call acceptDanger. All data stays local in Chrome.
+ */
+const SECURE_ZIP_PORT='vision-ai-zip-secure-v1';
+let creatingZipOffscreen=null,zipTransferOwner=null;
+const zipUrls=new Map();
+const zipFileName=/^vision-ai-(?:range-\d{7}-\d{7}-part|list-part)-\d{5}-\d{7}-\d{7}\.zip$/;
+async function getZipOffscreen(){
+ if(!chrome.offscreen?.createDocument||!chrome.runtime?.getContexts)
+  throw Error('VISION_ZIP_OFFSCREEN_NOT_AVAILABLE');
+ const offscreenUrl=chrome.runtime.getURL('zip-offscreen.html');
+ const existing=await chrome.runtime.getContexts({
+  contextTypes:['OFFSCREEN_DOCUMENT'],documentUrls:[offscreenUrl]
+ });
+ if(existing.length)return;
+ if(!creatingZipOffscreen){
+  creatingZipOffscreen=chrome.offscreen.createDocument({
+   url:'zip-offscreen.html',reasons:['BLOBS'],
+   justification:'Create a local ZIP Blob on the secure extension origin for a user-initiated export.'
+  }).finally(()=>{creatingZipOffscreen=null});
+ }
+ await creatingZipOffscreen;
+}
+const sendZipOffscreen=async(op,data={})=>{
+ const result=await chrome.runtime.sendMessage({
+  op:'vision-zip-offscreen-'+op,...data
+ });
+ if(!result||typeof result.status!=='string')
+  throw Error('VISION_ZIP_OFFSCREEN_NO_RESPONSE');
+ return result;
+};
+if(typeof chrome!=='undefined'&&chrome.runtime?.onConnect){
+ chrome.runtime.onConnect.addListener(port=>{
+  if(port.name!==SECURE_ZIP_PORT)return;
+  if(!isApprovedListSender(port.sender)){
+   try{port.disconnect()}catch{}return;
+  }
+  let begun=false,finished=false,filename=null,size=0,sequence=0;
+  const emit=status=>{try{port.postMessage({status})}catch{}};
+  port.onDisconnect.addListener(()=>{
+   if(zipTransferOwner!==port)return;
+   zipTransferOwner=null;
+   if(begun&&!finished)
+    void sendZipOffscreen('cancel').catch(()=>{});
+  });
+  port.onMessage.addListener(async message=>{
+   try{
+    if(message?.op==='begin'){
+     if(zipTransferOwner||begun||!zipFileName.test(message.filename||'')||
+      !Number.isSafeInteger(message.size)||message.size<100||
+      message.size>200_000_000)
+      throw Error('VISION_ZIP_TRANSFER_BEGIN_DENIED');
+     zipTransferOwner=port;begun=true;filename=message.filename;
+     size=message.size;
+     await getZipOffscreen();
+     const result=await sendZipOffscreen('begin',{filename,size});
+     if(result.status!=='ZIP_READY_FOR_CHUNK')
+      throw Error(result.status);
+     emit('ZIP_READY_FOR_CHUNK');return;
+    }
+    if(zipTransferOwner!==port||!begun)
+     throw Error('VISION_ZIP_TRANSFER_NO_ACTIVE_SESSION');
+    if(message?.op==='chunk'){
+     if(message.sequence!==sequence||typeof message.base64!=='string'||
+       message.base64.length>65_000)
+      throw Error('VISION_ZIP_TRANSFER_CHUNK_DENIED');
+     const result=await sendZipOffscreen('chunk',{
+      sequence,base64:message.base64});
+     if(result.status!=='ZIP_CHUNK_ACCEPTED')
+      throw Error(result.status);
+     sequence++;emit('ZIP_CHUNK_ACCEPTED');return;
+    }
+    if(message?.op==='finish'){
+     if(message.chunks!==sequence)
+      throw Error('VISION_ZIP_TRANSFER_SEQUENCE_MISMATCH');
+     const final=await sendZipOffscreen('finish',{chunks:sequence});
+     if(final.status!=='ZIP_EXTENSION_BLOB_READY'||final.bytes!==size||
+      typeof final.url!=='string'||
+      !final.url.startsWith('blob:'+chrome.runtime.getURL('')))
+      throw Error(final.status||'VISION_ZIP_BLOB_INVALID');
+     let id;
+     try{
+      id=await chrome.downloads.download({
+       url:final.url,filename,conflictAction:'uniquify',saveAs:false
+      });
+      if(!Number.isSafeInteger(id)||id<0)
+       throw Error('VISION_ZIP_DOWNLOAD_ID_INVALID');
+     }catch(error){
+      await sendZipOffscreen('release',{url:final.url}).catch(()=>{});
+      throw Error('VISION_ZIP_DOWNLOAD_FAILED');
+     }
+     zipUrls.set(id,final.url);finished=true;zipTransferOwner=null;
+     try{port.postMessage({status:'ZIP_DOWNLOAD_STARTED',download_id:id})}catch{}
+     return;
+    }
+    if(message?.op==='cancel'){
+     await sendZipOffscreen('cancel');zipTransferOwner=null;
+     begun=false;emit('ZIP_CANCELLED');return;
+    }
+    throw Error('VISION_ZIP_TRANSFER_OPCODE_DENIED');
+   }catch(error){
+    emit(String(error?.message||'VISION_ZIP_TRANSFER_FAILED').slice(0,110));
+    if(zipTransferOwner===port){
+     zipTransferOwner=null;
+     await sendZipOffscreen('cancel').catch(()=>{});
+    }
+   }
+  });
+ });
+}
+if(typeof chrome!=='undefined'&&chrome.downloads?.onChanged){
+ chrome.downloads.onChanged.addListener(delta=>{
+  if(!['complete','interrupted'].includes(delta?.state?.current))return;
+  const url=zipUrls.get(delta.id);
+  if(!url)return;
+  zipUrls.delete(delta.id);
+  void sendZipOffscreen('release',{url}).catch(()=>{});
+ });
+}
