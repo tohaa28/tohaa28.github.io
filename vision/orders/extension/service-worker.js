@@ -428,3 +428,40 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   return true;
  });
 }
+
+
+/** A click from either authorized test portal focuses ONE canonical scanner tab.
+ * Only the existing /devorders content script performs scanning and persists
+ * the queue. Do not redirect or clone IndexedDB into another origin.
+ */
+const SCANNER_START='vision-open-scanner-v1';
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==SCANNER_START)return false;
+  let allowed=false;
+  try{
+   const u=new URL(sender?.url||'');
+   allowed=sender?.frameId===0&&Number.isInteger(sender?.tab?.id)&&
+    u.protocol==='http:'&&
+    ['psk.testgifts.local','testgifts.local'].includes(u.hostname);
+  }catch{}
+  if(!allowed){
+   respond({status:'VISION_SCANNER_SOURCE_DENIED'});return false;
+  }
+  (async()=>{
+   const tabs=await chrome.tabs.query({});
+   const current=tabs.find(t=>{
+    try{
+     const u=new URL(t.url||'');
+     return u.origin===TABLE_ORIGIN&&/^\/devorders(?:\/|$)/.test(u.pathname);
+    }catch{return false}
+   });
+   const tab=current?await chrome.tabs.update(current.id,{active:true}):
+    await chrome.tabs.create({url:TABLE_ORIGIN+'/devorders',active:true});
+   if(Number.isInteger(tab.windowId))
+    await chrome.windows.update(tab.windowId,{focused:true}).catch(()=>{});
+   return {status:'VISION_SCANNER_OPENED',reused:!!current};
+  })().then(respond,()=>respond({status:'VISION_SCANNER_TAB_FAILED'}));
+  return true;
+ });
+}
