@@ -8,7 +8,7 @@ import {chromium} from 'playwright';
 const dir=await mkdtemp(path.join(os.tmpdir(),'vision-launcher-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-launcher-profile-'));
 for(const f of ['manifest.json','content-transport.js','service-worker.js',
-  'vision-order-launcher.js'])
+  'vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js'])
  await cp(path.resolve('vision/orders/extension',f),path.join(dir,f));
 for(const f of ['vision-order-overlay.js','vision-order-approval.js'])
  await cp(path.resolve(f),path.join(dir,f));
