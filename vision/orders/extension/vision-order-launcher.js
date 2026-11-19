@@ -132,7 +132,9 @@
   'проверки в загрузках браузера.',css+
   'font-size:11px!important;color:#b8d0c4!important;');
  panel.append(notice);
- let opened=false,busy=false,lastMessage='',requesting=false;
+ let opened=false,editingDelay=false,lastMessage='',requesting=false;
+ delay.addEventListener('focus',()=>{editingDelay=true});
+ delay.addEventListener('blur',()=>{editingDelay=false});
  const showMessage=msg=>{lastMessage=String(msg||'').slice(0,150)};
  const rpc=(action,payload={})=>chrome.runtime.sendMessage({
   op:'vision-remote-scanner-v1',mode:mode.value,action,payload
@@ -160,7 +162,7 @@
     (data.errors?'\nОшибок: '+data.errors:'')+
     (data.error?'\nОшибка: '+data.error:'')+
     (lastMessage?'\n'+lastMessage:'');
-   if(!busy&&Number.isInteger(data.delay_ms)&&data.delay_ms>=100)
+   if(!editingDelay&&Number.isInteger(data.delay_ms)&&data.delay_ms>=100)
     delay.value=String(data.delay_ms);
   }catch(error){
    status.textContent='Сканер недоступен: '+String(error?.message||'UNKNOWN');
