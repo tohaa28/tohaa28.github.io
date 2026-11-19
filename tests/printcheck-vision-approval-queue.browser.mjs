@@ -98,11 +98,14 @@ try{
  assert.match(status,/историй: 1/);
  const sw=browserContext.serviceWorkers().find(x=>x.url().includes('service-worker.js'));
  assert.ok(sw,'MV3 worker available for verified downloads');
- const evidenceDownloads=await sw.evaluate(async()=>{
-  return (await chrome.downloads.search({})).filter(x=>
-   /vision-private-approval-evidence-8001111(?:-raw)?\.json$/.test(x.filename||''))
-   .map(x=>({filename:x.filename,state:x.state}));
+ const allNativeDownloads=await sw.evaluate(async()=>{
+  return (await chrome.downloads.search({})).map(x=>({
+   filename:x.filename,state:x.state,mime:x.mime
+  }));
  });
+ console.log('SYNTHETIC_CHROME_DOWNLOADS',JSON.stringify(allNativeDownloads));
+ const evidenceDownloads=allNativeDownloads.filter(x=>
+  /vision-private-approval-evidence-8001111(?:-raw)?\.json$/.test(x.filename||''));
  assert.equal(evidenceDownloads.length,2,'raw and final JSON both saved by Chrome');
  assert.ok(evidenceDownloads.every(x=>x.state==='complete'),
   'background tab closes only after Chrome verified both JSON downloads');
