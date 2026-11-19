@@ -1715,7 +1715,7 @@
     if (!doc?.querySelectorAll) return { ...result, status: "DOCUMENT_UNAVAILABLE" };
     const triggers = nodes(doc, "a.j_maketadjusting");
     result.trigger_count = count(triggers.length);
-    result.article_scoped_trigger_count = count(triggers.filter((el) => Boolean(el.closest?.("li[data-itemid]"))).length);
+    result.article_scoped_trigger_count = count(triggers.filter((el2) => Boolean(el2.closest?.("li[data-itemid]"))).length);
     const forms = nodes(doc, "#j_maketAdjustingForm");
     const verified = forms.map(inRealModal).filter(Boolean);
     const visible = verified.filter(isVisible);
@@ -1727,12 +1727,12 @@
     result.modal_currently_visible = isVisible(modal);
     result.status = result.modal_currently_visible ? "VISIBLE_MODAL_STRUCTURE_ONLY" : "PRELOADED_MODAL_STRUCTURE_ONLY";
     const checks = nodes(form, 'input[name="ma_problem[]"][type="checkbox"]');
-    const checked = checks.filter((el) => el.checked === true || el.hasAttribute?.("checked"));
+    const checked = checks.filter((el2) => el2.checked === true || el2.hasAttribute?.("checked"));
     result.problems_available_count = count(checks.length);
     result.problems_checked_current_count = count(checked.length);
     const topics = /* @__PURE__ */ new Set();
-    for (const el of checked) {
-      const label = el.closest?.("label") || el.parentElement;
+    for (const el2 of checked) {
+      const label = el2.closest?.("label") || el2.parentElement;
       categorize(text(label), topics);
     }
     result.checked_problem_topic_hints = [...topics].sort();
@@ -1741,8 +1741,8 @@
     result.history_entry_count = count(entries.length);
     let humans = 0;
     const weakMessages = /* @__PURE__ */ new Set();
-    for (const el of entries) {
-      const wrapper = el.querySelector?.(".comment_wrap");
+    for (const el2 of entries) {
+      const wrapper = el2.querySelector?.(".comment_wrap");
       const main = wrapper?.querySelector?.(":scope > .flex-main");
       const content = text(main);
       const kind = isAuditEvent(content, wrapper);
@@ -1836,25 +1836,25 @@
     source_artwork_included: false,
     maket_approval: null
   });
-  var safeAttr = (el, name) => String(el?.getAttribute?.(name) || "").slice(0, 260);
-  var inForbiddenBlock = (el) => Boolean(el?.closest?.(
+  var safeAttr = (el2, name) => String(el2?.getAttribute?.(name) || "").slice(0, 260);
+  var inForbiddenBlock = (el2) => Boolean(el2?.closest?.(
     "#vision-local-order-overlay,[data-vision-order-cell]"
   ));
-  function controlLabel(el) {
+  function controlLabel(el2) {
     const label = [
-      safeAttr(el, "title"),
-      safeAttr(el, "aria-label"),
-      safeAttr(el, "data-action"),
-      safeAttr(el, "data-toggle"),
-      safeAttr(el, "data-target"),
-      safeAttr(el, "class"),
-      safeAttr(el, "href"),
-      String(el?.textContent || "").slice(0, 180)
+      safeAttr(el2, "title"),
+      safeAttr(el2, "aria-label"),
+      safeAttr(el2, "data-action"),
+      safeAttr(el2, "data-toggle"),
+      safeAttr(el2, "data-target"),
+      safeAttr(el2, "class"),
+      safeAttr(el2, "href"),
+      String(el2?.textContent || "").slice(0, 180)
     ].join(" ");
     return label;
   }
-  function targetClass(el, base) {
-    const raw = safeAttr(el, "href").trim();
+  function targetClass(el2, base) {
+    const raw = safeAttr(el2, "href").trim();
     if (!raw) return "OPAQUE";
     if (raw.startsWith("#")) return "FRAGMENT";
     if (/^javascript:/i.test(raw)) return "OPAQUE";
@@ -1885,25 +1885,25 @@
     if (!doc?.querySelectorAll) return { ...report, status: "ORDER_DOCUMENT_INVALID" };
     const topics = /* @__PURE__ */ new Set();
     const controls = all(doc, CONTROL_SELECTOR);
-    for (const el of controls) {
-      if (inForbiddenBlock(el)) continue;
-      const tag = String(el.tagName || "").toUpperCase();
-      const role = safeAttr(el, "role");
-      const action = safeAttr(el, "data-action") || safeAttr(el, "data-toggle") || safeAttr(el, "onclick");
-      const className = safeAttr(el, "class");
+    for (const el2 of controls) {
+      if (inForbiddenBlock(el2)) continue;
+      const tag = String(el2.tagName || "").toUpperCase();
+      const role = safeAttr(el2, "role");
+      const action = safeAttr(el2, "data-action") || safeAttr(el2, "data-toggle") || safeAttr(el2, "onclick");
+      const className = safeAttr(el2, "class");
       const isNative = ["A", "BUTTON", "INPUT", "SPAN", "I"].includes(tag);
       if (!isNative && role !== "button" && !action && !/(?:button|trigger|toggle|open|link|btn)/i.test(className)) continue;
-      const label = controlLabel(el);
-      const nativeMaketAdjusting = safeAttr(el, "class").split(/\s+/).includes("j_maketadjusting");
+      const label = controlLabel(el2);
+      const nativeMaketAdjusting = safeAttr(el2, "class").split(/\s+/).includes("j_maketadjusting");
       if ((!DISCUSS.test(label) || AGREEMENT.test(label)) && !nativeMaketAdjusting)
         continue;
       report.controls_total++;
-      const scope = el.closest?.(ARTICLE_SELECTOR);
+      const scope = el2.closest?.(ARTICLE_SELECTOR);
       if (scope) report.article_scoped_controls++;
-      else if (el.closest?.(".cart-order,.order-card,#j_cart_host"))
+      else if (el2.closest?.(".cart-order,.order-card,#j_cart_host"))
         report.order_scoped_controls++;
       else report.unresolved_scope_controls++;
-      const kind = targetClass(el, baseUrl);
+      const kind = targetClass(el2, baseUrl);
       if (kind === "INTERNAL_TEST") report.link_targets_internal_test++;
       else if (kind === "FRAGMENT") report.link_targets_fragments++;
       else if (kind === "EXTERNAL") report.link_targets_untrusted_or_external++;
@@ -1925,13 +1925,13 @@
     report.visible_message_candidates = limit2(seen.size);
     const photos = /* @__PURE__ */ new Set();
     for (const root of threads) {
-      for (const el of all(root, "img,picture,video,a[href],[data-vision-media-candidate]")) {
-        if (el.tagName === "IMG" || el.tagName === "PICTURE" || el.tagName === "VIDEO" || el.getAttribute?.("data-vision-media-candidate") != null) {
-          photos.add(el);
+      for (const el2 of all(root, "img,picture,video,a[href],[data-vision-media-candidate]")) {
+        if (el2.tagName === "IMG" || el2.tagName === "PICTURE" || el2.tagName === "VIDEO" || el2.getAttribute?.("data-vision-media-candidate") != null) {
+          photos.add(el2);
           continue;
         }
-        if (/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el, "href")) && !all(el, "img,picture,video,[data-vision-media-candidate]").length)
-          photos.add(el);
+        if (/\.(?:png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(safeAttr(el2, "href")) && !all(el2, "img,picture,video,[data-vision-media-candidate]").length)
+          photos.add(el2);
       }
     }
     report.screenshot_or_image_candidates = limit2(photos.size);
@@ -3628,10 +3628,41 @@
   // vision/orders/approval-file-list.mjs
   var ORDER_LIST_MIN = 1e6;
   var ORDER_LIST_MAX = 9999999;
+  var ORDER_LIST_MAX_COUNT = 1e6;
+  var ORDER_LIST_MAX_BYTES = 2e7;
   function explicitListOrderUrl(order) {
     if (!Number.isSafeInteger(order) || order < ORDER_LIST_MIN || order > ORDER_LIST_MAX)
       throw Error("MANUAL_ORDER_LIST_ID_INVALID");
     return "http://testgifts.local/private/order/" + order;
+  }
+  function parseOrderListText(text2) {
+    if (typeof text2 !== "string" || new TextEncoder().encode(text2).length > ORDER_LIST_MAX_BYTES)
+      throw Error("MANUAL_ORDER_LIST_TOO_LARGE");
+    const seen = /* @__PURE__ */ new Set(), numbers = [];
+    const rows = text2.replace(/^\uFEFF/, "").split(/\r\n|\n|\r/);
+    let duplicates = 0, empty2 = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i].trim();
+      if (!row) {
+        empty2++;
+        continue;
+      }
+      if (!/^[0-9]{7}$/.test(row))
+        throw Error("MANUAL_ORDER_LIST_INVALID_LINE_" + (i + 1));
+      const id = Number(row);
+      if (id < ORDER_LIST_MIN || id > ORDER_LIST_MAX)
+        throw Error("MANUAL_ORDER_LIST_ID_INVALID");
+      if (seen.has(id)) {
+        duplicates++;
+        continue;
+      }
+      if (numbers.length >= ORDER_LIST_MAX_COUNT)
+        throw Error("MANUAL_ORDER_LIST_TOO_MANY_NUMBERS");
+      seen.add(id);
+      numbers.push(id);
+    }
+    if (!numbers.length) throw Error("MANUAL_ORDER_LIST_EMPTY");
+    return { numbers, duplicates, empty: empty2, source_lines: rows.length };
   }
 
   // vision/orders/approval-range-scanner.mjs
@@ -3963,14 +3994,14 @@
     return n;
   };
   var button = (label, fn) => {
-    const el = create("button", label);
-    el.type = "button";
-    el.addEventListener("click", (event) => {
+    const el2 = create("button", label);
+    el2.type = "button";
+    el2.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       fn();
     });
-    return el;
+    return el2;
   };
   function makeApprovalRangeController({
     getBusy = () => false,
@@ -3990,13 +4021,13 @@
     fields.style.cssText = "display:flex;gap:5px;flex-wrap:wrap";
     const input = (caption, value) => {
       const label = create("label", caption + " ");
-      const el = create("input");
-      el.type = "number";
-      el.value = String(value);
-      el.style.cssText = "max-width:105px;min-width:76px;color:#203436;background:#f2f8f3;padding:5px;border-radius:4px";
-      label.append(el);
+      const el2 = create("input");
+      el2.type = "number";
+      el2.value = String(value);
+      el2.style.cssText = "max-width:105px;min-width:76px;color:#203436;background:#f2f8f3;padding:5px;border-radius:4px";
+      label.append(el2);
       fields.append(label);
-      return el;
+      return el2;
     };
     const startInput = input("\u041E\u0442", RANGE_MIN), endInput = input("\u0414\u043E", RANGE_MAX), rateInput = input("\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430, \u043C\u0441", 1200);
     startInput.min = endInput.min = String(RANGE_MIN);
@@ -4542,6 +4573,686 @@
     };
   }
 
+  // vision/orders/approval-file-persistence.mjs
+  var LIST_DB_NAME = "vision-ai-approved-file-list-v1";
+  var LIST_STATUS_SCHEMA = "printcheck.vision.order-file-list.v1";
+  var STORE_QUEUE = "queue";
+  var STORE_STATE = "state";
+  var STORE_PENDING = "pending";
+  var STORE_SUCCESS = "success";
+  var STORE_FAILURES = "failures";
+  var STORES = [STORE_QUEUE, STORE_STATE, STORE_PENDING, STORE_SUCCESS, STORE_FAILURES];
+  var KEY2 = "active";
+  var checkState = (s) => {
+    if (s?.schema !== LIST_STATUS_SCHEMA || !Number.isSafeInteger(s.index) || s.index < 0 || !Number.isSafeInteger(s.total) || s.total < 1 || !Number.isSafeInteger(s.archive_count) || s.archive_count < 0 || !Number.isSafeInteger(s.found_committed) || s.found_committed < 0 || !Number.isSafeInteger(s.delay_ms) || s.delay_ms < 100 || s.delay_ms > 6e4 || !["running", "paused", "stopped", "downloading"].includes(s.mode))
+      throw Error("MANUAL_ORDER_LIST_STATE_INVALID");
+  };
+  async function openDb2(factory = globalThis.indexedDB) {
+    if (!factory?.open) throw Error("MANUAL_ORDER_LIST_INDEXEDDB_UNAVAILABLE");
+    return new Promise((resolve, reject2) => {
+      const req = factory.open(LIST_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        for (const store of STORES)
+          if (!db.objectStoreNames.contains(store))
+            db.createObjectStore(store, { keyPath: "id" });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject2(Error("MANUAL_ORDER_LIST_DB_OPEN_FAILED"));
+      req.onblocked = () => reject2(Error("MANUAL_ORDER_LIST_DB_BLOCKED"));
+    });
+  }
+  async function transact(stores, mode, build, factory) {
+    const db = await openDb2(factory);
+    try {
+      return await new Promise((resolve, reject2) => {
+        let tx, extract;
+        try {
+          tx = db.transaction(stores, mode);
+          extract = build(tx);
+        } catch (error) {
+          reject2(error);
+          return;
+        }
+        tx.oncomplete = () => {
+          try {
+            resolve(typeof extract === "function" ? extract() : void 0);
+          } catch (error) {
+            reject2(error);
+          }
+        };
+        tx.onabort = () => reject2(Error("MANUAL_ORDER_LIST_DB_TRANSACTION_ABORTED"));
+        tx.onerror = () => reject2(Error("MANUAL_ORDER_LIST_DB_TRANSACTION_FAILED"));
+      });
+    } finally {
+      db.close();
+    }
+  }
+  async function loadOrderFileState(factory) {
+    return transact([STORE_QUEUE, STORE_STATE, STORE_PENDING], "readonly", (tx) => {
+      const queue = tx.objectStore(STORE_QUEUE).get(KEY2);
+      const state = tx.objectStore(STORE_STATE).get(KEY2);
+      const pending = tx.objectStore(STORE_PENDING).getAll();
+      return () => {
+        if (!queue.result && !state.result) return null;
+        if (!queue.result || !state.result)
+          throw Error("MANUAL_ORDER_LIST_INCOMPLETE_STATE");
+        checkState(state.result);
+        if (!(queue.result.numbers instanceof Uint32Array) || queue.result.numbers.length !== state.result.total || state.result.index > state.result.total)
+          throw Error("MANUAL_ORDER_LIST_QUEUE_CORRUPTED");
+        const orders = pending.result || [];
+        if (orders.length > 100 || orders.some((x) => !/^[0-9]{7}$/.test(x.id) || !Array.isArray(x.transfers)))
+          throw Error("MANUAL_ORDER_LIST_PENDING_CORRUPTED");
+        return { queue: queue.result.numbers, state: state.result, pending: orders };
+      };
+    }, factory);
+  }
+  async function importOrderFileQueue(numbers, filename, delayMs = 1200, factory) {
+    if (!Array.isArray(numbers) || !numbers.length || numbers.length > 1e6 || numbers.some((n) => !Number.isSafeInteger(n) || n < 1e6 || n > 9999999) || new Set(numbers).size !== numbers.length)
+      throw Error("MANUAL_ORDER_LIST_IMPORT_INVALID");
+    if (!Number.isSafeInteger(delayMs) || delayMs < 100 || delayMs > 6e4)
+      throw Error("MANUAL_ORDER_LIST_DELAY_INVALID");
+    const state = {
+      id: KEY2,
+      schema: LIST_STATUS_SCHEMA,
+      mode: "paused",
+      filename: String(filename || "orders.txt").slice(0, 120),
+      total: numbers.length,
+      index: 0,
+      archive_count: 0,
+      found_committed: 0,
+      failed_count: 0,
+      delay_ms: delayMs,
+      download: null,
+      imported_at: (/* @__PURE__ */ new Date()).toISOString(),
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await transact(STORES, "readwrite", (tx) => {
+      for (const store of STORES) tx.objectStore(store).clear();
+      tx.objectStore(STORE_QUEUE).put({ id: KEY2, numbers: Uint32Array.from(numbers) });
+      tx.objectStore(STORE_STATE).put(state);
+    }, factory);
+    return state;
+  }
+  async function saveOrderFileProgress(state, order = null, failure2 = null, factory) {
+    checkState(state);
+    if (order && (!/^[0-9]{7}$/.test(order.id) || !Array.isArray(order.transfers))) throw Error("MANUAL_ORDER_LIST_RECORD_INVALID");
+    if (failure2 && !/^[0-9]{7}$/.test(failure2.id))
+      throw Error("MANUAL_ORDER_LIST_FAILURE_INVALID");
+    return transact([STORE_STATE, STORE_PENDING, STORE_FAILURES], "readwrite", (tx) => {
+      tx.objectStore(STORE_STATE).put({ ...state, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
+      if (order) tx.objectStore(STORE_PENDING).put(order);
+      if (failure2) tx.objectStore(STORE_FAILURES).put(failure2);
+    }, factory);
+  }
+  async function saveOrderFileStatus(state, factory) {
+    checkState(state);
+    return transact([STORE_STATE], "readwrite", (tx) => tx.objectStore(STORE_STATE).put({ ...state, updated_at: (/* @__PURE__ */ new Date()).toISOString() }), factory);
+  }
+  async function commitOrderFileArchive(state, records, factory) {
+    checkState(state);
+    if (!Array.isArray(records) || records.length < 1 || records.length > 100 || records.some((x) => !/^[0-9]{7}$/.test(x.id))) throw Error("MANUAL_ORDER_LIST_COMMIT_INVALID");
+    if (state.download !== null) throw Error("MANUAL_ORDER_LIST_DOWNLOAD_NOT_CLEARED");
+    return transact([STORE_STATE, STORE_PENDING, STORE_SUCCESS], "readwrite", (tx) => {
+      tx.objectStore(STORE_STATE).put({ ...state, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
+      tx.objectStore(STORE_PENDING).clear();
+      for (const row of records) tx.objectStore(STORE_SUCCESS).put({
+        id: row.id,
+        order_number: row.id,
+        collection_status: "TZ_APPROVED",
+        collected_at: row.collected_at,
+        files: row.files,
+        eligible_articles: row.eligible_articles,
+        verified_articles: row.verified_articles
+      });
+    }, factory);
+  }
+  async function exportOrderFileRegistry(factory) {
+    return transact([STORE_STATE, STORE_SUCCESS, STORE_FAILURES], "readonly", (tx) => {
+      const status = tx.objectStore(STORE_STATE).get(KEY2);
+      const found = tx.objectStore(STORE_SUCCESS).getAll();
+      const failed = tx.objectStore(STORE_FAILURES).getAll();
+      return () => ({
+        state: status.result,
+        found_archived: found.result || [],
+        failed_orders: failed.result || []
+      });
+    }, factory);
+  }
+  async function clearOrderFileQueue(factory) {
+    return transact(STORES, "readwrite", (tx) => {
+      for (const store of STORES) tx.objectStore(store).clear();
+    }, factory);
+  }
+
+  // vision/orders/approval-file-controller.mjs
+  var el = (tag, value) => {
+    const n = document.createElement(tag);
+    if (value !== void 0) n.textContent = value;
+    return n;
+  };
+  var button2 = (label, fn) => {
+    const b = el("button", label);
+    b.type = "button";
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void fn();
+    });
+    return b;
+  };
+  var wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  var pad = (n) => String(n).padStart(5, "0");
+  var acceptedRate = (n) => Number.isSafeInteger(n) && n >= 100 && n <= 6e4;
+  function makeApprovalFileListController({
+    getBusy = () => false,
+    setBusy = () => {
+    },
+    scanOrder = async () => null,
+    isClosed = () => false,
+    refreshControls = () => {
+    }
+  } = {}) {
+    const root = el("div");
+    root.className = "vlo-file-list";
+    root.style.cssText = "width:100%;border:1px solid #69898b;border-radius:8px;padding:10px;margin:10px 0;";
+    root.append(el("strong", "\u0421\u043F\u0438\u0441\u043E\u043A \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430 TXT"));
+    root.append(el("p", "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0441 \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u043C\u0438 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438: \u043E\u0434\u0438\u043D \u043D\u043E\u043C\u0435\u0440 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435. \u041F\u043E\u0432\u0442\u043E\u0440\u044B \u0443\u0434\u0430\u043B\u044F\u044E\u0442\u0441\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u044F\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u043E\u043C\u0435\u0440\u0430 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430, \u043D\u0435\u0437\u0430\u0432\u0438\u0441\u0438\u043C\u043E \u043E\u0442 \u0433\u0440\u0430\u043D\u0438\u0446 \u0440\u0435\u0436\u0438\u043C\u0430 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430. \u0414\u043E 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0432 ZIP."));
+    const fileLabel = el("label", "\u0412\u044B\u0431\u0440\u0430\u0442\u044C TXT \u0441\u043E \u0441\u043F\u0438\u0441\u043A\u043E\u043C ");
+    const fileInput = el("input");
+    fileInput.type = "file";
+    fileInput.accept = ".txt,text/plain";
+    fileInput.title = "\u041E\u0434\u0438\u043D \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440 \u0437\u0430\u043A\u0430\u0437\u0430 \u0432 \u043A\u0430\u0436\u0434\u043E\u0439 \u0441\u0442\u0440\u043E\u043A\u0435, \u0434\u043E 20 \u041C\u0411";
+    fileInput.style.cssText = "max-width:100%;margin:4px 0;";
+    fileLabel.append(fileInput);
+    root.append(fileLabel);
+    const rateLabel = el("label", "\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430 \u043C\u0435\u0436\u0434\u0443 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438, \u043C\u0441 ");
+    const rateInput = el("input");
+    rateInput.type = "number";
+    rateInput.value = "1200";
+    rateInput.min = "100";
+    rateInput.max = "60000";
+    rateInput.step = "100";
+    rateInput.title = "100\u201360000 \u043C\u0441, \u043F\u0440\u0438\u043C\u0435\u043D\u044F\u0435\u0442\u0441\u044F \u0441\u0440\u0430\u0437\u0443";
+    rateInput.style.cssText = "max-width:110px;color:#203436;background:#f2f8f3;padding:5px;border-radius:4px;";
+    rateLabel.append(rateInput);
+    root.append(rateLabel);
+    const controls = el("div");
+    controls.className = "vlo-actions";
+    const startBtn = button2("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043F\u043E \u0441\u043F\u0438\u0441\u043A\u0443", () => start());
+    const pauseBtn = button2("\u041F\u0430\u0443\u0437\u0430 \u0441\u043F\u0438\u0441\u043A\u0430", () => {
+      paused = true;
+      void setMode("paused");
+      show("\u041F\u0430\u0443\u0437\u0430 \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430");
+    });
+    const stopBtn = button2("\u0421\u0442\u043E\u043F \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043F\u0438\u0441\u043A\u0430", () => {
+      stopped = true;
+      void setMode("stopped");
+      show("\u0421\u043E\u0445\u0440\u0430\u043D\u044E \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E ZIP-\u043F\u0430\u0440\u0442\u0438\u044E \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430");
+    });
+    const saveBtn = button2("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E ZIP \u0441\u043F\u0438\u0441\u043A\u0430", () => manualSave());
+    const exportBtn = button2("\u0420\u0435\u0435\u0441\u0442\u0440 \u0441\u043F\u0438\u0441\u043A\u0430 JSON", () => exportRegistry());
+    const resetBtn = button2("\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0441\u043F\u0438\u0441\u043E\u043A \u0438 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441", () => reset());
+    controls.append(startBtn, pauseBtn, stopBtn, saveBtn, exportBtn, resetBtn);
+    root.append(controls);
+    const progress = el("p", "\u0421\u043F\u0438\u0441\u043E\u043A \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D.");
+    progress.style.whiteSpace = "pre-line";
+    root.append(progress);
+    pauseBtn.disabled = stopBtn.disabled = saveBtn.disabled = true;
+    let state = null, queue = null, pending = [], batch = new ApprovalBatchSession();
+    let running = false, paused = false, stopped = false, activeOrder = null;
+    let currentDelay = 1200, lastError = null, checkedSession = 0;
+    let restoreBlocked = false, writeChain = Promise.resolve();
+    let init = Promise.resolve(false);
+    const write = (fn) => {
+      writeChain = writeChain.catch(() => {
+      }).then(fn);
+      return writeChain;
+    };
+    const currentMode = () => stopped ? "stopped" : paused ? "paused" : running ? "running" : "paused";
+    function show(message = "") {
+      const next = state && state.index < state.total ? String(queue[state.index]) : "\u2014";
+      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0434\u043E \u0430\u0440\u0445\u0438\u0432\u0430: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+    }
+    const captureMode = (mode) => {
+      if (!state) return null;
+      state = { ...state, mode, delay_ms: currentDelay };
+      return { ...state };
+    };
+    async function setMode(mode) {
+      if (!state) return;
+      const snapshot = captureMode(mode);
+      try {
+        await write(() => saveOrderFileStatus(snapshot));
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_LIST_MODE_FAILED");
+        show();
+      }
+    }
+    function validateDelay() {
+      const n = Number(rateInput.value);
+      return acceptedRate(n) ? n : null;
+    }
+    rateInput.addEventListener("input", () => {
+      const value = validateDelay();
+      if (value === null) {
+        show("\u0414\u043E\u043F\u0443\u0441\u0442\u0438\u043C\u0430\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: 100\u201360000 \u043C\u0441");
+        return;
+      }
+      if (value === currentDelay) return;
+      currentDelay = value;
+      if (state) void setMode(currentMode());
+      show("\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + value + " \u043C\u0441 \u043F\u0440\u0438\u043C\u0435\u043D\u044F\u0435\u0442\u0441\u044F \u0431\u0435\u0437 \u0441\u0431\u0440\u043E\u0441\u0430 \u043E\u0447\u0435\u0440\u0435\u0434\u0438");
+    });
+    rateInput.addEventListener("change", () => {
+      if (validateDelay() === null) rateInput.value = String(currentDelay);
+    });
+    async function dynamicDelay() {
+      const started = performance.now();
+      while (!paused && !stopped && !isClosed()) {
+        const ms = currentDelay - (performance.now() - started);
+        if (ms <= 0) break;
+        await wait(Math.min(ms, 100));
+      }
+    }
+    function audit(phase, rest = {}) {
+      return chrome.runtime.sendMessage({ op: "vision-range-download-audit-v1", phase, ...rest });
+    }
+    async function waitForChrome(afterId, bytes, filename) {
+      for (let i = 0; i < 240; i++) {
+        const result = await audit("check", {
+          after_id: afterId,
+          byte_length: bytes,
+          expected_filename: filename
+        });
+        if (result?.status === "RANGE_DOWNLOAD_COMPLETE") return;
+        if (result?.status !== "RANGE_DOWNLOAD_PENDING")
+          throw Error(result?.status || "MANUAL_ORDER_LIST_ZIP_AUDIT_FAILED");
+        await wait(500);
+      }
+      throw Error("MANUAL_ORDER_LIST_ZIP_DOWNLOAD_TIMEOUT");
+    }
+    async function waitForPreviousOrder() {
+      for (let i = 0; i < 210; i++) {
+        const result = await chrome.runtime.sendMessage({
+          op: "vision-approval-queue-status-v1"
+        }).catch(() => null);
+        if (result?.status !== "QUEUE_STATUS_OK")
+          throw Error("MANUAL_ORDER_LIST_WORKER_STATUS_FAILED");
+        if (!result.busy) return;
+        await wait(1e3);
+      }
+      throw Error("MANUAL_ORDER_LIST_OLD_WORKER_BUSY");
+    }
+    async function commitDownloaded() {
+      const rows = pending.slice();
+      if (!rows.length) throw Error("MANUAL_ORDER_LIST_EMPTY_ZIP");
+      const updated = {
+        ...state,
+        download: null,
+        archive_count: state.archive_count + 1,
+        found_committed: state.found_committed + rows.length,
+        mode: currentMode()
+      };
+      await write(() => commitOrderFileArchive(updated, rows));
+      state = updated;
+      pending = [];
+      batch = new ApprovalBatchSession();
+      saveBtn.disabled = true;
+      lastError = null;
+      show("ZIP \u2116" + state.archive_count + " \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D Chrome; \u0434\u0430\u043D\u043D\u044B\u0435 \u0437\u0430\u0444\u0438\u043A\u0441\u0438\u0440\u043E\u0432\u0430\u043D\u044B");
+    }
+    async function recoverDownload() {
+      const info = state?.download;
+      if (!info) return true;
+      try {
+        await waitForChrome(info.after_id, info.bytes, info.filename);
+        await commitDownloaded();
+        return true;
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
+        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D. \u0412\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432\u0440\u0443\u0447\u043D\u0443\u044E.");
+        return false;
+      }
+    }
+    async function saveBatch(reason) {
+      if (!pending.length) return true;
+      if (state.download) return recoverDownload();
+      let result;
+      try {
+        result = batch.finalize(pending);
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_ZIP_INVALID");
+        show();
+        return false;
+      }
+      const filename = "vision-ai-list-part-" + pad(state.archive_count + 1) + "-" + pending[0].id + "-" + pending.at(-1).id + ".zip";
+      const url = URL.createObjectURL(result.blob);
+      try {
+        const before = await audit("baseline");
+        if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
+          throw Error("MANUAL_ORDER_LIST_DOWNLOAD_BASELINE");
+        const download = { after_id: before.highest_id, bytes: result.blob.size, filename };
+        const snapshot = { ...state, download, mode: "downloading" };
+        await write(() => saveOrderFileStatus(snapshot));
+        state = snapshot;
+        const a = el("a");
+        a.href = url;
+        a.download = filename;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        show("\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 ZIP (" + reason + "): " + pending.length + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432.");
+        await waitForChrome(download.after_id, download.bytes, filename);
+        await commitDownloaded();
+        return true;
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_DOWNLOAD_FAILED");
+        show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C ZIP; \u0434\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u0432 IndexedDB");
+        return false;
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 125e3);
+      }
+    }
+    async function manualSave() {
+      if (running || !pending.length) return;
+      if (state.download) {
+        if (typeof globalThis.confirm === "function" && !globalThis.confirm(
+          "\u041F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F ZIP-\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0430. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 Chrome: \u043F\u043E\u0432\u0442\u043E\u0440 \u043C\u043E\u0436\u0435\u0442 \u0441\u043E\u0437\u0434\u0430\u0442\u044C \u0434\u0443\u0431\u043B\u0438\u043A\u0430\u0442. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E?"
+        )) return;
+        const snapshot = { ...state, download: null, mode: "paused" };
+        await write(() => saveOrderFileStatus(snapshot));
+        state = snapshot;
+      }
+      await saveBatch("\u0432\u0440\u0443\u0447\u043D\u0443\u044E");
+    }
+    async function importFile(file) {
+      await init;
+      if (running || getBusy()) {
+        show("\u041D\u0435\u043B\u044C\u0437\u044F \u0437\u0430\u043C\u0435\u043D\u0438\u0442\u044C \u0441\u043F\u0438\u0441\u043E\u043A \u0432\u043E \u0432\u0440\u0435\u043C\u044F \u0434\u0440\u0443\u0433\u043E\u0433\u043E \u0441\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F.");
+        return;
+      }
+      if (!file) return;
+      if (file.size > ORDER_LIST_MAX_BYTES) {
+        lastError = "MANUAL_ORDER_LIST_FILE_TOO_LARGE";
+        show();
+        return;
+      }
+      let parsed;
+      try {
+        parsed = parseOrderListText(await file.text());
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_PARSE_FAILED");
+        show();
+        return;
+      }
+      if (state && (state.index > 0 || pending.length || state.found_committed > 0) && typeof globalThis.confirm === "function" && !globalThis.confirm(
+        "\u0418\u043C\u043F\u043E\u0440\u0442 \u043D\u043E\u0432\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430 \u0437\u0430\u043C\u0435\u043D\u0438\u0442 \u0442\u0435\u043A\u0443\u0449\u0438\u0439 \u0441\u043F\u0438\u0441\u043E\u043A \u0438 \u0435\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441. \u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0440\u0435\u0435\u0441\u0442\u0440 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 ZIP. \u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C?"
+      )) return;
+      try {
+        await writeChain.catch(() => {
+        });
+        const next = await importOrderFileQueue(parsed.numbers, file.name, currentDelay);
+        state = next;
+        queue = Uint32Array.from(parsed.numbers);
+        pending = [];
+        batch = new ApprovalBatchSession();
+        checkedSession = 0;
+        lastError = null;
+        restoreBlocked = false;
+        paused = stopped = false;
+        saveBtn.disabled = true;
+        show("\u0424\u0430\u0439\u043B \u043F\u0440\u0438\u043D\u044F\u0442. \u0423\u043D\u0438\u043A\u0430\u043B\u044C\u043D\u044B\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432: " + parsed.numbers.length + "; \u0443\u0434\u0430\u043B\u0435\u043D\u043E \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432: " + parsed.duplicates + ". \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043F\u043E \u0441\u043F\u0438\u0441\u043A\u0443\xBB.");
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_IMPORT_FAILED");
+        show();
+      }
+    }
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      void importFile(file);
+    });
+    async function reset() {
+      await init;
+      if (running || getBusy()) return;
+      if (typeof globalThis.confirm === "function" && !globalThis.confirm(
+        "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0435\u0441\u044C \u0438\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u044B\u0439 \u0441\u043F\u0438\u0441\u043E\u043A, \u0440\u0435\u0437\u0443\u043B\u044C\u0442\u0430\u0442\u044B \u0438 \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0443\u044E \u0442\u043E\u0447\u043A\u0443? \u0421\u043A\u0430\u0447\u0430\u043D\u043D\u044B\u0435 ZIP \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u043D\u0430 \u0434\u0438\u0441\u043A\u0435."
+      )) return;
+      try {
+        await writeChain.catch(() => {
+        });
+        await clearOrderFileQueue();
+        queue = state = null;
+        pending = [];
+        batch = new ApprovalBatchSession();
+        checkedSession = 0;
+        lastError = null;
+        restoreBlocked = false;
+        paused = stopped = false;
+        saveBtn.disabled = true;
+        show("\u0421\u043F\u0438\u0441\u043E\u043A \u0438 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043E\u0447\u0438\u0449\u0435\u043D\u044B");
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_RESET_FAILED");
+        show();
+      }
+    }
+    async function exportRegistry() {
+      if (!state) {
+        show("\u0421\u043F\u0438\u0441\u043E\u043A \u0435\u0449\u0451 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D");
+        return;
+      }
+      try {
+        const reg = await exportOrderFileRegistry();
+        const json2 = {
+          schema: "printcheck.vision.order-file-registry.v1",
+          filename: state.filename,
+          total: state.total,
+          index: state.index,
+          next_order: queue[state.index] || null,
+          archives_completed: state.archive_count,
+          found_committed: state.found_committed,
+          found_archived: reg.found_archived,
+          found_pending: pending.map(({ transfers, ...other }) => other),
+          failed_orders: reg.failed_orders,
+          training_ready: false,
+          imported_at: state.imported_at
+        };
+        const u = URL.createObjectURL(new Blob(
+          [JSON.stringify(json2, null, 2) + "\n"],
+          { type: "application/json" }
+        ));
+        const a = el("a");
+        a.href = u;
+        a.download = "vision-ai-file-list-registry.json";
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(u), 15e3);
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_REGISTRY_FAILED");
+        show();
+      }
+    }
+    async function start() {
+      if (running || getBusy() || isClosed()) return;
+      await init;
+      if (running || getBusy() || isClosed()) return;
+      if (restoreBlocked) {
+        show("\u0416\u0443\u0440\u043D\u0430\u043B \u043F\u043E\u0432\u0440\u0435\u0436\u0434\u0451\u043D. \u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435.");
+        return;
+      }
+      if (!state || !queue) {
+        show("\u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 TXT \u0441\u043E \u0441\u043F\u0438\u0441\u043A\u043E\u043C");
+        return;
+      }
+      if (!globalThis.__visionLocalTrustedTransport) {
+        lastError = "MANUAL_MV3_TRANSPORT_REQUIRED";
+        show();
+        return;
+      }
+      const rate = validateDelay();
+      if (rate === null) {
+        lastError = "MANUAL_ORDER_LIST_DELAY_INVALID";
+        show();
+        return;
+      }
+      currentDelay = rate;
+      if (state.index >= state.total && !pending.length) {
+        show("\u0412\u0441\u0435 \u043D\u043E\u043C\u0435\u0440\u0430 \u0438\u0437 \u0441\u043F\u0438\u0441\u043A\u0430 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u044B.");
+        return;
+      }
+      running = true;
+      paused = stopped = false;
+      setBusy(true);
+      startBtn.disabled = resetBtn.disabled = saveBtn.disabled = true;
+      pauseBtn.disabled = stopBtn.disabled = false;
+      let message = "";
+      try {
+        if (state.download && !await recoverDownload())
+          throw Error("MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
+        await setMode("running");
+        if (pending.length >= 100 || batch.bytesReceived > 12e7) {
+          if (!await saveBatch("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F"))
+            throw Error("MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW");
+        }
+        while (state.index < state.total && !paused && !stopped && !isClosed()) {
+          const id = queue[state.index], order_number = String(id);
+          const inspected = await probeTzForOrder(id, { explicitList: true });
+          let record = null, failure2 = null;
+          if (inspected.status === "TZ_APPROVED") {
+            activeOrder = order_number;
+            let collected;
+            try {
+              await waitForPreviousOrder();
+              collected = await scanOrder(explicitListOrderUrl(id), true);
+            } catch {
+              collected = { status: "MANUAL_NATIVE_APPROVAL_QUEUE_FAILED" };
+            } finally {
+              activeOrder = null;
+            }
+            if (collected?.status === "COMPLETE" && collected.final_evidence_saved === true) {
+              try {
+                record = {
+                  id: order_number,
+                  order_number,
+                  collected_at: (/* @__PURE__ */ new Date()).toISOString(),
+                  status: "TZ_APPROVED",
+                  native_status_id: "59",
+                  eligible_articles: collected.eligible_articles || 0,
+                  verified_articles: collected.verified_articles || 0,
+                  files: collected.files || 0,
+                  transfers: batch.exportOrder(order_number)
+                };
+              } catch (error) {
+                failure2 = {
+                  id: order_number,
+                  phase: "native_approval",
+                  reason: String(error?.message || "MANUAL_ORDER_LIST_MISSING_EVIDENCE")
+                };
+              }
+            } else {
+              failure2 = {
+                id: order_number,
+                phase: "native_approval",
+                reason: String(collected?.status || "MANUAL_APPROVAL_COLLECTION_INCOMPLETE")
+              };
+            }
+          } else if (inspected.status !== "TZ_NOT_APPROVED" && inspected.status !== "ORDER_NOT_FOUND") {
+            if (!isRecoverableRangeFailure(inspected.status)) {
+              lastError = "MANUAL_ORDER_LIST_GLOBAL_" + inspected.status;
+              break;
+            }
+            failure2 = {
+              id: order_number,
+              phase: "order_card",
+              reason: inspected.status,
+              ...Number.isInteger(inspected.http_status) ? { http_status: inspected.http_status } : {}
+            };
+          }
+          const next = {
+            ...state,
+            index: state.index + 1,
+            failed_count: state.failed_count + (failure2 ? 1 : 0),
+            delay_ms: currentDelay,
+            mode: currentMode()
+          };
+          await write(() => saveOrderFileProgress(next, record, failure2));
+          state = next;
+          if (record) pending.push(record);
+          else batch.discardOrder(order_number);
+          checkedSession++;
+          if (pending.length >= 100 || batch.bytesReceived > 12e7) {
+            if (!await saveBatch("100 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 / \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u0438\u0435 \u0440\u0430\u0437\u043C\u0435\u0440\u0430")) break;
+          }
+          show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440: " + order_number + " \u2014 " + (failure2 ? failure2.reason : inspected.status));
+          if (!paused && !stopped) await dynamicDelay();
+        }
+        if ((stopped || state.index >= state.total) && pending.length) {
+          if (!await saveBatch(stopped ? "\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430" : "\u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430")) paused = true;
+        }
+        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041B\u0415\u041D\u041E: " + lastError : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C. \u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u0420\u0435\u0435\u0441\u0442\u0440 \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : state.index >= state.total ? "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E.";
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_ORDER_LIST_SCAN_FAILED");
+        message = "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410 \u041F\u041E \u041E\u0428\u0418\u0411\u041A\u0415: " + lastError;
+      } finally {
+        activeOrder = null;
+        running = false;
+        setBusy(false);
+        if (state && !state.download) await setMode(stopped || state.index >= state.total ? "stopped" : "paused");
+        startBtn.disabled = resetBtn.disabled = false;
+        pauseBtn.disabled = stopBtn.disabled = true;
+        saveBtn.disabled = !pending.length;
+        refreshControls();
+        show(message);
+      }
+    }
+    init = (async () => {
+      const saved = await loadOrderFileState();
+      if (!saved) return false;
+      state = saved.state;
+      queue = saved.queue;
+      currentDelay = state.delay_ms;
+      rateInput.value = String(currentDelay);
+      if (saved.pending.some((x) => !Array.isArray(x.transfers) || !x.transfers.length))
+        throw Error("MANUAL_ORDER_LIST_PENDING_INVALID");
+      batch = new ApprovalBatchSession();
+      for (const record of saved.pending) {
+        batch.restoreOrder(record.id, record.transfers);
+        pending.push(record);
+      }
+      saveBtn.disabled = !pending.length;
+      show("\u041E\u0447\u0435\u0440\u0435\u0434\u044C \u0438 \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F ZIP-\u043F\u0430\u0440\u0442\u0438\u044F \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B.");
+      return state.mode === "running" || state.mode === "downloading";
+    })().catch((error) => {
+      restoreBlocked = true;
+      lastError = String(error?.message || "MANUAL_ORDER_LIST_RESTORE_FAILED");
+      show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u043E\u0447\u0435\u0440\u0435\u0434\u044C. \u0414\u0430\u043D\u043D\u044B\u0435 \u043D\u0435 \u043E\u0447\u0438\u0449\u0435\u043D\u044B.");
+      return false;
+    });
+    init.then((auto) => {
+      if (auto && !isClosed()) void start();
+    });
+    return {
+      element: root,
+      get activeOrder() {
+        return activeOrder;
+      },
+      get running() {
+        return running;
+      },
+      receive: (message, expectedOrder) => batch.receive(message, expectedOrder),
+      requestPause: () => {
+        paused = true;
+        void setMode("paused");
+      },
+      requestStop: () => {
+        stopped = true;
+        void setMode("stopped");
+      }
+    };
+  }
+
   // vision/orders/overlay-entry.mjs
   var ID = "vision-local-order-overlay";
   var STYLE_ID = "vision-local-order-style";
@@ -4565,10 +5276,10 @@
     ".vision-order-result-cell [data-vlo-grade]{display:block!important}"
   ].join("\n");
   var node = (tag, text2, cls) => {
-    const el = document.createElement(tag);
-    if (cls) el.className = cls;
-    if (text2 !== void 0) el.textContent = text2;
-    return el;
+    const el2 = document.createElement(tag);
+    if (cls) el2.className = cls;
+    if (text2 !== void 0) el2.textContent = text2;
+    return el2;
   };
   var safeNumber = (n) => Number.isFinite(n) ? n.toFixed(3) + " \u043C\u043C" : "\u043D\u0435 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043E";
   function summarize(res) {
@@ -4607,7 +5318,7 @@
     const panel = node("section");
     panel.id = ID;
     panel.setAttribute("aria-label", "Vision Check \u2014 \u0442\u0430\u0431\u043B\u0438\u0446\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432");
-    const title = node("h2", "Vision Check v0.1.11 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
+    const title = node("h2", "Vision Check v0.1.13 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
     const description = node(
       "p",
       "\u0422\u043E\u043B\u044C\u043A\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0441\u0435\u0442\u044C. \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u044C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043F\u043E\u0441\u043B\u0435 \u0432\u0430\u0448\u0435\u0433\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044F; \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u043D\u0430 GitHub."
@@ -4621,6 +5332,7 @@
       closed = true;
       pauseRequested = true;
       rangeController.requestStop();
+      fileController.requestStop();
       panel.remove();
       style.remove();
       document.querySelectorAll("[data-vision-order-cell]").forEach((n) => n.remove());
@@ -4776,6 +5488,31 @@
         updateBatchControls();
       }
     });
+    const fileController = makeApprovalFileListController({
+      getBusy: () => busy,
+      setBusy: (value) => {
+        busy = value;
+        approvalQueueBtn.disabled = value;
+        refreshBtn.disabled = value;
+      },
+      scanOrder: async (url, require_tz_approved) => {
+        activeBatchOrder = new URL(url).pathname.split("/").at(-1);
+        try {
+          return await chrome.runtime.sendMessage({
+            op: "vision-approval-order-queue-v1",
+            order_url: url,
+            require_tz_approved: require_tz_approved === true
+          });
+        } finally {
+          activeBatchOrder = null;
+        }
+      },
+      isClosed: () => closed,
+      refreshControls: () => {
+        refreshBtn.disabled = busy;
+        updateBatchControls();
+      }
+    });
     let preparedBundle = null;
     function downloadApprovalBatch() {
       if (!preparedBundle) return;
@@ -4800,7 +5537,7 @@
           respond({ status: "MANUAL_BATCH_LIST_SENDER_DENIED" });
           return false;
         }
-        const recipient = rangeController.activeOrder === activeBatchOrder ? rangeController : approvalBatch;
+        const recipient = rangeController.activeOrder === activeBatchOrder ? rangeController : fileController.activeOrder === activeBatchOrder ? fileController : approvalBatch;
         respond(recipient.receive(message, activeBatchOrder));
         return false;
       });
@@ -4960,6 +5697,7 @@
     }
     actions.append(
       rangeController.element,
+      fileController.element,
       approvalQueueBtn,
       approvalQueueStopBtn,
       approvalZipBtn,
@@ -4976,7 +5714,7 @@
     );
     panel.append(title, description, actions, stats, warning);
     document.body.append(panel);
-    window.__visionLocalOrderOverlay = { close: close2, refresh, version: "C3B.3.R" };
+    window.__visionLocalOrderOverlay = { close: close2, refresh, version: "0.1.13" };
     function renderStats(msg) {
       const discovered = rows.reduce((n, r) => n + r.anchors.length, 0);
       const local = rows.reduce((n, r) => n + (r.orderUploads?.length ?? r.files.length), 0);
