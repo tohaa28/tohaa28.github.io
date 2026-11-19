@@ -189,10 +189,14 @@ try{
  await page.waitForFunction(()=>(
   document.querySelector('.vlo-range p:last-child')?.textContent||''
  ).includes('Новая задержка 3100 мс'),null,{timeout:5000});
- await page.waitForFunction(async()=>false, null,{timeout:100}).catch(()=>{});
- const edited=await sw.evaluate(async()=>(
-  await chrome.storage.local.get('vision-ai-approved-range-checkpoint-v1')
- )['vision-ai-approved-range-checkpoint-v1']);
+ let edited;
+ for(let retry=0;retry<20;retry++){
+  edited=await sw.evaluate(async()=>(
+   await chrome.storage.local.get('vision-ai-approved-range-checkpoint-v1')
+  )['vision-ai-approved-range-checkpoint-v1']);
+  if(edited?.config?.delay_ms===3100)break;
+  await new Promise(resolve=>setTimeout(resolve,100));
+ }
  assert.equal(edited.config.delay_ms,3100,
   'idle change persists without reset');
  assert.equal(edited.committed_next,3200005);
