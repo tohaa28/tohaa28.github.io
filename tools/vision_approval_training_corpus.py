@@ -175,10 +175,33 @@ def transform(evidences, archives, output):
         raw_name = f"raw/evidence-{order}.json"
         private_write(out / raw_name, raw)
         oid = ref("order", order)
+        order_facts = report.get("order_facts") or {}
+        need(isinstance(order_facts, dict), "ORDER_FACTS_INVALID")
+        order_header = order_facts.get("order") or {}
+        need(isinstance(order_header, dict), "ORDER_HEADER_INVALID")
+        need(order_header.get("order_number", order) == order,
+             "ORDER_FACTS_NUMBER_MISMATCH")
+        item_facts = order_facts.get("articles") or []
+        need(isinstance(item_facts, list) and len(item_facts) <= 250,
+             "ORDER_ITEM_FACTS_INVALID")
+        facts_by_item = {}
+        for fact in item_facts:
+            need(isinstance(fact, dict), "ORDER_ITEM_FACT_INVALID")
+            fact_id = fact.get("item_id")
+            need(isinstance(fact_id, str) and NUM.fullmatch(fact_id)
+                 and fact_id not in facts_by_item, "ORDER_ITEM_FACT_ID_INVALID")
+            facts_by_item[fact_id] = fact
         rows["orders"].append({"id": oid, "order_number": order,
             "original_evidence": raw_name, "evidence_sha256": sha(raw),
             "capture_scope": report.get("scope"),
-            "collection_status": report.get("status"), "ground_truth": False})
+            "collection_status": report.get("status"),
+            "internal_order_id": order_header.get("internal_order_id"),
+            "order_date_display": order_header.get("order_date_display"),
+            "customer_display": order_header.get("customer_display"),
+            "header_text": order_header.get("header_text"),
+            "order_status_timeline": order_header.get("order_status_timeline"),
+            "order_facts_capture_status": order_facts.get("capture_status"),
+            "ground_truth": False})
         byte_lookup = {}
         for src in sorted(by_zip.get(order, [])):
             part = int(ZIP.fullmatch(src.name)[2])
@@ -197,8 +220,16 @@ def transform(evidences, archives, output):
                  "ARTICLE_ITEM_ID_INVALID")
             item_key = item or f"unresolved-{i}"
             aid = ref("article", order, item_key, i)
+            native_item = facts_by_item.get(item, {})
             rows["articles"].append({"id": aid, "order_id": oid,
                 "order_number": order, "item_id": item, "article_index": i,
+                "article_code": native_item.get("article_code"),
+                "product_name": native_item.get("product_name"),
+                "product_page": native_item.get("product_page"),
+                "quantity_and_pricing_text": native_item.get("quantity_and_pricing_text"),
+                "imprint_and_technical_requirements_text":
+                    native_item.get("imprint_and_technical_requirements_text"),
+                "drawtask_ids": native_item.get("drawtask_ids"),
                 "capture_status": article.get("status"),
                 "native_trigger_index": article.get("article_index"),
                 "message_badge": article.get("declared_message_badge"),
@@ -249,6 +280,8 @@ def transform(evidences, archives, output):
                     "text": body, "date_time_raw": m.get("date_time"),
                     "native_comment_id": m.get("native_comment_id"),
                     "actor_ref": m.get("actor_ref"),
+                    "author_name": m.get("author_name"),
+                    "author_display_text": m.get("author_display_text"),
                     "expert_verified": False})
                 rows["relations"].append({"from": aid,
                     "type": "article_has_message", "to": mid})
@@ -352,8 +385,12 @@ def main():
             source_dir = Path(args.input_dir)
             need(source_dir.is_dir() and not source_dir.is_symlink(),
                  "SOURCE_DIRECTORY_INVALID")
-            evidences += sorted(source_dir.glob(
-                "vision-private-approval-evidence-*.json"))
+            # v0.1.7 saves an early -raw safety copy before binary GETs.
+            # Prefer the FINAL evidence: it links SHA-256 and ZIP entries.
+            # Importing both would falsely trigger DUPLICATE_EVIDENCE_ORDER.
+            evidences += sorted(p for p in source_dir.glob(
+                "vision-private-approval-evidence-*.json")
+                if not p.name.endswith("-raw.json"))
             archives += sorted(source_dir.glob(
                 "vision-private-approval-attachments-*-part-*.zip"))
         result = transform(evidences, archives, args.output)
