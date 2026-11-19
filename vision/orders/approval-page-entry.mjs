@@ -6,6 +6,7 @@
  */
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
 import {exportNativeApprovalAttachmentParts} from './approval-attachments.mjs';
+import {encodeTransferChunks} from './approval-batch-archive.mjs';
 import {collectMaketApprovalsOnOrderPage,anonymousApprovalCollection}
  from './approval-auto-scan.mjs';
 const BOX_ID='vision-approval-inspector',STYLE_ID='vision-approval-inspector-css';
@@ -36,8 +37,8 @@ export function initApprovalPageEntry(){
  document.head.append(style);
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
- const header=make('strong','Vision AI · Согласование макета · v0.1.7');
- const note=make('p','Автообход: собирает переписки с именами участников, историю проблем, сведения о заказе и каждом артикуле. Сначала сохраняется JSON с текстом, затем вложения, затем окончательный JSON с привязками к ZIP. Все файлы остаются на компьютере.');
+ const header=make('strong','Vision AI · Согласование макета · v0.1.8');
+ const note=make('p','Пакетный сбор: переписки, имена, проблемы и вложения передаются на страницу списка заказов. По завершении сохраняется ОДИН ZIP с папками заказов, обсуждений и файлов. Не закрывайте страницу до скачивания.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
  const exportButton=make('button','Скачать анонимный JSON');
@@ -120,13 +121,33 @@ export function initApprovalPageEntry(){
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(uri),2500);
  }
+  /** Bounded, acknowledged transfer to explicit local list queue. */
+  async function stageForBatch(kind,stage,part,bytes){
+   const order=String(collection?.order_number||'');
+   if(!/^\d{5,12}$/.test(order))return {status:'MANUAL_BATCH_ORDER_INVALID'};
+   let chunks;
+   try{chunks=encodeTransferChunks(bytes)}
+   catch{return {status:'MANUAL_BATCH_PAYLOAD_TOO_LARGE'}}
+   for(let i=0;i<chunks.length;i++){
+    let res;
+    try{res=await chrome.runtime.sendMessage({
+      op:'vision-approval-batch-transfer-v1',
+      order_number:order,kind,stage,part,
+      sequence:i,chunk_count:chunks.length,chunk:chunks[i]
+     })}
+    catch{return {status:'MANUAL_BATCH_RELAY_FAILED'}}
+    if(res?.status!=='BATCH_CHUNK_ACCEPTED')
+     return {status:res?.status||'MANUAL_BATCH_RELAY_REJECTED'};
+   }
+   return {status:kind==='evidence'?'BATCH_EVIDENCE_STAGED':'BATCH_ZIP_PART_STAGED'};
+  }
   /**
    * Download from the extension worker, not a transient hidden page anchor.
    * Both RAW (before binary GETs) and FINAL (with ZIP byte/SHA mappings)
    * are retained locally. The worker waits for Chrome 'complete' before
    * acknowledging; lack of confirmation is NEVER shown as success.
    */
-  async function persistOrderEvidence(stage){
+  async function persistOrderEvidence(stage,{batchMode=false}={}){
    if(!collection||!Array.isArray(collection.articles))return {
     status:'MANUAL_NO_ORDER_EVIDENCE'};
    const order=String(collection.order_number||'');
@@ -134,6 +155,12 @@ export function initApprovalPageEntry(){
     status:'MANUAL_ORDER_IDENTIFIER_INVALID'};
    if(typeof chrome==='undefined'||!chrome.runtime?.sendMessage)
     return {status:'MANUAL_EXTENSION_DOWNLOAD_UNAVAILABLE'};
+   if(batchMode){
+    try{
+     const bytes=new TextEncoder().encode(JSON.stringify(collection)+'\n');
+     return await stageForBatch('evidence',stage,0,bytes);
+    }catch{return {status:'MANUAL_BATCH_EVIDENCE_ENCODING_FAILED'}}
+   }
    try{
     return await chrome.runtime.sendMessage({
      op:'vision-approval-save-evidence-v1',stage,
@@ -158,17 +185,20 @@ export function initApprovalPageEntry(){
    }
   })){
    if(item.status==='PRIVATE_LOCAL_ZIP_READY'){
-    files+=item.files;parts++;
-    const u=URL.createObjectURL(item.zip),a=make('a');
-    a.href=u;a.download='vision-private-approval-attachments-'+
-     (queueMode?location.pathname.split('/').filter(Boolean).at(-1)+'-':'')+
-     'part-'+String(item.part).padStart(4,'0')+'.zip';
-    document.body.append(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(u),30000);
-    processed=item.processed;
+    if(queueMode){
+     const bytes=new Uint8Array(await item.zip.arrayBuffer());
+     const staged=await stageForBatch('attachment_zip','binary',item.part,bytes);
+     if(staged.status!=='BATCH_ZIP_PART_STAGED')
+      return {status:staged.status,files,parts,processed,failures:failures+1};
+    }else{
+     const u=URL.createObjectURL(item.zip),a=make('a');
+     a.href=u;a.download='vision-private-approval-attachments-part-'+
+       String(item.part).padStart(4,'0')+'.zip';
+     document.body.append(a);a.click();a.remove();
+     setTimeout(()=>URL.revokeObjectURL(u),30000);
+    }
+    files+=item.files;parts++;processed=item.processed;
     failures+=item.manifest.skipped.length;
-    // Let Chrome register separate local downloads between ZIP parts.
-    await new Promise(resolve=>setTimeout(resolve,300));
    }else if(item.status==='STOPPED'){
     return {status:'STOPPED',files,parts,processed,failures};
    }else if(item.status==='NO_ATTACHMENT_FILES_VERIFIED'){
@@ -203,7 +233,7 @@ export function initApprovalPageEntry(){
    const done=collection.articles.filter(x=>x.status==='PRIVATE_REVIEW_ONLY').length;
    const skipped=collection.skipped.length;
    // Preserve all messages and order facts BEFORE downloading attachments.
-   const rawEvidence=queueMode?await persistOrderEvidence('raw'):
+   const rawEvidence=queueMode?await persistOrderEvidence('raw',{batchMode:true}):
     {status:'MANUAL_SAVE_ON_DEMAND'};
    const attachmentReport=stopRequested?
     {status:'STOPPED',files:0,parts:0,failures:0}:
@@ -224,21 +254,21 @@ export function initApprovalPageEntry(){
      '\nПриватный JSON содержит текст замечаний. Сохраните его отдельно.'+
      ' Chrome может запросить разрешение на несколько скачиваний.';
    privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=false;
-   const finalEvidence=queueMode?await persistOrderEvidence('final'):
+   const finalEvidence=queueMode?await persistOrderEvidence('final',{batchMode:true}):
     {status:'MANUAL_SAVE_ON_DEMAND'};
-   const textSaved=rawEvidence.status==='EVIDENCE_DOWNLOAD_COMPLETE'||
-    finalEvidence.status==='EVIDENCE_DOWNLOAD_COMPLETE';
+   const textSaved=rawEvidence.status==='BATCH_EVIDENCE_STAGED'||
+    finalEvidence.status==='BATCH_EVIDENCE_STAGED';
    if(queueMode){
-    stats.textContent+='\nПереписки и данные заказа: '+
-      (textSaved?'сохранены':'ОШИБКА СОХРАНЕНИЯ')+
-      ' · предварительный '+rawEvidence.status+
-      ' · итоговый '+finalEvidence.status;
+    stats.textContent+='\nДанные переданы в единый архив: '+
+      (textSaved?'да':'ОШИБКА ПЕРЕДАЧИ')+
+      ' · резервная '+rawEvidence.status+
+      ' · итоговая '+finalEvidence.status;
    }
    return {status:collection.status,eligible_articles:collection.selected_by_badge,
      verified_articles:done,files:attachmentReport.files,
      zip_parts:attachmentReport.parts,failures:attachmentReport.failures,
      private_text_saved:textSaved,raw_evidence_status:rawEvidence.status,
-     final_evidence_status:finalEvidence.status};
+     final_evidence_status:finalEvidence.status,batch_mode:queueMode};
   }catch{
    if(panel.isConnected)stats.textContent='MANUAL: ошибка автоматического обхода.';
    return {status:'MANUAL_AUTO_SCAN_FAILED'};
