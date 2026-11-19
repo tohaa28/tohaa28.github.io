@@ -302,14 +302,21 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
     return;
    }
    const after=message.after_id,expected=message.byte_length;
-   if(!Number.isSafeInteger(after)||after<0||
-     !Number.isSafeInteger(expected)||expected<100||expected>200_000_000){
+    const filename=message.expected_filename;
+    if(!Number.isSafeInteger(after)||after<0||
+      !Number.isSafeInteger(expected)||expected<100||expected>200_000_000||
+      typeof filename!=='string'||
+      !/^vision-ai-range-\d{7}-\d{7}-part-\d{5}-\d{7}-\d{7}\.zip$/.test(filename)){
     respond({status:'MANUAL_RANGE_AUDIT_ARGS'});return;
    }
-   const matching=items.filter(x=>x.id>after&&
-    x.mime==='application/zip'&&
-    (x.totalBytes===expected||x.fileSize===expected)&&
-    (x.url||'').startsWith('blob:http://psk.testgifts.local/'));
+   const matching=items.filter(x=>{
+     const basename=String(x.filename||'').split(/[\\/]/).at(-1);
+     const normalized=basename.replace(/ \(\d+\)(?=\.zip$)/,'');
+     return x.id>after&&x.mime==='application/zip'&&
+      (x.totalBytes===expected||x.fileSize===expected)&&
+      (x.url||'').startsWith('blob:http://psk.testgifts.local/')&&
+      normalized===filename;
+    });
    const status=matching.some(x=>x.state==='complete')?
     'RANGE_DOWNLOAD_COMPLETE':matching.some(x=>x.state==='interrupted')?
     'MANUAL_RANGE_DOWNLOAD_INTERRUPTED':'RANGE_DOWNLOAD_PENDING';
