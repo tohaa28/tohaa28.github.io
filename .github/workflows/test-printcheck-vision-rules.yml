@@ -105,6 +105,7 @@ jobs:
           node --check vision/orders/approval-inline-images.mjs
           node --test tests/printcheck-vision-approval-inline-images.test.mjs
           node --test tests/printcheck-vision-approval-batch-archive.test.mjs
+          node --test tests/printcheck-vision-approval-range.test.mjs
           node --check tests/printcheck-vision-discussions.test.mjs
           node --test tests/printcheck-vision-discussions.test.mjs
           node --check vision/rules/resolver.mjs
