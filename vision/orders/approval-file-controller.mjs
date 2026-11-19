@@ -29,7 +29,7 @@ export function makeApprovalFileListController({
  getBusy=()=>false,setBusy=()=>{},scanOrder=async()=>null,
  isClosed=()=>false,refreshControls=()=>{}
 }={}){
- const root=el('div');root.className='vlo-range vlo-file-list';
+ const root=el('div');root.className='vlo-file-list';
  root.style.cssText='width:100%;border:1px solid #69898b;border-radius:8px;'+
   'padding:10px;margin:10px 0;';
  root.append(el('strong','Список заказов из файла TXT'));
