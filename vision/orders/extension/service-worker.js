@@ -306,7 +306,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
     if(!Number.isSafeInteger(after)||after<0||
       !Number.isSafeInteger(expected)||expected<100||expected>200_000_000||
       typeof filename!=='string'||
-      !/^vision-ai-range-\d{7}-\d{7}-part-\d{5}-\d{7}-\d{7}\.zip$/.test(filename)){
+      !/^vision-ai-(?:range-\d{7}-\d{7}-part|list-part)-\d{5}-\d{7}-\d{7}\.zip$/.test(filename)){
     respond({status:'MANUAL_RANGE_AUDIT_ARGS'});return;
    }
    const matching=items.filter(x=>{
