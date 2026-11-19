@@ -281,7 +281,7 @@ def transform(evidences, archives, output):
                         asset_path = f"assets/{asset_hash}.{ext}"
                         target = out / asset_path
                         if target.exists():
-                            need(sha(target.read_bytes()) == asset_hash,
+                            need(file_digest(target) == asset_hash,
                                  "DUPLICATE_ASSET_MISMATCH")
                         else:
                             private_write(target, binary)
