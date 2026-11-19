@@ -7,12 +7,14 @@
 import {ApprovalBatchSession} from './approval-batch-archive.mjs';
 import {RANGE_MIN,RANGE_MAX,RANGE_ARCHIVE_SIZE,rangeConfig,
  rangeOrderUrl,probeTzForOrder,freshRangeCheckpoint,
- commitRangeArchive,commitOnlySkipped,isRecoverableRangeFailure} from './approval-range-scanner.mjs';
+ commitRangeArchive,commitOnlySkipped,isRecoverableRangeFailure,
+ changeRangeDelay} from './approval-range-scanner.mjs';
 
 const KEY='vision-ai-approved-range-checkpoint-v1';
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const exactConfig=(a,b)=>a?.start===b?.start&&a?.end===b?.end&&
- a?.delay_ms===b?.delay_ms&&a?.archive_size===b?.archive_size;
+// The immutable scan identity is only the range and archive size.
+const sameRange=(a,b)=>a?.start===b?.start&&a?.end===b?.end&&
+ a?.archive_size===b?.archive_size;
 const create=(tag,text)=>{
  const n=document.createElement(tag);
  if(text!==undefined)n.textContent=text;
@@ -35,6 +37,7 @@ export function makeApprovalRangeController({
  root.append(create('strong','Диапазон заказов · статус «ТЗ утверждено»'));
  root.append(create('p','Только отмеченный статус ID 59. Один GET на номер; '+
   'каждые 100 утверждённых заказов — отдельный ZIP. '+
+  'Задержка 1000–60000 мс изменяется во время работы. '+
   'Страница списка должна оставаться открытой.'));
  const fields=create('div');fields.style.cssText='display:flex;gap:5px;flex-wrap:wrap';
  const input=(caption,value)=>{
@@ -49,6 +52,7 @@ export function makeApprovalRangeController({
  startInput.min=endInput.min=String(RANGE_MIN);
  startInput.max=endInput.max=String(RANGE_MAX);
  rateInput.min='1000';rateInput.max='60000';rateInput.step='100';
+ rateInput.title='Задержка после обработки каждого номера: 1000–60000 мс. Изменения применяются без сброса диапазона.';
  root.append(fields);
  const controls=create('div');controls.className='vlo-actions';
  const progress=create('p','Диапазон не запущен.');
@@ -56,6 +60,7 @@ export function makeApprovalRangeController({
  let running=false,paused=false,stopped=false,activeOrder=null;
  let checkpoint=null,config=null,cursor=null,pending=[],pendingRegistry=[],failedPending=[];
  let batch=new ApprovalBatchSession(),testedThisSession=0,lastError=null;
+ let liveDelayMs=1200,delayDirty=false,checkpointWrite=Promise.resolve();
  const startBtn=button('Старт / продолжить',()=>{void start()});
  const pauseBtn=button('Пауза',()=>{paused=true;show('Пауза после текущего запроса')});
  const stopBtn=button('Стоп и архив',()=>{stopped=true;show('Остановка после текущего запроса')});
@@ -72,7 +77,7 @@ export function makeApprovalRangeController({
   const cp=checkpoint;
   progress.textContent=(cp?
    'Диапазон '+cp.config.start+'–'+cp.config.end+
-   ' · задержка '+cp.config.delay_ms+' мс':
+   ' · задержка (фактическая) '+liveDelayMs+' мс':
    'Контрольная точка не загружена')+
    '\nСледующий номер: '+(cursor??cp?.committed_next??'—')+
    ' · проверено сейчас: '+testedThisSession+
@@ -86,8 +91,52 @@ export function makeApprovalRangeController({
  }
  async function saveCheckpoint(next){
   if(!storage())throw Error('MANUAL_CHROME_STORAGE_UNAVAILABLE');
-  await storage().set({[KEY]:next});
-  checkpoint=next;
+  // Serialize writes and always persist the latest live delay, preventing
+  // a stale rate update from rolling back the committed cursor.
+  const snapshot=changeRangeDelay(next,liveDelayMs);
+  checkpointWrite=checkpointWrite.catch(()=>{}).then(()=>
+   storage().set({[KEY]:snapshot}));
+  await checkpointWrite;
+  checkpoint=snapshot;
+  delayDirty=false;
+ }
+ function validateDelayInput(){
+  const value=Number(rateInput.value);
+  return Number.isSafeInteger(value)&&value>=1000&&value<=60000?
+   value:null;
+ }
+ rateInput.addEventListener('input',()=>{
+  const nextDelay=validateDelayInput();
+  if(nextDelay===null){
+   show('Некорректная задержка: разрешено от 1000 до 60000 мс. '+
+    'Продолжаю с '+liveDelayMs+' мс.');
+   return;
+  }
+  if(nextDelay===liveDelayMs)return;
+  liveDelayMs=nextDelay;
+  delayDirty=true;
+  if(config)config={...config,delay_ms:liveDelayMs};
+  show('Новая задержка '+liveDelayMs+' мс применена к текущему обходу.');
+  // During a scan, persist at the next safe checkpoint or at pause/stop.
+  // Outside a scan, persist immediately without clearing scan progress.
+  if(checkpoint&&!running)void saveCheckpoint(
+   changeRangeDelay(checkpoint,liveDelayMs)).catch(()=>{
+    lastError='MANUAL_DELAY_SAVE_FAILED';show();
+   });
+ });
+ rateInput.addEventListener('change',()=>{
+  if(validateDelayInput()===null){
+   rateInput.value=String(liveDelayMs);
+   show('Восстановлено допустимое время задержки: '+liveDelayMs+' мс.');
+  }
+ });
+ async function waitDynamicDelay(){
+  const started=performance.now();
+  while(!paused&&!stopped&&!isClosed()){
+   const remaining=liveDelayMs-(performance.now()-started);
+   if(remaining<=0)break;
+   await delay(Math.min(remaining,100));
+  }
  }
  async function loadCheckpoint(nextConfig){
   if(!storage())throw Error('MANUAL_CHROME_STORAGE_UNAVAILABLE');
@@ -95,11 +144,15 @@ export function makeApprovalRangeController({
   const cp=data?.[KEY];
   if(cp){
    if(cp.schema!=='printcheck.vision.range-checkpoint.v1'||
-    !exactConfig(cp.config,nextConfig)||
+    !sameRange(cp.config,nextConfig)||
     !Number.isSafeInteger(cp.committed_next)||
     cp.committed_next<nextConfig.start||cp.committed_next>nextConfig.end+1||
     !Array.isArray(cp.registry))
     throw Error('MANUAL_CHECKPOINT_CONFIG_CONFLICT_RESET_REQUIRED');
+   if(cp.config.delay_ms!==nextConfig.delay_ms){
+    await saveCheckpoint(changeRangeDelay(cp,nextConfig.delay_ms));
+    return checkpoint;
+   }
    return cp;
   }
   const first=freshRangeCheckpoint(nextConfig);
@@ -206,11 +259,14 @@ export function makeApprovalRangeController({
    const selected=rangeConfig(startInput.value,endInput.value,rateInput.value);
    if(!storage()||typeof globalThis.__visionLocalTrustedTransport!=='function')
     throw Error('MANUAL_MV3_TRANSPORT_AND_STORAGE_REQUIRED');
-   if(config&&!exactConfig(config,selected))
+   if(config&&!sameRange(config,selected))
     throw Error('MANUAL_RANGE_INPUT_CHANGED_RESET_REQUIRED');
+   liveDelayMs=selected.delay_ms;
    if(!checkpoint){
     checkpoint=await loadCheckpoint(selected);
     cursor=checkpoint.committed_next;
+   }else if(checkpoint.config.delay_ms!==selected.delay_ms){
+    await saveCheckpoint(changeRangeDelay(checkpoint,selected.delay_ms));
    }
    config=selected;
    if(cursor>config.end){show('Весь диапазон проверен');return}
@@ -274,10 +330,13 @@ export function makeApprovalRangeController({
      await saveCheckpoint(commitOnlySkipped(checkpoint,cursor,failedPending));
      failedPending=[];
     }
+    if(delayDirty){
+     await saveCheckpoint(changeRangeDelay(checkpoint,liveDelayMs));
+    }
     show('Последняя проверка: '+order+' — '+
      (failure?'недоступна, внесена в реестр ошибок ('+failure.reason+')':
        inspected.status));
-    if(!paused&&!stopped)await delay(config.delay_ms);
+    if(!paused&&!stopped)await waitDynamicDelay();
    }
    if((stopped||cursor>config.end)&&pending.length)
     if(!await saveBatch(stopped?'stopped partial':'final partial'))paused=true;
@@ -285,6 +344,9 @@ export function makeApprovalRangeController({
     cursor>checkpoint.committed_next){
     await saveCheckpoint(commitOnlySkipped(checkpoint,cursor,failedPending));
     failedPending=[];
+   }
+   if(delayDirty){
+    await saveCheckpoint(changeRangeDelay(checkpoint,liveDelayMs));
    }
    message=lastError?'ОСТАНОВКА: общий сбой авторизации, лимит запросов или сохранения.':
     paused?'ПАУЗА. Можно продолжить; неполная партия остаётся в памяти.':
@@ -307,6 +369,7 @@ export function makeApprovalRangeController({
    startInput.value=String(cp.config.start);
    endInput.value=String(cp.config.end);
    rateInput.value=String(cp.config.delay_ms);
+   liveDelayMs=cp.config.delay_ms;
    progress.textContent='Сохранённая контрольная точка: '+
     cp.committed_next+', архивов '+cp.archives_completed+
     '. Нажмите «Старт / продолжить» для восстановления.';
