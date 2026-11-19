@@ -135,6 +135,37 @@ try{
  await page.waitForFunction(()=>
   (document.querySelector('.vlo-range p:last-child')?.textContent||'')
    .includes('Новая задержка 1500 мс'),null,{timeout:5000});
+ // Reload after the approved article and two skipped numbers, BEFORE its
+ // ZIP has been downloaded. The binary image, private discussion and cursor
+ // must survive because the website refreshes the list every five minutes.
+ await page.waitForFunction(()=>
+  (document.querySelector('.vlo-range p:last-child')?.textContent||'')
+   .includes('Последняя проверка: 3200002'),null,{timeout:15000});
+ const journalBefore=await page.evaluate(()=>new Promise((resolve,reject)=>{
+  const req=indexedDB.open('vision-ai-approved-range-pending-v1');
+  req.onerror=()=>reject(Error('IDB open failed'));
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction(['journal','orders'],'readonly');
+   const state=tx.objectStore('journal').get('active');
+   const orders=tx.objectStore('orders').getAll();
+   tx.oncomplete=()=>{
+    resolve({cursor:state.result?.cursor,mode:state.result?.mode,
+     pending:state.result?.pending_registry?.length,
+     orders:orders.result?.length,
+     binary_parts:orders.result?.[0]?.transfers?.length});
+    db.close();
+   };
+   tx.onerror=()=>reject(Error('IDB read failed'));
+  };
+ }));
+ assert.equal(journalBefore.cursor,3200003);
+ assert.equal(journalBefore.mode,'running');
+ assert.equal(journalBefore.pending,1);
+ assert.equal(journalBefore.orders,1);
+ assert.ok(journalBefore.binary_parts>=2,'final evidence and screenshot persist');
+ await page.reload();
+ await page.locator('.vlo-range').waitFor({timeout:15000});
+ // No user click: running journal automatically resumes after the reload.
  await page.waitForFunction(()=>{
   const t=document.querySelector('.vlo-range p:last-child')?.textContent||'';
   return t.includes('Диапазон полностью проверен.')||t.includes('Ошибка:');
@@ -202,7 +233,7 @@ try{
  assert.equal(edited.committed_next,3200005);
  assert.equal(edited.registry.length,1);
  assert.deepEqual(errors,[]);
- console.log('Vision M3.27 live 2300→1500→3100 ms pacing and persisted checkpoint PASS');
+ console.log('Vision M3.28 reload with unarchived binary, auto-resume and pacing PASS');
 }finally{
  if(browser)await browser.close();
  await new Promise(resolve=>proxy.close(resolve));
