@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import shutil
 import sys
+import tempfile
 import zipfile
 
 from vision_approval_archive_audit import AuditError, audit_archives, read_json
@@ -125,7 +126,7 @@ def jsonl(rows):
     return ("".join(json.dumps(x, ensure_ascii=False, sort_keys=True) + "\n"
                     for x in rows)).encode("utf-8")
 
-def transform(evidences, archives, output):
+def _transform_into_directory(evidences, archives, output):
     need(1 <= len(evidences) <= 500, "EVIDENCE_COUNT_INVALID")
     by_order, by_zip = {}, {}
     for path in evidences:
@@ -370,6 +371,24 @@ def transform(evidences, archives, output):
     return {"status": "PRIVATE_CANDIDATE_CORPUS_READY",
         "counts": manifest["counts"], "verified_attachment_links": verified,
         "missing_attachment_links": missing, "training_ready": False}
+
+
+def transform(evidences, archives, output):
+    """Publish only a complete private corpus; discard all partial staging on failure."""
+    out = Path(output)
+    need(not out.is_symlink() and not out.exists(), "OUTPUT_MUST_NOT_EXIST")
+    parent = out.parent.resolve()
+    need(parent.is_dir() and not parent.is_symlink(), "OUTPUT_PARENT_INVALID")
+    with tempfile.TemporaryDirectory(prefix=".vision-private-stage-", dir=parent) as stage:
+        stage_root = Path(stage)
+        if os.name == "posix":
+            os.chmod(stage_root, 0o700)
+        candidate = stage_root / "corpus"
+        result = _transform_into_directory(evidences, archives, candidate)
+        # Recheck before publishing; never replace a pre-existing corpus.
+        need(not out.is_symlink() and not out.exists(), "OUTPUT_MUST_NOT_EXIST")
+        os.rename(candidate, out)
+        return result
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
