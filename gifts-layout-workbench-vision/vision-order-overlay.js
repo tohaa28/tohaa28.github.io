@@ -3567,7 +3567,7 @@
   var RANGE_MIN = 32e5;
   var RANGE_MAX = 82e5;
   var RANGE_ARCHIVE_SIZE = 100;
-  var RANGE_MIN_DELAY_MS = 1e3;
+  var RANGE_MIN_DELAY_MS = 100;
   var MAX_BODY = 3e6;
   var digits2 = (s) => /^\d{5,12}$/.test(String(s || ""));
   var clear = (s) => String(s || "").replace(/\s+/g, " ").trim().toLocaleUpperCase("ru-RU");
@@ -3730,6 +3730,17 @@
       throw Error("MANUAL_RANGE_RATE_INVALID");
     return { start: n, end: m, delay_ms: ms, archive_size: RANGE_ARCHIVE_SIZE };
   }
+  function changeRangeDelay(checkpoint, delayMs) {
+    if (checkpoint?.schema !== "printcheck.vision.range-checkpoint.v1" || !checkpoint.config) throw Error("MANUAL_RANGE_CHECKPOINT_INVALID");
+    const newConfig = rangeConfig(
+      checkpoint.config.start,
+      checkpoint.config.end,
+      delayMs
+    );
+    if (newConfig.archive_size !== checkpoint.config.archive_size)
+      throw Error("MANUAL_RANGE_CHECKPOINT_ARCHIVE_SIZE");
+    return { ...checkpoint, config: newConfig, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
+  }
   function freshRangeCheckpoint(config) {
     return {
       schema: "printcheck.vision.range-checkpoint.v1",
@@ -3774,7 +3785,7 @@
   // vision/orders/approval-range-controller.mjs
   var KEY = "vision-ai-approved-range-checkpoint-v1";
   var delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  var exactConfig = (a, b) => a?.start === b?.start && a?.end === b?.end && a?.delay_ms === b?.delay_ms && a?.archive_size === b?.archive_size;
+  var sameRange = (a, b) => a?.start === b?.start && a?.end === b?.end && a?.archive_size === b?.archive_size;
   var create = (tag, text2) => {
     const n = document.createElement(tag);
     if (text2 !== void 0) n.textContent = text2;
@@ -3803,7 +3814,7 @@
     root.className = "vlo-range";
     root.style.cssText = "width:100%;border:1px solid #69898b;border-radius:8px;padding:10px;margin:10px 0;";
     root.append(create("strong", "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \xB7 \u0441\u0442\u0430\u0442\u0443\u0441 \xAB\u0422\u0417 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E\xBB"));
-    root.append(create("p", "\u0422\u043E\u043B\u044C\u043A\u043E \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043D\u044B\u0439 \u0441\u0442\u0430\u0442\u0443\u0441 ID 59. \u041E\u0434\u0438\u043D GET \u043D\u0430 \u043D\u043E\u043C\u0435\u0440; \u043A\u0430\u0436\u0434\u044B\u0435 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u044B\u0439 ZIP. \u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 \u0434\u043E\u043B\u0436\u043D\u0430 \u043E\u0441\u0442\u0430\u0432\u0430\u0442\u044C\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0439."));
+    root.append(create("p", "\u0422\u043E\u043B\u044C\u043A\u043E \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043D\u044B\u0439 \u0441\u0442\u0430\u0442\u0443\u0441 ID 59. \u041E\u0434\u0438\u043D GET \u043D\u0430 \u043D\u043E\u043C\u0435\u0440; \u043A\u0430\u0436\u0434\u044B\u0435 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u044B\u0439 ZIP. \u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430 100\u201360000 \u043C\u0441 \u0438\u0437\u043C\u0435\u043D\u044F\u0435\u0442\u0441\u044F \u0432\u043E \u0432\u0440\u0435\u043C\u044F \u0440\u0430\u0431\u043E\u0442\u044B. \u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 \u0434\u043E\u043B\u0436\u043D\u0430 \u043E\u0441\u0442\u0430\u0432\u0430\u0442\u044C\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0439."));
     const fields = create("div");
     fields.style.cssText = "display:flex;gap:5px;flex-wrap:wrap";
     const input = (caption, value) => {
@@ -3819,9 +3830,10 @@
     const startInput = input("\u041E\u0442", RANGE_MIN), endInput = input("\u0414\u043E", RANGE_MAX), rateInput = input("\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430, \u043C\u0441", 1200);
     startInput.min = endInput.min = String(RANGE_MIN);
     startInput.max = endInput.max = String(RANGE_MAX);
-    rateInput.min = "1000";
+    rateInput.min = "100";
     rateInput.max = "60000";
     rateInput.step = "100";
+    rateInput.title = "\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430 \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0438 \u043A\u0430\u0436\u0434\u043E\u0433\u043E \u043D\u043E\u043C\u0435\u0440\u0430: 100\u201360000 \u043C\u0441. \u0418\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u044F \u043F\u0440\u0438\u043C\u0435\u043D\u044F\u044E\u0442\u0441\u044F \u0431\u0435\u0437 \u0441\u0431\u0440\u043E\u0441\u0430 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430.";
     root.append(fields);
     const controls = create("div");
     controls.className = "vlo-actions";
@@ -3830,6 +3842,7 @@
     let running = false, paused = false, stopped = false, activeOrder = null;
     let checkpoint = null, config = null, cursor = null, pending = [], pendingRegistry = [], failedPending = [];
     let batch = new ApprovalBatchSession(), testedThisSession = 0, lastError = null;
+    let liveDelayMs = 1200, delayDirty = false, checkpointWrite = Promise.resolve();
     const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
       void start();
     });
@@ -3856,20 +3869,64 @@
     const storage = () => globalThis.chrome?.storage?.local;
     function show(message = "") {
       const cp = checkpoint;
-      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + cp.config.delay_ms + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 (\u0444\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F) " + liveDelayMs + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     async function saveCheckpoint(next) {
       if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
-      await storage().set({ [KEY]: next });
-      checkpoint = next;
+      const snapshot = changeRangeDelay(next, liveDelayMs);
+      checkpointWrite = checkpointWrite.catch(() => {
+      }).then(() => storage().set({ [KEY]: snapshot }));
+      await checkpointWrite;
+      checkpoint = snapshot;
+      delayDirty = liveDelayMs !== snapshot.config.delay_ms;
+    }
+    function validateDelayInput() {
+      const value = Number(rateInput.value);
+      return Number.isSafeInteger(value) && value >= 100 && value <= 6e4 ? value : null;
+    }
+    rateInput.addEventListener("input", () => {
+      const nextDelay = validateDelayInput();
+      if (nextDelay === null) {
+        show("\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u0430\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u043E \u043E\u0442 100 \u0434\u043E 60000 \u043C\u0441. \u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u044E \u0441 " + liveDelayMs + " \u043C\u0441.");
+        return;
+      }
+      if (nextDelay === liveDelayMs) return;
+      liveDelayMs = nextDelay;
+      delayDirty = true;
+      if (config) config = { ...config, delay_ms: liveDelayMs };
+      show("\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + liveDelayMs + " \u043C\u0441 \u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u0430 \u043A \u0442\u0435\u043A\u0443\u0449\u0435\u043C\u0443 \u043E\u0431\u0445\u043E\u0434\u0443.");
+      if (checkpoint && !running) void saveCheckpoint(
+        changeRangeDelay(checkpoint, liveDelayMs)
+      ).catch(() => {
+        lastError = "MANUAL_DELAY_SAVE_FAILED";
+        show();
+      });
+    });
+    rateInput.addEventListener("change", () => {
+      if (validateDelayInput() === null) {
+        rateInput.value = String(liveDelayMs);
+        show("\u0412\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u0434\u043E\u043F\u0443\u0441\u0442\u0438\u043C\u043E\u0435 \u0432\u0440\u0435\u043C\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0438: " + liveDelayMs + " \u043C\u0441.");
+      }
+    });
+    async function waitDynamicDelay() {
+      const started = performance.now();
+      while (!paused && !stopped && !isClosed()) {
+        const remaining = liveDelayMs - (performance.now() - started);
+        if (remaining <= 0) break;
+        await delay(Math.min(remaining, 100));
+      }
     }
     async function loadCheckpoint(nextConfig) {
       if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
       const data = await storage().get(KEY);
       const cp = data?.[KEY];
       if (cp) {
-        if (cp.schema !== "printcheck.vision.range-checkpoint.v1" || !exactConfig(cp.config, nextConfig) || !Number.isSafeInteger(cp.committed_next) || cp.committed_next < nextConfig.start || cp.committed_next > nextConfig.end + 1 || !Array.isArray(cp.registry))
+        if (cp.schema !== "printcheck.vision.range-checkpoint.v1" || !sameRange(cp.config, nextConfig) || !Number.isSafeInteger(cp.committed_next) || cp.committed_next < nextConfig.start || cp.committed_next > nextConfig.end + 1 || !Array.isArray(cp.registry))
           throw Error("MANUAL_CHECKPOINT_CONFIG_CONFLICT_RESET_REQUIRED");
+        if (cp.config.delay_ms !== nextConfig.delay_ms) {
+          await saveCheckpoint(changeRangeDelay(cp, nextConfig.delay_ms));
+          return checkpoint;
+        }
         return cp;
       }
       const first = freshRangeCheckpoint(nextConfig);
@@ -4005,11 +4062,14 @@
         const selected = rangeConfig(startInput.value, endInput.value, rateInput.value);
         if (!storage() || typeof globalThis.__visionLocalTrustedTransport !== "function")
           throw Error("MANUAL_MV3_TRANSPORT_AND_STORAGE_REQUIRED");
-        if (config && !exactConfig(config, selected))
+        if (config && !sameRange(config, selected))
           throw Error("MANUAL_RANGE_INPUT_CHANGED_RESET_REQUIRED");
+        liveDelayMs = selected.delay_ms;
         if (!checkpoint) {
           checkpoint = await loadCheckpoint(selected);
           cursor = checkpoint.committed_next;
+        } else if (checkpoint.config.delay_ms !== selected.delay_ms) {
+          await saveCheckpoint(changeRangeDelay(checkpoint, selected.delay_ms));
         }
         config = selected;
         if (cursor > config.end) {
@@ -4089,8 +4149,11 @@
             await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
             failedPending = [];
           }
+          if (delayDirty) {
+            await saveCheckpoint(changeRangeDelay(checkpoint, liveDelayMs));
+          }
           show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430: " + order + " \u2014 " + (failure2 ? "\u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430, \u0432\u043D\u0435\u0441\u0435\u043D\u0430 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043E\u0448\u0438\u0431\u043E\u043A (" + failure2.reason + ")" : inspected.status));
-          if (!paused && !stopped) await delay(config.delay_ms);
+          if (!paused && !stopped) await waitDynamicDelay();
         }
         if ((stopped || cursor > config.end) && pending.length) {
           if (!await saveBatch(stopped ? "stopped partial" : "final partial")) paused = true;
@@ -4098,6 +4161,9 @@
         if (!pending.length && (cursor > config.end || stopped || paused) && cursor > checkpoint.committed_next) {
           await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
           failedPending = [];
+        }
+        if (delayDirty) {
+          await saveCheckpoint(changeRangeDelay(checkpoint, liveDelayMs));
         }
         message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410: \u043E\u0431\u0449\u0438\u0439 \u0441\u0431\u043E\u0439 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438, \u043B\u0438\u043C\u0438\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432 \u0438\u043B\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F." : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C; \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E, \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432." : cursor > config.end ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E.";
       } catch (error) {
@@ -4120,6 +4186,7 @@
         startInput.value = String(cp.config.start);
         endInput.value = String(cp.config.end);
         rateInput.value = String(cp.config.delay_ms);
+        liveDelayMs = cp.config.delay_ms;
         progress.textContent = "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430: " + cp.committed_next + ", \u0430\u0440\u0445\u0438\u0432\u043E\u0432 " + cp.archives_completed + ". \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C\xBB \u0434\u043B\u044F \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F.";
       }
     }, () => {
