@@ -1925,3 +1925,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 после завершения. Синтетический Chromium PASS до релизного
 переименования; требуется подтверждение итоговой сборки v0.1.11.
 Экспериментальная ветка, PR #4 DRAFT, production не менялся.
+
+
+## 2026-11-19 — M3.46 / bounded private ZIP manifest
+
+**HEAD перед изменением:** 9a31761d48c659b84c43d7f0807a817bb9f6d4db; PR #4 OPEN/DRAFT, merged=false.
+**Код:** 77ea20b4df2fa8edabb12abced878a3c43d9ad5c — `tools/vision_approval_training_corpus.py`: отдельный лимит manifest.json 1 MiB по ZIP metadata и по фактически прочитанным байтам; чтение через ZipExtFile, отказ до принятия корпуса.
+**Синтетические тесты:** ba606e1d4791a88ed1aa31c87494f7a45bd5db45 — границы 1 MiB−1, ровно 1 MiB, 1 MiB+1, повреждённый JSON; превышение и повреждение должны оставлять выход отсутствующим.
+**CI до изменения:** GitHub Actions UI smoke/raster safety/rules dataset safety SUCCESS на 1ece012b2885c852c34e65b99fbaa9a3663993fa (runs 44532153534, 44532153445, 44532153427). Preview publish на точном SHA не подтверждён; CircleCI на точном SHA не подтверждён. **Новые тесты:** выполнение на новом SHA ожидает подтверждения CI; локальный git clone недоступен из-за DNS github.com.
+**Ограничения:** модуль аудита ZIP имеет собственный MAX_MANIFEST_BYTES=2_000_000; новый 1 MiB лимит применяется только к конструктору корпуса. Независимые реальные ROI/две экспертные оценки/аджудикация, конструктор, метод нанесения, масштаб, PDF ICC/spot и verified family holdout не подтверждены. training_ready=false; production_approved=false; неизвестное → MANUAL. Приватные клиентские данные не выгружались. Production не менялся, PR не сливался.
