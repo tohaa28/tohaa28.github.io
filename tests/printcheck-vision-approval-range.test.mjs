@@ -38,7 +38,8 @@ test('validated bounds, no uncontrolled catalog or second environment',()=>{
   'http://testgifts.local/private/order/3200000');
  assert.equal(rangeConfig(RANGE_MIN,RANGE_MAX,1200).archive_size,100);
  assert.throws(()=>rangeConfig(3199999,RANGE_MAX,1200),/RANGE_BOUNDS/);
- assert.throws(()=>rangeConfig(RANGE_MIN,RANGE_MAX,200),/RANGE_RATE/);
+ assert.equal(rangeConfig(RANGE_MIN,RANGE_MAX,200).delay_ms,200);
+ assert.throws(()=>rangeConfig(RANGE_MIN,RANGE_MAX,99),/RANGE_RATE/);
  assert.throws(()=>rangeOrderUrl(8200001),/RANGE_ORDER_INVALID/);
 });
 test('cursor is durable only after an archived batch, or skip-only interval',()=>{
@@ -136,6 +137,7 @@ test('live delay changes preserve existing checkpoint cursor, registry and archi
  assert.deepEqual(cp.config,rangeConfig(3200000,3200200,1200),
   'original checkpoint remains unchanged');
  assert.equal(changeRangeDelay(changed,1000).config.delay_ms,1000);
- assert.throws(()=>changeRangeDelay(cp,999),/MANUAL_RANGE_RATE_INVALID/);
+ assert.equal(changeRangeDelay(cp,999).config.delay_ms,999);
+ assert.throws(()=>changeRangeDelay(cp,99),/MANUAL_RANGE_RATE_INVALID/);
  assert.throws(()=>changeRangeDelay(cp,60001),/MANUAL_RANGE_RATE_INVALID/);
 });
