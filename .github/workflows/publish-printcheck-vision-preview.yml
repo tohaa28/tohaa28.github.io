@@ -19,6 +19,10 @@ on:
       - vision/orders/approval-auto-scan.mjs
       - vision/orders/approval-order-facts.mjs
       - vision/orders/approval-batch-archive.mjs
+      - vision/orders/approval-range-scanner.mjs
+      - vision/orders/approval-range-controller.mjs
+      - tests/printcheck-vision-approval-range.test.mjs
+      - tests/printcheck-vision-approval-range.browser.mjs
       - tests/printcheck-vision-approval-batch-archive.test.mjs
       - tools/vision_approval_batch_import.py
       - tests/test_vision_approval_batch_import.py
@@ -124,6 +128,9 @@ jobs:
           node --check vision/orders/discussion-probe.mjs
           node --check vision/orders/maket-approval-probe.mjs
           node --check vision/orders/approval-page-entry.mjs
+          node --check vision/orders/approval-range-scanner.mjs
+          node --check vision/orders/approval-range-controller.mjs
+          node --test tests/printcheck-vision-approval-range.test.mjs
           node --check vision/orders/approval-batch-archive.mjs
           node --test tests/printcheck-vision-approval-batch-archive.test.mjs
           node --check vision/orders/approval-order-facts.mjs
@@ -234,6 +241,7 @@ jobs:
           node tests/printcheck-vision-maket-approval.browser.mjs
           node tests/printcheck-vision-approval-auto.browser.mjs
           node tests/printcheck-vision-approval-queue.browser.mjs
+          node tests/printcheck-vision-approval-range.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
@@ -278,7 +286,7 @@ jobs:
           assert manifest['host_permissions']==[
               'http://psk.testgifts.local/*','http://testgifts.local/*',
               'http://files.testgifts.local/*']
-          assert manifest['permissions']==['tabs','downloads']
+          assert manifest['permissions']==['tabs','downloads','storage']
           assert manifest['background']['service_worker']=='service-worker.js'
           assert manifest['content_scripts'][0]['js']==[
               'content-transport.js','vision-order-overlay.js']
