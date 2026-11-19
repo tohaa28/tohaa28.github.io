@@ -1770,3 +1770,12 @@ PDF вне GitHub провести локальный audit-all и незави�
 Фактический тест авторизованного чтения с тестовых серверов — у
 пользователя в Chrome; синтетический CI не заменяет его.
 `training_ready=false`, ревизии PDF и экспертные ROI не подтверждены.
+
+
+### M3.42 — transactional private approval corpus publication (2026-11-19)
+
+- Before changes PR #4 OPEN, draft=true, merged=false, head a32e7c1289f3bcfd5322b252a26d0776264bac2f. Three GitHub Actions (UI smoke, raster safety, rules/dataset safety) SUCCESS and CircleCI vision-contract/raster SUCCESS on that SHA. Exact-SHA preview publish not confirmed.
+- Experimental code commit ff6eb9e61f89178f95887f07512dc493d886c65f: transform now builds under a private 0700 temporary sibling directory, renames the completed corpus to the requested destination only after success, and removes staging on exceptions. Refuses pre-existing output and invalid parent. No production modules touched.
+- Synthetic regression commit d01ebca03efdb1da222c6ead4f39cdbb9155d95b: late order-facts validation failure after a raw write must leave no published output/staging; successful build must leave only complete corpus. Tests are NOT independently executed yet; CI on d01ebca was absent at initial query. Verify and fix any failures before declaring PASS.
+- Remaining risk: ZIP attachment contents still held in byte_lookup; streaming extraction, SHA incremental dedup and Windows ACL verification pending. Preview publish, independent two-expert ROI adjudication x3, real authenticated 404/MV3 reference_state, verified constructor/print method/PDF revision/scale, ICC/spot, verified family holdout and real-world accuracy not confirmed. No real private source/identifiers/SHA/keys uploaded. Unknown => MANUAL; training_ready=false; production_approved=false.
+
