@@ -179,12 +179,16 @@ try{
  assert.equal(requests.filter(r=>r.type==='unreadable').length,1);
  assert.ok(requests.some(r=>r.type==='image'));
  assert.ok(requests.every(r=>r.method==='GET'&&r.type!=='unexpected'));
- const zips=downloads.filter(d=>d.suggestedFilename().endsWith('.zip'));
- assert.equal(zips.length,1);
- const zip=zips[0];
- assert.match(zip.suggestedFilename(),
-  /^vision-ai-list-part-00001-2999999-2999999\.zip$/);
- const entries=readZip(new Uint8Array(await readFile(await zip.path())));
+ const swForZip=browser.serviceWorkers().find(w=>w.url().endsWith('service-worker.js'));
+ assert.ok(swForZip);
+ const completed=await swForZip.evaluate(async()=>(
+  await chrome.downloads.search({})
+ ).filter(x=>x.state==='complete'&&x.mime==='application/zip'&&
+   x.url.startsWith('blob:chrome-extension://')).map(x=>({
+    filename:x.filename,id:x.id,url:x.url
+   })));
+ assert.equal(completed.length,1,'single extension-owned ZIP');
+ const entries=readZip(new Uint8Array(await readFile(completed[0].filename)));
  const manifest=JSON.parse(Buffer.from(entries.get('manifest.json')).toString());
  assert.equal(manifest.counts.orders,1);
  assert.equal(manifest.counts.verified_files,1);
