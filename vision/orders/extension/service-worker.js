@@ -293,7 +293,9 @@ async function runNativeApprovalOrder(url){
   return {status:safeStatus,eligible_articles:count(result.eligible_articles),
    verified_articles:count(result.verified_articles),files:count(result.files),
    zip_parts:count(result.zip_parts),failures:count(result.failures),
-   private_text_saved:result.private_text_saved===true};
+   private_text_saved:result.private_text_saved===true,
+   final_evidence_saved:result.final_evidence_status==='EVIDENCE_DOWNLOAD_COMPLETE',
+   raw_evidence_saved:result.raw_evidence_status==='EVIDENCE_DOWNLOAD_COMPLETE'};
  }catch{return {status:'MANUAL_BACKGROUND_ORDER_FAILED'}}
  finally{if(tab?.id)try{await chrome.tabs.remove(tab.id)}catch{}}
 }
