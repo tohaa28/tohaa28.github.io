@@ -51,6 +51,32 @@ class ReviewWorkflowTests(unittest.TestCase):
         params.update(changes)
         return review.propose(self.root, **params)
 
+    def test_original_streaming_sha_accepts_valid_and_rejects_tampering(self):
+        with lab.open_db(self.root) as db:
+            relative, expected = db.execute(
+                "SELECT relative_path, source_sha256 FROM samples WHERE id=?",
+                (self.sample_id,)).fetchone()
+        review.verify_original(self.root, relative, expected)
+        original = self.root / relative
+        original.write_bytes(b"modified synthetic artwork")
+        with self.assertRaisesRegex(ValueError, "SOURCE_SHA256_MISMATCH"):
+            review.verify_original(self.root, relative, expected)
+
+    def test_original_streaming_rejects_oversized_and_unsafe_path_without_leak(self):
+        with lab.open_db(self.root) as db:
+            relative, expected = db.execute(
+                "SELECT relative_path, source_sha256 FROM samples WHERE id=?",
+                (self.sample_id,)).fetchone()
+        original = self.root / relative
+        with original.open("wb") as stream:
+            stream.truncate(lab.MAX_FILE + 1)
+        with self.assertRaises(ValueError) as caught:
+            review.verify_original(self.root, relative, expected)
+        self.assertEqual(str(caught.exception), "SOURCE_PATH_UNSAFE")
+        self.assertNotIn(str(self.root), str(caught.exception))
+        with self.assertRaisesRegex(ValueError, "SOURCE_PATH_UNSAFE"):
+            review.verify_original(self.root, "../outside.svg", expected)
+
     def test_distinct_independent_votes_create_research_consensus_not_training(self):
         case = self.proposal()
         review.vote(self.root, case_id=case, expert="expert_a",
