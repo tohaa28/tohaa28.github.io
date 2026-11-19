@@ -218,10 +218,9 @@ jobs:
           node --check vision-order-approval.js
           test -s vision-order-overlay.js
           node --check vision-order-overlay.js
-          if ! npx playwright install --with-deps chromium; then
-            echo '::warning::Apt mirror unavailable; installing Chromium without apt dependency refresh'
-            npx playwright install chromium
-          fi
+          # GitHub Ubuntu runner already has the headless dependencies.
+          # Avoid apt mirror sync failures on ubuntu-26.04 (resolute-security).
+          npx playwright install chromium
           node tests/printcheck-vision-ui.browser.mjs
           node tests/printcheck-vision-studio.browser.mjs
           node tests/test_vision_roi_annotator.browser.mjs
