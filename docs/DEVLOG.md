@@ -1728,3 +1728,45 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Code commit `11b3171fd1563016a1a990a5de6060c1ceb091d4`: in experimental `tools/vision_approval_training_corpus.py`, `bounded_zip_entry` now optionally accumulates *actual* decompressed bytes in a shared budget during extraction, rejects over 512 MiB. Existing declared metadata preflight and per-entry 16 MiB limit remain.
 - Test commit `dc9394b01b5772d4bb0781d1622839de0fd3e7b7`: two synthetic unit regressions for second-entry cumulative overflow and exact boundary. New-head CI not yet confirmed at journal write; no unobserved PASS claimed.
 - This is incremental hardening, NOT a fully streaming/staged transactional extraction: `byte_lookup` still holds bytes, and failure after output creation can leave partial local output. Next: private staging, streaming digest/dedup, rollback and full threefold independent ROI/adjudication regression. No customer data, identifiers, original filenames, SHA or secrets uploaded. Unknown revision/constructor/method/scale/ICC/ROI => MANUAL; training_ready=false, production_approved=false. Preview publish, authenticated 404/MV3 reference_state, verified family holdout, Windows ACL and real-world accuracy remain unverified.
+
+
+## 2026-11-19 — M3.23 / Vision Check v0.1.7: переписки+заказы (только эксперимент)
+
+**Проблема в тестовой среде:** пользователю скачивались ZIP с вложениями,
+но JSON с перепиской не появлялся. Причина в конструкции: временная
+вкладка страницы заказа закрывалась по завершении очереди, а событие
+скачивания JSON инициировалось поздним кликом по временной ссылке в
+этой вкладке и не проверялось Chrome Downloads. Ранее признак
+`private_text_saved=true` выставлялся без подтверждения записи.
+
+**Изменения:** отдельный `approval-order-facts.mjs` собирает
+ограниченную структуру из `#j_cart_host` и `li[data-itemid]`:
+исходные номера заказа, внутренний ID, дата/клиент/статусы,
+оригинальные артикулы/названия, описание,
+количество/цены, параметры нанесения и технические требования.
+В `approval-auto-scan.mjs` сообщения получили `author_name` и
+`author_display_text` вместе с уже существовавшими `actor_ref`,
+`native_comment_id`, датой и последовательностью.
+Теперь `approval-page-entry.mjs` при обходе со списка инициирует
+резервную копию JSON ДО чтения файлов и финальный JSON ПОСЛЕ;
+`service-worker.js` строго проверяет источник сообщения/номер заказа,
+сохраняет локально через `chrome.downloads.download` и ожидает
+`state=complete`. Права только `tabs,downloads`,
+запрещены POST и произвольные домены. Значение `private_text_saved`
+выставляется только после подтверждения Chrome; UI показывает отдельно
+итоговые, резервные и отсутствующие JSON.
+
+Оффлайн-конвертер `tools/vision_approval_training_corpus.py`
+переносит сведения о клиенте/заказе, артикуле/нанесении, исходных
+именах авторов в отдельные JSONL с реляционными ссылками;
+`-raw.json` исключён из автоматического импорта при наличии
+финального JSON. Синтетические browser и Python/Node тесты
+расширены для проверки двух скачиваний, имен, данных заказа, сведений
+артикула, текущих проблем и SHA-256 вложений.
+
+**Безопасность и границы:** исходные тексты, имена и материалы остаются
+на локальном ПК; в GitHub добавлен исключительно код/синтетические
+фикстуры. PR #4 оставить DRAFT, в production/Макетную не переносить.
+Фактический тест авторизованного чтения с тестовых серверов — у
+пользователя в Chrome; синтетический CI не заменяет его.
+`training_ready=false`, ревизии PDF и экспертные ROI не подтверждены.
