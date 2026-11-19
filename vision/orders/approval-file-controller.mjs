@@ -220,6 +220,9 @@ export function makeApprovalFileListController({
    state=snapshot;
    const a=el('a');a.href=url;a.download=filename;
    document.body.append(a);a.click();a.remove();
+   // The ZIP blob and IndexedDB retain the old batch. Release its in-memory
+   // transfer buffers so the next batch can collect up to 180 MB safely.
+   for(const row of rows)batch.discardOrder(row.id);
    show('ZIP загружается ('+reason+'); проверка следующих номеров продолжается.');
    // Confirm asynchronously in subsequent scan iterations or on reload.
    return true;
@@ -432,7 +435,8 @@ export function makeApprovalFileListController({
    throw Error('MANUAL_ORDER_LIST_PENDING_INVALID');
   batch=new ApprovalBatchSession();
   for(const record of saved.pending){
-   batch.restoreOrder(record.id,record.transfers);
+   if(!state.download?.order_ids?.includes(record.id))
+    batch.restoreOrder(record.id,record.transfers);
    pending.push(record);
   }
   saveBtn.disabled=!pending.length;
