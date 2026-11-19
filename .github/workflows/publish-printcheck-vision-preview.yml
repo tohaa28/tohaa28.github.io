@@ -17,6 +17,8 @@ on:
       - vision/orders/maket-approval-probe.mjs
       - vision/orders/approval-page-entry.mjs
       - vision/orders/approval-auto-scan.mjs
+      - vision/orders/approval-order-facts.mjs
+      - tests/printcheck-vision-approval-order-facts.test.mjs
       - vision/orders/approval-attachments.mjs
       - vision/orders/approval-inline-images.mjs
       - tests/printcheck-vision-approval-attachments.test.mjs
@@ -118,6 +120,8 @@ jobs:
           node --check vision/orders/discussion-probe.mjs
           node --check vision/orders/maket-approval-probe.mjs
           node --check vision/orders/approval-page-entry.mjs
+          node --check vision/orders/approval-order-facts.mjs
+          node --test tests/printcheck-vision-approval-order-facts.test.mjs
           node --check vision/orders/approval-auto-scan.mjs
           node --check vision/orders/approval-attachments.mjs
           node --check tests/printcheck-vision-approval-attachments.test.mjs
@@ -265,7 +269,7 @@ jobs:
           assert manifest['host_permissions']==[
               'http://psk.testgifts.local/*','http://testgifts.local/*',
               'http://files.testgifts.local/*']
-          assert manifest['permissions']==['tabs']
+          assert manifest['permissions']==['tabs','downloads']
           assert manifest['background']['service_worker']=='service-worker.js'
           assert manifest['content_scripts'][0]['js']==[
               'content-transport.js','vision-order-overlay.js']
