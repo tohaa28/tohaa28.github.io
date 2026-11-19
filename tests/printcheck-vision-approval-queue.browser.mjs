@@ -97,7 +97,7 @@ try{
   .filter({hasText:'Собрать согласования из всех заказов'}).click();
  await page.waitForFunction(()=>
   document.querySelector('#vision-local-order-overlay .vlo-stats')
-    ?.textContent?.includes('Обход согласований завершён'),null,{timeout:45000});
+    ?.textContent?.includes('Единый ZIP:'),null,{timeout:45000});
  const debugDownload=page.waitForEvent('download');
  await page.locator('#vision-local-order-overlay button')
   .filter({hasText:'Отчёт согласований JSON'}).click();
@@ -110,7 +110,8 @@ try{
  assert.ok(requests.some(x=>x.type==='image'));
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
  const status=await page.locator('#vision-local-order-overlay .vlo-stats').innerText();
- assert.match(status,/историй: 1/);
+ assert.match(status,/Единый ZIP:/);
+ assert.match(status,/1 заказов с данными/);
  const archiveDownload=downloads.find(x=>
   /^vision-ai-approvals-[\w-]+\.zip$/.test(x.suggestedFilename()));
  assert.ok(archiveDownload,'one single batch archive download');
