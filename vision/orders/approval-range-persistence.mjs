@@ -104,3 +104,19 @@ export async function clearRangeJournal(factory){
   tx.objectStore(ORDERS).clear();
  },factory);
 }
+
+/** Commit one confirmed ZIP's evidence, preserving any following batch that
+ * was scanned while Chrome was still downloading the preceding archive.
+ * This is a single IDB transaction with the new range journal.
+ */
+export async function pruneRangeJournalOrders(state,orderNumbers,factory){
+ verifyJournal(state);
+ if(!Array.isArray(orderNumbers)||orderNumbers.length<1||
+  orderNumbers.length>100||orderNumbers.some(n=>!/^\d{7}$/.test(n)))
+  throw Error('MANUAL_RANGE_PRUNE_INVALID');
+ return transaction('readwrite',tx=>{
+  const store=tx.objectStore(ORDERS);
+  for(const id of orderNumbers)store.delete(id);
+  tx.objectStore(JOURNAL).put({...state,id:ACTIVE});
+ },factory);
+}
