@@ -3563,6 +3563,515 @@
     }
   };
 
+  // vision/orders/approval-range-scanner.mjs
+  var RANGE_MIN = 32e5;
+  var RANGE_MAX = 82e5;
+  var RANGE_ARCHIVE_SIZE = 100;
+  var RANGE_MIN_DELAY_MS = 1e3;
+  var MAX_BODY = 3e6;
+  var digits2 = (s) => /^\d{5,12}$/.test(String(s || ""));
+  var clear = (s) => String(s || "").replace(/\s+/g, " ").trim().toLocaleUpperCase("ru-RU");
+  var exactText = (s) => clear(s) === "\u0422\u0417 \u0423\u0422\u0412\u0415\u0420\u0416\u0414\u0415\u041D\u041E";
+  function rangeOrderUrl(number) {
+    if (!Number.isSafeInteger(number) || number < RANGE_MIN || number > RANGE_MAX)
+      throw Error("MANUAL_RANGE_ORDER_INVALID");
+    return "http://testgifts.local/private/order/" + number;
+  }
+  function readTzApprovedStatus(doc, orderNumber) {
+    if (!digits2(orderNumber) || !doc?.querySelector) return { status: "MANUAL_ORDER_ID_INVALID" };
+    const root = doc.querySelector("#j_cart_host[data-orderid]");
+    if (!root) return { status: "MANUAL_ORDER_CARD_MISSING" };
+    const shown = root.querySelector(".cart-header-number [data-clipboard-text]")?.getAttribute("data-clipboard-text")?.trim();
+    if (shown !== String(orderNumber)) return { status: "MANUAL_ORDER_NUMBER_MISMATCH" };
+    const fields = [...root.querySelectorAll(
+      '.cart-log label input.j_toggle_status[data-id="59"][type="checkbox"]'
+    )];
+    if (fields.length !== 1) return { status: "MANUAL_TZ_STATUS_MISSING_OR_AMBIGUOUS" };
+    const input = fields[0], label = input.closest("label");
+    const texts = [...label?.querySelectorAll(".btn--toggle .on,.btn--toggle .off") || []].map((node2) => node2.textContent);
+    if (texts.length !== 2 || !texts.every(exactText))
+      return { status: "MANUAL_TZ_LABEL_UNVERIFIED" };
+    return {
+      status: input.checked === true ? "TZ_APPROVED" : "TZ_NOT_APPROVED",
+      native_status_id: "59",
+      status_text: "\u0422\u0417 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E",
+      status_checked: input.checked === true,
+      native_order_id: root.getAttribute("data-orderid") || null
+    };
+  }
+  function safeDoc(html, DOMParserClass) {
+    if (typeof html !== "string" || html.length > MAX_BODY || typeof DOMParserClass !== "function")
+      return null;
+    const inert = inertOrderDiscussionHtml(html);
+    if (!inert) return null;
+    try {
+      return new DOMParserClass().parseFromString(inert, "text/html");
+    } catch {
+      return null;
+    }
+  }
+  async function boundedHtml(response) {
+    const type = response.headers?.get?.("content-type") || "";
+    if (!/html/i.test(type)) throw Error("MANUAL_NON_HTML_RESPONSE");
+    const announced = response.headers?.get?.("content-length");
+    if (announced && Number(announced) > MAX_BODY) throw Error("MANUAL_ORDER_BODY_TOO_LARGE");
+    if (!response.body?.getReader) {
+      const data = await response.text();
+      if (data.length > MAX_BODY) throw Error("MANUAL_ORDER_BODY_TOO_LARGE");
+      return data;
+    }
+    const reader = response.body.getReader(), parts = [];
+    let bytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > MAX_BODY) throw Error("MANUAL_ORDER_BODY_TOO_LARGE");
+        parts.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const out = new Uint8Array(bytes);
+    let offset = 0;
+    for (const part of parts) {
+      out.set(part, offset);
+      offset += part.length;
+    }
+    return new TextDecoder("utf-8", { fatal: true }).decode(out);
+  }
+  async function probeTzForOrder(orderNumber, {
+    fetcher = globalThis.__visionLocalTrustedTransport,
+    DOMParserClass = globalThis.DOMParser,
+    signal
+  } = {}) {
+    const url = rangeOrderUrl(orderNumber);
+    if (typeof fetcher !== "function") return { status: "MANUAL_MV3_TRANSPORT_REQUIRED" };
+    let response;
+    try {
+      response = await fetcher(url, {
+        method: "GET",
+        signal,
+        credentials: "include",
+        redirect: "error",
+        cache: "no-store"
+      });
+      if (response.status === 404 || response.status === 410)
+        return { status: "ORDER_NOT_FOUND", http_status: response.status };
+      if (response.status === 401 || response.status === 403)
+        return { status: "MANUAL_ORDER_AUTH_REQUIRED", http_status: response.status };
+      if (response.status !== 200)
+        return { status: "MANUAL_ORDER_HTTP_STATUS", http_status: response.status };
+      const html = await boundedHtml(response);
+      if (/<form[^>]+name=["']authform["']/i.test(html) || /Авторизация\s*-\s*Проект\s*111/i.test(html))
+        return { status: "MANUAL_ORDER_AUTH_REQUIRED" };
+      const doc = safeDoc(html, DOMParserClass);
+      if (!doc) return { status: "MANUAL_ORDER_HTML_INVALID" };
+      return readTzApprovedStatus(doc, String(orderNumber));
+    } catch (error) {
+      if (signal?.aborted) return { status: "MANUAL_PROBE_CANCELLED" };
+      const token = String(error?.message || "");
+      if (token === "MANUAL_ORDER_BODY_TOO_LARGE" || token === "MANUAL_NON_HTML_RESPONSE")
+        return { status: token };
+      return { status: "MANUAL_ORDER_FETCH_FAILED" };
+    }
+  }
+  function rangeConfig(start, end, delay2 = RANGE_MIN_DELAY_MS) {
+    const n = Number(start), m = Number(end), ms = Number(delay2);
+    if (!Number.isSafeInteger(n) || !Number.isSafeInteger(m) || n < RANGE_MIN || m > RANGE_MAX || n > m)
+      throw Error("MANUAL_RANGE_BOUNDS_INVALID");
+    if (!Number.isSafeInteger(ms) || ms < RANGE_MIN_DELAY_MS || ms > 6e4)
+      throw Error("MANUAL_RANGE_RATE_INVALID");
+    return { start: n, end: m, delay_ms: ms, archive_size: RANGE_ARCHIVE_SIZE };
+  }
+  function freshRangeCheckpoint(config) {
+    return {
+      schema: "printcheck.vision.range-checkpoint.v1",
+      config,
+      committed_next: config.start,
+      archives_completed: 0,
+      found_committed: 0,
+      checked_committed: 0,
+      registry: [],
+      created_at: (/* @__PURE__ */ new Date()).toISOString(),
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+  function commitOnlySkipped(checkpoint, next) {
+    if (checkpoint?.schema !== "printcheck.vision.range-checkpoint.v1" || !Number.isSafeInteger(next) || next < checkpoint.committed_next || next > checkpoint.config.end + 1) throw Error("MANUAL_SKIPPED_CHECKPOINT_INVALID");
+    return {
+      ...checkpoint,
+      committed_next: next,
+      checked_committed: checkpoint.checked_committed + (next - checkpoint.committed_next),
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+  function commitRangeArchive(checkpoint, record) {
+    if (checkpoint?.schema !== "printcheck.vision.range-checkpoint.v1" || !Number.isSafeInteger(record?.next) || record.next < checkpoint.committed_next || record.next > checkpoint.config.end + 1 || !Array.isArray(record?.found) || record.found.length > RANGE_ARCHIVE_SIZE)
+      throw Error("MANUAL_CHECKPOINT_COMMIT_INVALID");
+    const current = {
+      ...checkpoint,
+      committed_next: record.next,
+      archives_completed: checkpoint.archives_completed + 1,
+      found_committed: checkpoint.found_committed + record.found.length,
+      checked_committed: checkpoint.checked_committed + (record.next - checkpoint.committed_next),
+      registry: [...checkpoint.registry, ...record.found],
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    if (current.registry.length > 1e5) throw Error("MANUAL_REGISTRY_CAPACITY");
+    return current;
+  }
+
+  // vision/orders/approval-range-controller.mjs
+  var KEY = "vision-ai-approved-range-checkpoint-v1";
+  var delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  var exactConfig = (a, b) => a?.start === b?.start && a?.end === b?.end && a?.delay_ms === b?.delay_ms && a?.archive_size === b?.archive_size;
+  var create = (tag, text2) => {
+    const n = document.createElement(tag);
+    if (text2 !== void 0) n.textContent = text2;
+    return n;
+  };
+  var button = (label, fn) => {
+    const el = create("button", label);
+    el.type = "button";
+    el.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      fn();
+    });
+    return el;
+  };
+  function makeApprovalRangeController({
+    getBusy = () => false,
+    setBusy = () => {
+    },
+    scanOrder = async () => null,
+    isClosed = () => false,
+    refreshControls = () => {
+    }
+  } = {}) {
+    const root = create("div");
+    root.className = "vlo-range";
+    root.style.cssText = "width:100%;border:1px solid #69898b;border-radius:8px;padding:10px;margin:10px 0;";
+    root.append(create("strong", "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \xB7 \u0441\u0442\u0430\u0442\u0443\u0441 \xAB\u0422\u0417 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u043E\xBB"));
+    root.append(create("p", "\u0422\u043E\u043B\u044C\u043A\u043E \u043E\u0442\u043C\u0435\u0447\u0435\u043D\u043D\u044B\u0439 \u0441\u0442\u0430\u0442\u0443\u0441 ID 59. \u041E\u0434\u0438\u043D GET \u043D\u0430 \u043D\u043E\u043C\u0435\u0440; \u043A\u0430\u0436\u0434\u044B\u0435 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u044B\u0439 ZIP. \u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 \u0434\u043E\u043B\u0436\u043D\u0430 \u043E\u0441\u0442\u0430\u0432\u0430\u0442\u044C\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0439."));
+    const fields = create("div");
+    fields.style.cssText = "display:flex;gap:5px;flex-wrap:wrap";
+    const input = (caption, value) => {
+      const label = create("label", caption + " ");
+      const el = create("input");
+      el.type = "number";
+      el.value = String(value);
+      el.style.cssText = "max-width:105px;min-width:76px;color:#203436;background:#f2f8f3;padding:5px;border-radius:4px";
+      label.append(el);
+      fields.append(label);
+      return el;
+    };
+    const startInput = input("\u041E\u0442", RANGE_MIN), endInput = input("\u0414\u043E", RANGE_MAX), rateInput = input("\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430, \u043C\u0441", 1200);
+    startInput.min = endInput.min = String(RANGE_MIN);
+    startInput.max = endInput.max = String(RANGE_MAX);
+    rateInput.min = "1000";
+    rateInput.max = "60000";
+    rateInput.step = "100";
+    root.append(fields);
+    const controls = create("div");
+    controls.className = "vlo-actions";
+    const progress = create("p", "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D.");
+    progress.style.whiteSpace = "pre-line";
+    let running = false, paused = false, stopped = false, activeOrder = null;
+    let checkpoint = null, config = null, cursor = null, pending = [], pendingRegistry = [];
+    let batch = new ApprovalBatchSession(), testedThisSession = 0, lastError = null;
+    const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
+      void start();
+    });
+    const pauseBtn = button("\u041F\u0430\u0443\u0437\u0430", () => {
+      paused = true;
+      show("\u041F\u0430\u0443\u0437\u0430 \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430");
+    });
+    const stopBtn = button("\u0421\u0442\u043E\u043F \u0438 \u0430\u0440\u0445\u0438\u0432", () => {
+      stopped = true;
+      show("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430");
+    });
+    const saveBtn = button("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E \u043F\u0430\u0440\u0442\u0438\u044E ZIP", () => {
+      if (!running && pending.length) void saveBatch("partial manual");
+    });
+    const registryBtn = button("\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0440\u0435\u0435\u0441\u0442\u0440\u0430 JSON", () => {
+      void exportRegistry();
+    });
+    const resetBtn = button("\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0443\u044E \u0442\u043E\u0447\u043A\u0443", () => {
+      void reset();
+    });
+    controls.append(startBtn, pauseBtn, stopBtn, saveBtn, registryBtn, resetBtn);
+    root.append(controls, progress);
+    pauseBtn.disabled = stopBtn.disabled = saveBtn.disabled = true;
+    const storage = () => globalThis.chrome?.storage?.local;
+    function show(message = "") {
+      const cp = checkpoint;
+      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + cp.config.delay_ms + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+    }
+    async function saveCheckpoint(next) {
+      if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
+      await storage().set({ [KEY]: next });
+      checkpoint = next;
+    }
+    async function loadCheckpoint(nextConfig) {
+      if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
+      const data = await storage().get(KEY);
+      const cp = data?.[KEY];
+      if (cp) {
+        if (cp.schema !== "printcheck.vision.range-checkpoint.v1" || !exactConfig(cp.config, nextConfig) || !Number.isSafeInteger(cp.committed_next) || cp.committed_next < nextConfig.start || cp.committed_next > nextConfig.end + 1 || !Array.isArray(cp.registry))
+          throw Error("MANUAL_CHECKPOINT_CONFIG_CONFLICT_RESET_REQUIRED");
+        return cp;
+      }
+      const first = freshRangeCheckpoint(nextConfig);
+      await saveCheckpoint(first);
+      return first;
+    }
+    function registryObject() {
+      return {
+        schema: "printcheck.vision.approved-order-registry.v1",
+        config: checkpoint.config,
+        committed_next: checkpoint.committed_next,
+        cursor_now: cursor,
+        archives_completed: checkpoint.archives_completed,
+        checked_committed: checkpoint.checked_committed,
+        found_archived: checkpoint.registry,
+        found_pending: pendingRegistry,
+        training_ready: false
+      };
+    }
+    async function exportRegistry() {
+      try {
+        if (!checkpoint) {
+          const cp = (await storage()?.get(KEY))?.[KEY];
+          if (!cp) {
+            show("\u0420\u0435\u0435\u0441\u0442\u0440 \u0435\u0449\u0451 \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u043D");
+            return;
+          }
+          checkpoint = cp;
+        }
+        const url = URL.createObjectURL(new Blob(
+          [JSON.stringify(registryObject(), null, 2) + "\n"],
+          { type: "application/json" }
+        ));
+        const a = create("a");
+        a.href = url;
+        a.download = "vision-ai-approved-orders-register.json";
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1e4);
+      } catch {
+        show("MANUAL_REGISTRY_EXPORT_FAILED");
+      }
+    }
+    async function reset() {
+      if (running || getBusy()) return;
+      if (typeof globalThis.confirm === "function" && !globalThis.confirm(
+        "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0440\u0435\u0435\u0441\u0442\u0440 \u0438 \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0443\u044E \u0442\u043E\u0447\u043A\u0443 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430? \u0423\u0436\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043D\u044B\u0435 ZIP \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u043D\u0430 \u0434\u0438\u0441\u043A\u0435."
+      ))
+        return;
+      try {
+        await storage().remove(KEY);
+        config = checkpoint = null;
+        cursor = null;
+        pending = [];
+        pendingRegistry = [];
+        testedThisSession = 0;
+        batch = new ApprovalBatchSession();
+        lastError = null;
+        saveBtn.disabled = true;
+        show("\u0421\u0431\u0440\u043E\u0448\u0435\u043D\u043E");
+      } catch {
+        show("MANUAL_CHECKPOINT_RESET_FAILED");
+      }
+    }
+    function audit(phase, rest = {}) {
+      return chrome.runtime.sendMessage({ op: "vision-range-download-audit-v1", phase, ...rest });
+    }
+    async function waitForChrome(id, size) {
+      for (let i = 0; i < 240; i++) {
+        const data = await audit("check", { after_id: id, byte_length: size });
+        if (data?.status === "RANGE_DOWNLOAD_COMPLETE") return true;
+        if (data?.status !== "RANGE_DOWNLOAD_PENDING")
+          throw Error(data?.status || "MANUAL_RANGE_DOWNLOAD_FAILED");
+        await delay(500);
+      }
+      throw Error("MANUAL_RANGE_DOWNLOAD_TIMEOUT");
+    }
+    async function saveBatch(reason = "full") {
+      if (!pending.length) return true;
+      let result;
+      try {
+        result = batch.finalize(pending);
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_BATCH_ZIP_INVALID");
+        show("\u0410\u0440\u0445\u0438\u0432 \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D, \u0432\u0441\u0435 \u0442\u0435\u043A\u0443\u0449\u0438\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438.");
+        return false;
+      }
+      const part = checkpoint.archives_completed + 1;
+      const filename = "vision-ai-range-" + config.start + "-" + config.end + "-part-" + String(part).padStart(5, "0") + "-" + pending[0].order_number + "-" + pending.at(-1).order_number + ".zip";
+      const blobUrl = URL.createObjectURL(result.blob);
+      try {
+        const before = await audit("baseline");
+        if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
+          throw Error("MANUAL_RANGE_DOWNLOAD_BASELINE_FAILED");
+        const anchor = create("a");
+        anchor.href = blobUrl;
+        anchor.download = filename;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        show("\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 ZIP \u2116" + part + " (" + pending.length + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432). \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F Chrome...");
+        await waitForChrome(before.highest_id, result.blob.size);
+        const next = commitRangeArchive(checkpoint, { next: cursor, found: pendingRegistry });
+        await saveCheckpoint(next);
+        pending = [];
+        pendingRegistry = [];
+        batch = new ApprovalBatchSession();
+        saveBtn.disabled = true;
+        lastError = null;
+        show("ZIP \u2116" + part + " \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D: " + reason + ". \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u0430.");
+        return true;
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_RANGE_DOWNLOAD_UNCONFIRMED");
+        saveBtn.disabled = false;
+        show("\u0410\u0440\u0445\u0438\u0432 \u041D\u0415 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D; \u0441\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 Chrome, \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043A\u043D\u043E\u043F\u043A\u043E\u0439.");
+        return false;
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 125e3);
+      }
+    }
+    async function start() {
+      if (running || getBusy() || isClosed()) return;
+      try {
+        const selected = rangeConfig(startInput.value, endInput.value, rateInput.value);
+        if (!storage() || typeof globalThis.__visionLocalTrustedTransport !== "function")
+          throw Error("MANUAL_MV3_TRANSPORT_AND_STORAGE_REQUIRED");
+        if (config && !exactConfig(config, selected))
+          throw Error("MANUAL_RANGE_INPUT_CHANGED_RESET_REQUIRED");
+        if (!checkpoint) {
+          checkpoint = await loadCheckpoint(selected);
+          cursor = checkpoint.committed_next;
+        }
+        config = selected;
+        if (cursor > config.end) {
+          show("\u0412\u0435\u0441\u044C \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D");
+          return;
+        }
+        lastError = null;
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_RANGE_INPUT_INVALID");
+        show();
+        return;
+      }
+      running = true;
+      paused = false;
+      stopped = false;
+      setBusy(true);
+      startBtn.disabled = resetBtn.disabled = saveBtn.disabled = true;
+      pauseBtn.disabled = stopBtn.disabled = false;
+      let message = "";
+      try {
+        if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
+          if (!await saveBatch("recovered")) throw Error("MANUAL_BATCH_NOT_SAVED");
+        }
+        while (cursor <= config.end && !paused && !stopped && !isClosed()) {
+          const order = cursor;
+          const inspected = await probeTzForOrder(order);
+          if (inspected.status === "TZ_APPROVED") {
+            activeOrder = String(order);
+            let collected;
+            try {
+              collected = await scanOrder(rangeOrderUrl(order), true);
+            } catch {
+              collected = { status: "MANUAL_NATIVE_APPROVAL_QUEUE_FAILED" };
+            } finally {
+              activeOrder = null;
+            }
+            if (collected?.status !== "COMPLETE" || collected?.final_evidence_saved !== true) {
+              lastError = "MANUAL_APPROVAL_NOT_COMPLETE " + String(collected?.status || "UNKNOWN");
+              break;
+            }
+            const record = {
+              order_number: String(order),
+              status: "TZ_APPROVED",
+              native_status_id: "59",
+              eligible_articles: collected.eligible_articles || 0,
+              verified_articles: collected.verified_articles || 0,
+              files: collected.files || 0,
+              collected_at: (/* @__PURE__ */ new Date()).toISOString()
+            };
+            pending.push(record);
+            pendingRegistry.push(record);
+          } else if (inspected.status !== "TZ_NOT_APPROVED" && inspected.status !== "ORDER_NOT_FOUND") {
+            lastError = "MANUAL_ORDER_PROBE " + String(inspected.status);
+            break;
+          }
+          cursor++;
+          testedThisSession++;
+          if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
+            if (!await saveBatch("100 orders / byte threshold")) break;
+          } else if (!pending.length && cursor - checkpoint.committed_next >= 50) {
+            await saveCheckpoint(commitOnlySkipped(checkpoint, cursor));
+          }
+          show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430: " + order + " \u2014 " + inspected.status);
+          if (!paused && !stopped) await delay(config.delay_ms);
+        }
+        if ((stopped || cursor > config.end) && pending.length) {
+          if (!await saveBatch(stopped ? "stopped partial" : "final partial")) paused = true;
+        }
+        if (cursor > config.end && !pending.length)
+          await saveCheckpoint(commitOnlySkipped(checkpoint, cursor));
+        else if ((stopped || paused) && !pending.length && cursor > checkpoint.committed_next)
+          await saveCheckpoint(commitOnlySkipped(checkpoint, cursor));
+        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410 \u041F\u041E \u041E\u0428\u0418\u0411\u041A\u0415; \u043D\u0435\u0443\u0434\u0430\u0447\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440 \u0431\u0443\u0434\u0435\u0442 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D \u0432\u043D\u043E\u0432\u044C." : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C; \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E, \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432." : cursor > config.end ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E.";
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_RANGE_SCAN_FAILED");
+        message = "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u043F\u043E \u043E\u0448\u0438\u0431\u043A\u0435: " + lastError;
+      } finally {
+        activeOrder = null;
+        running = false;
+        setBusy(false);
+        startBtn.disabled = resetBtn.disabled = false;
+        pauseBtn.disabled = stopBtn.disabled = true;
+        saveBtn.disabled = !pending.length;
+        refreshControls();
+        show(message);
+      }
+    }
+    if (storage()) void storage().get(KEY).then((data) => {
+      const cp = data?.[KEY];
+      if (cp?.schema === "printcheck.vision.range-checkpoint.v1" && !running) {
+        startInput.value = String(cp.config.start);
+        endInput.value = String(cp.config.end);
+        rateInput.value = String(cp.config.delay_ms);
+        progress.textContent = "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430: " + cp.committed_next + ", \u0430\u0440\u0445\u0438\u0432\u043E\u0432 " + cp.archives_completed + ". \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C\xBB \u0434\u043B\u044F \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F.";
+      }
+    }, () => {
+    });
+    return {
+      element: root,
+      get activeOrder() {
+        return activeOrder;
+      },
+      get running() {
+        return running;
+      },
+      get pendingCount() {
+        return pending.length;
+      },
+      receive: (message, expectedOrder) => batch.receive(message, expectedOrder),
+      requestPause: () => {
+        paused = true;
+      },
+      requestStop: () => {
+        stopped = true;
+      }
+    };
+  }
+
   // vision/orders/overlay-entry.mjs
   var ID = "vision-local-order-overlay";
   var STYLE_ID = "vision-local-order-style";
@@ -3628,7 +4137,7 @@
     const panel = node("section");
     panel.id = ID;
     panel.setAttribute("aria-label", "Vision Check \u2014 \u0442\u0430\u0431\u043B\u0438\u0446\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432");
-    const title = node("h2", "Vision Check v0.1.8 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
+    const title = node("h2", "Vision Check v0.1.9 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
     const description = node(
       "p",
       "\u0422\u043E\u043B\u044C\u043A\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0441\u0435\u0442\u044C. \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u044C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043F\u043E\u0441\u043B\u0435 \u0432\u0430\u0448\u0435\u0433\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044F; \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u043D\u0430 GitHub."
@@ -3641,6 +4150,7 @@
     function close2() {
       closed = true;
       pauseRequested = true;
+      rangeController.requestStop();
       panel.remove();
       style.remove();
       document.querySelectorAll("[data-vision-order-cell]").forEach((n) => n.remove());
@@ -3771,6 +4281,31 @@
     });
     let approvalQueueIndex = 0, approvalQueueStop = false, approvalQueueUrls = null;
     let approvalBatch = new ApprovalBatchSession(), activeBatchOrder = null;
+    const rangeController = makeApprovalRangeController({
+      getBusy: () => busy,
+      setBusy: (value) => {
+        busy = value;
+        approvalQueueBtn.disabled = value;
+        refreshBtn.disabled = value;
+      },
+      scanOrder: async (url, require_tz_approved) => {
+        activeBatchOrder = new URL(url).pathname.split("/").at(-1);
+        try {
+          return await chrome.runtime.sendMessage({
+            op: "vision-approval-order-queue-v1",
+            order_url: url,
+            require_tz_approved: require_tz_approved === true
+          });
+        } finally {
+          activeBatchOrder = null;
+        }
+      },
+      isClosed: () => closed,
+      refreshControls: () => {
+        refreshBtn.disabled = busy;
+        updateBatchControls();
+      }
+    });
     let preparedBundle = null;
     function downloadApprovalBatch() {
       if (!preparedBundle) return;
@@ -3795,7 +4330,8 @@
           respond({ status: "MANUAL_BATCH_LIST_SENDER_DENIED" });
           return false;
         }
-        respond(approvalBatch.receive(message, activeBatchOrder));
+        const recipient = rangeController.activeOrder === activeBatchOrder ? rangeController : approvalBatch;
+        respond(recipient.receive(message, activeBatchOrder));
         return false;
       });
     }
@@ -3953,6 +4489,7 @@
       }
     }
     actions.append(
+      rangeController.element,
       approvalQueueBtn,
       approvalQueueStopBtn,
       approvalZipBtn,
