@@ -240,7 +240,14 @@ def _transform_into_directory(evidences, archives, output):
             raw_zip = f"raw/attachments-{order}-part-{part:04d}.zip"
             copy_verified_zip(src, out / raw_zip, zip_digests[str(src)])
             with zipfile.ZipFile(src, "r") as zip_file:
-                manifest = read_json(zip_file.read("manifest.json"))
+                manifest_info = zip_file.getinfo("manifest.json")
+                need(manifest_info.file_size <= 1024 * 1024,
+                     "ARCHIVE_MANIFEST_TOO_LARGE")
+                with zip_file.open(manifest_info) as manifest_stream:
+                    manifest_bytes = manifest_stream.read(1024 * 1024 + 1)
+                need(len(manifest_bytes) <= 1024 * 1024,
+                     "ARCHIVE_MANIFEST_TOO_LARGE")
+                manifest = read_json(manifest_bytes)
                 for entry in manifest["items"]:
                     key = (part, entry["entry"])
                     need(key not in byte_lookup, "ARCHIVE_DUPLICATE_BINARY")
