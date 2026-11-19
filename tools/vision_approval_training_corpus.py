@@ -98,6 +98,36 @@ def preflight_uncompressed_budget(parts):
                      "PRIVATE_UNCOMPRESSED_SIZE_LIMIT")
 
 
+def stage_zip_entry(zip_file, entry, destination, budget):
+    """Extract one bounded entry to a private file, hashing while streaming."""
+    info = zip_file.getinfo(entry)
+    need(info.file_size <= MAX_PRIVATE_ATTACHMENT_BYTES,
+         "PRIVATE_ATTACHMENT_SIZE_LIMIT")
+    total = 0
+    digest = hashlib.sha256()
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as target, zip_file.open(info, "r") as source:
+            while True:
+                block = source.read(min(COPY_CHUNK_BYTES,
+                                        MAX_PRIVATE_ATTACHMENT_BYTES - total + 1))
+                if not block:
+                    break
+                total += len(block)
+                need(total <= MAX_PRIVATE_ATTACHMENT_BYTES,
+                     "PRIVATE_ATTACHMENT_SIZE_LIMIT")
+                budget[0] += len(block)
+                need(budget[0] <= MAX_PRIVATE_UNCOMPRESSED_BYTES,
+                     "PRIVATE_UNCOMPRESSED_SIZE_LIMIT")
+                digest.update(block)
+                target.write(block)
+        need(total == info.file_size, "PRIVATE_ATTACHMENT_SIZE_MISMATCH")
+        return digest.hexdigest(), total
+    except BaseException:
+        destination.unlink(missing_ok=True)
+        raise
+
+
 def bounded_zip_entry(zip_file, entry, budget=None):
     """Bound actual decompression per entry and cumulatively, not just ZIP metadata."""
     info = zip_file.getinfo(entry)
@@ -168,6 +198,7 @@ def _transform_into_directory(evidences, archives, output):
         os.chmod(out, 0o700)
     (out / "raw").mkdir(mode=0o700)
     (out / "assets").mkdir(mode=0o700)
+    (out / "entry-stage").mkdir(mode=0o700)
     rows = {table: [] for table in TABLES}
     missing = verified = 0
     actual_uncompressed_budget = [0]
@@ -213,7 +244,10 @@ def _transform_into_directory(evidences, archives, output):
                 for entry in manifest["items"]:
                     key = (part, entry["entry"])
                     need(key not in byte_lookup, "ARCHIVE_DUPLICATE_BINARY")
-                    byte_lookup[key] = (bounded_zip_entry(zip_file, entry["entry"], actual_uncompressed_budget), raw_zip)
+                    staged = out / "entry-stage" / f"{order}-{part:04d}-{len(byte_lookup):06d}.bin"
+                    digest, byte_count = stage_zip_entry(
+                        zip_file, entry["entry"], staged, actual_uncompressed_budget)
+                    byte_lookup[key] = (staged, digest, byte_count, raw_zip)
         for i, article in enumerate(report["articles"], 1):
             need(isinstance(article, dict), "ARTICLE_INVALID")
             item = article.get("item_id")
@@ -309,10 +343,9 @@ def _transform_into_directory(evidences, archives, output):
                          "UNVERIFIED_ATTACHMENT_HAS_BYTES")
                     asset_path, asset_hash, source_zip = None, None, None
                     if bytes_entry:
-                        binary, source_zip = bytes_entry
-                        asset_hash = sha(binary)
+                        staged, asset_hash, byte_count, source_zip = bytes_entry
                         need(asset_hash == attachment.get("sha256") and
-                             len(binary) == attachment.get("byte_count"),
+                             byte_count == attachment.get("byte_count"),
                              "ATTACHMENT_HASH_OR_SIZE_MISMATCH")
                         ext = attachment["filename"].rsplit(".", 1)[-1].lower()
                         need(re.fullmatch(r"[a-z0-9]{2,5}", ext),
@@ -323,7 +356,8 @@ def _transform_into_directory(evidences, archives, output):
                             need(file_digest(target) == asset_hash,
                                  "DUPLICATE_ASSET_MISMATCH")
                         else:
-                            private_write(target, binary)
+                            # A private staged entry is moved, never loaded into RAM.
+                            os.rename(staged, target)
                         verified += 1
                     else:
                         missing += 1
@@ -356,6 +390,8 @@ def _transform_into_directory(evidences, archives, output):
             rows["review_queue"].append({"case_id": cid,
                 "pending_reasons": reasons, "expert_verified": False,
                 "training_ready": False})
+    # Any duplicate or unreferenced entries remain private until removed.
+    shutil.rmtree(out / "entry-stage")
     for table in TABLES:
         private_write(out / (table + ".jsonl"), jsonl(rows[table]))
     manifest = {"schema": DATASET, "scope": "LOCAL_PRIVATE_ONLY",
