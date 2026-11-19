@@ -4005,7 +4005,7 @@
     let batch = new ApprovalBatchSession(), testedThisSession = 0, lastError = null;
     let liveDelayMs = 1200, delayDirty = false, checkpointWrite = Promise.resolve();
     let journalWrite = Promise.resolve(), initialLoadPromise = Promise.resolve();
-    let inflightDownload = null;
+    let inflightDownload = null, restoreBlocked = false;
     const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
       void start();
     });
@@ -4194,11 +4194,16 @@
       ))
         return;
       try {
+        await journalWrite.catch(() => {
+        });
+        await checkpointWrite.catch(() => {
+        });
         await clearRangeJournal();
         await storage().remove(KEY);
         config = checkpoint = null;
         cursor = null;
         inflightDownload = null;
+        restoreBlocked = false;
         pending = [];
         pendingRegistry = [];
         failedPending = [];
@@ -4246,6 +4251,18 @@
       saveBtn.disabled = true;
       lastError = null;
       show("ZIP \u2116" + next.archives_completed + " \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D: " + reason + ". \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u0438 \u043D\u043E\u0432\u044B\u0439 \u0436\u0443\u0440\u043D\u0430\u043B \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u044B.");
+    }
+    async function waitForPreviousOrderTab() {
+      for (let i = 0; i < 210; i++) {
+        const status = await chrome.runtime.sendMessage({
+          op: "vision-approval-queue-status-v1"
+        }).catch(() => null);
+        if (status?.status !== "QUEUE_STATUS_OK")
+          throw Error("MANUAL_QUEUE_STATUS_UNAVAILABLE");
+        if (!status.busy) return;
+        await delay(1e3);
+      }
+      throw Error("MANUAL_OLD_ORDER_TAB_STILL_RUNNING");
     }
     async function recoverDownload() {
       if (!inflightDownload) return true;
@@ -4311,6 +4328,7 @@
       await initialLoadPromise;
       if (running || getBusy() || isClosed()) return;
       try {
+        if (restoreBlocked) throw Error("MANUAL_RANGE_JOURNAL_REPAIR_REQUIRED");
         const selected = rangeConfig(startInput.value, endInput.value, rateInput.value);
         if (!storage() || typeof globalThis.__visionLocalTrustedTransport !== "function")
           throw Error("MANUAL_MV3_TRANSPORT_AND_STORAGE_REQUIRED");
@@ -4356,6 +4374,7 @@
             activeOrder = String(order);
             let collected;
             try {
+              await waitForPreviousOrderTab();
               collected = await scanOrder(rangeOrderUrl(order), true);
             } catch {
               collected = { status: "MANUAL_NATIVE_APPROVAL_QUEUE_FAILED" };
@@ -4483,10 +4502,12 @@
           autoResume = autoResume && same3;
         }
       }
+      saveBtn.disabled = !pending.length;
       show(journal ? "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B." : "\u041D\u0430\u0439\u0434\u0435\u043D\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C\xBB.");
       return autoResume;
     })().catch((error) => {
       lastError = String(error?.message || "MANUAL_RANGE_RESTORE_FAILED");
+      restoreBlocked = true;
       show("\u041E\u0448\u0438\u0431\u043A\u0430 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F; \u0434\u0430\u043D\u043D\u044B\u0435 \u043D\u0435 \u0441\u0431\u0440\u043E\u0448\u0435\u043D\u044B.");
       return false;
     });
