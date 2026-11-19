@@ -1779,3 +1779,38 @@ PDF вне GitHub провести локальный audit-all и незави�
 - Synthetic regression commit d01ebca03efdb1da222c6ead4f39cdbb9155d95b: late order-facts validation failure after a raw write must leave no published output/staging; successful build must leave only complete corpus. Tests are NOT independently executed yet; CI on d01ebca was absent at initial query. Verify and fix any failures before declaring PASS.
 - Remaining risk: ZIP attachment contents still held in byte_lookup; streaming extraction, SHA incremental dedup and Windows ACL verification pending. Preview publish, independent two-expert ROI adjudication x3, real authenticated 404/MV3 reference_state, verified constructor/print method/PDF revision/scale, ICC/spot, verified family holdout and real-world accuracy not confirmed. No real private source/identifiers/SHA/keys uploaded. Unknown => MANUAL; training_ready=false; production_approved=false.
 
+
+
+## 2026-11-19 — M3.24: один архив Vision AI вместо множества скачиваний
+
+Причина: Chromium при обходе списка тестовых заказов мог блокировать
+многочисленные загрузки ZIP/JSON из быстро закрывающихся вкладок,
+даже если исходные сообщения и PDF/изображения были успешно прочитаны.
+
+Новый модуль \`vision/orders/approval-batch-archive.mjs\` содержит
+ограниченный подтверждаемый приём двоичных порций, SHA-256/CRC32,
+чтение только STORE ZIP-частей из прежнего сборщика и генератор
+единого ZIP c путями \`orders/<order>/order.json\`,
+\`articles.json\`, \`approvals.json\`, \`threads/<item_id>.json\`,
+\`files-index.json\`, \`assets/<sha256>.<ext>\`,
+\`source/evidence.json\`, \`source/backup.json\`, \`review.json\`.
+Корневой \`manifest.json\` сохраняет статус отсутствующих материалов,
+\`training_ready=false\`. Встроенный архив не меняет исходные байты.
+
+\`approval-page-entry.mjs\` больше не скачивает отдельные JSON/ZIP
+при запуске **из списка**: результаты по чанкам 48 КБ переходят
+\`chrome.runtime.sendMessage\` → строго ограниченный worker
+→ исходная вкладка списка, где формируется один ZIP.
+Ручное сохранение из открытой карточки заказа оставлено без изменений.
+\`overlay-entry.mjs\` удерживает данные сессии до скачивания,
+показывает статус и кнопку повторной попытки. Защитный предел 180 МБ;
+недостаточная ёмкость не превращается в ложную отметку успеха.
+
+Новый \`tools/vision_approval_batch_import.py\` преобразует один ZIP
+в существующий связанный обучающий корпус JSONL с повторной проверкой
+SHA-256, не обучая модель и не маскируя имена из тестовой среды.
+Добавлены JS-тесты формата, отказов и synthetic Chromium E2E, а также
+Python-тесты импорта/защиты от ZIP-slip. Весь код остается только в
+\`feature/printcheck-vision-copy-v01\`, PR #4 DRAFT, production
+«Макетная» не затронута. Результаты реального списка требуют
+проверки в авторизованном Chrome.
