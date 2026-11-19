@@ -1814,3 +1814,11 @@ Python-тесты импорта/защиты от ZIP-slip. Весь код о�
 \`feature/printcheck-vision-copy-v01\`, PR #4 DRAFT, production
 «Макетная» не затронута. Результаты реального списка требуют
 проверки в авторизованном Chrome.
+
+
+### M3.43 — streaming private ZIP entry staging (2026-11-19)
+
+- Pre-change PR #4 OPEN, draft=true, merged=false; starting HEAD a2c7dcb0829fac370f46dfaf3b66a6e729a2961b. On that SHA GitHub Actions UI smoke, raster safety, rules/dataset safety SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Exact-SHA preview publish not confirmed.
+- Experimental code commit 3e9ebe1db04f266d3fc35cf95f63d3a331d70ade: ZIP entries now decompress in bounded chunks to private 0600 entry-stage files; cumulative actual uncompressed budget and per-entry 16 MiB enforced while streaming; SHA-256 computed incrementally. The byte_lookup contains staged paths, hashes and sizes instead of in-memory binary data. Unique assets are moved into private assets; residual staging is removed before manifest creation. Existing transactional outer staging cleans failures.
+- Synthetic test commit 2d625cb092a36e29f7e10c84311f7bd4bb5a891a: valid corpus must succeed with the old in-memory bounded_zip_entry disabled and leave no entry-stage directory. CI results for this change must be checked; no unobserved PASS claimed.
+- Remaining limitations: ZIP manifest is still loaded in memory; source ZIP copies remain on disk; Windows ACL independent verification, triple independent ROI adjudication, authenticated 404/MV3 reference_state, exact PDF/ICC/spot and physical scale, verified family holdout and real-world accuracy not confirmed. No customer data, keys, original identifiers or real SHA published. Unknown => MANUAL, training_ready=false, production_approved=false.
