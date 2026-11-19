@@ -106,6 +106,32 @@ class TrainingCorpusTests(unittest.TestCase):
         return [json.loads(line) for line in (output/(name+".jsonl")).read_text(
             encoding="utf-8").splitlines()]
 
+    def test_manifest_size_boundaries_and_invalid_json_fail_closed(self):
+        # Synthetic whitespace pads valid JSON without adding customer data.
+        base = json.dumps(self.manifest).encode("utf-8")
+        limit = 1024 * 1024
+        for size in (limit - 1, limit, limit + 1):
+            with self.subTest(size=size):
+                payload = base + b" " * (size - len(base))
+                with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_STORED) as z:
+                    z.writestr("manifest.json", payload)
+                    z.writestr(ENTRY, PNG)
+                out = self.root / f"out-{size}"
+                if size > limit:
+                    with self.assertRaises((CorpusError, AuditError, ValueError)):
+                        transform([self.evidence], [self.archive], out)
+                    self.assertFalse(out.exists())
+                else:
+                    result = transform([self.evidence], [self.archive], out)
+                    self.assertFalse(result.get("training_ready", False))
+        with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_STORED) as z:
+            z.writestr("manifest.json", b"{invalid-json")
+            z.writestr(ENTRY, PNG)
+        out = self.root / "out-invalid"
+        with self.assertRaises((CorpusError, AuditError, ValueError, json.JSONDecodeError)):
+            transform([self.evidence], [self.archive], out)
+        self.assertFalse(out.exists())
+
     def test_preserves_complete_thread_to_binary_and_review_blockers(self):
         out = self.root / "out"
         result = transform([self.evidence], [self.archive], out)
