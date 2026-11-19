@@ -133,7 +133,21 @@ try{
    };
   });
  },null,{timeout:17000});
- console.log('OVERLAP_AT_SCAN',JSON.stringify({orders,requests:requests.slice(-15),progress:await page.locator('.vlo-file-list').innerText()}));
+ const debugState=await page.evaluate(async()=>{
+  const db=await new Promise((resolve,reject)=>{
+   const r=indexedDB.open('vision-ai-approved-file-list-v1');
+   r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+  });
+  return new Promise(resolve=>{
+   const tx=db.transaction(['state','failures'],'readonly');
+   const st=tx.objectStore('state').get('active');
+   const er=tx.objectStore('failures').getAll();
+   tx.oncomplete=()=>{resolve({state:st.result,failures:er.result});db.close()};
+  });
+ });
+ console.log('OVERLAP_AT_SCAN',JSON.stringify({orders,
+  requests:requests.slice(-15),progress:await page.locator('.vlo-file-list').innerText(),
+  debugState}));
  assert.ok(orders.includes(SOURCE+'/private/order/3000100'),
   'scan continues even while Chrome reports ZIP pending');
  await page.reload();
