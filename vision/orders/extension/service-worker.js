@@ -591,6 +591,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onConnect){
  chrome.runtime.onConnect.addListener(port=>{
   if(port.name!==SECURE_ZIP_PORT)return;
   if(!isApprovedListSender(port.sender)){
+   console.error('VISION_ZIP_SENDER_DENIED');
    try{port.disconnect()}catch{}return;
   }
   let begun=false,finished=false,filename=null,size=0,sequence=0;
@@ -657,6 +658,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onConnect){
     }
     throw Error('VISION_ZIP_TRANSFER_OPCODE_DENIED');
    }catch(error){
+    console.error('VISION_ZIP_TRANSFER',String(error?.message||'UNKNOWN').slice(0,110));
     emit(String(error?.message||'VISION_ZIP_TRANSFER_FAILED').slice(0,110));
     if(zipTransferOwner===port){
      zipTransferOwner=null;
