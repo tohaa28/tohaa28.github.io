@@ -270,7 +270,7 @@ export function makeApprovalFileListController({
   await saveBatch('вручную');
   if(state.download)await recoverDownload(true);
  }
- async function importFile(file){
+ async function importFile(file,remote=false,overwrite=false){
   await init;
   if(running||getBusy()){
    show('Нельзя заменить список во время другого сканирования.');
@@ -285,10 +285,12 @@ export function makeApprovalFileListController({
   catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_PARSE_FAILED');show();return;
   }
-  if(state&&(state.index>0||pending.length||state.found_committed>0)&&
-   typeof globalThis.confirm==='function'&&!globalThis.confirm(
+  if(state&&(state.index>0||pending.length||state.found_committed>0)){
+   if(remote&&!overwrite)return {status:'VISION_IMPORT_REPLACE_REQUIRES_CONFIRMATION'};
+   if(!remote&&typeof globalThis.confirm==='function'&&!globalThis.confirm(
     'Импорт нового файла заменит текущий список и его сохранённый прогресс. '+
     'Сначала экспортируйте реестр и сохраните ZIP. Продолжить?'))return;
+  }
   try{
    await writeChain.catch(()=>{});
    const next=await importOrderFileQueue(parsed.numbers,file.name,currentDelay);
@@ -299,6 +301,7 @@ export function makeApprovalFileListController({
    show('Файл принят. Уникальных номеров: '+parsed.numbers.length+
     '; удалено повторов: '+parsed.duplicates+
     '. Нажмите «Старт / продолжить по списку».');
+   return {status:'VISION_IMPORT_OK'};
   }catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_IMPORT_FAILED');show();
   }
@@ -503,8 +506,8 @@ export function makeApprovalFileListController({
     const raw=payload.text;
     const file={name:payload.filename.slice(0,120),
      size:new TextEncoder().encode(raw).length,text:async()=>raw};
-    await importFile(file);
-    return {status:!lastError?'VISION_IMPORT_OK':lastError};
+    const result=await importFile(file,true,payload.overwrite===true);
+    return result||{status:lastError||'VISION_IMPORT_NOT_COMPLETED'};
    }
    if(action==='delay'){
     if(!acceptedRate(payload.value))throw Error('MANUAL_ORDER_LIST_DELAY_INVALID');
