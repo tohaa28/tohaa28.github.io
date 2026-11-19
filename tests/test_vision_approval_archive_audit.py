@@ -118,6 +118,21 @@ class ArchiveAuditTests(unittest.TestCase):
         self.assertEqual(result["parts"], 2)
         self.assertEqual(result["attachments"], 2)
 
+    def test_evidence_bounded_read_and_private_error_code(self):
+        self.evidence.write_bytes(b"x" * (audit.MAX_EVIDENCE_BYTES + 1))
+        self.assertEqual(self.reason(evidence_path=self.evidence), "EVIDENCE_TOO_LARGE")
+        child = subprocess.run(
+            [sys.executable, str(TOOL), str(self.zip), "--evidence", str(self.evidence)],
+            capture_output=True, text=True)
+        self.assertEqual(child.returncode, 1)
+        self.assertEqual(json.loads(child.stdout)["reason"], "EVIDENCE_TOO_LARGE")
+        self.assertNotIn(str(self.evidence), child.stdout)
+        self.assertFalse(child.stderr)
+
+    def test_evidence_boundary_does_not_raise_size_error(self):
+        self.evidence.write_bytes(b" " * audit.MAX_EVIDENCE_BYTES)
+        self.assertEqual(self.reason(evidence_path=self.evidence), "BAD_JSON")
+
     def test_cli_redacts_private_paths_and_item_names(self):
         m = manifest()
         m["items"][0]["sha256"] = "bad"
