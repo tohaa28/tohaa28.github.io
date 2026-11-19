@@ -80,6 +80,22 @@ def copy_verified_zip(source, destination, expected_digest):
         raise
 
 MAX_PRIVATE_ATTACHMENT_BYTES = 16 * 1024 * 1024
+MAX_PRIVATE_UNCOMPRESSED_BYTES = 512 * 1024 * 1024
+
+def preflight_uncompressed_budget(parts):
+    """Fail before output creation if total declared ZIP expansion exceeds budget.
+
+    This metadata preflight complements (does not replace) bounded actual reads.
+    """
+    total = 0
+    for part in parts:
+        with zipfile.ZipFile(part, "r") as archive:
+            for info in archive.infolist():
+                need(info.file_size >= 0, "PRIVATE_UNCOMPRESSED_SIZE_LIMIT")
+                total += info.file_size
+                need(total <= MAX_PRIVATE_UNCOMPRESSED_BYTES,
+                     "PRIVATE_UNCOMPRESSED_SIZE_LIMIT")
+
 
 def bounded_zip_entry(zip_file, entry):
     """Bound decompressed attachment bytes, independent of ZIP compression ratio."""
@@ -138,6 +154,7 @@ def transform(evidences, archives, output):
     # duplicate JSON keys, source scope and attachment-to-message identity.
     for order, parts in by_zip.items():
         audit_archives(parts, by_order[order][0])
+    preflight_uncompressed_budget([part for parts in by_zip.values() for part in parts])
     out = Path(output)
     need(not out.is_symlink() and not out.exists(),
          "OUTPUT_MUST_NOT_EXIST")
