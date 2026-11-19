@@ -259,6 +259,9 @@ export function makeApprovalRangeController({
     if(!await saveBatch(stopped?'stopped partial':'final partial'))paused=true;
    if(cursor>config.end&&!pending.length)
     await saveCheckpoint(commitOnlySkipped(checkpoint,cursor));
+   else if((stopped||paused)&&!pending.length&&
+    cursor>checkpoint.committed_next)
+    await saveCheckpoint(commitOnlySkipped(checkpoint,cursor));
    message=lastError?'ОСТАНОВКА ПО ОШИБКЕ; неудачный номер будет проверен вновь.':
     paused?'ПАУЗА. Можно продолжить; неполная партия остаётся в памяти.':
     stopped?'Остановлено, сохранён частичный архив.':
@@ -277,6 +280,9 @@ export function makeApprovalRangeController({
  if(storage())void storage().get(KEY).then(data=>{
   const cp=data?.[KEY];
   if(cp?.schema==='printcheck.vision.range-checkpoint.v1'&&!running){
+   startInput.value=String(cp.config.start);
+   endInput.value=String(cp.config.end);
+   rateInput.value=String(cp.config.delay_ms);
    progress.textContent='Сохранённая контрольная точка: '+
     cp.committed_next+', архивов '+cp.archives_completed+
     '. Нажмите «Старт / продолжить» для восстановления.';
