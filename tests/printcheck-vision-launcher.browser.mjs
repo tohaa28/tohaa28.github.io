@@ -36,13 +36,18 @@ try{
  const first=await browser.newPage();
  await first.goto('http://testgifts.local/catalog');
  await first.locator('#vision-ai-scan-launcher').waitFor();
- const opened=browser.waitForEvent('page',{timeout:15000});
  await first.locator('#vision-ai-scan-launcher').click();
  await first.locator('#vision-ai-scanner-remote').waitFor({state:'visible'});
  assert.equal(first.url(),'http://testgifts.local/catalog',
   'remote panel must not navigate away from the user page');
- const scanner=await opened;
- await scanner.waitForURL('http://psk.testgifts.local/devorders',{timeout:15000});
+ let scanner=null;
+ for(let i=0;i<100;i++){
+  scanner=browser.pages().find(p=>
+   p.url().startsWith('http://psk.testgifts.local/devorders'));
+  if(scanner)break;
+  await first.waitForTimeout(150);
+ }
+ assert.ok(scanner,'canonical inactive scanner tab should be created');
  assert.equal(browser.pages().filter(p=>p.url().startsWith(
   'http://psk.testgifts.local/devorders')).length,1);
  const input=first.locator('#vision-ai-scanner-remote input[type=file]');
