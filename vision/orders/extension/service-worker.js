@@ -465,3 +465,80 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   return true;
  });
 }
+
+
+/**
+ * Vision 0.1.15: remote control from BOTH authorized portal origins.
+ * Create the canonical scan engine without stealing foreground focus. The
+ * user stays on their current order/catalog page while the original psk
+ * tab retains the 333k-element IndexedDB queue and native attachment relay.
+ */
+const REMOTE_SCAN='vision-remote-scanner-v1';
+let creatingScannerTab=null;
+function isAuthorizedPortalSender(sender){
+ try{
+  const u=new URL(sender?.url||'');
+  return sender?.frameId===0&&Number.isInteger(sender?.tab?.id)&&
+   u.protocol==='http:'&&u.port===''&&
+   ['psk.testgifts.local','testgifts.local'].includes(u.hostname);
+ }catch{return false}
+}
+async function ensureScannerTab(){
+ const tabs=await chrome.tabs.query({});
+ const found=tabs.find(t=>{
+  try{
+   const u=new URL(t.url||t.pendingUrl||'');
+   return u.origin===TABLE_ORIGIN&&/^\/devorders(?:\/|$)/.test(u.pathname);
+  }catch{return false}
+ });
+ if(found)return found;
+ if(!creatingScannerTab){
+  creatingScannerTab=chrome.tabs.create({
+   url:TABLE_ORIGIN+'/devorders',active:false
+  }).finally(()=>{creatingScannerTab=null});
+ }
+ return creatingScannerTab;
+}
+const remoteWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function forwardScannerAction(request){
+ const tab=await ensureScannerTab();
+ if(!Number.isInteger(tab?.id))return {status:'VISION_ENGINE_TAB_UNAVAILABLE'};
+ const message={op:'vision-engine-command-v1',mode:request.mode,
+  action:request.action,payload:request.payload||{}};
+ for(let attempt=0;attempt<40;attempt++){
+  try{
+   const result=await chrome.tabs.sendMessage(tab.id,message);
+   if(result&&typeof result==='object')return result;
+  }catch(error){
+   const reason=String(error?.message||error||'');
+   if(!/Receiving end does not exist|Could not establish connection/i.test(reason))
+    return {status:'VISION_ENGINE_RELAY_FAILED'};
+  }
+  await remoteWait(250);
+ }
+ return {status:'VISION_ENGINE_NOT_READY_OR_UNAUTHORIZED'};
+}
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==REMOTE_SCAN)return false;
+  if(!isAuthorizedPortalSender(sender)){
+   respond({status:'VISION_REMOTE_SOURCE_DENIED'});return false;
+  }
+  if(!['file','range'].includes(message.mode)||
+   !['status','start','pause','stop','import','delay','save','export'].includes(message.action)||
+   (message.mode==='range'&&message.action==='import')){
+   respond({status:'VISION_REMOTE_COMMAND_DENIED'});return false;
+  }
+  if(message.action==='import'){
+   if(typeof message.payload?.text!=='string'||
+    message.payload.text.length>20_000_000||
+    typeof message.payload.filename!=='string'||
+    message.payload.filename.length>120){
+    respond({status:'VISION_REMOTE_IMPORT_INVALID'});return false;
+   }
+  }
+  forwardScannerAction(message).then(respond,()=>respond({
+   status:'VISION_REMOTE_ENGINE_FAILED'}));
+  return true;
+ });
+}
