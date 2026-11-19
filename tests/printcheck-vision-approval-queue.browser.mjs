@@ -98,7 +98,8 @@ try{
  await page.waitForFunction(()=>
   document.querySelector('#vision-local-order-overlay .vlo-stats')
     ?.textContent?.includes('Единый ZIP:'),null,{timeout:45000});
- const debugDownload=page.waitForEvent('download');
+ const debugDownload=page.waitForEvent('download',{predicate:d=>
+  d.suggestedFilename()==='vision-anonymous-approval-queue.json'});
  await page.locator('#vision-local-order-overlay button')
   .filter({hasText:'Отчёт согласований JSON'}).click();
  const debugQueue=JSON.parse(await readFile(await (await debugDownload).path(),'utf8'));
@@ -155,7 +156,8 @@ try{
  assert.ok(JSON.stringify(report).includes('Синтетическая ошибка'));
  assert.equal(JSON.stringify(report).includes('files.testgifts.local'),false);
  assert.ok(!downloads.some(x=>x.suggestedFilename().includes('approval-attachments')));
- const anonEvent=page.waitForEvent('download');
+ const anonEvent=page.waitForEvent('download',{predicate:d=>
+  d.suggestedFilename()==='vision-anonymous-approval-queue.json'});
  await page.locator('#vision-local-order-overlay button')
   .filter({hasText:'Отчёт согласований JSON'}).click();
  const anon=JSON.parse(await readFile(await (await anonEvent).path(),'utf8'));
