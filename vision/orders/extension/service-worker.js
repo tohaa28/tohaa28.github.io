@@ -312,10 +312,16 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
    const matching=items.filter(x=>{
      const basename=String(x.filename||'').split(/[\\/]/).at(-1);
      const normalized=basename.replace(/ \(\d+\)(?=\.zip$)/,'');
+     // Headless Chromium stores completed downloads under opaque UUID
+     // filenames. Its suggested filename remains available to the
+     // initiating page, not through downloads.search(). In that case rely
+     // on the strictly newer download ID, byte-exact size, ZIP MIME and
+     // pinned first-party blob URL; never accept a different named file.
+     const opaqueName=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(basename);
      return x.id>after&&x.mime==='application/zip'&&
       (x.totalBytes===expected||x.fileSize===expected)&&
       (x.url||'').startsWith('blob:http://psk.testgifts.local/')&&
-      normalized===filename;
+      (normalized===filename||opaqueName);
     });
    const status=matching.some(x=>x.state==='complete')?
     'RANGE_DOWNLOAD_COMPLETE':matching.some(x=>x.state==='interrupted')?
