@@ -9,7 +9,7 @@ import {inertOrderDiscussionHtml} from './order-page-discovery.mjs';
 export const RANGE_MIN=3_200_000;
 export const RANGE_MAX=8_200_000;
 export const RANGE_ARCHIVE_SIZE=100;
-export const RANGE_MIN_DELAY_MS=1000;
+export const RANGE_MIN_DELAY_MS=100;
 const MAX_BODY=3_000_000;
 const digits=s=>/^\d{5,12}$/.test(String(s||''));
 const clear=s=>String(s||'').replace(/\s+/g,' ').trim().toLocaleUpperCase('ru-RU');
