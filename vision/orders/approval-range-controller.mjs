@@ -10,7 +10,7 @@ import {RANGE_MIN,RANGE_MAX,RANGE_ARCHIVE_SIZE,rangeConfig,
  commitRangeArchive,commitOnlySkipped,isRecoverableRangeFailure,
  changeRangeDelay} from './approval-range-scanner.mjs';
 import {RANGE_JOURNAL_SCHEMA,loadRangeJournal,saveRangeJournal,
- setRangeJournalMode,replaceRangeJournal,clearRangeJournal}
+ setRangeJournalMode,replaceRangeJournal,pruneRangeJournalOrders,clearRangeJournal}
  from './approval-range-persistence.mjs';
 
 const KEY='vision-ai-approved-range-checkpoint-v1';
@@ -66,6 +66,9 @@ export function makeApprovalRangeController({
  let liveDelayMs=1200,delayDirty=false,checkpointWrite=Promise.resolve();
  let journalWrite=Promise.resolve(),initialLoadPromise=Promise.resolve();
  let inflightDownload=null,restoreBlocked=false;
+ const activePending=()=>pending.filter(x=>!inflightDownload?.order_numbers?.includes(x.order_number));
+ const activeBytes=()=>[...batch.transfers.values()].reduce((n,t)=>
+  n+(inflightDownload?.order_numbers?.includes(t.order)?0:t.size||0),0);
  const startBtn=button('Старт / продолжить',()=>{void start()});
  const pauseBtn=button('Пауза',()=>{
   paused=true;void persistMode('paused');show('Пауза после текущего запроса');
@@ -130,7 +133,8 @@ export function makeApprovalRangeController({
    ' · проверено сейчас: '+testedThisSession+
    ' · архивов: '+(cp?.archives_completed||0)+
    ' · найдено и архивировано: '+(cp?.found_committed||0)+
-   ' · ещё не архивировано: '+pending.length+
+   ' · текущая партия: '+activePending().length+
+   ' · ZIP загружается: '+(inflightDownload?1:0)+
    ' · ошибок открытия (реестр): '+
     ((cp?.failed_orders?.length||0)+failedPending.length)+
    (lastError?'\nОшибка: '+lastError:'')+
@@ -265,17 +269,30 @@ export function makeApprovalRangeController({
   throw Error('MANUAL_RANGE_DOWNLOAD_TIMEOUT');
  }
  async function commitConfirmedArchive(reason){
-  const next=commitRangeArchive(checkpoint,{next:cursor,found:pendingRegistry,
-   failed_orders:failedPending});
-  // Chrome's completed download is the prerequisite for the durable cursor.
+  const info=inflightDownload;
+  if(!info)return;
+  const ids=info.order_numbers||pendingRegistry.map(x=>x.order_number);
+  const selected=new Set(ids);
+  const found=pendingRegistry.filter(x=>selected.has(x.order_number));
+  if(found.length!==ids.length||!found.length)
+   throw Error('MANUAL_RANGE_ARCHIVE_ROWS_LOST');
+  const next=commitRangeArchive(checkpoint,{
+   next:info.end_cursor??cursor,found,
+   failed_orders:info.failed_orders||failedPending
+  });
+  // Crash between checkpoint and IDB prune is reconciled on reload.
   await saveCheckpoint(next);
-  pending=[];pendingRegistry=[];failedPending=[];
-  batch=new ApprovalBatchSession();inflightDownload=null;
+  pendingRegistry=pendingRegistry.filter(x=>!selected.has(x.order_number));
+  pending=pendingRegistry.slice();
+  const oldFailures=info.failed_orders||failedPending;
+  failedPending=failedPending.filter(x=>!oldFailures.some(y=>y.order_number===x.order_number));
+  inflightDownload=null;
+  for(const id of ids)batch.discardOrder(id);
   await journalWrite.catch(()=>{});
-  await replaceRangeJournal(journalSnapshot(currentMode()));
-  saveBtn.disabled=true;lastError=null;
-  show('ZIP №'+next.archives_completed+' сохранён: '+reason+
-   '. Контрольная точка и новый журнал записаны.');
+  await pruneRangeJournalOrders(journalSnapshot(currentMode()),ids);
+  saveBtn.disabled=running||!pending.length;lastError=null;
+  show('ZIP №'+next.archives_completed+' подтверждён: '+reason+
+   '. Новая партия и курсор сохранены.');
  }
  async function waitForPreviousOrderTab(){
   // A site reload can interrupt collection while its old tab is still live.
@@ -289,62 +306,69 @@ export function makeApprovalRangeController({
   }
   throw Error('MANUAL_OLD_ORDER_TAB_STILL_RUNNING');
  }
- async function recoverDownload(){
+ async function recoverDownload(waitForCompletion=false){
   if(!inflightDownload)return true;
   const d=inflightDownload;
   try{
-   // The original browser download may still be in progress when the five-
-   // minute page reload finishes. Poll it, rather than interpreting
-   // RANGE_DOWNLOAD_PENDING as a failure requiring another user click.
-   await waitForChrome(d.after_id,d.byte_length,d.filename);
-   await commitConfirmedArchive('восстановлено после обновления страницы');
-   return true;
+   if(waitForCompletion){
+    await waitForChrome(d.after_id,d.byte_length,d.filename);
+    await commitConfirmedArchive('Chrome подтвердил завершение ZIP');
+    return true;
+   }
+   const res=await audit('check',{
+    after_id:d.after_id,byte_length:d.byte_length,expected_filename:d.filename
+   });
+   if(res?.status==='RANGE_DOWNLOAD_COMPLETE'){
+    await commitConfirmedArchive('Chrome подтвердил завершение ZIP');return true;
+   }
+   if(res?.status==='RANGE_DOWNLOAD_PENDING')return true;
+   throw Error(res?.status||'MANUAL_RANGE_DOWNLOAD_AUDIT_FAILED');
   }catch(error){
    lastError='MANUAL_ZIP_DOWNLOAD_UNCONFIRMED_'+
     String(error?.message||'UNKNOWN').slice(0,50);
-   show('Не удалось подтвердить ZIP после обновления. '+
-    'Проверки и вложения сохранены локально; повторно скачайте архив вручную.');
+   show('ZIP не подтверждён, исходные материалы сохранены.');
    return false;
   }
  }
  async function saveBatch(reason='full'){
-  if(!pending.length)return true;
-  if(inflightDownload)return recoverDownload();
+  let rows=activePending();
+  if(!rows.length)return true;
+  if(inflightDownload){
+   // Backpressure only when the following 100-order batch is ready.
+   if(!await recoverDownload(true))return false;
+   rows=activePending();
+   if(!rows.length)return true;
+  }
   let result;
-  try{result=batch.finalize(pending)}
+  try{result=batch.finalize(rows)}
   catch(error){
    lastError=String(error?.message||'MANUAL_BATCH_ZIP_INVALID');
-   show('Архив не сформирован, все текущие данные остаются в памяти.');
+   show('Архив не сформирован, данные остаются в IndexedDB.');
    return false;
   }
   const part=checkpoint.archives_completed+1;
   const filename='vision-ai-range-'+config.start+'-'+config.end+
    '-part-'+String(part).padStart(5,'0')+
-   '-'+pending[0].order_number+'-'+pending.at(-1).order_number+'.zip';
+   '-'+rows[0].order_number+'-'+rows.at(-1).order_number+'.zip';
   const blobUrl=URL.createObjectURL(result.blob);
   try{
    const before=await audit('baseline');
    if(before?.status!=='RANGE_DOWNLOAD_BASELINE')
     throw Error('MANUAL_RANGE_DOWNLOAD_BASELINE_FAILED');
    inflightDownload={after_id:before.highest_id,
-    byte_length:result.blob.size,filename};
-   await persistJournal('downloading');
-   const anchor=create('a');anchor.href=blobUrl;anchor.download=filename;
-   document.body.append(anchor);anchor.click();anchor.remove();
-   show('Скачивание ZIP №'+part+' ('+pending.length+
-    ' заказов). Ожидание подтверждения Chrome...');
-   await waitForChrome(before.highest_id,result.blob.size,filename);
-   await commitConfirmedArchive(reason);
+    byte_length:result.blob.size,filename,part,end_cursor:cursor,
+    order_numbers:rows.map(x=>x.order_number),
+    failed_orders:failedPending.slice()};
+   await persistJournal(currentMode());
+   const a=create('a');a.href=blobUrl;a.download=filename;
+   document.body.append(a);a.click();a.remove();
+   show('ZIP №'+part+' загружается; просмотр следующих номеров продолжается.');
    return true;
   }catch(error){
    lastError=String(error?.message||'MANUAL_RANGE_DOWNLOAD_UNCONFIRMED');
-   saveBtn.disabled=false;
-   show('Архив НЕ подтверждён; сканирование остановлено. '+
-    'Проверьте загрузки Chrome, повторите сохранение кнопкой.');
+   show('ZIP не подтверждён, исходные данные сохранены.');
    return false;
-  }finally{
-   setTimeout(()=>URL.revokeObjectURL(blobUrl),125000);
-  }
+  }finally{setTimeout(()=>URL.revokeObjectURL(blobUrl),125000)}
  }
  async function start(){
   if(running||getBusy()||isClosed())return;
@@ -376,10 +400,10 @@ export function makeApprovalRangeController({
   pauseBtn.disabled=stopBtn.disabled=false;
   let message='';
   try{
-   if(inflightDownload&&!await recoverDownload())
+   if(inflightDownload&&!await recoverDownload(false))
     throw Error('MANUAL_ZIP_DOWNLOAD_REQUIRES_REVIEW');
    await persistJournal('running');
-   if(pending.length>=RANGE_ARCHIVE_SIZE||batch.bytesReceived>120_000_000)
+   if(activePending().length>=RANGE_ARCHIVE_SIZE||activeBytes()>120_000_000)
     if(!await saveBatch('recovered'))throw Error('MANUAL_BATCH_NOT_SAVED');
    while(cursor<=config.end&&!paused&&!stopped&&!isClosed()){
     const order=cursor;
@@ -432,9 +456,11 @@ export function makeApprovalRangeController({
     if(!orderRecord)batch.discardOrder(String(order));
     cursor++;testedThisSession++;
     await persistJournal(currentMode(),orderRecord);
-    if(pending.length>=RANGE_ARCHIVE_SIZE||batch.bytesReceived>120_000_000){
+    if(inflightDownload&&!await recoverDownload(false))break;
+    if(activePending().length>=RANGE_ARCHIVE_SIZE||activeBytes()>120_000_000||
+      (inflightDownload&&batch.bytesReceived>160_000_000)){
      if(!await saveBatch('100 orders / byte threshold'))break;
-    }else if(!pending.length&&cursor-checkpoint.committed_next>=50){
+    }else if(!pending.length&&!inflightDownload&&cursor-checkpoint.committed_next>=50){
      await saveCheckpoint(commitOnlySkipped(checkpoint,cursor,failedPending));
      failedPending=[];
      await persistJournal(currentMode());
@@ -447,9 +473,12 @@ export function makeApprovalRangeController({
        inspected.status));
     if(!paused&&!stopped)await waitDynamicDelay();
    }
-   if((stopped||cursor>config.end)&&pending.length)
-    if(!await saveBatch(stopped?'stopped partial':'final partial'))paused=true;
-   if(!pending.length&&(cursor>config.end||stopped||paused)&&
+   if((stopped||cursor>config.end)&&pending.length){
+    if(activePending().length&&
+      !await saveBatch(stopped?'stopped partial':'final partial'))paused=true;
+    if(inflightDownload&&!await recoverDownload(true))paused=true;
+   }
+   if(!pending.length&&!inflightDownload&&(cursor>config.end||stopped||paused)&&
     cursor>checkpoint.committed_next){
     await saveCheckpoint(commitOnlySkipped(checkpoint,cursor,failedPending));
     failedPending=[];
@@ -467,7 +496,7 @@ export function makeApprovalRangeController({
    message='Остановка по ошибке: '+lastError;
   }finally{
    activeOrder=null;running=false;setBusy(false);
-   if(checkpoint&&!inflightDownload){
+   if(checkpoint){
     try{await persistJournal(stopped||cursor>config.end?'stopped':'paused')}
     catch(error){lastError=String(error?.message||'MANUAL_RANGE_FINAL_JOURNAL_FAILED')}
    }
