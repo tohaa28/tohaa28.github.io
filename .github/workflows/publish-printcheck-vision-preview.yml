@@ -25,6 +25,7 @@ on:
       - vision/orders/approval-file-list.mjs
       - vision/orders/approval-file-persistence.mjs
       - vision/orders/approval-file-controller.mjs
+      - vision/orders/extension-zip-transfer.mjs
       - tests/printcheck-vision-approval-file-list.test.mjs
       - tests/printcheck-vision-approval-file-list.browser.mjs
       - tests/printcheck-vision-approval-range.test.mjs
@@ -185,6 +186,8 @@ jobs:
           node --test tests/printcheck-vision-lan-failure-stages.test.mjs
           node --check vision/orders/extension/content-transport.js
           node --check vision/orders/extension/vision-order-launcher.js
+          node --check vision/orders/extension/zip-offscreen.js
+          node --check vision/orders/extension-zip-transfer.mjs
           node --check vision/orders/extension/service-worker.js
           node --test tests/printcheck-vision-extension-worker.test.mjs
           node --check tests/printcheck-vision-lan-extension.browser.mjs
@@ -303,7 +306,7 @@ jobs:
           assert manifest['host_permissions']==[
               'http://psk.testgifts.local/*','http://testgifts.local/*',
               'http://files.testgifts.local/*']
-          assert manifest['permissions']==['tabs','downloads','storage']
+          assert manifest['permissions']==['tabs','downloads','storage','offscreen']
           assert manifest['background']['service_worker']=='service-worker.js'
           assert manifest['content_scripts'][0]['js']==[
               'content-transport.js','vision-order-overlay.js']
@@ -315,7 +318,7 @@ jobs:
               'http://psk.testgifts.local/*','http://testgifts.local/*']
           assert manifest['content_scripts'][2]['js']==['vision-order-launcher.js']
           with zipfile.ZipFile('vision-local-lan-extension.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
-              for file in ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','README_RU.md']:
+              for file in ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js','README_RU.md']:
                   z.write(package/file,file)
               z.write('vision-order-overlay.js','vision-order-overlay.js')
               z.write('vision-order-approval.js','vision-order-approval.js')
@@ -323,7 +326,8 @@ jobs:
               assert z.testzip() is None
               assert set(z.namelist())=={
                   'manifest.json','service-worker.js','content-transport.js',
-                  'vision-order-launcher.js','README_RU.md','vision-order-overlay.js',
+                  'vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js',
+                  'README_RU.md','vision-order-overlay.js',
                   'vision-order-approval.js'}
           print('Local-only Chrome MV3 extension verified: exact LAN hosts, zero remote code')
           PY
