@@ -47,6 +47,10 @@ try{
   if(scanner)break;
   await first.waitForTimeout(150);
  }
+ if(!scanner)console.log('LAUNCHER_DEBUG',JSON.stringify({
+  pages:browser.pages().map(p=>p.url()),
+  status:await first.locator('#vision-ai-scanner-remote-status').innerText()
+ }));
  assert.ok(scanner,'canonical inactive scanner tab should be created');
  assert.equal(browser.pages().filter(p=>p.url().startsWith(
   'http://psk.testgifts.local/devorders')).length,1);
