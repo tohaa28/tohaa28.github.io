@@ -292,17 +292,20 @@ export function makeApprovalRangeController({
  async function recoverDownload(){
   if(!inflightDownload)return true;
   const d=inflightDownload;
-  const result=await audit('check',{after_id:d.after_id,
-   byte_length:d.byte_length,expected_filename:d.filename});
-  if(result?.status==='RANGE_DOWNLOAD_COMPLETE'){
+  try{
+   // The original browser download may still be in progress when the five-
+   // minute page reload finishes. Poll it, rather than interpreting
+   // RANGE_DOWNLOAD_PENDING as a failure requiring another user click.
+   await waitForChrome(d.after_id,d.byte_length,d.filename);
    await commitConfirmedArchive('восстановлено после обновления страницы');
    return true;
+  }catch(error){
+   lastError='MANUAL_ZIP_DOWNLOAD_UNCONFIRMED_'+
+    String(error?.message||'UNKNOWN').slice(0,50);
+   show('Не удалось подтвердить ZIP после обновления. '+
+    'Проверки и вложения сохранены локально; повторно скачайте архив вручную.');
+   return false;
   }
-  lastError='MANUAL_ZIP_DOWNLOAD_UNCONFIRMED_'+
-   String(result?.status||'UNKNOWN').slice(0,50);
-  show('Не удалось подтвердить ZIP после обновления. '+
-   'Проверки и вложения сохранены локально; повторно скачайте архив вручную.');
-  return false;
  }
  async function saveBatch(reason='full'){
   if(!pending.length)return true;
