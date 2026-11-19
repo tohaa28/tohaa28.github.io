@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readTzApprovedStatus,rangeConfig,freshRangeCheckpoint,
  commitRangeArchive,commitOnlySkipped,probeTzForOrder,rangeOrderUrl,
- isRecoverableRangeFailure,
+ isRecoverableRangeFailure,changeRangeDelay,
  RANGE_MIN,RANGE_MAX} from '../vision/orders/approval-range-scanner.mjs';
 
 function makeDocument({id='3200000',checked=false,label='ТЗ утверждено',
@@ -118,4 +118,24 @@ test('inaccessible order pages remain retryable without blocking next ID',async(
  const replay=commitOnlySkipped(same,3200007,
   [{order_number:'3200003',reason:'MANUAL_ORDER_FETCH_FAILED',phase:'order_card'}]);
  assert.equal(replay.failed_orders.length,2,'retry numbers deduplicate');
+});
+
+test('live delay changes preserve existing checkpoint cursor, registry and archive history',()=>{
+ const initial=freshRangeCheckpoint(rangeConfig(3200000,3200200,1200));
+ const cp=commitRangeArchive(initial,{
+  next:3200015,found:[{order_number:'3200001',status:'TZ_APPROVED'}],
+  failed_orders:[{order_number:'3200002',reason:'MANUAL_ORDER_HTTP_STATUS',phase:'order_card'}]
+ });
+ const changed=changeRangeDelay(cp,3800);
+ assert.equal(changed.config.delay_ms,3800);
+ assert.equal(changed.committed_next,3200015);
+ assert.equal(changed.archives_completed,1);
+ assert.equal(changed.found_committed,1);
+ assert.deepEqual(changed.registry,cp.registry);
+ assert.deepEqual(changed.failed_orders,cp.failed_orders);
+ assert.deepEqual(cp.config,rangeConfig(3200000,3200200,1200),
+  'original checkpoint remains unchanged');
+ assert.equal(changeRangeDelay(changed,1000).config.delay_ms,1000);
+ assert.throws(()=>changeRangeDelay(cp,999),/MANUAL_RANGE_RATE_INVALID/);
+ assert.throws(()=>changeRangeDelay(cp,60001),/MANUAL_RANGE_RATE_INVALID/);
 });
