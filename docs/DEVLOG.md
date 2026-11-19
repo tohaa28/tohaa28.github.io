@@ -1967,3 +1967,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Synthetic tests:** d179165eba8764c486e87c7b484ca94ba599ea09 — `tests/test_vision_roi_review.py` checks valid SHA, modified source, oversized source, unsafe traversal and path-free errors. Execution of newly added tests, threefold ROI/adjudication regressions and CI on the changed HEAD remain **unverified**; local git clone blocked by DNS resolution of github.com. Do not claim PASS without actual execution.
 
 **Outstanding:** exact-HEAD four-contour CI including preview publish; three independent regression rounds; real anonymous Chromium 404/MV3 reference_state; PDF/ICC/spot, trusted mm scale and print method, two verified independent ROI voices and adjudication, verified family holdout. No real accuracy claim, automatic training, public customer data or production changes. `training_ready=false`, `production_approved=false`; unknown => MANUAL. PR #4 remains draft and must not be merged.
+
+
+## 2026-11-20 — M3.55 / exact-HEAD CI verification (no model promotion)
+
+**Verified pre-log HEAD:** 6d1297e4616572bc1cd39cf3a46cf3574ae8d3fb; comparison against experimental branch identical (ahead=0, behind=0). PR #4 machine state open, draft=true, merged=false; base gifts-layout-workbench-mockups-source.
+
+**Exact-HEAD GitHub Actions:** UI smoke run 44618128983 SUCCESS; independent raster safety run 44618129040 SUCCESS; rules/dataset safety run 44618129049 SUCCESS. Rule-contract job includes successful steps named 'Cyclic offline ROI, PDF, expert-consensus and privacy safety checks', 'Verify private large-file corpus staging and grouped review safety', and 'Verify private expert-region metrics and grouped holdouts'. UI job includes successful 'Smoke test blinded two-reviewer local workflow'. Step success does not independently prove three full rounds for every requested suite or real-world ROI validation.
+
+**CircleCI commit statuses:** vision-contract SUCCESS (workflow 53f0033e-2f58-4c21-b28c-7e3d8337ec9a); vision-raster SUCCESS (workflow 464f799f-3cf1-4c53-b42e-1e7c392e6ef6). Preview publish on this exact SHA NOT VERIFIED. Browser 404/MV3 anonymous real reference_state NOT OBTAINED. Local independent triple run NOT PERFORMED: github.com DNS resolution unavailable in runner. No new source-code changes or real customer inputs in this checkpoint.
+
+**Gates remain closed:** training_ready=false; production_approved=false; no verified real two-voice ROI/adjudication, constructor/process/physical scale, ICC/spot provenance or verified family holdout. Unknown geometry/color/scale => MANUAL. No private files, SHA, names or keys uploaded; no production change or PR merge.
