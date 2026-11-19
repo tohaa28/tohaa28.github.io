@@ -218,7 +218,10 @@ jobs:
           node --check vision-order-approval.js
           test -s vision-order-overlay.js
           node --check vision-order-overlay.js
-          npx playwright install --with-deps chromium
+          if ! npx playwright install --with-deps chromium; then
+            echo '::warning::Apt mirror unavailable; installing Chromium without apt dependency refresh'
+            npx playwright install chromium
+          fi
           node tests/printcheck-vision-ui.browser.mjs
           node tests/printcheck-vision-studio.browser.mjs
           node tests/test_vision_roi_annotator.browser.mjs
