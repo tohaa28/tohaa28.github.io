@@ -69,7 +69,7 @@ export async function loadOrderFileState(factory){
     state.result.index>state.result.total)
     throw Error('MANUAL_ORDER_LIST_QUEUE_CORRUPTED');
    const orders=pending.result||[];
-   if(orders.length>100||orders.some(x=>!/^[0-9]{7}$/.test(x.id)||
+   if(orders.length>200||orders.some(x=>!/^[0-9]{7}$/.test(x.id)||
     !Array.isArray(x.transfers)))
     throw Error('MANUAL_ORDER_LIST_PENDING_CORRUPTED');
    return {queue:queue.result.numbers,state:state.result,pending:orders};
@@ -120,12 +120,14 @@ export async function commitOrderFileArchive(state,records,factory){
  if(state.download!==null)throw Error('MANUAL_ORDER_LIST_DOWNLOAD_NOT_CLEARED');
  return transact([STORE_STATE,STORE_PENDING,STORE_SUCCESS],'readwrite',tx=>{
   tx.objectStore(STORE_STATE).put({...state,updated_at:new Date().toISOString()});
-  tx.objectStore(STORE_PENDING).clear();
-  for(const row of records)tx.objectStore(STORE_SUCCESS).put({
+  for(const row of records){
+   tx.objectStore(STORE_PENDING).delete(row.id);
+   tx.objectStore(STORE_SUCCESS).put({
    id:row.id,order_number:row.id,collection_status:'TZ_APPROVED',
    collected_at:row.collected_at,files:row.files,
    eligible_articles:row.eligible_articles,verified_articles:row.verified_articles
-  });
+   });
+  }
  },factory);
 }
 export async function exportOrderFileRegistry(factory){
