@@ -201,6 +201,26 @@ class TrainingCorpusTests(unittest.TestCase):
                 with self.assertRaisesRegex(CorpusError, "PRIVATE_ATTACHMENT_SIZE_LIMIT"):
                     corpus.bounded_zip_entry(z, ENTRY)
 
+    def test_actual_decompression_budget_rejects_second_entry(self):
+        """Runtime counter catches cumulative reads even if metadata preflight passed."""
+        duplicate = "attachments/0001/0002.png"
+        with zipfile.ZipFile(self.archive, "a") as z:
+            z.writestr(duplicate, PNG)
+        with zipfile.ZipFile(self.archive, "r") as z:
+            budget = [0]
+            with patch.object(corpus, "MAX_PRIVATE_UNCOMPRESSED_BYTES", len(PNG)):
+                self.assertEqual(corpus.bounded_zip_entry(z, ENTRY, budget), PNG)
+                with self.assertRaisesRegex(CorpusError, "PRIVATE_UNCOMPRESSED_SIZE_LIMIT"):
+                    corpus.bounded_zip_entry(z, duplicate, budget)
+            self.assertGreater(budget[0], len(PNG))
+
+    def test_actual_decompression_budget_exact_boundary(self):
+        with zipfile.ZipFile(self.archive, "r") as z:
+            budget = [0]
+            with patch.object(corpus, "MAX_PRIVATE_UNCOMPRESSED_BYTES", len(PNG)):
+                self.assertEqual(corpus.bounded_zip_entry(z, ENTRY, budget), PNG)
+            self.assertEqual(budget[0], len(PNG))
+
     def test_missing_binary_keeps_case_unapproved_with_explicit_reason(self):
         self.source["articles"][0]["history"][1]["attachments"][0].update({
             "local_get_status": "MANUAL_HTTP_ERROR",
