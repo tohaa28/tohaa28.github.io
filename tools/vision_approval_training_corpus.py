@@ -97,8 +97,8 @@ def preflight_uncompressed_budget(parts):
                      "PRIVATE_UNCOMPRESSED_SIZE_LIMIT")
 
 
-def bounded_zip_entry(zip_file, entry):
-    """Bound decompressed attachment bytes, independent of ZIP compression ratio."""
+def bounded_zip_entry(zip_file, entry, budget=None):
+    """Bound actual decompression per entry and cumulatively, not just ZIP metadata."""
     info = zip_file.getinfo(entry)
     need(info.file_size <= MAX_PRIVATE_ATTACHMENT_BYTES,
          "PRIVATE_ATTACHMENT_SIZE_LIMIT")
@@ -113,6 +113,10 @@ def bounded_zip_entry(zip_file, entry):
             total += len(block)
             need(total <= MAX_PRIVATE_ATTACHMENT_BYTES,
                  "PRIVATE_ATTACHMENT_SIZE_LIMIT")
+            if budget is not None:
+                budget[0] += len(block)
+                need(budget[0] <= MAX_PRIVATE_UNCOMPRESSED_BYTES,
+                     "PRIVATE_UNCOMPRESSED_SIZE_LIMIT")
             chunks.append(block)
     need(total == info.file_size, "PRIVATE_ATTACHMENT_SIZE_MISMATCH")
     return b"".join(chunks)
@@ -165,6 +169,7 @@ def transform(evidences, archives, output):
     (out / "assets").mkdir(mode=0o700)
     rows = {table: [] for table in TABLES}
     missing = verified = 0
+    actual_uncompressed_budget = [0]
     for order in sorted(by_order):
         _, raw, report = by_order[order]
         raw_name = f"raw/evidence-{order}.json"
@@ -184,7 +189,7 @@ def transform(evidences, archives, output):
                 for entry in manifest["items"]:
                     key = (part, entry["entry"])
                     need(key not in byte_lookup, "ARCHIVE_DUPLICATE_BINARY")
-                    byte_lookup[key] = (bounded_zip_entry(zip_file, entry["entry"]), raw_zip)
+                    byte_lookup[key] = (bounded_zip_entry(zip_file, entry["entry"], actual_uncompressed_budget), raw_zip)
         for i, article in enumerate(report["articles"], 1):
             need(isinstance(article, dict), "ARTICLE_INVALID")
             item = article.get("item_id")
