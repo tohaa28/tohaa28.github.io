@@ -451,6 +451,41 @@ export function makeApprovalFileListController({
   get activeOrder(){return activeOrder},
   get running(){return running},
   receive:(message,expectedOrder)=>batch.receive(message,expectedOrder),
+  remote:async(action,payload={})=>{
+   if(action==='status'){
+    await init;
+    return {mode:'file',running,paused,stopped,
+     filename:state?.filename||null,total:state?.total||0,
+     checked:state?.index||0,next_order:queue&&state?.index<state?.total?
+      String(queue[state.index]):null,
+     archives:state?.archive_count||0,found:state?.found_committed||0,
+     pending:pending.length,downloading:!!state?.download,
+     errors:state?.failed_count||0,delay_ms:currentDelay,
+     blocked:restoreBlocked,error:lastError};
+   }
+   if(action==='import'){
+    if(typeof payload.text!=='string'||payload.text.length>20_000_000||
+      typeof payload.filename!=='string')
+     throw Error('MANUAL_ORDER_LIST_REMOTE_IMPORT_INVALID');
+    const raw=payload.text;
+    const file={name:payload.filename.slice(0,120),
+     size:new TextEncoder().encode(raw).length,text:async()=>raw};
+    await importFile(file);
+    return {status:!lastError?'VISION_IMPORT_OK':lastError};
+   }
+   if(action==='delay'){
+    if(!acceptedRate(payload.value))throw Error('MANUAL_ORDER_LIST_DELAY_INVALID');
+    rateInput.value=String(payload.value);
+    rateInput.dispatchEvent(new Event('input'));
+    return {status:'VISION_DELAY_UPDATED'};
+   }
+   if(action==='start'){void start();return {status:'VISION_SCAN_START_REQUESTED'}}
+   if(action==='pause'){pauseBtn.click();return {status:'VISION_SCAN_PAUSE_REQUESTED'}}
+   if(action==='stop'){stopBtn.click();return {status:'VISION_SCAN_STOP_REQUESTED'}}
+   if(action==='save'){saveBtn.click();return {status:'VISION_SCAN_ZIP_SAVE_REQUESTED'}}
+   if(action==='export'){exportBtn.click();return {status:'VISION_REGISTRY_EXPORT_REQUESTED'}}
+   return {status:'VISION_REMOTE_ACTION_DENIED'};
+  },
   requestPause:()=>{paused=true;void setMode('paused')},
   requestStop:()=>{stopped=true;void setMode('stopped')}
  };
