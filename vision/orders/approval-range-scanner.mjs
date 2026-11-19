@@ -5,6 +5,7 @@
  * the duplicated always-visible 'ТЗ утверждено' on/off labels.
  */
 import {inertOrderDiscussionHtml} from './order-page-discovery.mjs';
+import {explicitListOrderUrl} from './approval-file-list.mjs';
 
 export const RANGE_MIN=3_200_000;
 export const RANGE_MAX=8_200_000;
@@ -82,9 +83,12 @@ async function boundedHtml(response){
  */
 export async function probeTzForOrder(orderNumber,{
  fetcher=globalThis.__visionLocalTrustedTransport,
- DOMParserClass=globalThis.DOMParser,signal
+ DOMParserClass=globalThis.DOMParser,signal,explicitList=false
 }={}){
- const url=rangeOrderUrl(orderNumber);
+ // Only an explicitly imported list may scan IDs outside the legacy bounds.
+ // The destination is still the same hard-coded, allowlisted local host.
+ const url=explicitList?explicitListOrderUrl(orderNumber):
+  rangeOrderUrl(orderNumber);
  if(typeof fetcher!=='function')return {status:'MANUAL_MV3_TRANSPORT_REQUIRED'};
  let response;
  try{
