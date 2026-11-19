@@ -117,22 +117,16 @@ try{
   hasText:'Старт / продолжить по списку'}).click();
  // Confirmation is intentionally PENDING. At least one next order must have
  // been examined before that completion. The old ZIP must remain durable.
- await page.waitForFunction(async()=>{
-  const db=await new Promise((resolve,reject)=>{
-   const r=indexedDB.open('vision-ai-approved-file-list-v1');
-   r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
-  });
-  return new Promise(resolve=>{
-   const tx=db.transaction(['state','pending'],'readonly');
-   const s=tx.objectStore('state').get('active');
-   const p=tx.objectStore('pending').getAllKeys();
-   tx.oncomplete=()=>{
-    resolve(s.result?.index>=101&&s.result?.download?.order_ids?.length===100&&
-     s.result.archive_count===0&&p.result.length===100);
-    db.close();
-   };
-  });
- },null,{timeout:17000});
+ await page.waitForFunction(()=>{
+  const text=document.querySelector('.vlo-file-list p:last-child')?.textContent||'';
+  // Synchronous DOM condition: Playwright does not misinterpret a pending
+  // IndexedDB Promise as a truthy result before the cursor has advanced.
+  return text.includes('Последний проверенный номер: 3000100')&&
+   text.includes('ZIP загружается: 1');
+ },null,{timeout:17000}).catch(async error=>{
+  console.log('OVERLAP_WAIT_DEBUG',await page.locator('.vlo-file-list').innerText());
+  throw error;
+ });
  const debugState=await page.evaluate(async()=>{
   const db=await new Promise((resolve,reject)=>{
    const r=indexedDB.open('vision-ai-approved-file-list-v1');
