@@ -84,11 +84,15 @@ export function makeApprovalFileListController({
    ' · проверено после открытия: '+checkedSession+
    ' · ZIP: '+(state?.archive_count||0)+
    ' · найдено и архивировано: '+(state?.found_committed||0)+
-   ' · найдено до архива: '+pending.length+
+   ' · в текущей партии: '+activeRows().length+
+   ' · ZIP загружается: '+(state?.download?1:0)+
    ' · ошибок открытия: '+(state?.failed_count||0)+
    (lastError?'\nОшибка: '+lastError:'')+
    (message?'\n'+message:'');
  }
+ const activeRows=()=>pending.filter(row=>!state?.download?.order_ids?.includes(row.id));
+ const activeBytes=()=>activeRows().reduce((sum,row)=>sum+
+  row.transfers.reduce((n,t)=>n+(t.data?.byteLength||0),0),0);
  const captureMode=mode=>{
   if(!state)return null;
   state={...state,mode,delay_ms:currentDelay};
@@ -151,72 +155,85 @@ export function makeApprovalFileListController({
   throw Error('MANUAL_ORDER_LIST_OLD_WORKER_BUSY');
  }
  async function commitDownloaded(){
-  const rows=pending.slice();
-  if(!rows.length)throw Error('MANUAL_ORDER_LIST_EMPTY_ZIP');
+  const info=state?.download;
+  if(!info)return;
+  const ids=info.order_ids||pending.map(x=>x.id);
+  const selected=new Set(ids),rows=pending.filter(x=>selected.has(x.id));
+  if(rows.length!==ids.length||!rows.length)
+   throw Error('MANUAL_ORDER_LIST_DOWNLOAD_ROWS_MISSING');
   const updated={...state,download:null,archive_count:state.archive_count+1,
-   found_committed:state.found_committed+rows.length,
-   mode:currentMode()};
+   found_committed:state.found_committed+rows.length,mode:currentMode()};
   await write(()=>commitOrderFileArchive(updated,rows));
-  state=updated;pending=[];batch=new ApprovalBatchSession();
-  saveBtn.disabled=true;lastError=null;
-  show('ZIP №'+state.archive_count+' подтверждён Chrome; данные зафиксированы');
+  state=updated;pending=pending.filter(x=>!selected.has(x.id));
+  for(const id of ids)batch.discardOrder(id);
+  saveBtn.disabled=running||!activeRows().length;lastError=null;
+  show('ZIP №'+state.archive_count+' подтверждён; новая партия сохранена.');
  }
- async function recoverDownload(){
+ async function recoverDownload(waitForCompletion=false){
   const info=state?.download;
   if(!info)return true;
   try{
-   await waitForChrome(info.after_id,info.bytes,info.filename);
-   await commitDownloaded();
-   return true;
+   if(waitForCompletion){
+    await waitForChrome(info.after_id,info.bytes,info.filename);
+    await commitDownloaded();return true;
+   }
+   const result=await audit('check',{after_id:info.after_id,
+    byte_length:info.bytes,expected_filename:info.filename});
+   if(result?.status==='RANGE_DOWNLOAD_COMPLETE'){
+    await commitDownloaded();return true;
+   }
+   if(result?.status==='RANGE_DOWNLOAD_PENDING')return true;
+   throw Error(result?.status||'MANUAL_ORDER_LIST_ZIP_AUDIT_FAILED');
   }catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_ZIP_UNCONFIRMED');
-   show('ZIP не подтверждён. Вложения и найденные заказы сохранены. '+
-    'Проверьте загрузки и повторите сохранение вручную.');
+   show('Не удалось подтвердить ZIP. Непроверенные записи и вложения сохранены.');
    return false;
   }
  }
  async function saveBatch(reason){
-  if(!pending.length)return true;
-  if(state.download)return recoverDownload();
+  let rows=activeRows();
+  if(!rows.length)return true;
+  // At most one downloading ZIP and one following staged batch. Scan
+  // continues up to the next full batch; then apply bounded backpressure.
+  if(state.download){
+   if(!await recoverDownload(true))return false;
+   rows=activeRows();
+   if(!rows.length)return true;
+  }
   let result;
-  try{result=batch.finalize(pending)}
+  try{result=batch.finalize(rows)}
   catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_ZIP_INVALID');show();
    return false;
   }
   const filename='vision-ai-list-part-'+pad(state.archive_count+1)+
-   '-'+pending[0].id+'-'+pending.at(-1).id+'.zip';
+   '-'+rows[0].id+'-'+rows.at(-1).id+'.zip';
   const url=URL.createObjectURL(result.blob);
   try{
    const before=await audit('baseline');
    if(before?.status!=='RANGE_DOWNLOAD_BASELINE')
     throw Error('MANUAL_ORDER_LIST_DOWNLOAD_BASELINE');
-   const download={after_id:before.highest_id,bytes:result.blob.size,filename};
-   const snapshot={...state,download,mode:'downloading'};
+   const download={after_id:before.highest_id,bytes:result.blob.size,
+    filename,order_ids:rows.map(x=>x.id)};
+   const snapshot={...state,download,mode:currentMode()};
    await write(()=>saveOrderFileStatus(snapshot));
    state=snapshot;
    const a=el('a');a.href=url;a.download=filename;
    document.body.append(a);a.click();a.remove();
-   show('Скачивание ZIP ('+reason+'): '+pending.length+' заказов.');
-   await waitForChrome(download.after_id,download.bytes,filename);
-   await commitDownloaded();
+   show('ZIP загружается ('+reason+'); проверка следующих номеров продолжается.');
+   // Confirm asynchronously in subsequent scan iterations or on reload.
    return true;
   }catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_DOWNLOAD_FAILED');
-   show('Не удалось подтвердить ZIP; данные партии сохранены в IndexedDB');
+   show('ZIP не подтверждён; данные партии остаются в IndexedDB');
    return false;
   }finally{setTimeout(()=>URL.revokeObjectURL(url),125000)}
  }
  async function manualSave(){
   if(running||!pending.length)return;
-  if(state.download){
-   if(typeof globalThis.confirm==='function'&&!globalThis.confirm(
-    'Предыдущая ZIP-загрузка не подтверждена. Проверьте загрузки Chrome: '+
-    'повтор может создать дубликат. Сохранить заново?'))return;
-   const snapshot={...state,download:null,mode:'paused'};
-   await write(()=>saveOrderFileStatus(snapshot));state=snapshot;
-  }
+  if(state.download&&!await recoverDownload(true))return;
   await saveBatch('вручную');
+  if(state.download)await recoverDownload(true);
  }
  async function importFile(file){
   await init;
@@ -315,7 +332,7 @@ export function makeApprovalFileListController({
    if(state.download&&!await recoverDownload())
     throw Error('MANUAL_ORDER_LIST_ZIP_UNCONFIRMED');
    await setMode('running');
-   if(pending.length>=100||batch.bytesReceived>120_000_000)
+   if(activeRows().length>=100||activeBytes()>120_000_000)
     if(!await saveBatch('восстановленная партия'))
      throw Error('MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW');
    while(state.index<state.total&&!paused&&!stopped&&!isClosed()){
@@ -369,7 +386,8 @@ export function makeApprovalFileListController({
     if(record)pending.push(record);
     else batch.discardOrder(order_number);
     checkedSession++;
-    if(pending.length>=100||batch.bytesReceived>120_000_000){
+    if(state.download&&!await recoverDownload(false))break;
+    if(activeRows().length>=100||activeBytes()>120_000_000){
      if(!await saveBatch('100 заказов / ограничение размера'))break;
     }
     show('Последний проверенный номер: '+order_number+
@@ -377,7 +395,9 @@ export function makeApprovalFileListController({
     if(!paused&&!stopped)await dynamicDelay();
    }
    if((stopped||state.index>=state.total)&&pending.length){
-    if(!await saveBatch(stopped?'остановка':'окончание файла'))paused=true;
+    if(activeRows().length&&!await saveBatch(stopped?'остановка':'окончание файла'))
+     paused=true;
+    if(state.download&&!await recoverDownload(true))paused=true;
    }
    message=lastError?'ОСТАНОВЛЕНО: '+lastError:
     paused?'ПАУЗА. Можно продолжить. Данные партии сохранены.':
@@ -388,7 +408,7 @@ export function makeApprovalFileListController({
    message='ОСТАНОВКА ПО ОШИБКЕ: '+lastError;
   }finally{
    activeOrder=null;running=false;setBusy(false);
-   if(state&&!state.download)await setMode(stopped||state.index>=state.total?
+   if(state)await setMode(stopped||state.index>=state.total?
     'stopped':'paused');
    startBtn.disabled=resetBtn.disabled=false;
    pauseBtn.disabled=stopBtn.disabled=true;
@@ -400,6 +420,12 @@ export function makeApprovalFileListController({
   const saved=await loadOrderFileState();
   if(!saved)return false;
   state=saved.state;queue=saved.queue;
+  // Migrate a v0.1.13 intent without archived order IDs losslessly.
+  if(state.download&&!Array.isArray(state.download.order_ids)){
+   state={...state,download:{...state.download,
+    order_ids:saved.pending.map(x=>x.id)}};
+   await saveOrderFileStatus(state);
+  }
   currentDelay=state.delay_ms;rateInput.value=String(currentDelay);
   if(saved.pending.some(x=>
    !Array.isArray(x.transfers)||!x.transfers.length))
