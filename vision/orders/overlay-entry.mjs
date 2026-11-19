@@ -72,7 +72,7 @@ export function initLocalOrdersOverlay(){
  const style=node('style');style.id=STYLE_ID;style.textContent=CSS;document.head.append(style);
  const panel=node('section');panel.id=ID;
  panel.setAttribute('aria-label','Vision Check — таблица тестовых заказов');
- const title=node('h2','Vision Check v0.1.13 · тестовые заказы');
+ const title=node('h2','Vision Check v0.1.15 · тестовые заказы');
  const description=node('p',
    'Только локальная сеть. Ссылки на макеты загружаются в память браузера после вашего нажатия; файлы не отправляются на GitHub.');
  const actions=node('div',undefined,'vlo-actions');
@@ -234,6 +234,28 @@ export function initLocalOrdersOverlay(){
   isClosed:()=>closed,
   refreshControls:()=>{refreshBtn.disabled=busy;updateBatchControls()}
  });
+
+ // A small authenticated RPC from the extension service worker lets the user
+ // control the canonical engine from ANY page on either test portal.
+ // No native order data or raw binary is sent to other tabs.
+ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+  chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+   if(message?.op!=='vision-engine-command-v1')return false;
+   if(sender?.id!==chrome.runtime.id||closed)return false;
+   const kind=message.mode,action=message.action;
+   if(!['file','range'].includes(kind)||
+    !['status','import','start','pause','stop','save','export','delay'].includes(action)||
+    (kind==='range'&&action==='import')){
+    respond({status:'VISION_ENGINE_COMMAND_DENIED'});return false;
+   }
+   const target=kind==='file'?fileController:rangeController;
+   target.remote(action,message.payload||{}).then(respond,error=>respond({
+    status:'VISION_ENGINE_COMMAND_FAILED',
+    reason:String(error?.message||'UNKNOWN').slice(0,120)
+   }));
+   return true;
+  });
+ }
  let preparedBundle=null;
  function downloadApprovalBatch(){
   if(!preparedBundle)return;
