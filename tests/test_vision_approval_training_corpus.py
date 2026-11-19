@@ -32,6 +32,19 @@ class TrainingCorpusTests(unittest.TestCase):
             "status": "COMPLETE", "order_number": ORDER,
             "training_ready": False, "production_approved": False,
             "remote_upload": False,
+            "order_facts": {
+                "schema": "printcheck.vision.private-order-facts.v1",
+                "capture_status": "ORDER_DOM_CAPTURED",
+                "order": {"order_number": ORDER, "internal_order_id": "551",
+                    "customer_display": "Тестовый Клиент",
+                    "order_date_display": "11 ноя 2026",
+                    "order_status_timeline": "Макет на согласовании"},
+                "articles": [{"item_id": ITEM,
+                    "article_code": "TEST.21",
+                    "product_name": "Медаль тестовая",
+                    "quantity_and_pricing_text": "16 шт.",
+                    "imprint_and_technical_requirements_text": "UV2 0,15 мм"}]
+            },
             "articles": [
                 {"item_id": ITEM, "article_index": 1, "status": "PRIVATE_REVIEW_ONLY",
                  "current_problems": [
@@ -43,11 +56,14 @@ class TrainingCorpusTests(unittest.TestCase):
                       "text": "Добавлены проблемы: тонкие линии",
                       "date_time": "17.11.26 10:22",
                       "native_comment_id": "123001", "actor_ref": "actor_1",
+                      "author_name": "Дизайнер Тестовый",
+                      "author_display_text": "Дизайнер Тестовый 17.11.26 10:22",
                       "attachments": []},
                      {"sequence": 2, "kind": "human",
                       "text": "Скриншот мелкого элемента",
                       "date_time": "17.11.26 10:25",
                       "native_comment_id": "123002", "actor_ref": "actor_2",
+                      "author_name": "Менеджер Тестовый",
                       "attachments": [
                          {"filename": "image.png", "attachment_id": None,
                           "source": "native_approval_gallery",
@@ -102,6 +118,10 @@ class TrainingCorpusTests(unittest.TestCase):
         msg = self.table(out, "messages")
         self.assertEqual(msg[0]["native_comment_id"], "123001")
         self.assertEqual(msg[1]["actor_ref"], "actor_2")
+        self.assertEqual(msg[1]["author_name"], "Менеджер Тестовый")
+        self.assertEqual(self.table(out,"orders")[0]["customer_display"],"Тестовый Клиент")
+        self.assertEqual(self.table(out,"articles")[0]["article_code"],"TEST.21")
+        self.assertIn("0,15",self.table(out,"articles")[0]["imprint_and_technical_requirements_text"])
         self.assertIn("Скриншот", msg[1]["text"])
         asset = self.table(out, "assets")[0]
         self.assertEqual((out/asset["verified_local_file"]).read_bytes(), PNG)
