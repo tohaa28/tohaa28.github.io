@@ -36,8 +36,8 @@ export function initApprovalPageEntry(){
  document.head.append(style);
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
- const header=make('strong','Vision AI · Согласование макета · v0.1.6');
- const note=make('p','Автообход: для согласований с 2+ сообщениями программа читает проблемы, всю историю и отдельно получает файлы через разрешённый GET. Архивы с вложениями скачиваются только на этот компьютер. Можно остановить сбор. Не отправляйте приватные ZIP и JSON в публичный GitHub.');
+ const header=make('strong','Vision AI · Согласование макета · v0.1.7');
+ const note=make('p','Автообход: собирает переписки с именами участников, историю проблем, сведения о заказе и каждом артикуле. Сначала сохраняется JSON с текстом, затем вложения, затем окончательный JSON с привязками к ZIP. Все файлы остаются на компьютере.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
  const exportButton=make('button','Скачать анонимный JSON');
@@ -120,6 +120,27 @@ export function initApprovalPageEntry(){
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(uri),2500);
  }
+  /**
+   * Download from the extension worker, not a transient hidden page anchor.
+   * Both RAW (before binary GETs) and FINAL (with ZIP byte/SHA mappings)
+   * are retained locally. The worker waits for Chrome 'complete' before
+   * acknowledging; lack of confirmation is NEVER shown as success.
+   */
+  async function persistOrderEvidence(stage){
+   if(!collection?.articles?.length)return {
+    status:'MANUAL_NO_ARTICLE_EVIDENCE'};
+   const order=String(collection.order_number||'');
+   if(!/^\d{5,12}$/.test(order))return {
+    status:'MANUAL_ORDER_IDENTIFIER_INVALID'};
+   if(typeof chrome==='undefined'||!chrome.runtime?.sendMessage)
+    return {status:'MANUAL_EXTENSION_DOWNLOAD_UNAVAILABLE'};
+   try{
+    return await chrome.runtime.sendMessage({
+     op:'vision-approval-save-evidence-v1',stage,
+     order_number:order,evidence:collection
+    })||{status:'MANUAL_EVIDENCE_DOWNLOAD_NO_RESPONSE'};
+   }catch{return {status:'MANUAL_EVIDENCE_DOWNLOAD_NO_RESPONSE'}}
+  }
  /**
   * Native attachment GETs are separate from the approval dialog.
   * All bytes are confined to short-lived numbered local ZIP parts.
@@ -181,6 +202,9 @@ export function initApprovalPageEntry(){
    if(!panel.isConnected)return;
    const done=collection.articles.filter(x=>x.status==='PRIVATE_REVIEW_ONLY').length;
    const skipped=collection.skipped.length;
+   // Preserve all messages and order facts BEFORE downloading attachments.
+   const rawEvidence=queueMode?await persistOrderEvidence('raw'):
+    {status:'MANUAL_SAVE_ON_DEMAND'};
    const attachmentReport=stopRequested?
     {status:'STOPPED',files:0,parts:0,failures:0}:
     await savePrivateAttachmentParts({queueMode});
@@ -200,17 +224,21 @@ export function initApprovalPageEntry(){
      '\nПриватный JSON содержит текст замечаний. Сохраните его отдельно.'+
      ' Chrome может запросить разрешение на несколько скачиваний.';
    privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=false;
-   if(queueMode&&collection?.articles?.length){
-    // Explicit list-page action authorizes only LOCAL PRIVATE downloads.
-    // Every order gets its own JSON, preventing filename overwrite.
-    downloadJson(collection,'vision-private-approval-evidence-'+
-      location.pathname.split('/').filter(Boolean).at(-1)+'.json');
-    await new Promise(resolve=>setTimeout(resolve,500));
+   const finalEvidence=queueMode?await persistOrderEvidence('final'):
+    {status:'MANUAL_SAVE_ON_DEMAND'};
+   const textSaved=rawEvidence.status==='EVIDENCE_DOWNLOAD_COMPLETE'||
+    finalEvidence.status==='EVIDENCE_DOWNLOAD_COMPLETE';
+   if(queueMode){
+    stats.textContent+='\nПереписки и данные заказа: '+
+      (textSaved?'сохранены':'ОШИБКА СОХРАНЕНИЯ')+
+      ' · предварительный '+rawEvidence.status+
+      ' · итоговый '+finalEvidence.status;
    }
    return {status:collection.status,eligible_articles:collection.selected_by_badge,
      verified_articles:done,files:attachmentReport.files,
      zip_parts:attachmentReport.parts,failures:attachmentReport.failures,
-     private_text_saved:!!(queueMode&&collection?.articles?.length)};
+     private_text_saved:textSaved,raw_evidence_status:rawEvidence.status,
+     final_evidence_status:finalEvidence.status};
   }catch{
    if(panel.isConnected)stats.textContent='MANUAL: ошибка автоматического обхода.';
    return {status:'MANUAL_AUTO_SCAN_FAILED'};
@@ -259,7 +287,8 @@ export function initApprovalPageEntry(){
  privateSave.addEventListener('click',event=>{
   stop(event);if(!collection)return;
   if(!window.confirm('В приватном JSON находятся сообщения о заказе, идентификаторы артикулов и имена вложений. Сохранить только на свой компьютер? Не публикуйте файл в GitHub и не отправляйте в общедоступные сервисы.'))return;
-  downloadJson(collection,'vision-private-approval-evidence.json');
+  downloadJson(collection,'vision-private-approval-evidence-'+
+   (collection.order_number||'order')+'.json');
  });
  anonymousSave.addEventListener('click',event=>{
   stop(event);if(!collection)return;
