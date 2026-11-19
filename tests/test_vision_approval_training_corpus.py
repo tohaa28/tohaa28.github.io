@@ -134,6 +134,24 @@ class TrainingCorpusTests(unittest.TestCase):
                 transform([self.evidence], [self.archive], out)
         self.assertFalse(out.exists())
 
+    def test_preflight_rejects_aggregate_expansion_before_output(self):
+        out = self.root / "expansion-denied"
+        # Synthetic ZIP metadata: the total includes manifest and attachment.
+        with zipfile.ZipFile(self.archive, "r") as z:
+            total = sum(info.file_size for info in z.infolist())
+        self.assertGreater(total, len(PNG))
+        with patch.object(corpus, "MAX_PRIVATE_UNCOMPRESSED_BYTES", total - 1):
+            with self.assertRaisesRegex(CorpusError, "PRIVATE_UNCOMPRESSED_SIZE_LIMIT"):
+                transform([self.evidence], [self.archive], out)
+        self.assertFalse(out.exists())
+
+    def test_preflight_accepts_exact_declared_budget(self):
+        with zipfile.ZipFile(self.archive, "r") as z:
+            total = sum(info.file_size for info in z.infolist())
+        with patch.object(corpus, "MAX_PRIVATE_UNCOMPRESSED_BYTES", total):
+            result = transform([self.evidence], [self.archive], self.root / "exact-budget")
+        self.assertFalse(result["training_ready"])
+
     def test_rejects_source_changed_after_archive_audit(self):
         out = self.root / "changed"
         real_audit = corpus.audit_archives
