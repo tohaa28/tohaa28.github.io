@@ -162,6 +162,19 @@ export function rangeConfig(start,end,delay=RANGE_MIN_DELAY_MS){
   throw Error('MANUAL_RANGE_RATE_INVALID');
  return {start:n,end:m,delay_ms:ms,archive_size:RANGE_ARCHIVE_SIZE};
 }
+/**
+ * Delay is an operational preference, not range identity. Adjusting it
+ * must never reset the committed cursor, found records or failed-order log.
+ */
+export function changeRangeDelay(checkpoint,delayMs){
+ if(checkpoint?.schema!=='printcheck.vision.range-checkpoint.v1'||
+  !checkpoint.config)throw Error('MANUAL_RANGE_CHECKPOINT_INVALID');
+ const newConfig=rangeConfig(checkpoint.config.start,
+  checkpoint.config.end,delayMs);
+ if(newConfig.archive_size!==checkpoint.config.archive_size)
+  throw Error('MANUAL_RANGE_CHECKPOINT_ARCHIVE_SIZE');
+ return {...checkpoint,config:newConfig,updated_at:new Date().toISOString()};
+}
 export function freshRangeCheckpoint(config){
  return {
   schema:'printcheck.vision.range-checkpoint.v1',
