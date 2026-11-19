@@ -1945,3 +1945,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Synthetic regression:** 5aef5cf6301eddd1bfed68d998a636532136bcd4 updates `tests/test_vision_approval_archive_audit.py`: 1 MiB−1, exactly 1 MiB, 1 MiB+1, malformed JSON and redacted CLI failure. New test execution and CI for changed HEAD are pending verification; do not claim PASS before confirmation.
 
 **Outstanding:** preview publish; triple independent ROI-voice/adjudication regression; Chromium 404/MV3 real anonymous reference_state; PDF ICC/spot; trusted physical mm scale and print process; independent verified ROI/family holdout. No real customer corpus, original names, raw SHA, keys or private images uploaded. No production changes. training_ready=false; production_approved=false; unknown => MANUAL.
+
+
+## 2026-11-19 — M3.50 / bounded private evidence read (synthetic only)
+
+**Before change:** 5b2343c10145927b8478c7297e9f93b17b4b5cdd; PR #4 OPEN/DRAFT, not merged. GitHub Actions UI smoke, independent raster safety, rules/dataset safety SUCCESS on this SHA; exact-SHA preview publish and CircleCI not independently confirmed in this cycle.
+
+**Implementation:** b78ae2678e1980ad8b977227ca4317e66d69377e — `tools/vision_approval_archive_audit.py` now reads optional local evidence JSON with a 16 MiB + 1 byte cap, rejects larger input as code-only `EVIDENCE_TOO_LARGE`, and does not print evidence path or identifiers. ZIP manifest 1 MiB cap remains unchanged.
+
+**Regression:** b6a3e613a8bfa79c6e72ad13bc91ad8dbd74b545 — synthetic tests for evidence overrun, CLI path redaction and exact-boundary invalid JSON. Test execution on changed HEAD not yet confirmed; CI pending. No customer inputs used.
+
+**Unresolved:** exact-HEAD four GitHub CI and CircleCI confirmation; triple independent ROI voices/adjudication; authenticated 404/MV3 anonymous reference_state; PDF/ICC/spot and exact physical scale; verified print method, constructor and family holdout. `training_ready=false`, `production_approved=false`; all unknowns => MANUAL. No production module changes, no merge or public private-data upload.
