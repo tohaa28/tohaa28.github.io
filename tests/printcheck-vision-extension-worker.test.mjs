@@ -9,9 +9,9 @@ const member={url:origin+'/devorders?status=140',frameId:0};
 function harness({sender=member,fetcher=async()=>new Response('default',{
  headers:{'Content-Type':'text/html'}
 })}={}){
- let connected,listener;
+ const connected=[];let listener;
  const requests=[],messages=[];
- const runtime={onConnect:{addListener(fn){connected=fn}}};
+ const runtime={onConnect:{addListener(fn){connected.push(fn)}}};
  vm.runInNewContext(code,{chrome:{runtime},URL,AbortController,fetch:async(url,options)=>{
   requests.push({url,options});return fetcher(url,options);
  },setTimeout,clearTimeout,console});
@@ -22,7 +22,7 @@ function harness({sender=member,fetcher=async()=>new Response('default',{
   postMessage(m){messages.push(JSON.parse(JSON.stringify(m)))},
   disconnect(){}
  };
- connected(port);
+ for(const connect of connected)connect(port);
  return {messages,requests,
    invoke:async(message)=>{
      if(!listener)throw Error('Sender was rejected by service worker');
