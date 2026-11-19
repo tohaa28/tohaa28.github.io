@@ -90,6 +90,14 @@ export async function setRangeJournalMode(mode,delayMs=null,factory){
    updated_at:new Date().toISOString()});
  },factory);
 }
+/** Commit a fresh empty journal while deleting the previous batch atomically. */
+export async function replaceRangeJournal(state,factory){
+ verifyJournal(state);
+ return transaction('readwrite',tx=>{
+  tx.objectStore(ORDERS).clear();
+  tx.objectStore(JOURNAL).put({...state,id:ACTIVE});
+ },factory);
+}
 export async function clearRangeJournal(factory){
  return transaction('readwrite',tx=>{
   tx.objectStore(JOURNAL).clear();
