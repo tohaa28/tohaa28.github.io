@@ -5,6 +5,7 @@ import {mkdtemp,cp,readFile,writeFile,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright';
+import {createServer} from 'node:http';
 const ext=await mkdtemp(path.join(os.tmpdir(),'vision-overlap-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-overlap-profile-'));
 for(const file of ['manifest.json','service-worker.js','content-transport.js',
@@ -30,13 +31,32 @@ await writeFile(worker,src);
 const BASE='http://psk.testgifts.local';
 const SOURCE='http://testgifts.local';
 const ids=Array.from({length:102},(_,i)=>3000000+i);
+const orders=[],requests=[],downloads=[],errors=[];
+const proxy=createServer((req,res)=>{
+ let u;
+ try{u=new URL(req.url)}catch{res.writeHead(400);res.end();return}
+ if(u.href===SOURCE+'/private/order/3000100'||
+  u.href===SOURCE+'/private/order/3000101'){
+  orders.push(u.href);
+  res.writeHead(404,{'Content-Type':'text/html'});res.end('<html>404</html>');
+  return;
+ }
+ if(u.origin===BASE&&u.pathname==='/devorders'){
+  res.writeHead(200,{'Content-Type':'text/html'});
+  res.end('<html><body>Authorized synthetic devorders page</body></html>');
+  return;
+ }
+ res.writeHead(403);res.end();
+});
+await new Promise(resolve=>proxy.listen(0,'127.0.0.1',resolve));
 let browser;
 try{
  browser=await chromium.launchPersistentContext(profile,{
   channel:'chromium',headless:true,acceptDownloads:true,
-  args:['--disable-extensions-except='+ext,'--load-extension='+ext]
+  args:['--disable-extensions-except='+ext,'--load-extension='+ext,
+   '--proxy-server=http://127.0.0.1:'+proxy.address().port,
+   '--proxy-bypass-list=<-loopback>']
  });
- const orders=[],requests=[],downloads=[],errors=[];
  browser.on('page',p=>{
   p.on('pageerror',e=>errors.push(e.message));
   p.on('download',d=>downloads.push(d));
@@ -158,6 +178,7 @@ try{
  console.log('Vision M3.30 two-batch buffering: scan during ZIP PENDING and reload PASS');
 }finally{
  if(browser)await browser.close();
+ await new Promise(resolve=>proxy.close(resolve));
  await rm(ext,{recursive:true,force:true});
  await rm(profile,{recursive:true,force:true});
 }
