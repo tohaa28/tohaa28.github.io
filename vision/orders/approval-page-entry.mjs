@@ -127,8 +127,8 @@ export function initApprovalPageEntry(){
    * acknowledging; lack of confirmation is NEVER shown as success.
    */
   async function persistOrderEvidence(stage){
-   if(!collection?.articles?.length)return {
-    status:'MANUAL_NO_ARTICLE_EVIDENCE'};
+   if(!collection||!Array.isArray(collection.articles))return {
+    status:'MANUAL_NO_ORDER_EVIDENCE'};
    const order=String(collection.order_number||'');
    if(!/^\d{5,12}$/.test(order))return {
     status:'MANUAL_ORDER_IDENTIFIER_INVALID'};
