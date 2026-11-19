@@ -71,7 +71,7 @@ test('one bundle: raw/final, names, problems, SHA verified, direct images',async
  assert.equal(zip.counts.verified_files,1);
  assert.equal(zip.counts.missing_files,0);
  const entries=listZip(new Uint8Array(await zip.blob.arrayBuffer()));
- assert.equal(entries.size,9);
+ assert.equal(entries.size,11);
  assert.equal(JSON.parse(td.decode(entries.get('manifest.json'))).training_ready,false);
  const orderData=JSON.parse(td.decode(entries.get('orders/'+order+'/order.json')));
  assert.equal(orderData.customer_display,'Клиент Тестовый');
