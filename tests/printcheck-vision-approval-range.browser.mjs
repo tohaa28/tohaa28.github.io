@@ -173,6 +173,16 @@ try{
   const info={panel:await page.locator('.vlo-range').innerText(),
    requests:requests.map(x=>({type:x.type,method:x.method})),
    downloads:downloads.map(x=>x.suggestedFilename())};
+  try{
+   const worker=browser.serviceWorkers().find(w=>w.url().endsWith('/service-worker.js'));
+   info.downloadStates=worker?await worker.evaluate(async()=>(
+    await chrome.downloads.search({})
+   ).filter(x=>x.id).map(x=>({
+    id:x.id,name:String(x.filename||'').split(/[\\/]/).at(-1),
+    mime:x.mime,url:x.url,state:x.state,
+    totalBytes:x.totalBytes,fileSize:x.fileSize
+   }))):'NO_WORKER';
+  }catch(e){info.downloadDebugError=String(e)}
   console.log('VISION_RANGE_REFRESH_DEBUG',JSON.stringify(info));
   throw error;
  });
