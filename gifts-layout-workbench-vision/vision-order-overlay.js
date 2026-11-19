@@ -3095,6 +3095,474 @@
     if (saved === 0) yield refused2("NO_EXPORTABLE_ARTWORK");
   }
 
+  // vision/orders/approval-attachments.mjs
+  var te2 = new TextEncoder();
+  var SHA256_K = new Uint32Array([
+    1116352408,
+    1899447441,
+    3049323471,
+    3921009573,
+    961987163,
+    1508970993,
+    2453635748,
+    2870763221,
+    3624381080,
+    310598401,
+    607225278,
+    1426881987,
+    1925078388,
+    2162078206,
+    2614888103,
+    3248222580,
+    3835390401,
+    4022224774,
+    264347078,
+    604807628,
+    770255983,
+    1249150122,
+    1555081692,
+    1996064986,
+    2554220882,
+    2821834349,
+    2952996808,
+    3210313671,
+    3336571891,
+    3584528711,
+    113926993,
+    338241895,
+    666307205,
+    773529912,
+    1294757372,
+    1396182291,
+    1695183700,
+    1986661051,
+    2177026350,
+    2456956037,
+    2730485921,
+    2820302411,
+    3259730800,
+    3345764771,
+    3516065817,
+    3600352804,
+    4094571909,
+    275423344,
+    430227734,
+    506948616,
+    659060556,
+    883997877,
+    958139571,
+    1322822218,
+    1537002063,
+    1747873779,
+    1955562222,
+    2024104815,
+    2227730452,
+    2361852424,
+    2428436474,
+    2756734187,
+    3204031479,
+    3329325298
+  ]);
+  var rotr = (x, n) => x >>> n | x << 32 - n;
+  function portableSha256Hex(bytes) {
+    if (!(bytes instanceof Uint8Array)) throw new TypeError("SHA256_BYTES_REQUIRED");
+    const size = bytes.length;
+    const length2 = Math.ceil((size + 9) / 64) * 64;
+    const data = new Uint8Array(length2);
+    data.set(bytes);
+    data[size] = 128;
+    const view = new DataView(data.buffer);
+    view.setUint32(length2 - 8, Math.floor(size / 536870912));
+    view.setUint32(length2 - 4, size * 8 >>> 0);
+    const h = new Uint32Array([
+      1779033703,
+      3144134277,
+      1013904242,
+      2773480762,
+      1359893119,
+      2600822924,
+      528734635,
+      1541459225
+    ]);
+    const w = new Uint32Array(64);
+    for (let offset = 0; offset < length2; offset += 64) {
+      for (let i = 0; i < 16; i++) w[i] = view.getUint32(offset + 4 * i);
+      for (let i = 16; i < 64; i++) {
+        const a2 = w[i - 15], b2 = w[i - 2];
+        const s0 = rotr(a2, 7) ^ rotr(a2, 18) ^ a2 >>> 3;
+        const s1 = rotr(b2, 17) ^ rotr(b2, 19) ^ b2 >>> 10;
+        w[i] = w[i - 16] + s0 + w[i - 7] + s1 >>> 0;
+      }
+      let [a, b, c, d, e, f, g, z] = h;
+      for (let i = 0; i < 64; i++) {
+        const s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const choice = e & f ^ ~e & g;
+        const t1 = z + s1 + choice + SHA256_K[i] + w[i] >>> 0;
+        const s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const majority = a & b ^ a & c ^ b & c;
+        const t2 = s0 + majority >>> 0;
+        z = g;
+        g = f;
+        f = e;
+        e = d + t1 >>> 0;
+        d = c;
+        c = b;
+        b = a;
+        a = t1 + t2 >>> 0;
+      }
+      for (const [i, value] of [a, b, c, d, e, f, g, z].entries()) h[i] = h[i] + value >>> 0;
+    }
+    return Array.from(h, (v) => v.toString(16).padStart(8, "0")).join("");
+  }
+
+  // vision/orders/approval-batch-archive.mjs
+  var BATCH_MAX_BYTES = 18e7;
+  var MAX_PART = 26e6;
+  var MAX_PACKET = 48e3;
+  var MAX_ENTRIES = 1e4;
+  var te3 = new TextEncoder();
+  var td = new TextDecoder("utf-8", { fatal: true });
+  var numeric = (v) => typeof v === "string" && /^\d{5,12}$/.test(v);
+  var fail = (c) => {
+    throw Error(c);
+  };
+  var u16 = (v, n, d) => v.setUint16(n, d, true);
+  var u32 = (v, n, d) => v.setUint32(n, d >>> 0, true);
+  var json = (x) => te3.encode(JSON.stringify(x, null, 2) + "\n");
+  function crc322(bytes) {
+    let n = 4294967295;
+    for (const b of bytes) {
+      n ^= b;
+      for (let i = 0; i < 8; i++) n = n >>> 1 ^ (n & 1 ? 3988292384 : 0);
+    }
+    return (n ^ 4294967295) >>> 0;
+  }
+  function safePath(name) {
+    if (typeof name !== "string" || name.length > 420 || name.includes("..") || name.includes("\\") || name.startsWith("/") || name.includes("//") || /[\x00-\x1f\x7f]/.test(name)) return false;
+    return name === "manifest.json" || name === "index/orders.json" || /^orders\/\d{5,12}\/(?:order|articles|approvals|review|files-index)\.json$/.test(name) || /^orders\/\d{5,12}\/source\/(?:evidence|backup)\.json$/.test(name) || /^orders\/\d{5,12}\/threads\/\d{1,20}\.json$/.test(name) || /^orders\/\d{5,12}\/assets\/[a-f0-9]{64}\.(?:pdf|psd|psb|png|jpe?g|webp|tiff?|gif|svg|eps|ai|cdr|zip)$/.test(name);
+  }
+  function buildVisionZip(entries) {
+    if (!Array.isArray(entries) || !entries.length || entries.length > MAX_ENTRIES)
+      fail("MANUAL_ZIP_ENTRY_COUNT");
+    const chunks = [], central = [], names = /* @__PURE__ */ new Set();
+    let position = 0, centralSize = 0;
+    for (const { name, bytes } of entries) {
+      if (!safePath(name) || names.has(name) || !(bytes instanceof Uint8Array) || bytes.length > MAX_PART) fail("MANUAL_ZIP_ENTRY_INVALID");
+      const path = te3.encode(name);
+      if (path.length > 65535) fail("MANUAL_ZIP_PATH_TOO_LONG");
+      names.add(name);
+      const size = bytes.length, c = crc322(bytes);
+      const local = new Uint8Array(30 + path.length), dv = new DataView(local.buffer);
+      u32(dv, 0, 67324752);
+      u16(dv, 4, 20);
+      u16(dv, 6, 2048);
+      u16(dv, 8, 0);
+      u16(dv, 10, 0);
+      u16(dv, 12, 0);
+      u32(dv, 14, c);
+      u32(dv, 18, size);
+      u32(dv, 22, size);
+      u16(dv, 26, path.length);
+      u16(dv, 28, 0);
+      local.set(path, 30);
+      const cd = new Uint8Array(46 + path.length), v = new DataView(cd.buffer);
+      u32(v, 0, 33639248);
+      u16(v, 4, 20);
+      u16(v, 6, 20);
+      u16(v, 8, 2048);
+      u16(v, 10, 0);
+      u16(v, 12, 0);
+      u16(v, 14, 0);
+      u32(v, 16, c);
+      u32(v, 20, size);
+      u32(v, 24, size);
+      u16(v, 28, path.length);
+      u16(v, 30, 0);
+      u16(v, 32, 0);
+      u16(v, 34, 0);
+      u16(v, 36, 0);
+      u32(v, 38, 0);
+      u32(v, 42, position);
+      cd.set(path, 46);
+      chunks.push(local, bytes);
+      central.push(cd);
+      position += local.length + size;
+      centralSize += cd.length;
+      if (position + centralSize > BATCH_MAX_BYTES + 5e6) fail("MANUAL_ZIP_SIZE_LIMIT");
+    }
+    if (entries.length > 65535 || position + centralSize >= 4294967295) fail("MANUAL_ZIP32_LIMIT");
+    const end = new Uint8Array(22), ev = new DataView(end.buffer);
+    u32(ev, 0, 101010256);
+    u16(ev, 4, 0);
+    u16(ev, 6, 0);
+    u16(ev, 8, entries.length);
+    u16(ev, 10, entries.length);
+    u32(ev, 12, centralSize);
+    u32(ev, 16, position);
+    u16(ev, 20, 0);
+    return new Blob([...chunks, ...central, end], { type: "application/zip" });
+  }
+  function readStoredEntries(bytes) {
+    if (!(bytes instanceof Uint8Array) || bytes.length < 22 || bytes.length > MAX_PART)
+      fail("MANUAL_BAD_PART_LENGTH");
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let offset = 0;
+    const result = /* @__PURE__ */ new Map();
+    while (offset + 4 <= bytes.length && dv.getUint32(offset, true) === 67324752) {
+      if (offset + 30 > bytes.length) fail("MANUAL_ZIP_HEADER_TRUNCATED");
+      const flags = dv.getUint16(offset + 6, true), method = dv.getUint16(offset + 8, true);
+      const expected = dv.getUint32(offset + 14, true), size = dv.getUint32(offset + 18, true);
+      const compressed = dv.getUint32(offset + 22, true);
+      const len = dv.getUint16(offset + 26, true), extra = dv.getUint16(offset + 28, true);
+      if (flags !== 2048 || method !== 0 || size !== compressed || size > 16e6)
+        fail("MANUAL_ZIP_UNSUPPORTED_CONTENT");
+      const start = offset + 30 + len + extra, end = start + size;
+      if (end > bytes.length || len === 0) fail("MANUAL_ZIP_TRUNCATED");
+      const name = td.decode(bytes.subarray(offset + 30, offset + 30 + len));
+      if (!/^(?:manifest\.json|attachments\/\d{4}\/\d{4}\.[a-z0-9]{2,5})$/.test(name) || result.has(name)) fail("MANUAL_ZIP_UNSAFE_INNER_NAME");
+      const data = bytes.subarray(start, end);
+      if (crc322(data) !== expected) fail("MANUAL_ZIP_CRC_MISMATCH");
+      result.set(name, data);
+      offset = end;
+      if (result.size > 15) fail("MANUAL_ZIP_TOO_MANY_INNER_FILES");
+    }
+    if (!result.has("manifest.json") || offset + 22 > bytes.length)
+      fail("MANUAL_ZIP_PART_UNREADABLE");
+    if (dv.getUint32(offset, true) !== 33639248)
+      fail("MANUAL_ZIP_CENTRAL_HEADER_MISSING");
+    return result;
+  }
+  var fromB64 = (str) => {
+    if (typeof str !== "string" || str.length > MAX_PACKET * 2 || !/^[A-Za-z0-9+/]*={0,2}$/.test(str)) fail("MANUAL_CHUNK_BASE64");
+    const s = atob(str);
+    if (s.length > MAX_PACKET) fail("MANUAL_CHUNK_TOO_LARGE");
+    return Uint8Array.from(s, (c) => c.charCodeAt(0));
+  };
+  var ApprovalBatchSession = class {
+    constructor() {
+      this.transfers = /* @__PURE__ */ new Map();
+      this.records = /* @__PURE__ */ new Map();
+      this.bytesReceived = 0;
+      this.partialFailures = [];
+    }
+    receive(message, expectedOrder) {
+      try {
+        const order = message?.order_number;
+        if (!numeric(order) || order !== expectedOrder) fail("MANUAL_TRANSFER_ORDER_MISMATCH");
+        const type = message?.kind;
+        const stage = message?.stage;
+        const part = message?.part;
+        if (!(type === "evidence" && ["raw", "final"].includes(stage) && part === 0 || type === "attachment_zip" && stage === "binary" && Number.isInteger(part) && part >= 1 && part <= 64))
+          fail("MANUAL_TRANSFER_KIND_INVALID");
+        const seq = message?.sequence, total = message?.chunk_count;
+        if (!Number.isInteger(seq) || !Number.isInteger(total) || total < 1 || total > 600 || seq < 0 || seq >= total) fail("MANUAL_TRANSFER_SEQUENCE");
+        const key = [order, type, stage, part].join(":");
+        let transfer = this.transfers.get(key);
+        if (!transfer) {
+          if (seq !== 0) fail("MANUAL_TRANSFER_FIRST_CHUNK_MISSING");
+          transfer = { order, type, stage, part, total, next: 0, chunks: [], size: 0 };
+          this.transfers.set(key, transfer);
+        }
+        if (transfer.total !== total || transfer.next !== seq) fail("MANUAL_TRANSFER_ORDERING");
+        const bytes = fromB64(message.chunk);
+        if (this.bytesReceived + bytes.length > BATCH_MAX_BYTES)
+          fail("MANUAL_BATCH_MEMORY_LIMIT");
+        transfer.chunks.push(bytes);
+        transfer.size += bytes.length;
+        this.bytesReceived += bytes.length;
+        transfer.next++;
+        if (transfer.next === transfer.total) {
+          const data = new Uint8Array(transfer.size);
+          let off = 0;
+          for (const chunk of transfer.chunks) {
+            data.set(chunk, off);
+            off += chunk.length;
+          }
+          transfer.chunks = [];
+          transfer.data = data;
+          if (type === "evidence") {
+            const decoded = JSON.parse(td.decode(data));
+            if (decoded?.schema !== "printcheck.vision.private-approval-collection.v1" || decoded.order_number !== order || !Array.isArray(decoded.articles) || decoded.training_ready !== false || decoded.production_approved !== false)
+              fail("MANUAL_BATCH_EVIDENCE_INVALID");
+            transfer.report = decoded;
+          } else {
+            const parsed = readStoredEntries(data);
+            const manifest = JSON.parse(td.decode(parsed.get("manifest.json")));
+            if (manifest?.schema !== "printcheck.vision.private-approval-attachments.v1" || manifest.order_number !== order || manifest.package_part !== part || manifest.training_ready !== false || !Array.isArray(manifest.items))
+              fail("MANUAL_BATCH_PART_MANIFEST_INVALID");
+            transfer.manifest = manifest;
+          }
+        }
+        return { status: "BATCH_CHUNK_ACCEPTED", complete: transfer.next === total };
+      } catch (e) {
+        return { status: String(e?.message || "MANUAL_BATCH_RECEIVE_ERROR").slice(0, 90) };
+      }
+    }
+    get(order, type, stage, part) {
+      const r = this.transfers.get([order, type, stage, part].join(":"));
+      return r?.data ? r : null;
+    }
+    hasEvidence(order) {
+      return !!this.get(order, "evidence", "final", 0);
+    }
+    receivedOrderIds() {
+      return [...new Set([...this.transfers.values()].map((x) => x.order))].sort();
+    }
+    finalize(orderedResults = []) {
+      const entries = [], index = [];
+      let verified = 0, missing = 0, unverifiedOrders = 0;
+      for (const row of orderedResults) {
+        const order = row.order_number;
+        if (!numeric(order)) fail("MANUAL_BATCH_ORDER_INVALID");
+        const evidence = this.get(order, "evidence", "final", 0) || this.get(order, "evidence", "raw", 0);
+        if (!evidence) {
+          unverifiedOrders++;
+          index.push({
+            order_number: order,
+            collection_status: row.status,
+            evidence_status: "MISSING"
+          });
+          continue;
+        }
+        const source = evidence.report, base = "orders/" + order + "/";
+        const orderFacts = source.order_facts || {};
+        entries.push({ name: base + "order.json", bytes: json(orderFacts.order || {}) });
+        entries.push({ name: base + "articles.json", bytes: json(orderFacts.articles || []) });
+        entries.push({ name: base + "source/evidence.json", bytes: evidence.data });
+        const raw = this.get(order, "evidence", "raw", 0);
+        if (raw && evidence.stage === "final")
+          entries.push({ name: base + "source/backup.json", bytes: raw.data });
+        const approvals = [];
+        const fileIndex = [], assetPaths = /* @__PURE__ */ new Set();
+        for (const article of source.articles) {
+          const item = article.item_id;
+          const itemName = typeof item === "string" && /^\d{1,20}$/.test(item) ? item : "unknown";
+          approvals.push({
+            item_id: item,
+            status: article.status,
+            declared_message_badge: article.declared_message_badge,
+            observed_human_comments: article.observed_human_comments,
+            current_problems: article.current_problems || [],
+            additional_problem_description: article.additional_problem_description || "",
+            source_pdf_revision_confirmed: false,
+            expert_roi_confirmed: false
+          });
+          if (Array.isArray(article.history)) {
+            if (itemName === "unknown") fail("MANUAL_ARTICLE_ID_UNKNOWN");
+            entries.push({ name: base + "threads/" + itemName + ".json", bytes: json({
+              order_number: order,
+              item_id: item,
+              history: article.history,
+              current_problems: article.current_problems || [],
+              training_ready: false
+            }) });
+          }
+        }
+        entries.push({ name: base + "approvals.json", bytes: json(approvals) });
+        const actualPartItems = /* @__PURE__ */ new Map();
+        for (let part = 1; part <= 64; part++) {
+          const p = this.get(order, "attachment_zip", "binary", part);
+          if (!p) continue;
+          const files = readStoredEntries(p.data);
+          for (const info of p.manifest.items) {
+            const bytes = files.get(info.entry);
+            if (!bytes || bytes.length !== info.bytes || portableSha256Hex(bytes) !== info.sha256)
+              fail("MANUAL_BATCH_FILE_SHA_MISMATCH");
+            const ext = String(info.original_filename || "").split(".").at(-1).toLowerCase();
+            if (!/^(?:pdf|psd|psb|png|jpe?g|webp|tiff?|gif|svg|eps|ai|cdr|zip)$/.test(ext))
+              fail("MANUAL_BATCH_FILE_EXTENSION");
+            const sha = info.sha256;
+            const path = base + "assets/" + sha + "." + ext;
+            if (!assetPaths.has(path)) {
+              entries.push({ name: path, bytes });
+              assetPaths.add(path);
+            }
+            const key = part + ":" + info.entry;
+            if (actualPartItems.has(key)) fail("MANUAL_BATCH_DUPLICATE_FILE");
+            actualPartItems.set(key, { ...info, asset_path: path });
+          }
+        }
+        for (const article of source.articles) {
+          for (const m of article.history || []) {
+            for (const a of m.attachments || []) {
+              const key = a.private_zip_part + ":" + a.private_zip_entry;
+              const found = actualPartItems.get(key);
+              if (a.local_get_status === "LOCAL_ATTACHMENT_BYTES_ONLY") {
+                if (!found || found.order_item_id !== article.item_id || found.comment_sequence !== m.sequence || found.sha256 !== a.sha256 || found.original_filename !== a.filename)
+                  fail("MANUAL_BATCH_ATTACHMENT_LINK_MISMATCH");
+                fileIndex.push({
+                  item_id: article.item_id,
+                  comment_sequence: m.sequence,
+                  native_comment_id: m.native_comment_id || null,
+                  original_filename: a.filename,
+                  source: a.source || "native_attachment",
+                  attachment_id: a.attachment_id || null,
+                  sha256: a.sha256,
+                  asset_path: found.asset_path
+                });
+                verified++;
+              } else {
+                missing++;
+                fileIndex.push({
+                  item_id: article.item_id,
+                  comment_sequence: m.sequence,
+                  original_filename: a.filename,
+                  download_status: a.local_get_status || "NOT_ATTEMPTED",
+                  asset_path: null,
+                  sha256: null
+                });
+              }
+            }
+          }
+        }
+        entries.push({ name: base + "files-index.json", bytes: json(fileIndex) });
+        entries.push({ name: base + "review.json", bytes: json({
+          order_number: order,
+          source_pdf_revision_confirmed: false,
+          expert_roi_confirmed: false,
+          training_ready: false,
+          production_approved: false,
+          pending_checks: ["SOURCE_ARTWORK_REVISION", "PRINT_METHOD", "EXPERT_ROI", "EXPERT_LABELS"]
+        }) });
+        index.push({
+          order_number: order,
+          collection_status: row.status,
+          evidence_status: evidence.stage === "final" ? "FINAL" : "BACKUP_ONLY",
+          articles: source.articles.length,
+          files_verified: fileIndex.filter((x) => x.asset_path).length,
+          files_unavailable: fileIndex.filter((x) => !x.asset_path).length
+        });
+      }
+      const counts = {
+        orders: index.length,
+        with_evidence: index.filter((x) => x.evidence_status !== "MISSING").length,
+        unverified_orders: unverifiedOrders,
+        verified_files: verified,
+        missing_files: missing
+      };
+      entries.unshift({ name: "index/orders.json", bytes: json(index) });
+      entries.unshift({ name: "manifest.json", bytes: json({
+        schema: "printcheck.vision.local-batch-corpus.v1",
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        scope: "LOCAL_TEST_ONLY",
+        counts,
+        order_results: index,
+        training_ready: false,
+        production_approved: false,
+        remote_upload: false,
+        expert_labels_verified: false,
+        source_pdf_revision_confirmed: false,
+        notes: "All named discussions and order facts are source evidence, not verified training labels."
+      }) });
+      return {
+        status: "BATCH_ARCHIVE_READY",
+        blob: buildVisionZip(entries),
+        counts,
+        entry_count: entries.length
+      };
+    }
+  };
+
   // vision/orders/overlay-entry.mjs
   var ID = "vision-local-order-overlay";
   var STYLE_ID = "vision-local-order-style";
@@ -3160,7 +3628,7 @@
     const panel = node("section");
     panel.id = ID;
     panel.setAttribute("aria-label", "Vision Check \u2014 \u0442\u0430\u0431\u043B\u0438\u0446\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432");
-    const title = node("h2", "Vision Check v0.1.7 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
+    const title = node("h2", "Vision Check v0.1.8 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
     const description = node(
       "p",
       "\u0422\u043E\u043B\u044C\u043A\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0441\u0435\u0442\u044C. \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u044C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043F\u043E\u0441\u043B\u0435 \u0432\u0430\u0448\u0435\u0433\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044F; \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u043D\u0430 GitHub."
@@ -3301,9 +3769,38 @@
         updateBatchControls();
       }
     });
-    let approvalQueueIndex = 0, approvalQueueStop = false;
+    let approvalQueueIndex = 0, approvalQueueStop = false, approvalQueueUrls = null;
+    let approvalBatch = new ApprovalBatchSession(), activeBatchOrder = null;
+    let preparedBundle = null;
+    function downloadApprovalBatch() {
+      if (!preparedBundle) return;
+      const uri = URL.createObjectURL(preparedBundle.blob), a = node("a");
+      a.href = uri;
+      a.download = "vision-ai-approvals-" + (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-") + ".zip";
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(uri), 6e4);
+    }
+    const approvalZipBtn = makeButton("\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u0435\u0434\u0438\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432 ZIP", () => {
+      if (!preparedBundle) return;
+      downloadApprovalBatch();
+      renderStats("\u0415\u0434\u0438\u043D\u044B\u0439 ZIP \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E \u043D\u0430\u043F\u0440\u0430\u0432\u043B\u0435\u043D \u0432 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 Chrome. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435.");
+    });
+    approvalZipBtn.disabled = true;
+    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener((message, sender, respond) => {
+        if (message?.op !== "vision-approval-batch-accept-v1") return false;
+        if (sender?.id !== chrome.runtime.id || !activeBatchOrder || closed) {
+          respond({ status: "MANUAL_BATCH_LIST_SENDER_DENIED" });
+          return false;
+        }
+        respond(approvalBatch.receive(message, activeBatchOrder));
+        return false;
+      });
+    }
     const approvalQueueReports = [];
-    const approvalQueueBtn = makeButton("\u0421\u043E\u0431\u0440\u0430\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0432\u0441\u0435\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432", () => {
+    const approvalQueueBtn = makeButton("\u0421\u043E\u0431\u0440\u0430\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0432\u0441\u0435\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 (\u043E\u0434\u0438\u043D ZIP)", () => {
       void collectFromOrdersList();
     });
     const approvalQueueStopBtn = makeButton("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F", () => {
@@ -3367,7 +3864,9 @@
         if (target.status === "ORDER_LINK_FOUND" && target.url?.origin === "http://testgifts.local" && /^\/private\/order\/[0-9]{5,12}$/.test(target.url.pathname) && !target.url.search && !target.url.hash)
           ordered.set(target.url.href, target.url.href);
       }
-      const urls = [...ordered.values()];
+      if (!approvalQueueUrls || approvalQueueIndex === 0)
+        approvalQueueUrls = [...ordered.values()];
+      const urls = approvalQueueUrls;
       if (!urls.length) {
         busy = false;
         approvalQueueBtn.disabled = false;
@@ -3378,11 +3877,17 @@
         return;
       }
       let done = 0, verified = 0, imagesAndFiles = 0, errors = 0, finalSaved = 0, rawOnly = 0, textFailures = 0;
+      if (approvalQueueIndex === 0) {
+        approvalBatch = new ApprovalBatchSession();
+        preparedBundle = null;
+        approvalZipBtn.disabled = true;
+      }
       try {
         while (approvalQueueIndex < urls.length && !closed && !approvalQueueStop) {
           const url = urls[approvalQueueIndex];
           renderStats("\u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0441\u043F\u0438\u0441\u043A\u0430: " + done + " / " + urls.length + "\n\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437 \u0432\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E\u0439 \u0432\u043A\u043B\u0430\u0434\u043A\u0435. \u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0439.");
           let result;
+          activeBatchOrder = new URL(url).pathname.split("/").at(-1);
           try {
             result = await chrome.runtime.sendMessage({
               op: "vision-approval-order-queue-v1",
@@ -3390,10 +3895,13 @@
             });
           } catch {
             result = { status: "MANUAL_BACKGROUND_ORDER_FAILED" };
+          } finally {
+            activeBatchOrder = null;
           }
           const safeStatus = /^[A-Z0-9_]{3,70}$/.test(result?.status || "") ? result.status : "MANUAL_UNKNOWN_RESULT";
           const num = (x) => Number.isSafeInteger(x) && x >= 0 && x <= 1e4 ? x : 0;
           const entry = {
+            order_number: new URL(url).pathname.split("/").at(-1),
             status: safeStatus,
             eligible_articles: num(result?.eligible_articles),
             verified_articles: num(result?.verified_articles),
@@ -3416,7 +3924,26 @@
           renderStats("\u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F \u0438\u0437 \u0441\u043F\u0438\u0441\u043A\u0430: " + approvalQueueIndex + " / " + urls.length + "\n\u041F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u0439: " + verified + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439: " + imagesAndFiles + " \xB7 \u0438\u0442\u043E\u0433\u043E\u0432\u044B\u0445 JSON: " + finalSaved + " \xB7 \u0442\u043E\u043B\u044C\u043A\u043E \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0445 JSON: " + rawOnly + " \xB7 \u0431\u0435\u0437 \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438: " + textFailures + " \xB7 \u0440\u0443\u0447\u043D\u044B\u0445 \u043F\u0440\u043E\u0432\u0435\u0440\u043E\u043A: " + errors + "\n\u0422\u0435\u043A\u0441\u0442\u044B, \u0438\u043C\u0435\u043D\u0430, \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u044B, \u0430\u0440\u0442\u0438\u043A\u0443\u043B\u044B \u0438 \u0441\u0432\u0435\u0434\u0435\u043D\u0438\u044F \u0437\u0430\u043A\u0430\u0437\u0430 \u2014 \u0432 JSON; \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u2014 \u0432 ZIP.");
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        if (!closed) renderStats(approvalQueueStop ? "\u041E\u0431\u0445\u043E\u0434 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D: " + approvalQueueIndex + " / " + urls.length + ". \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u043E\u0431\u0440\u0430\u0442\u044C \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F\xBB, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C." : "\u041E\u0431\u0445\u043E\u0434 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0439 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D: " + approvalQueueIndex + " / " + urls.length + " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u0439: " + verified + " \xB7 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439: " + imagesAndFiles + " \xB7 \u0438\u0442\u043E\u0433\u043E\u0432\u044B\u0445 JSON: " + finalSaved + " \xB7 \u0442\u043E\u043B\u044C\u043A\u043E \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0445: " + rawOnly + " \xB7 \u0431\u0435\u0437 \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438: " + textFailures + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A: " + errors + ". " + (textFailures || rawOnly ? "\u0412\u041D\u0418\u041C\u0410\u041D\u0418\u0415: \u043D\u0435\u043A\u043E\u0442\u043E\u0440\u044B\u0435 JSON \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u044B \u2014 \u043F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 Chrome \u0438 \u0430\u043D\u043E\u043D\u0438\u043C\u043D\u044B\u0439 \u043E\u0442\u0447\u0451\u0442." : "\u041F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438 \u0438 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E."));
+        let finalStatus = "";
+        if (approvalQueueIndex === urls.length && !approvalQueueStop && !closed) {
+          try {
+            preparedBundle = approvalBatch.finalize(approvalQueueReports);
+            approvalZipBtn.disabled = false;
+            downloadApprovalBatch();
+            finalStatus = "\u0415\u0434\u0438\u043D\u044B\u0439 ZIP: " + preparedBundle.entry_count + " \u0437\u0430\u043F\u0438\u0441\u0435\u0439, " + preparedBundle.counts.with_evidence + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0441 \u0434\u0430\u043D\u043D\u044B\u043C\u0438, " + preparedBundle.counts.verified_files + " \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u0439, " + preparedBundle.counts.missing_files + " \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0445 \u0444\u0430\u0439\u043B\u043E\u0432. \u0418\u043D\u0438\u0446\u0438\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u041E\u0414\u041D\u0410 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430; \u043F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0435\u0451 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u0432 Chrome.";
+          } catch (e) {
+            finalStatus = "MANUAL: \u0435\u0434\u0438\u043D\u044B\u0439 ZIP \u043D\u0435 \u0441\u0444\u043E\u0440\u043C\u0438\u0440\u043E\u0432\u0430\u043D (" + String(e?.message || "UNKNOWN").slice(0, 85) + "). \u0414\u0430\u043D\u043D\u044B\u0435 \u043D\u0430\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u0439 \u0432\u043A\u043B\u0430\u0434\u043A\u0435 \u2014 \u043D\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u0439\u0442\u0435 \u0435\u0451.";
+          }
+        } else if (approvalQueueStop) {
+          try {
+            preparedBundle = approvalBatch.finalize(approvalQueueReports);
+            approvalZipBtn.disabled = false;
+            finalStatus = "\u041E\u0431\u0445\u043E\u0434 \u043F\u0440\u0438\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D: " + approvalQueueIndex + " / " + urls.length + ". \u041C\u043E\u0436\u043D\u043E \u0441\u043A\u0430\u0447\u0430\u0442\u044C \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432 \u043A\u043D\u043E\u043F\u043A\u043E\u0439 \u043B\u0438\u0431\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043E\u0431\u0445\u043E\u0434.";
+          } catch (e) {
+            finalStatus = "\u041F\u0430\u0443\u0437\u0430: \u0430\u0440\u0445\u0438\u0432 \u043D\u0435 \u0433\u043E\u0442\u043E\u0432 (" + String(e?.message || "UNKNOWN").slice(0, 80) + ").";
+          }
+        }
+        if (!closed) renderStats(finalStatus || "MANUAL: \u0430\u0440\u0445\u0438\u0432 \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D.");
       } finally {
         busy = false;
         approvalQueueBtn.disabled = false;
@@ -3428,6 +3955,7 @@
     actions.append(
       approvalQueueBtn,
       approvalQueueStopBtn,
+      approvalZipBtn,
       approvalQueueDiagBtn,
       refreshBtn,
       scanBtn,
@@ -3457,6 +3985,10 @@
       nextRowIndex = 0;
       approvalQueueIndex = 0;
       approvalQueueReports.length = 0;
+      approvalQueueUrls = null;
+      approvalBatch = new ApprovalBatchSession();
+      preparedBundle = null;
+      approvalZipBtn.disabled = true;
       pauseRequested = false;
       for (const r of rows) {
         const cell = node(

@@ -790,6 +790,28 @@
     onProgress({ processed, total: jobs.length, successful, complete: true });
   }
 
+  // vision/orders/approval-batch-archive.mjs
+  var MAX_PART = 26e6;
+  var MAX_PACKET = 48e3;
+  var te3 = new TextEncoder();
+  var td = new TextDecoder("utf-8", { fatal: true });
+  var fail = (c) => {
+    throw Error(c);
+  };
+  function encodeTransferChunks(bytes) {
+    if (!(bytes instanceof Uint8Array) || bytes.length > MAX_PART)
+      fail("MANUAL_TRANSFER_BYTES_LIMIT");
+    const chunks = [];
+    for (let i = 0; i < bytes.length; i += MAX_PACKET) {
+      const part = bytes.subarray(i, i + MAX_PACKET);
+      let binary = "";
+      for (let j = 0; j < part.length; j += 8192)
+        binary += String.fromCharCode(...part.subarray(j, j + 8192));
+      chunks.push(btoa(binary));
+    }
+    return chunks.length ? chunks : [""];
+  }
+
   // vision/orders/approval-order-facts.mjs
   var limit = (value, n = 12e3) => String(value || "").replace(/\s+/g, " ").trim().slice(0, n);
   var txt = (root, selector, n) => limit(root?.querySelector?.(selector)?.textContent, n);
@@ -1271,8 +1293,8 @@
     const panel = make("section");
     panel.id = BOX_ID;
     panel.setAttribute("aria-label", "Vision AI \u2014 \u0438\u0441\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F");
-    const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430 \xB7 v0.1.7");
-    const note = make("p", "\u0410\u0432\u0442\u043E\u043E\u0431\u0445\u043E\u0434: \u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438 \u0441 \u0438\u043C\u0435\u043D\u0430\u043C\u0438 \u0443\u0447\u0430\u0441\u0442\u043D\u0438\u043A\u043E\u0432, \u0438\u0441\u0442\u043E\u0440\u0438\u044E \u043F\u0440\u043E\u0431\u043B\u0435\u043C, \u0441\u0432\u0435\u0434\u0435\u043D\u0438\u044F \u043E \u0437\u0430\u043A\u0430\u0437\u0435 \u0438 \u043A\u0430\u0436\u0434\u043E\u043C \u0430\u0440\u0442\u0438\u043A\u0443\u043B\u0435. \u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F JSON \u0441 \u0442\u0435\u043A\u0441\u0442\u043E\u043C, \u0437\u0430\u0442\u0435\u043C \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F, \u0437\u0430\u0442\u0435\u043C \u043E\u043A\u043E\u043D\u0447\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0439 JSON \u0441 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430\u043C\u0438 \u043A ZIP. \u0412\u0441\u0435 \u0444\u0430\u0439\u043B\u044B \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u043A\u043E\u043C\u043F\u044C\u044E\u0442\u0435\u0440\u0435.");
+    const header = make("strong", "Vision AI \xB7 \u0421\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435 \u043C\u0430\u043A\u0435\u0442\u0430 \xB7 v0.1.8");
+    const note = make("p", "\u041F\u0430\u043A\u0435\u0442\u043D\u044B\u0439 \u0441\u0431\u043E\u0440: \u043F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438, \u0438\u043C\u0435\u043D\u0430, \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u044B \u0438 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u043F\u0435\u0440\u0435\u0434\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0441\u043F\u0438\u0441\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u043E\u0432. \u041F\u043E \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u041E\u0414\u0418\u041D ZIP \u0441 \u043F\u0430\u043F\u043A\u0430\u043C\u0438 \u0437\u0430\u043A\u0430\u0437\u043E\u0432, \u043E\u0431\u0441\u0443\u0436\u0434\u0435\u043D\u0438\u0439 \u0438 \u0444\u0430\u0439\u043B\u043E\u0432. \u041D\u0435 \u0437\u0430\u043A\u0440\u044B\u0432\u0430\u0439\u0442\u0435 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0434\u043E \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u044F.");
     const stats = make("p", "\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u043E\u043A\u043D\u043E.");
     stats.setAttribute("role", "status");
     const scan = make("button", "\u041F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u0435");
@@ -1398,7 +1420,37 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(uri), 2500);
     }
-    async function persistOrderEvidence(stage) {
+    async function stageForBatch(kind, stage, part, bytes) {
+      const order = String(collection?.order_number || "");
+      if (!/^\d{5,12}$/.test(order)) return { status: "MANUAL_BATCH_ORDER_INVALID" };
+      let chunks;
+      try {
+        chunks = encodeTransferChunks(bytes);
+      } catch {
+        return { status: "MANUAL_BATCH_PAYLOAD_TOO_LARGE" };
+      }
+      for (let i = 0; i < chunks.length; i++) {
+        let res;
+        try {
+          res = await chrome.runtime.sendMessage({
+            op: "vision-approval-batch-transfer-v1",
+            order_number: order,
+            kind,
+            stage,
+            part,
+            sequence: i,
+            chunk_count: chunks.length,
+            chunk: chunks[i]
+          });
+        } catch {
+          return { status: "MANUAL_BATCH_RELAY_FAILED" };
+        }
+        if (res?.status !== "BATCH_CHUNK_ACCEPTED")
+          return { status: res?.status || "MANUAL_BATCH_RELAY_REJECTED" };
+      }
+      return { status: kind === "evidence" ? "BATCH_EVIDENCE_STAGED" : "BATCH_ZIP_PART_STAGED" };
+    }
+    async function persistOrderEvidence(stage, { batchMode = false } = {}) {
       if (!collection || !Array.isArray(collection.articles)) return {
         status: "MANUAL_NO_ORDER_EVIDENCE"
       };
@@ -1408,6 +1460,14 @@
       };
       if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage)
         return { status: "MANUAL_EXTENSION_DOWNLOAD_UNAVAILABLE" };
+      if (batchMode) {
+        try {
+          const bytes = new TextEncoder().encode(JSON.stringify(collection) + "\n");
+          return await stageForBatch("evidence", stage, 0, bytes);
+        } catch {
+          return { status: "MANUAL_BATCH_EVIDENCE_ENCODING_FAILED" };
+        }
+      }
       try {
         return await chrome.runtime.sendMessage({
           op: "vision-approval-save-evidence-v1",
@@ -1429,18 +1489,24 @@
         }
       })) {
         if (item.status === "PRIVATE_LOCAL_ZIP_READY") {
+          if (queueMode) {
+            const bytes = new Uint8Array(await item.zip.arrayBuffer());
+            const staged = await stageForBatch("attachment_zip", "binary", item.part, bytes);
+            if (staged.status !== "BATCH_ZIP_PART_STAGED")
+              return { status: staged.status, files, parts, processed, failures: failures + 1 };
+          } else {
+            const u = URL.createObjectURL(item.zip), a = make("a");
+            a.href = u;
+            a.download = "vision-private-approval-attachments-part-" + String(item.part).padStart(4, "0") + ".zip";
+            document.body.append(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(u), 3e4);
+          }
           files += item.files;
           parts++;
-          const u = URL.createObjectURL(item.zip), a = make("a");
-          a.href = u;
-          a.download = "vision-private-approval-attachments-" + (queueMode ? location.pathname.split("/").filter(Boolean).at(-1) + "-" : "") + "part-" + String(item.part).padStart(4, "0") + ".zip";
-          document.body.append(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(u), 3e4);
           processed = item.processed;
           failures += item.manifest.skipped.length;
-          await new Promise((resolve) => setTimeout(resolve, 300));
         } else if (item.status === "STOPPED") {
           return { status: "STOPPED", files, parts, processed, failures };
         } else if (item.status === "NO_ATTACHMENT_FILES_VERIFIED") {
@@ -1479,7 +1545,7 @@
         if (!panel.isConnected) return;
         const done = collection.articles.filter((x) => x.status === "PRIVATE_REVIEW_ONLY").length;
         const skipped = collection.skipped.length;
-        const rawEvidence = queueMode ? await persistOrderEvidence("raw") : { status: "MANUAL_SAVE_ON_DEMAND" };
+        const rawEvidence = queueMode ? await persistOrderEvidence("raw", { batchMode: true }) : { status: "MANUAL_SAVE_ON_DEMAND" };
         const attachmentReport = stopRequested ? { status: "STOPPED", files: 0, parts: 0, failures: 0 } : await savePrivateAttachmentParts({ queueMode });
         collection.attachment_download_summary = {
           status: attachmentReport.status,
@@ -1492,10 +1558,10 @@
         if (!panel.isConnected) return;
         stats.textContent = "\u041E\u0431\u0445\u043E\u0434: " + collection.status + "\n\u0410\u0440\u0442\u0438\u043A\u0443\u043B\u043E\u0432: " + collection.articles.length + " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u0430: " + done + " \xB7 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E: " + skipped + "\n\u0424\u0430\u0439\u043B\u044B: " + attachmentReport.files + " \xB7 ZIP-\u0447\u0430\u0441\u0442\u0435\u0439: " + attachmentReport.parts + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u0447\u0442\u0435\u043D\u0438\u044F: " + attachmentReport.failures + " \xB7 \u0441\u0442\u0430\u0442\u0443\u0441: " + attachmentReport.status + "\n\u041F\u0440\u0438\u0432\u0430\u0442\u043D\u044B\u0439 JSON \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\u043C\u0435\u0447\u0430\u043D\u0438\u0439. \u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0435\u0433\u043E \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E. Chrome \u043C\u043E\u0436\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435 \u043D\u0430 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0441\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0439.";
         privateSave.disabled = anonymousSave.disabled = attachmentRetry.disabled = false;
-        const finalEvidence = queueMode ? await persistOrderEvidence("final") : { status: "MANUAL_SAVE_ON_DEMAND" };
-        const textSaved = rawEvidence.status === "EVIDENCE_DOWNLOAD_COMPLETE" || finalEvidence.status === "EVIDENCE_DOWNLOAD_COMPLETE";
+        const finalEvidence = queueMode ? await persistOrderEvidence("final", { batchMode: true }) : { status: "MANUAL_SAVE_ON_DEMAND" };
+        const textSaved = rawEvidence.status === "BATCH_EVIDENCE_STAGED" || finalEvidence.status === "BATCH_EVIDENCE_STAGED";
         if (queueMode) {
-          stats.textContent += "\n\u041F\u0435\u0440\u0435\u043F\u0438\u0441\u043A\u0438 \u0438 \u0434\u0430\u043D\u043D\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u0430: " + (textSaved ? "\u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B" : "\u041E\u0428\u0418\u0411\u041A\u0410 \u0421\u041E\u0425\u0420\u0410\u041D\u0415\u041D\u0418\u042F") + " \xB7 \u043F\u0440\u0435\u0434\u0432\u0430\u0440\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 " + rawEvidence.status + " \xB7 \u0438\u0442\u043E\u0433\u043E\u0432\u044B\u0439 " + finalEvidence.status;
+          stats.textContent += "\n\u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0435\u0440\u0435\u0434\u0430\u043D\u044B \u0432 \u0435\u0434\u0438\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432: " + (textSaved ? "\u0434\u0430" : "\u041E\u0428\u0418\u0411\u041A\u0410 \u041F\u0415\u0420\u0415\u0414\u0410\u0427\u0418") + " \xB7 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u0430\u044F " + rawEvidence.status + " \xB7 \u0438\u0442\u043E\u0433\u043E\u0432\u0430\u044F " + finalEvidence.status;
         }
         return {
           status: collection.status,
@@ -1506,7 +1572,8 @@
           failures: attachmentReport.failures,
           private_text_saved: textSaved,
           raw_evidence_status: rawEvidence.status,
-          final_evidence_status: finalEvidence.status
+          final_evidence_status: finalEvidence.status,
+          batch_mode: queueMode
         };
       } catch {
         if (panel.isConnected) stats.textContent = "MANUAL: \u043E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u043E\u0433\u043E \u043E\u0431\u0445\u043E\u0434\u0430.";
