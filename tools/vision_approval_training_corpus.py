@@ -79,6 +79,28 @@ def copy_verified_zip(source, destination, expected_digest):
         destination.unlink(missing_ok=True)
         raise
 
+MAX_PRIVATE_ATTACHMENT_BYTES = 16 * 1024 * 1024
+
+def bounded_zip_entry(zip_file, entry):
+    """Bound decompressed attachment bytes, independent of ZIP compression ratio."""
+    info = zip_file.getinfo(entry)
+    need(info.file_size <= MAX_PRIVATE_ATTACHMENT_BYTES,
+         "PRIVATE_ATTACHMENT_SIZE_LIMIT")
+    total = 0
+    chunks = []
+    with zip_file.open(info, "r") as source:
+        while True:
+            block = source.read(min(COPY_CHUNK_BYTES,
+                                    MAX_PRIVATE_ATTACHMENT_BYTES - total + 1))
+            if not block:
+                break
+            total += len(block)
+            need(total <= MAX_PRIVATE_ATTACHMENT_BYTES,
+                 "PRIVATE_ATTACHMENT_SIZE_LIMIT")
+            chunks.append(block)
+    need(total == info.file_size, "PRIVATE_ATTACHMENT_SIZE_MISMATCH")
+    return b"".join(chunks)
+
 def jsonl(rows):
     return ("".join(json.dumps(x, ensure_ascii=False, sort_keys=True) + "\n"
                     for x in rows)).encode("utf-8")
@@ -145,7 +167,7 @@ def transform(evidences, archives, output):
                 for entry in manifest["items"]:
                     key = (part, entry["entry"])
                     need(key not in byte_lookup, "ARCHIVE_DUPLICATE_BINARY")
-                    byte_lookup[key] = (zip_file.read(entry["entry"]), raw_zip)
+                    byte_lookup[key] = (bounded_zip_entry(zip_file, entry["entry"]), raw_zip)
         for i, article in enumerate(report["articles"], 1):
             need(isinstance(article, dict), "ARTICLE_INVALID")
             item = article.get("item_id")
