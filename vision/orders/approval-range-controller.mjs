@@ -275,6 +275,18 @@ export function makeApprovalRangeController({
   show('ZIP №'+next.archives_completed+' сохранён: '+reason+
    '. Контрольная точка и новый журнал записаны.');
  }
+ async function waitForPreviousOrderTab(){
+  // A site reload can interrupt collection while its old tab is still live.
+  for(let i=0;i<210;i++){
+   const status=await chrome.runtime.sendMessage({
+    op:'vision-approval-queue-status-v1'}).catch(()=>null);
+   if(status?.status!=='QUEUE_STATUS_OK')
+    throw Error('MANUAL_QUEUE_STATUS_UNAVAILABLE');
+   if(!status.busy)return;
+   await delay(1000);
+  }
+  throw Error('MANUAL_OLD_ORDER_TAB_STILL_RUNNING');
+ }
  async function recoverDownload(){
   if(!inflightDownload)return true;
   const d=inflightDownload;
@@ -370,7 +382,10 @@ export function makeApprovalRangeController({
     if(inspected.status==='TZ_APPROVED'){
      activeOrder=String(order);
      let collected;
-     try{collected=await scanOrder(rangeOrderUrl(order),true)}
+     try{
+      await waitForPreviousOrderTab();
+      collected=await scanOrder(rangeOrderUrl(order),true);
+     }
      catch{collected={status:'MANUAL_NATIVE_APPROVAL_QUEUE_FAILED'}}
      finally{activeOrder=null}
      if(collected?.status!=='COMPLETE'||collected?.final_evidence_saved!==true){
