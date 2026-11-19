@@ -16,6 +16,7 @@ MAX_FILES = 64
 MAX_FILE_BYTES = 16_000_000
 MAX_PART_BYTES = 24_000_000
 MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_EVIDENCE_BYTES = 16 * 1024 * 1024
 ENTRY = re.compile(r"attachments/([0-9]{4})/([0-9]{4})\.(pdf|psd|psb|png|jpg|jpeg|webp|tif|tiff|gif|svg|eps|ai|cdr|zip)\Z")
 DIGITS = re.compile(r"[0-9]{1,20}\Z")
 SHA256 = re.compile(r"[a-f0-9]{64}\Z")
@@ -160,7 +161,10 @@ def audit_archives(paths, evidence=None):
     require(len(archive_items) <= MAX_FILES, "FILE_COUNT_LIMIT")
     if evidence is not None:
         try:
-            report = read_json(Path(evidence).read_bytes())
+            with Path(evidence).open("rb") as evidence_stream:
+                raw_evidence = evidence_stream.read(MAX_EVIDENCE_BYTES + 1)
+            require(len(raw_evidence) <= MAX_EVIDENCE_BYTES, "EVIDENCE_TOO_LARGE")
+            report = read_json(raw_evidence)
         except OSError:
             raise AuditError("EVIDENCE_UNREADABLE") from None
         require(isinstance(report, dict) and report.get("schema") ==
