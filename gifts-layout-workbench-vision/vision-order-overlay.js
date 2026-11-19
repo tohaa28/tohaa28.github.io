@@ -3625,6 +3625,48 @@
     }
   };
 
+  // vision/orders/extension-zip-transfer.mjs
+  async function startExtensionZipDownload(blob, filename) {
+    if (!(blob instanceof Blob) || blob.size < 100 || blob.size > 2e8 || !/^vision-ai-(?:range-\d{7}-\d{7}-part|list-part)-\d{5}-\d{7}-\d{7}\.zip$/.test(filename))
+      throw Error("VISION_ZIP_TRANSFER_ARGS_INVALID");
+    if (!globalThis.chrome?.runtime?.sendMessage)
+      throw Error("VISION_ZIP_EXTENSION_TRANSPORT_REQUIRED");
+    const random = new Uint8Array(16);
+    crypto.getRandomValues(random);
+    const job = Array.from(random, (b) => b.toString(16).padStart(2, "0")).join("");
+    const command = (op, extra = {}) => chrome.runtime.sendMessage({
+      op: "vision-zip-secure-message-v1",
+      action: op,
+      job,
+      ...extra
+    });
+    const begin = await command("begin", { filename, size: blob.size });
+    if (begin?.status !== "ZIP_READY_FOR_CHUNK")
+      throw Error(begin?.status || "VISION_ZIP_BEGIN_FAILED");
+    let finished = false;
+    try {
+      let sequence = 0;
+      for (let offset = 0; offset < blob.size; offset += 48e3) {
+        const part = new Uint8Array(await blob.slice(offset, offset + 48e3).arrayBuffer());
+        let binary = "";
+        for (let i = 0; i < part.length; i += 8192)
+          binary += String.fromCharCode(...part.subarray(i, i + 8192));
+        const result2 = await command("chunk", { sequence, base64: btoa(binary) });
+        if (result2?.status !== "ZIP_CHUNK_ACCEPTED")
+          throw Error(result2?.status || "VISION_ZIP_CHUNK_FAILED");
+        sequence++;
+      }
+      const result = await command("finish", { chunks: sequence });
+      if (result?.status !== "ZIP_DOWNLOAD_STARTED" || !Number.isSafeInteger(result.download_id) || result.download_id < 0)
+        throw Error(result?.status || "VISION_ZIP_FINISH_FAILED");
+      finished = true;
+      return result.download_id;
+    } finally {
+      if (!finished) void command("cancel").catch(() => {
+      });
+    }
+  }
+
   // vision/orders/approval-file-list.mjs
   var ORDER_LIST_MIN = 1e6;
   var ORDER_LIST_MAX = 9999999;
@@ -4318,10 +4360,49 @@
       }
       throw Error("MANUAL_OLD_ORDER_TAB_STILL_RUNNING");
     }
+    async function resumePreparingZip() {
+      const info = inflightDownload;
+      if (info?.stage !== "preparing") return true;
+      const result = await audit("check", {
+        after_id: info.after_id,
+        byte_length: info.byte_length,
+        expected_filename: info.filename
+      });
+      if (result?.status === "RANGE_DOWNLOAD_COMPLETE") {
+        await commitConfirmedArchive("ZIP \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D");
+        return true;
+      }
+      if (result?.status === "RANGE_DOWNLOAD_PENDING" && result.matched > 0) {
+        inflightDownload = { ...info, stage: "started" };
+        await persistJournal(currentMode());
+        for (const id2 of info.order_numbers) batch.discardOrder(id2);
+        return true;
+      }
+      if (result?.status !== "RANGE_DOWNLOAD_PENDING")
+        throw Error(result?.status || "MANUAL_RANGE_ZIP_PREPARED_AUDIT_FAILED");
+      const selected = new Set(info.order_numbers);
+      const rows = pendingRegistry.filter((r) => selected.has(r.order_number));
+      if (rows.length !== info.order_numbers.length)
+        throw Error("MANUAL_RANGE_PREPARED_ROWS_MISSING");
+      const temp = new ApprovalBatchSession();
+      const { orders } = await loadRangeJournal();
+      for (const row of orders.filter((r) => selected.has(r.order_number)))
+        temp.restoreOrder(row.order_number, row.transfers);
+      const blob = temp.finalize(rows).blob;
+      if (blob.size !== info.byte_length)
+        throw Error("MANUAL_RANGE_PREPARED_SIZE_CHANGED");
+      const id = await startExtensionZipDownload(blob, info.filename);
+      inflightDownload = { ...info, after_id: id - 1, stage: "started" };
+      await persistJournal(currentMode());
+      for (const oid of info.order_numbers) batch.discardOrder(oid);
+      return true;
+    }
     async function recoverDownload(waitForCompletion = false) {
       if (!inflightDownload) return true;
-      const d = inflightDownload;
       try {
+        await resumePreparingZip();
+        if (!inflightDownload) return true;
+        const d = inflightDownload;
         if (waitForCompletion) {
           await waitForChrome(d.after_id, d.byte_length, d.filename);
           await commitConfirmedArchive("Chrome \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043B \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 ZIP");
@@ -4340,7 +4421,7 @@
         throw Error(res?.status || "MANUAL_RANGE_DOWNLOAD_AUDIT_FAILED");
       } catch (error) {
         lastError = "MANUAL_ZIP_DOWNLOAD_UNCONFIRMED_" + String(error?.message || "UNKNOWN").slice(0, 50);
-        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D, \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
+        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D Chrome. \u0418\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
         return false;
       }
     }
@@ -4362,7 +4443,6 @@
       }
       const part = checkpoint.archives_completed + 1;
       const filename = "vision-ai-range-" + config.start + "-" + config.end + "-part-" + String(part).padStart(5, "0") + "-" + rows[0].order_number + "-" + rows.at(-1).order_number + ".zip";
-      const blobUrl = URL.createObjectURL(result.blob);
       try {
         const before = await audit("baseline");
         if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
@@ -4374,24 +4454,24 @@
           part,
           end_cursor: cursor,
           order_numbers: rows.map((x) => x.order_number),
-          failed_orders: failedPending.slice()
+          failed_orders: failedPending.slice(),
+          stage: "preparing"
         };
         await persistJournal(currentMode());
-        const a = create("a");
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.append(a);
-        a.click();
-        a.remove();
+        const downloadId = await startExtensionZipDownload(result.blob, filename);
+        inflightDownload = {
+          ...inflightDownload,
+          after_id: downloadId - 1,
+          stage: "started"
+        };
+        await persistJournal(currentMode());
         for (const row of rows) batch.discardOrder(row.order_number);
-        show("ZIP \u2116" + part + " \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F; \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u0442\u0441\u044F.");
+        show("ZIP \u2116" + part + " \u043F\u0435\u0440\u0435\u0434\u0430\u043D Chrome, \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u044E \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0435 \u0437\u0430\u043A\u0430\u0437\u044B.");
         return true;
       } catch (error) {
         lastError = String(error?.message || "MANUAL_RANGE_DOWNLOAD_UNCONFIRMED");
-        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D, \u0438\u0441\u0445\u043E\u0434\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
+        show("ZIP \u043D\u0435 \u043D\u0430\u0447\u0430\u0442/\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D, \u0434\u0430\u043D\u043D\u044B\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E.");
         return false;
-      } finally {
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 125e3);
       }
     }
     async function start() {
@@ -4597,7 +4677,7 @@
         cursor = journal.cursor;
         inflightDownload = journal.download || null;
         for (const item of orders) {
-          if (!inflightDownload?.order_numbers?.includes(item.order_number))
+          if (!inflightDownload?.order_numbers?.includes(item.order_number) || inflightDownload?.stage === "preparing")
             batch.restoreOrder(item.order_number, item.transfers);
         }
       }
@@ -4625,6 +4705,54 @@
         return pending.length;
       },
       receive: (message, expectedOrder) => batch.receive(message, expectedOrder),
+      remote: async (action, payload = {}) => {
+        await initialLoadPromise;
+        if (action === "status") return {
+          mode: "range",
+          running,
+          paused,
+          stopped,
+          checked: checkpoint?.checked_committed || 0,
+          next_order: cursor,
+          range_start: config?.start || RANGE_MIN,
+          range_end: config?.end || RANGE_MAX,
+          archives: checkpoint?.archives_completed || 0,
+          found: checkpoint?.found_committed || 0,
+          pending: pending.length,
+          downloading: !!inflightDownload,
+          delay_ms: liveDelayMs,
+          blocked: restoreBlocked,
+          error: lastError
+        };
+        if (action === "delay") {
+          if (!Number.isSafeInteger(payload.value) || payload.value < 100 || payload.value > 6e4)
+            throw Error("MANUAL_RANGE_DELAY_INVALID");
+          rateInput.value = String(payload.value);
+          rateInput.dispatchEvent(new Event("input"));
+          return { status: "VISION_DELAY_UPDATED" };
+        }
+        if (action === "start") {
+          void start();
+          return { status: "VISION_SCAN_START_REQUESTED" };
+        }
+        if (action === "pause") {
+          pauseBtn.click();
+          return { status: "VISION_SCAN_PAUSE_REQUESTED" };
+        }
+        if (action === "stop") {
+          stopBtn.click();
+          return { status: "VISION_SCAN_STOP_REQUESTED" };
+        }
+        if (action === "save") {
+          saveBtn.click();
+          return { status: "VISION_SCAN_ZIP_SAVE_REQUESTED" };
+        }
+        if (action === "export") {
+          registryBtn.click();
+          return { status: "VISION_REGISTRY_EXPORT_REQUESTED" };
+        }
+        return { status: "VISION_REMOTE_ACTION_DENIED" };
+      },
       requestPause: () => {
         paused = true;
       },
@@ -4971,10 +5099,52 @@
       lastError = null;
       show("ZIP \u2116" + state.archive_count + " \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D; \u043D\u043E\u0432\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430.");
     }
-    async function recoverDownload(waitForCompletion = false) {
+    async function resumePreparingZip() {
       const info = state?.download;
-      if (!info) return true;
+      if (info?.stage !== "preparing") return true;
+      const check = await audit("check", {
+        after_id: info.after_id,
+        byte_length: info.bytes,
+        expected_filename: info.filename
+      });
+      if (check?.status === "RANGE_DOWNLOAD_COMPLETE") {
+        await commitDownloaded();
+        return true;
+      }
+      if (check?.status === "RANGE_DOWNLOAD_PENDING" && check.matched > 0) {
+        const next2 = { ...state, download: { ...info, stage: "started" } };
+        await write(() => saveOrderFileStatus(next2));
+        state = next2;
+        for (const id of info.order_ids) batch.discardOrder(id);
+        return true;
+      }
+      if (check?.status !== "RANGE_DOWNLOAD_PENDING")
+        throw Error(check?.status || "VISION_ZIP_PREPARED_AUDIT_FAILED");
+      const selected = new Set(info.order_ids);
+      const rows = pending.filter((row) => selected.has(row.id));
+      if (rows.length !== info.order_ids.length)
+        throw Error("VISION_ZIP_PREPARED_ROWS_MISSING");
+      const temp = new ApprovalBatchSession();
+      for (const row of rows) temp.restoreOrder(row.id, row.transfers);
+      const blob = temp.finalize(rows).blob;
+      if (blob.size !== info.bytes) throw Error("VISION_ZIP_PREPARED_SIZE_CHANGED");
+      const downloadId = await startExtensionZipDownload(blob, info.filename);
+      const next = { ...state, download: {
+        ...info,
+        stage: "started",
+        after_id: downloadId - 1
+      } };
+      await write(() => saveOrderFileStatus(next));
+      state = next;
+      for (const id of info.order_ids) batch.discardOrder(id);
+      return true;
+    }
+    async function recoverDownload(waitForCompletion = false) {
+      if (!state?.download) return true;
       try {
+        await resumePreparingZip();
+        if (!state.download) return true;
+        const info = state.download;
         if (waitForCompletion) {
           await waitForChrome(info.after_id, info.bytes, info.filename);
           await commitDownloaded();
@@ -4993,7 +5163,7 @@
         throw Error(result?.status || "MANUAL_ORDER_LIST_ZIP_AUDIT_FAILED");
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
-        show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C ZIP. \u041D\u0435\u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0435 \u0437\u0430\u043F\u0438\u0441\u0438 \u0438 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
+        show("Chrome \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043B ZIP. \u0414\u0430\u043D\u043D\u044B\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B; \u043F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438.");
         return false;
       }
     }
@@ -5014,7 +5184,6 @@
         return false;
       }
       const filename = "vision-ai-list-part-" + pad(state.archive_count + 1) + "-" + rows[0].id + "-" + rows.at(-1).id + ".zip";
-      const url = URL.createObjectURL(result.blob);
       try {
         const before = await audit("baseline");
         if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
@@ -5023,26 +5192,27 @@
           after_id: before.highest_id,
           bytes: result.blob.size,
           filename,
-          order_ids: rows.map((x) => x.id)
+          order_ids: rows.map((x) => x.id),
+          stage: "preparing"
         };
         const snapshot = { ...state, download, mode: currentMode() };
         await write(() => saveOrderFileStatus(snapshot));
         state = snapshot;
-        const a = el("a");
-        a.href = url;
-        a.download = filename;
-        document.body.append(a);
-        a.click();
-        a.remove();
+        const downloadId = await startExtensionZipDownload(result.blob, filename);
+        const started = { ...state, download: {
+          ...download,
+          stage: "started",
+          after_id: downloadId - 1
+        } };
+        await write(() => saveOrderFileStatus(started));
+        state = started;
         for (const row of rows) batch.discardOrder(row.id);
-        show("ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F (" + reason + "); \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u0442\u0441\u044F.");
+        show("ZIP \u043F\u0435\u0440\u0435\u0434\u0430\u043D Chrome (" + reason + "); \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0443 \u043D\u043E\u0432\u044B\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432.");
         return true;
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_DOWNLOAD_FAILED");
-        show("ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D; \u0434\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u0432 IndexedDB");
+        show("ZIP \u043F\u043E\u043A\u0430 \u043D\u0435 \u043D\u0430\u0447\u0430\u0442/\u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D: \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430 \u0432 IndexedDB");
         return false;
-      } finally {
-        setTimeout(() => URL.revokeObjectURL(url), 125e3);
       }
     }
     async function manualSave() {
@@ -5051,7 +5221,7 @@
       await saveBatch("\u0432\u0440\u0443\u0447\u043D\u0443\u044E");
       if (state.download) await recoverDownload(true);
     }
-    async function importFile(file) {
+    async function importFile(file, remote = false, overwrite = false) {
       await init;
       if (running || getBusy()) {
         show("\u041D\u0435\u043B\u044C\u0437\u044F \u0437\u0430\u043C\u0435\u043D\u0438\u0442\u044C \u0441\u043F\u0438\u0441\u043E\u043A \u0432\u043E \u0432\u0440\u0435\u043C\u044F \u0434\u0440\u0443\u0433\u043E\u0433\u043E \u0441\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F.");
@@ -5071,9 +5241,12 @@
         show();
         return;
       }
-      if (state && (state.index > 0 || pending.length || state.found_committed > 0) && typeof globalThis.confirm === "function" && !globalThis.confirm(
-        "\u0418\u043C\u043F\u043E\u0440\u0442 \u043D\u043E\u0432\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430 \u0437\u0430\u043C\u0435\u043D\u0438\u0442 \u0442\u0435\u043A\u0443\u0449\u0438\u0439 \u0441\u043F\u0438\u0441\u043E\u043A \u0438 \u0435\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441. \u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0440\u0435\u0435\u0441\u0442\u0440 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 ZIP. \u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C?"
-      )) return;
+      if (state && (state.index > 0 || pending.length || state.found_committed > 0)) {
+        if (remote && !overwrite) return { status: "VISION_IMPORT_REPLACE_REQUIRES_CONFIRMATION" };
+        if (!remote && typeof globalThis.confirm === "function" && !globalThis.confirm(
+          "\u0418\u043C\u043F\u043E\u0440\u0442 \u043D\u043E\u0432\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430 \u0437\u0430\u043C\u0435\u043D\u0438\u0442 \u0442\u0435\u043A\u0443\u0449\u0438\u0439 \u0441\u043F\u0438\u0441\u043E\u043A \u0438 \u0435\u0433\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441. \u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0440\u0435\u0435\u0441\u0442\u0440 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 ZIP. \u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C?"
+        )) return;
+      }
       try {
         await writeChain.catch(() => {
         });
@@ -5088,6 +5261,7 @@
         paused = stopped = false;
         saveBtn.disabled = true;
         show("\u0424\u0430\u0439\u043B \u043F\u0440\u0438\u043D\u044F\u0442. \u0423\u043D\u0438\u043A\u0430\u043B\u044C\u043D\u044B\u0445 \u043D\u043E\u043C\u0435\u0440\u043E\u0432: " + parsed.numbers.length + "; \u0443\u0434\u0430\u043B\u0435\u043D\u043E \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432: " + parsed.duplicates + ". \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043F\u043E \u0441\u043F\u0438\u0441\u043A\u0443\xBB.");
+        return { status: "VISION_IMPORT_OK" };
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_IMPORT_FAILED");
         show();
@@ -5313,7 +5487,7 @@
         throw Error("MANUAL_ORDER_LIST_PENDING_INVALID");
       batch = new ApprovalBatchSession();
       for (const record of saved.pending) {
-        if (!state.download?.order_ids?.includes(record.id))
+        if (!state.download?.order_ids?.includes(record.id) || state.download?.stage === "preparing")
           batch.restoreOrder(record.id, record.transfers);
         pending.push(record);
       }
@@ -5338,6 +5512,68 @@
         return running;
       },
       receive: (message, expectedOrder) => batch.receive(message, expectedOrder),
+      remote: async (action, payload = {}) => {
+        if (action === "status") {
+          await init;
+          return {
+            mode: "file",
+            running,
+            paused,
+            stopped,
+            filename: state?.filename || null,
+            total: state?.total || 0,
+            checked: state?.index || 0,
+            next_order: queue && state?.index < state?.total ? String(queue[state.index]) : null,
+            archives: state?.archive_count || 0,
+            found: state?.found_committed || 0,
+            pending: pending.length,
+            downloading: !!state?.download,
+            errors: state?.failed_count || 0,
+            delay_ms: currentDelay,
+            blocked: restoreBlocked,
+            error: lastError
+          };
+        }
+        if (action === "import") {
+          if (typeof payload.text !== "string" || payload.text.length > 2e7 || typeof payload.filename !== "string")
+            throw Error("MANUAL_ORDER_LIST_REMOTE_IMPORT_INVALID");
+          const raw = payload.text;
+          const file = {
+            name: payload.filename.slice(0, 120),
+            size: new TextEncoder().encode(raw).length,
+            text: async () => raw
+          };
+          const result = await importFile(file, true, payload.overwrite === true);
+          return result || { status: lastError || "VISION_IMPORT_NOT_COMPLETED" };
+        }
+        if (action === "delay") {
+          if (!acceptedRate(payload.value)) throw Error("MANUAL_ORDER_LIST_DELAY_INVALID");
+          rateInput.value = String(payload.value);
+          rateInput.dispatchEvent(new Event("input"));
+          return { status: "VISION_DELAY_UPDATED" };
+        }
+        if (action === "start") {
+          void start();
+          return { status: "VISION_SCAN_START_REQUESTED" };
+        }
+        if (action === "pause") {
+          pauseBtn.click();
+          return { status: "VISION_SCAN_PAUSE_REQUESTED" };
+        }
+        if (action === "stop") {
+          stopBtn.click();
+          return { status: "VISION_SCAN_STOP_REQUESTED" };
+        }
+        if (action === "save") {
+          saveBtn.click();
+          return { status: "VISION_SCAN_ZIP_SAVE_REQUESTED" };
+        }
+        if (action === "export") {
+          exportBtn.click();
+          return { status: "VISION_REGISTRY_EXPORT_REQUESTED" };
+        }
+        return { status: "VISION_REMOTE_ACTION_DENIED" };
+      },
       requestPause: () => {
         paused = true;
         void setMode("paused");
@@ -5414,7 +5650,7 @@
     const panel = node("section");
     panel.id = ID;
     panel.setAttribute("aria-label", "Vision Check \u2014 \u0442\u0430\u0431\u043B\u0438\u0446\u0430 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432");
-    const title = node("h2", "Vision Check v0.1.13 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
+    const title = node("h2", "Vision Check v0.1.15 \xB7 \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B");
     const description = node(
       "p",
       "\u0422\u043E\u043B\u044C\u043A\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u0430\u044F \u0441\u0435\u0442\u044C. \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043C\u0430\u043A\u0435\u0442\u044B \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u044E\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u044C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u043F\u043E\u0441\u043B\u0435 \u0432\u0430\u0448\u0435\u0433\u043E \u043D\u0430\u0436\u0430\u0442\u0438\u044F; \u0444\u0430\u0439\u043B\u044B \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u043D\u0430 GitHub."
@@ -5609,6 +5845,23 @@
         updateBatchControls();
       }
     });
+    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener((message, sender, respond) => {
+        if (message?.op !== "vision-engine-command-v1") return false;
+        if (sender?.id !== chrome.runtime.id || closed) return false;
+        const kind = message.mode, action = message.action;
+        if (!["file", "range"].includes(kind) || !["status", "import", "start", "pause", "stop", "save", "export", "delay"].includes(action) || kind === "range" && action === "import") {
+          respond({ status: "VISION_ENGINE_COMMAND_DENIED" });
+          return false;
+        }
+        const target = kind === "file" ? fileController : rangeController;
+        target.remote(action, message.payload || {}).then(respond, (error) => respond({
+          status: "VISION_ENGINE_COMMAND_FAILED",
+          reason: String(error?.message || "UNKNOWN").slice(0, 120)
+        }));
+        return true;
+      });
+    }
     let preparedBundle = null;
     function downloadApprovalBatch() {
       if (!preparedBundle) return;
