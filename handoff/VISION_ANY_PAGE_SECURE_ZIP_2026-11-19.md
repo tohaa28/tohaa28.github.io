@@ -74,3 +74,16 @@ ZIP должны сохраняться по 100 утверждённых зак
 
 Сборка: https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
 CI: https://github.com/tohaa28/tohaa28.github.io/actions/workflows/publish-printcheck-vision-preview.yml
+
+## Verified result / проверенная публикация
+GitHub Actions run #44555925382: SUCCESS (all jobs/steps).
+https://github.com/tohaa28/tohaa28.github.io/actions/runs/44555925382
+Manifest v0.1.15; required permissions: tabs/downloads/storage/offscreen.
+Published main isolated preview archive SHA (Git blob):
+909b2413e06d58802f4d4edfff10251178ebb50b, size 131935 bytes.
+Direct download: https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+Draft PR #4 remains OPEN and DRAFT; do not merge into production.
+Test fixes: extension-owned downloads are validated via chrome.downloads.search
+instead of page.on(download); browser-inactive tabs require synthetic loopback
+proxy; ZIP overlap test waits for synchronous UI order progress, not an
+unawaited IndexedDB Promise. Tests use no real order or customer data.
