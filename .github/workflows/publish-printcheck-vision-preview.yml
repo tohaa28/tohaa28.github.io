@@ -22,6 +22,11 @@ on:
       - vision/orders/approval-range-scanner.mjs
       - vision/orders/approval-range-controller.mjs
       - vision/orders/approval-range-persistence.mjs
+      - vision/orders/approval-file-list.mjs
+      - vision/orders/approval-file-persistence.mjs
+      - vision/orders/approval-file-controller.mjs
+      - tests/printcheck-vision-approval-file-list.test.mjs
+      - tests/printcheck-vision-approval-file-list.browser.mjs
       - tests/printcheck-vision-approval-range.test.mjs
       - tests/printcheck-vision-approval-range.browser.mjs
       - tests/printcheck-vision-approval-batch-archive.test.mjs
@@ -132,6 +137,10 @@ jobs:
           node --check vision/orders/approval-range-scanner.mjs
           node --check vision/orders/approval-range-controller.mjs
           node --check vision/orders/approval-range-persistence.mjs
+          node --check vision/orders/approval-file-list.mjs
+          node --check vision/orders/approval-file-persistence.mjs
+          node --check vision/orders/approval-file-controller.mjs
+          node --test tests/printcheck-vision-approval-file-list.test.mjs
           node --test tests/printcheck-vision-approval-range.test.mjs
           node --check vision/orders/approval-batch-archive.mjs
           node --test tests/printcheck-vision-approval-batch-archive.test.mjs
@@ -244,6 +253,7 @@ jobs:
           node tests/printcheck-vision-approval-auto.browser.mjs
           node tests/printcheck-vision-approval-queue.browser.mjs
           node tests/printcheck-vision-approval-range.browser.mjs
+          node tests/printcheck-vision-approval-file-list.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
