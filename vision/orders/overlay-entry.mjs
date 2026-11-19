@@ -10,6 +10,7 @@ import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes,
   recheckOrderPopupReferences,inspectOrderDiscussionFromRow}
   from './order-page-discovery.mjs';
 import {makeLocalExpertDataset,exportLocalDatasetParts} from './local-training-zip.mjs';
+import {ApprovalBatchSession} from './approval-batch-archive.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
  '#vision-local-order-overlay{position:fixed!important;top:12px!important;right:12px!important;z-index:2147483640!important;width:min(390px,calc(100vw - 24px))!important;max-height:76vh!important;overflow:auto!important;background:#24383c!important;border:1px solid #5c777a!important;border-radius:9px!important;box-shadow:0 8px 35px #101b22a8!important;color:#eef5f2!important;padding:15px!important;text-align:left!important;font:13px/1.45 system-ui,sans-serif!important}',
@@ -69,7 +70,7 @@ export function initLocalOrdersOverlay(){
  const style=node('style');style.id=STYLE_ID;style.textContent=CSS;document.head.append(style);
  const panel=node('section');panel.id=ID;
  panel.setAttribute('aria-label','Vision Check — таблица тестовых заказов');
- const title=node('h2','Vision Check v0.1.7 · тестовые заказы');
+ const title=node('h2','Vision Check v0.1.8 · тестовые заказы');
  const description=node('p',
    'Только локальная сеть. Ссылки на макеты загружаются в память браузера после вашего нажатия; файлы не отправляются на GitHub.');
  const actions=node('div',undefined,'vlo-actions');
@@ -196,9 +197,37 @@ export function initLocalOrdersOverlay(){
  // Native designer discussions are NOT on the devorders HTML itself.
  // Explicit user action opens each authorized order in a hidden tab,
  // collects only badge>1 approvals, and saves private text/images locally.
- let approvalQueueIndex=0,approvalQueueStop=false;
+ let approvalQueueIndex=0,approvalQueueStop=false,approvalQueueUrls=null;
+ let approvalBatch=new ApprovalBatchSession(),activeBatchOrder=null;
+ let preparedBundle=null;
+ function downloadApprovalBatch(){
+  if(!preparedBundle)return;
+  const uri=URL.createObjectURL(preparedBundle.blob),a=node('a');
+  a.href=uri;
+  a.download='vision-ai-approvals-'+new Date().toISOString()
+    .replace(/[:.]/g,'-')+'.zip';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(uri),60000);
+ }
+ const approvalZipBtn=makeButton('Скачать единый архив ZIP',()=>{
+  if(!preparedBundle)return;
+  downloadApprovalBatch();
+  renderStats('Единый ZIP повторно направлен в загрузки Chrome. Проверьте завершение.');
+ });
+ approvalZipBtn.disabled=true;
+ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+  chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+   if(message?.op!=='vision-approval-batch-accept-v1')return false;
+   if(sender?.id!==chrome.runtime.id||!activeBatchOrder||closed){
+    respond({status:'MANUAL_BATCH_LIST_SENDER_DENIED'});return false;
+   }
+   respond(approvalBatch.receive(message,activeBatchOrder));
+   return false;
+  });
+ }
+
  const approvalQueueReports=[];
- const approvalQueueBtn=makeButton('Собрать согласования из всех заказов',()=>{
+ const approvalQueueBtn=makeButton('Собрать согласования из всех заказов (один ZIP)',()=>{
   void collectFromOrdersList();
  });
  const approvalQueueStopBtn=makeButton('Остановить согласования',()=>{
@@ -313,7 +342,7 @@ export function initLocalOrdersOverlay(){
   }
  }
 
- actions.append(approvalQueueBtn,approvalQueueStopBtn,approvalQueueDiagBtn,
+ actions.append(approvalQueueBtn,approvalQueueStopBtn,approvalZipBtn,approvalQueueDiagBtn,
    refreshBtn,scanBtn,discussionBtn,pauseBtn,
    exportBtn,discussionExportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
