@@ -587,85 +587,60 @@ const sendZipOffscreen=async(op,data={})=>{
   throw Error('VISION_ZIP_OFFSCREEN_NO_RESPONSE');
  return result;
 };
-if(typeof chrome!=='undefined'&&chrome.runtime?.onConnect){
- chrome.runtime.onConnect.addListener(port=>{
-  if(port.name!==SECURE_ZIP_PORT)return;
-  if(!isApprovedListSender(port.sender)){
-   console.error('VISION_ZIP_SENDER_DENIED');
-   try{port.disconnect()}catch{}return;
+// Each chunk is a standalone MV3 event, so a sleeping/restarted service
+// worker does not interrupt a long ZIP transfer. Offscreen owns byte state.
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!=='vision-zip-secure-message-v1')return false;
+  if(!isApprovedListSender(sender)||typeof message.job!=='string'||
+    !/^[a-f0-9]{32}$/.test(message.job)){
+   respond({status:'VISION_ZIP_SENDER_DENIED'});return false;
   }
-  let begun=false,finished=false,filename=null,size=0,sequence=0;
-  const emit=status=>{try{port.postMessage({status})}catch{}};
-  port.onDisconnect.addListener(()=>{
-   if(zipTransferOwner!==port)return;
-   zipTransferOwner=null;
-   if(begun&&!finished)
-    void sendZipOffscreen('cancel').catch(()=>{});
-  });
-  port.onMessage.addListener(async message=>{
-   try{
-    if(message?.op==='begin'){
-     if(zipTransferOwner||begun||!zipFileName.test(message.filename||'')||
-      !Number.isSafeInteger(message.size)||message.size<100||
-      message.size>200_000_000)
-      throw Error('VISION_ZIP_TRANSFER_BEGIN_DENIED');
-     zipTransferOwner=port;begun=true;filename=message.filename;
-     size=message.size;
-     await getZipOffscreen();
-     const result=await sendZipOffscreen('begin',{filename,size});
-     if(result.status!=='ZIP_READY_FOR_CHUNK')
-      throw Error(result.status);
-     emit('ZIP_READY_FOR_CHUNK');return;
-    }
-    if(zipTransferOwner!==port||!begun)
-     throw Error('VISION_ZIP_TRANSFER_NO_ACTIVE_SESSION');
-    if(message?.op==='chunk'){
-     if(message.sequence!==sequence||typeof message.base64!=='string'||
-       message.base64.length>65_000)
-      throw Error('VISION_ZIP_TRANSFER_CHUNK_DENIED');
-     const result=await sendZipOffscreen('chunk',{
-      sequence,base64:message.base64});
-     if(result.status!=='ZIP_CHUNK_ACCEPTED')
-      throw Error(result.status);
-     sequence++;emit('ZIP_CHUNK_ACCEPTED');return;
-    }
-    if(message?.op==='finish'){
-     if(message.chunks!==sequence)
-      throw Error('VISION_ZIP_TRANSFER_SEQUENCE_MISMATCH');
-     const final=await sendZipOffscreen('finish',{chunks:sequence});
-     if(final.status!=='ZIP_EXTENSION_BLOB_READY'||final.bytes!==size||
-      typeof final.url!=='string'||
-      !final.url.startsWith('blob:'+chrome.runtime.getURL('')))
-      throw Error(final.status||'VISION_ZIP_BLOB_INVALID');
-     let id;
-     try{
-      id=await chrome.downloads.download({
-       url:final.url,filename,conflictAction:'uniquify',saveAs:false
-      });
-      if(!Number.isSafeInteger(id)||id<0)
-       throw Error('VISION_ZIP_DOWNLOAD_ID_INVALID');
-     }catch(error){
-      await sendZipOffscreen('release',{url:final.url}).catch(()=>{});
-      throw Error('VISION_ZIP_DOWNLOAD_FAILED');
-     }
-     zipUrls.set(id,final.url);finished=true;zipTransferOwner=null;
-     try{port.postMessage({status:'ZIP_DOWNLOAD_STARTED',download_id:id})}catch{}
-     return;
-    }
-    if(message?.op==='cancel'){
-     await sendZipOffscreen('cancel');zipTransferOwner=null;
-     begun=false;emit('ZIP_CANCELLED');return;
-    }
-    throw Error('VISION_ZIP_TRANSFER_OPCODE_DENIED');
-   }catch(error){
-    console.error('VISION_ZIP_TRANSFER',String(error?.message||'UNKNOWN').slice(0,110));
-    emit(String(error?.message||'VISION_ZIP_TRANSFER_FAILED').slice(0,110));
-    if(zipTransferOwner===port){
-     zipTransferOwner=null;
-     await sendZipOffscreen('cancel').catch(()=>{});
-    }
+  (async()=>{
+   const job=message.job,action=message.action;
+   if(!['begin','chunk','finish','cancel'].includes(action))
+    throw Error('VISION_ZIP_OPCODE_DENIED');
+   if(action==='begin')await getZipOffscreen();
+   const data={job};
+   if(action==='begin'){
+    if(!zipFileName.test(message.filename||'')||
+     !Number.isSafeInteger(message.size)||message.size<100||
+     message.size>200_000_000)
+     throw Error('VISION_ZIP_BEGIN_ARGS');
+    Object.assign(data,{filename:message.filename,size:message.size});
+   }else if(action==='chunk'){
+    if(!Number.isSafeInteger(message.sequence)||message.sequence<0||
+     typeof message.base64!=='string'||message.base64.length>65_000)
+     throw Error('VISION_ZIP_CHUNK_ARGS');
+    Object.assign(data,{sequence:message.sequence,base64:message.base64});
+   }else if(action==='finish'){
+    if(!Number.isSafeInteger(message.chunks)||message.chunks<1||
+     message.chunks>5000)throw Error('VISION_ZIP_FINISH_ARGS');
+    data.chunks=message.chunks;
    }
+   const result=await sendZipOffscreen(action,data);
+   if(action!=='finish')return result;
+   if(result.status!=='ZIP_EXTENSION_BLOB_READY'||typeof result.url!=='string'||
+    !result.url.startsWith('blob:'+chrome.runtime.getURL(''))||
+    !Number.isSafeInteger(result.bytes)||result.bytes<100)
+    throw Error(result.status||'VISION_ZIP_BLOB_INVALID');
+   let id;
+   try{
+    id=await chrome.downloads.download({url:result.url,
+     filename:result.filename,conflictAction:'uniquify',saveAs:false});
+    if(!Number.isSafeInteger(id)||id<0)
+     throw Error('VISION_ZIP_DOWNLOAD_ID_INVALID');
+   }catch{
+    await sendZipOffscreen('release',{url:result.url}).catch(()=>{});
+    throw Error('VISION_ZIP_DOWNLOAD_FAILED');
+   }
+   zipUrls.set(id,result.url);
+   return {status:'ZIP_DOWNLOAD_STARTED',download_id:id};
+  })().then(respond,error=>{
+   console.error('VISION_ZIP_TRANSFER',String(error?.message||'UNKNOWN').slice(0,100));
+   respond({status:String(error?.message||'VISION_ZIP_TRANSFER_FAILED').slice(0,100)});
   });
+  return true;
  });
 }
 if(typeof chrome!=='undefined'&&chrome.downloads?.onChanged){
