@@ -285,11 +285,9 @@ export function initLocalOrdersOverlay(){
     verified+=entry.verified_articles;
     imagesAndFiles+=entry.files;
     if(safeStatus.startsWith('MANUAL'))errors++;
-    if(entry.eligible_articles>0){
-     if(entry.final_evidence_saved)finalSaved++;
-     else if(entry.raw_evidence_saved)rawOnly++;
-     else textFailures++;
-    }
+    if(entry.final_evidence_saved)finalSaved++;
+    else if(entry.raw_evidence_saved)rawOnly++;
+    else textFailures++;
     renderStats('Согласования из списка: '+approvalQueueIndex+' / '+urls.length+
       '\nПрочитано обсуждений: '+verified+' · вложений: '+imagesAndFiles+
       ' · итоговых JSON: '+finalSaved+
