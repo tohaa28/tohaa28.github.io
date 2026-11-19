@@ -103,16 +103,24 @@ try{
    filename:x.filename,state:x.state,mime:x.mime
   }));
  });
- console.log('SYNTHETIC_CHROME_DOWNLOADS',JSON.stringify(allNativeDownloads));
- const evidenceDownloads=allNativeDownloads.filter(x=>
-  /vision-private-approval-evidence-8001111(?:-raw)?\.json$/.test(x.filename||''));
- assert.equal(evidenceDownloads.length,2,'raw and final JSON both saved by Chrome');
- assert.ok(evidenceDownloads.every(x=>x.state==='complete'),
-  'background tab closes only after Chrome verified both JSON downloads');
- const finalDownload=evidenceDownloads.find(x=>
-  x.filename.endsWith('vision-private-approval-evidence-8001111.json'));
- assert.ok(finalDownload,'final evidence exists');
- const report=JSON.parse(await readFile(finalDownload.filename,'utf8'));
+ // Playwright's acceptDownloads rewrites Chrome paths to GUIDs. Verify
+ // actual downloaded bytes and structure rather than guessing filenames.
+ const downloadedJson=await Promise.all(allNativeDownloads
+  .filter(x=>x.mime==='application/json'&&x.state==='complete')
+  .map(async x=>JSON.parse(await readFile(x.filename,'utf8'))));
+ const evidenceFiles=downloadedJson.filter(x=>
+  x.schema==='printcheck.vision.private-approval-collection.v1'&&
+  x.order_number==='8001111');
+ assert.equal(evidenceFiles.length,2,'raw and final private JSON are persisted');
+ const rawEvidence=evidenceFiles.find(x=>
+  !x.articles[0].history[0].attachments[0].local_get_status);
+ const report=evidenceFiles.find(x=>
+  x.articles[0].history[0].attachments[0].local_get_status===
+  'LOCAL_ATTACHMENT_BYTES_ONLY');
+ assert.ok(rawEvidence,'pre-binary safety copy exists');
+ assert.ok(report,'post-binary evidence with SHA-256 mapping exists');
+ assert.ok(allNativeDownloads.filter(x=>x.mime==='application/json')
+  .every(x=>x.state==='complete'),'Chrome confirms completed JSON downloads');
  assert.equal(report.articles[0].observed_human_comments,2);
  assert.equal(report.articles[0].current_problems.length,1);
  assert.equal(report.order_facts.order.internal_order_id,'550');
