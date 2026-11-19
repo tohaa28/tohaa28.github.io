@@ -11,6 +11,7 @@
  */
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
 import {extractApprovalGalleryImages} from './approval-inline-images.mjs';
+import {extractOrderFacts} from './approval-order-facts.mjs';
 
 const MAX_TARGETS=100,MAX_MESSAGES=1500,MAX_TEXT=12000;
 const MAX_LOCAL_PRIVATE_CHARS=24_000_000;
@@ -138,7 +139,8 @@ export function extractMaketApprovalEvidence(doc,{itemId,orderNumber,badge,actor
   const nativeRef=/^maketadjusting_commentid_(\d{1,20})$/.exec(attr(wrap,'id'));
   messages.push({sequence:i+1,kind,text:body,date_time:timestamp,
    native_comment_id:nativeRef?.[1]||null,
-   actor_ref:actorLabel?actors.get(actorLabel):null,attachments});
+   actor_ref:actorLabel?actors.get(actorLabel):null,
+    author_name:actorLabel||null,author_display_text:at||null,attachments});
  }
  const humans=messages.filter(m=>m.kind==='human').length;
  return {
@@ -207,6 +209,9 @@ export async function collectMaketApprovalsOnOrderPage(doc,{
   schema:'printcheck.vision.private-approval-collection.v1',
   scope:'LOCAL_AUTHORIZED_TEST_ORDER',
   order_number:digits(orderNumber)?orderNumber:null,
+  order_facts:extractOrderFacts(doc,orderNumber),
+  collected_at:new Date().toISOString(),
+  source_page:'http://testgifts.local/private/order/'+String(orderNumber),
   total_triggers:discovered.total_triggers,
   selected_by_badge:discovered.eligible.length,
   skipped:discovered.skipped,
