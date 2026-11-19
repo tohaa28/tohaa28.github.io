@@ -1,5 +1,5 @@
-// Synthetic Chrome MV3 coverage: launcher appears on both test portals,
-// opens ONE scanner tab and never activates on login or external websites.
+// Full scanner UI on any authorized test portal page. The browser stays on
+// the source page while the canonical devorders engine runs in a background tab.
 import assert from 'node:assert/strict';
 import {mkdtemp,cp,rm} from 'node:fs/promises';
 import os from 'node:os';
@@ -26,7 +26,8 @@ try{
   if(url.origin==='http://testgifts.local'||
    url.origin==='http://psk.testgifts.local'){
    const isLogin=/^\/auth\/?$/.test(url.pathname);
-   return route.fulfill({status:200,contentType:'text/html',
+   const isMissing=/^\/private\/order\/9999999$/.test(url.pathname);
+   return route.fulfill({status:isMissing?404:200,contentType:'text/html',
     body:isLogin?'<html><body><form name="authform"><input type="password"></form></body></html>':
     '<html><body><main id="authorized">Authorized synthetic test page</main></body></html>'});
   }
@@ -35,21 +36,39 @@ try{
  const first=await browser.newPage();
  await first.goto('http://testgifts.local/catalog');
  await first.locator('#vision-ai-scan-launcher').waitFor();
- const opened=browser.waitForEvent('page',{timeout:12000});
+ const opened=browser.waitForEvent('page',{timeout:15000});
  await first.locator('#vision-ai-scan-launcher').click();
+ await first.locator('#vision-ai-scanner-remote').waitFor({state:'visible'});
+ assert.equal(first.url(),'http://testgifts.local/catalog',
+  'remote panel must not navigate away from the user page');
  const scanner=await opened;
- await scanner.waitForURL('http://psk.testgifts.local/devorders',{timeout:12000});
- const one=browser.pages().filter(p=>p.url().startsWith(
-  'http://psk.testgifts.local/devorders'));
- assert.equal(one.length,1);
+ await scanner.waitForURL('http://psk.testgifts.local/devorders',{timeout:15000});
+ assert.equal(browser.pages().filter(p=>p.url().startsWith(
+  'http://psk.testgifts.local/devorders')).length,1);
+ const input=first.locator('#vision-ai-scanner-remote input[type=file]');
+ await input.setInputFiles({name:'list.txt',mimeType:'text/plain',
+  buffer:Buffer.from('9999999\n9999999\n')});
+ await first.getByRole('button',{name:'Импортировать список'}).click();
+ await first.locator('#vision-ai-scanner-remote-status').getByText(/Файл: list.txt/)
+  .waitFor({timeout:10000}).catch(async e=>{
+   console.log('REMOTE_DIAGNOSTIC',await first.locator('#vision-ai-scanner-remote').innerText());
+   throw e;
+  });
+ await first.getByRole('button',{name:'Старт / продолжить'}).click();
+ await first.waitForFunction(()=>document.querySelector(
+  '#vision-ai-scanner-remote-status')?.textContent.includes('Проверено: 1 / 1'),
+  null,{timeout:12000});
  const second=await browser.newPage();
  await second.goto('http://psk.testgifts.local/catalog');
  await second.locator('#vision-ai-scan-launcher').waitFor();
  await second.locator('#vision-ai-scan-launcher').click();
- await second.waitForTimeout(350);
+ await second.waitForFunction(()=>document.querySelector(
+  '#vision-ai-scanner-remote-status')?.textContent.includes('Файл: list.txt'),
+  null,{timeout:12000});
  assert.equal(browser.pages().filter(p=>p.url().startsWith(
   'http://psk.testgifts.local/devorders')).length,1,
-  'reuses original psk tab, never opens separate scanner or queue');
+  'remote panel must reuse original engine and IndexedDB');
+ assert.equal(await second.locator('#vision-ai-scanner-remote').isVisible(),true);
  const auth=await browser.newPage();
  await auth.goto('http://testgifts.local/auth');
  assert.equal(await auth.locator('#vision-ai-scan-launcher').count(),0);
@@ -57,7 +76,7 @@ try{
  await outside.goto('data:text/html,<h1>outside test portals</h1>');
  assert.equal(await outside.locator('#vision-ai-scan-launcher').count(),0);
  assert.deepEqual(errors,[]);
- console.log('Vision M3.30 cross-portal launcher, canonical tab and login guard PASS');
+ console.log('Vision M3.31 inline remote panel, TXT import, scan, cross-portal status and login guard PASS');
 }finally{
  if(browser)await browser.close();
  await rm(dir,{recursive:true,force:true});
