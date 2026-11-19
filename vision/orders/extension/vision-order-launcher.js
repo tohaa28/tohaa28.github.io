@@ -77,7 +77,13 @@
   if(!selected)return showMessage('Выберите файл TXT.');
   if(selected.size>20_000_000)return showMessage('Файл превышает 20 МБ.');
   try{
-   const result=await rpc('import',{text:await selected.text(),filename:selected.name});
+   const text=await selected.text();
+   let result=await rpc('import',{text,filename:selected.name});
+   if(result.status==='VISION_IMPORT_REPLACE_REQUIRES_CONFIRMATION'){
+    if(!confirm('Новый TXT заменит текущий список и весь сохранённый прогресс. '+
+     'Сначала выгрузите ZIP и реестр. Продолжить?'))return;
+    result=await rpc('import',{text,filename:selected.name,overwrite:true});
+   }
    showMessage(result.status==='VISION_IMPORT_OK'?'Список загружен.':result.status);
    await updateStatus();
   }catch(error){showMessage(String(error?.message||'Ошибка импорта'))}
