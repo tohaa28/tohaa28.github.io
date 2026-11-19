@@ -218,5 +218,37 @@ class ArchiveAuditTests(unittest.TestCase):
             self.assertNotIn(secret, child.stdout + child.stderr)
 
 
+    def test_manifest_stream_boundaries_and_redacted_rejection(self):
+        """Synthetic exact-byte boundaries; never expose a private identifier."""
+        base = manifest()
+        for delta in (-1, 0, 1):
+            target = audit.MAX_MANIFEST_BYTES + delta
+            candidate = dict(base)
+            candidate["padding"] = ""
+            raw = json.dumps(candidate, ensure_ascii=False).encode("utf8")
+            candidate["padding"] = "x" * (target - len(raw))
+            raw = json.dumps(candidate, ensure_ascii=False).encode("utf8")
+            self.assertEqual(len(raw), target)
+            with zipfile.ZipFile(self.zip, "w", compression=zipfile.ZIP_STORED) as zf:
+                zf.writestr("manifest.json", raw)
+                zf.writestr(base["items"][0]["entry"], PDF)
+            if delta <= 0:
+                self.assertEqual(audit.audit_archives([self.zip])["attachments"], 1)
+            else:
+                self.assertEqual(self.reason(), "MANIFEST_TOO_LARGE")
+                child = subprocess.run([sys.executable, str(TOOL), str(self.zip)],
+                                       capture_output=True, text=True)
+                self.assertEqual(child.returncode, 1)
+                self.assertEqual(json.loads(child.stdout)["reason"], "MANIFEST_TOO_LARGE")
+                self.assertNotIn(str(self.zip), child.stdout + child.stderr)
+                self.assertNotIn("9000001", child.stdout + child.stderr)
+
+    def test_manifest_invalid_json_is_fail_closed(self):
+        with zipfile.ZipFile(self.zip, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("manifest.json", b'{"schema":')
+            zf.writestr("attachments/0001/0001.pdf", PDF)
+        self.assertEqual(self.reason(), "BAD_JSON")
+
+
 if __name__ == "__main__":
     unittest.main()
