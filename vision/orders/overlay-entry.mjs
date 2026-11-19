@@ -218,7 +218,9 @@ export function initLocalOrdersOverlay(){
     row_index:i+1,status:r.status,eligible_articles:r.eligible_articles||0,
     verified_articles:r.verified_articles||0,files:r.files||0,
     zip_parts:r.zip_parts||0,failures:r.failures||0,
-    private_text_saved:r.private_text_saved===true
+    private_text_saved:r.private_text_saved===true,
+    final_evidence_saved:r.final_evidence_saved===true,
+    raw_evidence_saved:r.raw_evidence_saved===true
    })),
    raw_text_included:false,order_ids_included:false,
    attachment_names_or_urls_included:false,training_ready:false
@@ -257,7 +259,7 @@ export function initLocalOrdersOverlay(){
    renderStats('MANUAL: в таблице нет точных ссылок на карточки разрешённых заказов.');
    return;
   }
-  let done=0,verified=0,imagesAndFiles=0,errors=0;
+  let done=0,verified=0,imagesAndFiles=0,errors=0,finalSaved=0,rawOnly=0,textFailures=0;
   try{
    while(approvalQueueIndex<urls.length&&!closed&&!approvalQueueStop){
     const url=urls[approvalQueueIndex];
@@ -275,23 +277,37 @@ export function initLocalOrdersOverlay(){
     const entry={status:safeStatus,eligible_articles:num(result?.eligible_articles),
      verified_articles:num(result?.verified_articles),files:num(result?.files),
      zip_parts:num(result?.zip_parts),failures:num(result?.failures),
-     private_text_saved:result?.private_text_saved===true};
+     private_text_saved:result?.private_text_saved===true,
+     final_evidence_saved:result?.final_evidence_saved===true,
+     raw_evidence_saved:result?.raw_evidence_saved===true};
     approvalQueueReports.push(entry);
     approvalQueueIndex++;done++;
     verified+=entry.verified_articles;
     imagesAndFiles+=entry.files;
     if(safeStatus.startsWith('MANUAL'))errors++;
+    if(entry.eligible_articles>0){
+     if(entry.final_evidence_saved)finalSaved++;
+     else if(entry.raw_evidence_saved)rawOnly++;
+     else textFailures++;
+    }
     renderStats('Согласования из списка: '+approvalQueueIndex+' / '+urls.length+
       '\nПрочитано обсуждений: '+verified+' · вложений: '+imagesAndFiles+
+      ' · итоговых JSON: '+finalSaved+
+      ' · только резервных JSON: '+rawOnly+
+      ' · без переписки: '+textFailures+
       ' · ручных проверок: '+errors+
-      '\nПриватные тексты и изображения сохраняются отдельно для каждого заказа.');
+      '\nТексты, имена, проблемы, артикулы и сведения заказа — в JSON; вложения — в ZIP.');
     await new Promise(resolve=>setTimeout(resolve,100));
    }
    if(!closed)renderStats(approvalQueueStop?
     'Обход согласований приостановлен: '+approvalQueueIndex+' / '+urls.length+'. Нажмите «Собрать согласования», чтобы продолжить.':
     'Обход согласований завершён: '+approvalQueueIndex+' / '+urls.length+
     ' · историй: '+verified+' · вложений: '+imagesAndFiles+
-    ' · ошибок: '+errors+'. Приватные JSON и ZIP находятся в загрузках Chrome.');
+    ' · итоговых JSON: '+finalSaved+
+    ' · только резервных: '+rawOnly+
+    ' · без переписки: '+textFailures+' · ошибок: '+errors+
+    '. '+(textFailures||rawOnly?'ВНИМАНИЕ: некоторые JSON не подтверждены — проверьте загрузки Chrome и анонимный отчёт.':
+      'Переписки и материалы сохранены локально.'));
   }finally{
    busy=false;approvalQueueBtn.disabled=false;
    approvalQueueStopBtn.disabled=true;refreshBtn.disabled=false;
