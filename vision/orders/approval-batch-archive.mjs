@@ -184,6 +184,64 @@ export class ApprovalBatchSession{
   return r?.data?r:null;
  }
  hasEvidence(order){return !!this.get(order,'evidence','final',0)}
+ /**
+  * Persist only complete, independently validated transfer parts for an
+  * approved order. An interrupted order is retried after a page reload.
+  */
+ exportOrder(order){
+  if(!numeric(order)||!this.hasEvidence(order))
+   fail('MANUAL_RANGE_EVIDENCE_NOT_COMPLETE');
+  const transfers=[...this.transfers.values()].filter(t=>t.order===order&&
+   t.data instanceof Uint8Array&&t.next===t.total);
+  if(!transfers.some(t=>t.type==='evidence'&&t.stage==='final'))
+   fail('MANUAL_RANGE_FINAL_EVIDENCE_MISSING');
+  return transfers.map(t=>({
+   type:t.type,stage:t.stage,part:t.part,total:t.total,
+   data:t.data,report:t.report||null,manifest:t.manifest||null
+  }));
+ }
+ restoreOrder(order,parts){
+  if(!numeric(order)||!Array.isArray(parts)||parts.length>68||
+   !parts.some(t=>t.type==='evidence'&&t.stage==='final'))
+   fail('MANUAL_RANGE_PERSISTED_EVIDENCE_INVALID');
+  const restored=[];
+  let size=0;
+  for(const t of parts){
+   if(!((t.type==='evidence'&&['raw','final'].includes(t.stage)&&t.part===0)||
+     (t.type==='attachment_zip'&&t.stage==='binary'&&
+      Number.isInteger(t.part)&&t.part>=1&&t.part<=64))||
+     !(t.data instanceof Uint8Array)||!Number.isInteger(t.total)||
+     t.total<1||t.total>600||t.data.length>MAX_PART)
+    fail('MANUAL_RANGE_PERSISTED_PART_INVALID');
+   if(t.type==='evidence'&&(t.report?.order_number!==order||
+     t.report?.schema!=='printcheck.vision.private-approval-collection.v1'))
+    fail('MANUAL_RANGE_PERSISTED_REPORT_INVALID');
+   if(t.type==='attachment_zip'&&(t.manifest?.order_number!==order||
+     t.manifest?.schema!=='printcheck.vision.private-approval-attachments.v1'))
+    fail('MANUAL_RANGE_PERSISTED_MANIFEST_INVALID');
+   const key=[order,t.type,t.stage,t.part].join(':');
+   if(this.transfers.has(key)||restored.some(x=>x.key===key))
+    fail('MANUAL_RANGE_PERSISTED_DUPLICATE');
+   size+=t.data.length;
+   restored.push({key,t});
+  }
+  if(this.bytesReceived+size>BATCH_MAX_BYTES)
+   fail('MANUAL_RANGE_PERSISTED_MEMORY_LIMIT');
+  for(const {key,t} of restored)this.transfers.set(key,{
+   order,type:t.type,stage:t.stage,part:t.part,total:t.total,
+   next:t.total,size:t.data.length,chunks:[],data:t.data,
+   report:t.report||undefined,manifest:t.manifest||undefined
+  });
+  this.bytesReceived+=size;
+ }
+ discardOrder(order){
+  for(const [key,t] of this.transfers){
+   if(t.order!==order)continue;
+   this.bytesReceived=Math.max(0,this.bytesReceived-(t.size||0));
+   this.transfers.delete(key);
+  }
+ }
+
  receivedOrderIds(){
   return [...new Set([...this.transfers.values()].map(x=>x.order))].sort();
  }
