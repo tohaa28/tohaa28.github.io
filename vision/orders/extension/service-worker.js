@@ -320,9 +320,19 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
      const opaqueName=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(basename);
      return x.id>after&&x.mime==='application/zip'&&
       (x.totalBytes===expected||x.fileSize===expected)&&
-      (x.url||'').startsWith('blob:http://psk.testgifts.local/')&&
+      ((x.url||'').startsWith('blob:http://psk.testgifts.local/')||
+       (x.url||'').startsWith('blob:'+chrome.runtime.getURL('')))&&
       (normalized===filename||opaqueName);
     });
+   // Chrome security verdict is authoritative. Do not use acceptDanger
+   // or auto-approve blocked ZIPs; notify the user and retain local evidence.
+   const danger=matching.find(x=>x.danger&&
+    !['safe','accepted'].includes(x.danger));
+   if(danger){
+    respond({status:'MANUAL_ZIP_CHROME_SECURITY_REVIEW_REQUIRED',
+     danger:String(danger.danger).slice(0,70),matched:matching.length});
+    return;
+   }
    const status=matching.some(x=>x.state==='complete')?
     'RANGE_DOWNLOAD_COMPLETE':matching.some(x=>x.state==='interrupted')?
     'MANUAL_RANGE_DOWNLOAD_INTERRUPTED':'RANGE_DOWNLOAD_PENDING';
