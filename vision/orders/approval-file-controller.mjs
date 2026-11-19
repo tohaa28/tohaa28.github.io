@@ -334,7 +334,7 @@ export function makeApprovalFileListController({
      if(collected?.status==='COMPLETE'&&collected.final_evidence_saved===true){
       try{
        record={
-        id:order_number,collected_at:new Date().toISOString(),
+        id:order_number,order_number,collected_at:new Date().toISOString(),
         status:'TZ_APPROVED',native_status_id:'59',
         eligible_articles:collected.eligible_articles||0,
         verified_articles:collected.verified_articles||0,
