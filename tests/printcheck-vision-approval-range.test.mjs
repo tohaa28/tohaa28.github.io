@@ -95,7 +95,7 @@ test('inaccessible order pages remain retryable without blocking next ID',async(
    DOMParserClass:class{parseFromString(){
     return {querySelector:()=>null};
    }}
-  }});
+  });
   assert.equal(result.status,code===503?'MANUAL_ORDER_HTTP_STATUS':
    code===404?'ORDER_NOT_FOUND':'MANUAL_ORDER_CARD_MISSING');
  }
