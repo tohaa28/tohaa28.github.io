@@ -167,6 +167,81 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onConnect)
  * No guessed AJAX parameters, no POST, no cloud/extension storage.
  * A single order is processed at a time; results returned are counts only.
  */
+/**
+ * M3.23: the hidden order tab must not be closed before the PRIVATE evidence
+ * download has COMPLETED. A click on a blob anchor in a background tab was
+ * often lost when the queue closed the tab. The downloads API is owned by
+ * the extension worker, and a successful response requires completion.
+ * No network upload, no Cookies API, no filesystem path from web content.
+ */
+const EVIDENCE_SAVE='vision-approval-save-evidence-v1';
+function exactEvidenceSender(sender,orderNumber){
+ try{
+  const u=new URL(sender?.url||'');
+  return sender?.frameId===0&&Number.isInteger(sender?.tab?.id)&&
+   u.origin==='http://testgifts.local'&&!u.search&&!u.hash&&
+   u.pathname==='/private/order/'+orderNumber;
+ }catch{return false}
+}
+function utf8DataUrl(data){
+ const bytes=new TextEncoder().encode(data);
+ // Bound before converting to a base64 data URL: Chrome messages and
+ // downloads must not silently allocate unbounded user data.
+ if(bytes.length>8_000_000)throw Error('EVIDENCE_TOO_LARGE');
+ let binary='';
+ for(let i=0;i<bytes.length;i+=32768)
+  binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+ return 'data:application/json;charset=utf-8;base64,'+btoa(binary);
+}
+async function saveNativeEvidence(message,sender){
+ const order=String(message?.order_number||'');
+ const stage=message?.stage;
+ const evidence=message?.evidence;
+ if(!/^\d{5,12}$/.test(order)||!['raw','final'].includes(stage)||
+    !exactEvidenceSender(sender,order)||!evidence||
+    evidence.schema!=='printcheck.vision.private-approval-collection.v1'||
+    evidence.order_number!==order||
+    !Array.isArray(evidence.articles))
+  return {status:'MANUAL_PRIVATE_EVIDENCE_DENIED'};
+ if(typeof chrome.downloads?.download!=='function'||
+    typeof chrome.downloads?.search!=='function')
+  return {status:'MANUAL_DOWNLOADS_API_UNAVAILABLE'};
+ let data;
+ try{data=JSON.stringify(evidence,null,2)+'\n'}catch{
+  return {status:'MANUAL_EVIDENCE_SERIALIZATION_FAILED'};
+ }
+ let url;
+ try{url=utf8DataUrl(data)}catch{return {status:'MANUAL_EVIDENCE_TOO_LARGE'}}
+ const filename='vision-private-approval-evidence-'+order+
+   (stage==='raw'?'-raw':'')+'.json';
+ try{
+  const id=await chrome.downloads.download({
+   url,filename,saveAs:false,conflictAction:'uniquify'
+  });
+  if(!Number.isInteger(id))return {status:'MANUAL_EVIDENCE_DOWNLOAD_REJECTED'};
+  for(let attempt=0;attempt<150;attempt++){
+   const results=await chrome.downloads.search({id});
+   const row=results?.[0];
+   if(row?.state==='complete')return {
+    status:'EVIDENCE_DOWNLOAD_COMPLETE',stage,
+    article_count:evidence.articles.length
+   };
+   if(row?.state==='interrupted')return {
+    status:'MANUAL_EVIDENCE_DOWNLOAD_INTERRUPTED'};
+   await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  return {status:'MANUAL_EVIDENCE_DOWNLOAD_TIMEOUT'};
+ }catch{return {status:'MANUAL_EVIDENCE_DOWNLOAD_FAILED'}}
+}
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==EVIDENCE_SAVE)return false;
+  saveNativeEvidence(message,sender).then(respond,()=>
+   respond({status:'MANUAL_EVIDENCE_DOWNLOAD_FAILED'}));
+  return true;
+ });
+}
+
 const QUEUE_RUN='vision-approval-order-queue-v1';
 const ORDER_URL=/^http:\/\/testgifts\.local\/private\/order\/[0-9]{5,12}$/;
 let queueRunning=false;
