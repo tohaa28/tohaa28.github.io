@@ -69,7 +69,7 @@ export function initLocalOrdersOverlay(){
  const style=node('style');style.id=STYLE_ID;style.textContent=CSS;document.head.append(style);
  const panel=node('section');panel.id=ID;
  panel.setAttribute('aria-label','Vision Check — таблица тестовых заказов');
- const title=node('h2','Vision Check v0.1.6 · тестовые заказы');
+ const title=node('h2','Vision Check v0.1.7 · тестовые заказы');
  const description=node('p',
    'Только локальная сеть. Ссылки на макеты загружаются в память браузера после вашего нажатия; файлы не отправляются на GitHub.');
  const actions=node('div',undefined,'vlo-actions');
