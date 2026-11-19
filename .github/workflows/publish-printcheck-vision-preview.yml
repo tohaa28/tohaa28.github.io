@@ -47,6 +47,7 @@ on:
       - tests/printcheck-vision-lan-failure-stages.test.mjs
       - tests/printcheck-vision-extension-worker.test.mjs
       - tests/printcheck-vision-lan-extension.browser.mjs
+      - tests/printcheck-vision-launcher.browser.mjs
       - tools/vision_local_lab.py
       - tools/vision_roi_review.py
       - tools/vision_pdf_audit.py
@@ -182,6 +183,7 @@ jobs:
           node --test tests/printcheck-vision-order-detail.test.mjs
           node --test tests/printcheck-vision-lan-failure-stages.test.mjs
           node --check vision/orders/extension/content-transport.js
+          node --check vision/orders/extension/vision-order-launcher.js
           node --check vision/orders/extension/service-worker.js
           node --test tests/printcheck-vision-extension-worker.test.mjs
           node --check tests/printcheck-vision-lan-extension.browser.mjs
@@ -255,6 +257,7 @@ jobs:
           node tests/printcheck-vision-approval-range.browser.mjs
           node tests/printcheck-vision-approval-file-list.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
+          node tests/printcheck-vision-launcher.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher
@@ -306,8 +309,11 @@ jobs:
               'http://testgifts.local/private/order/*']
           assert manifest['content_scripts'][1]['js']==[
               'content-transport.js','vision-order-approval.js']
+          assert manifest['content_scripts'][2]['matches']==[
+              'http://psk.testgifts.local/*','http://testgifts.local/*']
+          assert manifest['content_scripts'][2]['js']==['vision-order-launcher.js']
           with zipfile.ZipFile('vision-local-lan-extension.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
-              for file in ['manifest.json','service-worker.js','content-transport.js','README_RU.md']:
+              for file in ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','README_RU.md']:
                   z.write(package/file,file)
               z.write('vision-order-overlay.js','vision-order-overlay.js')
               z.write('vision-order-approval.js','vision-order-approval.js')
@@ -315,7 +321,7 @@ jobs:
               assert z.testzip() is None
               assert set(z.namelist())=={
                   'manifest.json','service-worker.js','content-transport.js',
-                  'README_RU.md','vision-order-overlay.js',
+                  'vision-order-launcher.js','README_RU.md','vision-order-overlay.js',
                   'vision-order-approval.js'}
           print('Local-only Chrome MV3 extension verified: exact LAN hosts, zero remote code')
           PY
