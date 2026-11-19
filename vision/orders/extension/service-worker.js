@@ -328,6 +328,16 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
 const QUEUE_RUN='vision-approval-order-queue-v1';
 const ORDER_URL=/^http:\/\/testgifts\.local\/private\/order\/[0-9]{5,12}$/;
 let queueRunning=false;
+const QUEUE_STATUS='vision-approval-queue-status-v1';
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+  if(message?.op!==QUEUE_STATUS)return false;
+  if(!isApprovedListSender(sender)){
+   respond({status:'MANUAL_QUEUE_STATUS_DENIED'});return false;
+  }
+  respond({status:'QUEUE_STATUS_OK',busy:queueRunning});return false;
+ });
+}
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function runNativeApprovalOrder(url,listTabId,rangeMode=false){
  let tab=null;
