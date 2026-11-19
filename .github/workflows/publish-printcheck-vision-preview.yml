@@ -21,6 +21,7 @@ on:
       - vision/orders/approval-batch-archive.mjs
       - vision/orders/approval-range-scanner.mjs
       - vision/orders/approval-range-controller.mjs
+      - vision/orders/approval-range-persistence.mjs
       - tests/printcheck-vision-approval-range.test.mjs
       - tests/printcheck-vision-approval-range.browser.mjs
       - tests/printcheck-vision-approval-batch-archive.test.mjs
@@ -130,6 +131,7 @@ jobs:
           node --check vision/orders/approval-page-entry.mjs
           node --check vision/orders/approval-range-scanner.mjs
           node --check vision/orders/approval-range-controller.mjs
+          node --check vision/orders/approval-range-persistence.mjs
           node --test tests/printcheck-vision-approval-range.test.mjs
           node --check vision/orders/approval-batch-archive.mjs
           node --test tests/printcheck-vision-approval-batch-archive.test.mjs
