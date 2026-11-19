@@ -36,13 +36,14 @@ try{
   channel:'chromium',headless:true,acceptDownloads:true,
   args:['--disable-extensions-except='+ext,'--load-extension='+ext]
  });
- const orders=[],downloads=[],errors=[];
+ const orders=[],requests=[],downloads=[],errors=[];
  browser.on('page',p=>{
   p.on('pageerror',e=>errors.push(e.message));
   p.on('download',d=>downloads.push(d));
  });
  await browser.route('**/*',route=>{
   const url=route.request().url();
+  requests.push(url);
   if(url.startsWith('chrome-extension:'))return route.continue();
   if(url.startsWith(BASE+'/devorders'))
    return route.fulfill({status:200,contentType:'text/html',
@@ -112,6 +113,7 @@ try{
    };
   });
  },null,{timeout:17000});
+ console.log('OVERLAP_AT_SCAN',JSON.stringify({orders,requests:requests.slice(-15),progress:await page.locator('.vlo-file-list').innerText()}));
  assert.ok(orders.includes(SOURCE+'/private/order/3000100'),
   'scan continues even while Chrome reports ZIP pending');
  await page.reload();
