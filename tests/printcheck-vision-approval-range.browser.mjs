@@ -169,7 +169,13 @@ try{
  await page.waitForFunction(()=>{
   const t=document.querySelector('.vlo-range p:last-child')?.textContent||'';
   return t.includes('Диапазон полностью проверен.')||t.includes('Ошибка:');
- },null,{timeout:45000});
+ },null,{timeout:18000}).catch(async(error)=>{
+  const info={panel:await page.locator('.vlo-range').innerText(),
+   requests:requests.map(x=>({type:x.type,method:x.method})),
+   downloads:downloads.map(x=>x.suggestedFilename())};
+  console.log('VISION_RANGE_REFRESH_DEBUG',JSON.stringify(info));
+  throw error;
+ });
  const progress=await page.locator('.vlo-range').innerText();
  assert.match(progress,/Диапазон полностью проверен\./,progress);
  assert.equal(requests.filter(x=>x.type==='approved').length,2,
