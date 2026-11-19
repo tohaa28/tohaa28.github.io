@@ -3661,6 +3661,8 @@
         return { status: "ORDER_NOT_FOUND", http_status: response.status };
       if (response.status === 401 || response.status === 403)
         return { status: "MANUAL_ORDER_AUTH_REQUIRED", http_status: response.status };
+      if (response.status === 429)
+        return { status: "MANUAL_ORDER_RATE_LIMITED", http_status: 429 };
       if (response.status !== 200)
         return { status: "MANUAL_ORDER_HTTP_STATUS", http_status: response.status };
       const html = await boundedHtml(response);
@@ -3672,10 +3674,53 @@
     } catch (error) {
       if (signal?.aborted) return { status: "MANUAL_PROBE_CANCELLED" };
       const token = String(error?.message || "");
+      if (token === "EXTENSION_AUTH_REDIRECT" || token === "TEST_SESSION_AUTH_REQUIRED")
+        return { status: "MANUAL_ORDER_AUTH_REQUIRED" };
       if (token === "MANUAL_ORDER_BODY_TOO_LARGE" || token === "MANUAL_NON_HTML_RESPONSE")
         return { status: token };
       return { status: "MANUAL_ORDER_FETCH_FAILED" };
     }
+  }
+  var RECOVERABLE_RANGE_FAILURES = /* @__PURE__ */ new Set([
+    "MANUAL_ORDER_FETCH_FAILED",
+    "MANUAL_ORDER_HTTP_STATUS",
+    "MANUAL_ORDER_BODY_TOO_LARGE",
+    "MANUAL_NON_HTML_RESPONSE",
+    "MANUAL_ORDER_HTML_INVALID",
+    "MANUAL_ORDER_CARD_MISSING",
+    "MANUAL_ORDER_NUMBER_MISMATCH",
+    "MANUAL_TZ_STATUS_MISSING_OR_AMBIGUOUS",
+    "MANUAL_TZ_LABEL_UNVERIFIED",
+    "MANUAL_ORDER_ID_INVALID",
+    "MANUAL_BACKGROUND_ORDER_FAILED",
+    "MANUAL_QUEUE_ORDER_TIMEOUT",
+    "MANUAL_TAB_CLOSED",
+    "MANUAL_ORDER_URL_MISMATCH",
+    "MANUAL_AUTO_SCAN_FAILED",
+    "MANUAL_TZ_RECHECK_FAILED",
+    "MANUAL_TZ_CHANGED_BEFORE_SCAN",
+    "MANUAL_NATIVE_APPROVAL_QUEUE_FAILED",
+    "MANUAL_BATCH_EVIDENCE_ENCODING_FAILED",
+    "MANUAL_BATCH_RELAY_FAILED",
+    "MANUAL_BATCH_RELAY_REJECTED",
+    "MANUAL_BATCH_PAYLOAD_TOO_LARGE",
+    "MANUAL_APPROVAL_COLLECTION_INCOMPLETE"
+  ]);
+  function isRecoverableRangeFailure(status) {
+    return RECOVERABLE_RANGE_FAILURES.has(status) || /^MANUAL_ORDER_TAB_[A-Z0-9_]{1,80}$/.test(status || "");
+  }
+  var MAX_RETRY_ROWS = 2e4;
+  function mergeRetryRows(previous, additions) {
+    if (!Array.isArray(additions) || additions.length > RANGE_ARCHIVE_SIZE * 100)
+      throw Error("MANUAL_RETRY_REGISTRY_INVALID");
+    const unique = /* @__PURE__ */ new Map();
+    for (const record of [...previous || [], ...additions]) {
+      if (!/^\d{5,12}$/.test(record?.order_number || "") || typeof record?.reason !== "string" || record.reason.length > 90 || !isRecoverableRangeFailure(record.reason))
+        throw Error("MANUAL_RETRY_ROW_INVALID");
+      unique.set(record.order_number, record);
+    }
+    if (unique.size > MAX_RETRY_ROWS) throw Error("MANUAL_RETRY_REGISTRY_LIMIT");
+    return [...unique.values()];
   }
   function rangeConfig(start, end, delay2 = RANGE_MIN_DELAY_MS) {
     const n = Number(start), m = Number(end), ms = Number(delay2);
@@ -3694,15 +3739,17 @@
       found_committed: 0,
       checked_committed: 0,
       registry: [],
+      failed_orders: [],
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     };
   }
-  function commitOnlySkipped(checkpoint, next) {
+  function commitOnlySkipped(checkpoint, next, failedOrders = []) {
     if (checkpoint?.schema !== "printcheck.vision.range-checkpoint.v1" || !Number.isSafeInteger(next) || next < checkpoint.committed_next || next > checkpoint.config.end + 1) throw Error("MANUAL_SKIPPED_CHECKPOINT_INVALID");
     return {
       ...checkpoint,
       committed_next: next,
+      failed_orders: mergeRetryRows(checkpoint.failed_orders || [], failedOrders),
       checked_committed: checkpoint.checked_committed + (next - checkpoint.committed_next),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     };
@@ -3717,6 +3764,7 @@
       found_committed: checkpoint.found_committed + record.found.length,
       checked_committed: checkpoint.checked_committed + (record.next - checkpoint.committed_next),
       registry: [...checkpoint.registry, ...record.found],
+      failed_orders: mergeRetryRows(checkpoint.failed_orders || [], record.failed_orders || []),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     };
     if (current.registry.length > 1e5) throw Error("MANUAL_REGISTRY_CAPACITY");
