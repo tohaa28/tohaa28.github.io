@@ -48,6 +48,7 @@ on:
       - tests/printcheck-vision-extension-worker.test.mjs
       - tests/printcheck-vision-lan-extension.browser.mjs
       - tests/printcheck-vision-launcher.browser.mjs
+      - tests/printcheck-vision-zip-overlap.browser.mjs
       - tools/vision_local_lab.py
       - tools/vision_roi_review.py
       - tools/vision_pdf_audit.py
@@ -258,6 +259,7 @@ jobs:
           node tests/printcheck-vision-approval-file-list.browser.mjs
           node tests/printcheck-vision-lan-extension.browser.mjs
           node tests/printcheck-vision-launcher.browser.mjs
+          node tests/printcheck-vision-zip-overlap.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher
