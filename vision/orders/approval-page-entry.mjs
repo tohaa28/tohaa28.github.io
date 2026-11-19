@@ -7,6 +7,7 @@
 import {inspectOpenMaketApprovalDom} from './maket-approval-probe.mjs';
 import {exportNativeApprovalAttachmentParts} from './approval-attachments.mjs';
 import {encodeTransferChunks} from './approval-batch-archive.mjs';
+import {readTzApprovedStatus} from './approval-range-scanner.mjs';
 import {collectMaketApprovalsOnOrderPage,anonymousApprovalCollection}
  from './approval-auto-scan.mjs';
 const BOX_ID='vision-approval-inspector',STYLE_ID='vision-approval-inspector-css';
@@ -288,6 +289,15 @@ export function initApprovalPageEntry(){
    if(message?.op!=='vision-approval-order-collect-v1')return false;
    if(!isOrderPage()||message.order_url!==location.href){
     respond({status:'MANUAL_ORDER_URL_MISMATCH'});return false;
+   }
+   if(message.require_tz_approved===true){
+    const order=location.pathname.split('/').filter(Boolean).at(-1);
+    const gate=readTzApprovedStatus(document,order);
+    if(gate.status!=='TZ_APPROVED'){
+     respond({status:gate.status==='TZ_NOT_APPROVED'?
+      'MANUAL_TZ_CHANGED_BEFORE_SCAN':'MANUAL_TZ_RECHECK_FAILED'});
+     return false;
+    }
    }
    performAutomaticApprovalScan(true).then(respond,()=>
      respond({status:'MANUAL_AUTO_SCAN_FAILED'}));
