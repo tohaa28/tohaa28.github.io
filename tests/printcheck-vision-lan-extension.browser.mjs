@@ -8,7 +8,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 const extDir=await mkdtemp(path.join(os.tmpdir(),'vision-lan-mv3-'));
 const profileDir=await mkdtemp(path.join(os.tmpdir(),'vision-lan-profile-'));
-const files=['manifest.json','content-transport.js','service-worker.js','vision-order-launcher.js'];
+const files=['manifest.json','content-transport.js','service-worker.js','vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js'];
 for(const file of files)
  await cp(path.resolve('vision/orders/extension',file),path.join(extDir,file));
 await cp(path.resolve('vision-order-overlay.js'),path.join(extDir,'vision-order-overlay.js'));
