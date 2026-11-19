@@ -19,25 +19,41 @@
   try{
    const command=m.op.slice('vision-zip-offscreen-'.length);
    if(command==='begin'){
+    if(!/^[a-f0-9]{32}$/.test(m.job||''))
+     throw Error('VISION_ZIP_OFFSCREEN_JOB_INVALID');
+    if(current&&current.job===m.job){
+     if(current.filename!==m.filename||current.size!==m.size)
+      throw Error('VISION_ZIP_OFFSCREEN_REPLAY_MISMATCH');
+     reply({status:'ZIP_READY_FOR_CHUNK'});return false;
+    }
     if(current||typeof m.filename!=='string'||
       !/^vision-ai-(?:range-\d{7}-\d{7}-part|list-part)-\d{5}-\d{7}-\d{7}\.zip$/.test(m.filename)||
       !Number.isSafeInteger(m.size)||m.size<100||m.size>MAX_SIZE)
      throw Error('VISION_ZIP_OFFSCREEN_BEGIN_DENIED');
-    current={filename:m.filename,size:m.size,chunks:[],seen:0,sequence:0};
+    current={job:m.job,filename:m.filename,size:m.size,chunks:[],seen:0,sequence:0};
     reply({status:'ZIP_READY_FOR_CHUNK'});
    }else if(command==='chunk'){
-    if(!current||m.sequence!==current.sequence||
+    if(!current||m.job!==current.job||
+      !Number.isSafeInteger(m.sequence)||m.sequence<0||
       typeof m.base64!=='string'||m.base64.length>65_000||
       !/^[A-Za-z0-9+/]*={0,2}$/.test(m.base64))
      throw Error('VISION_ZIP_OFFSCREEN_CHUNK_INVALID');
     const decoded=atob(m.base64);
-    if(decoded.length>MAX_CHUNK||current.seen+decoded.length>current.size)
-     throw Error('VISION_ZIP_OFFSCREEN_SIZE_EXCEEDED');
+    if(decoded.length>MAX_CHUNK)
+     throw Error('VISION_ZIP_OFFSCREEN_CHUNK_TOO_LARGE');
     const data=Uint8Array.from(decoded,c=>c.charCodeAt(0));
+    if(m.sequence<current.sequence){
+     const prior=current.chunks[m.sequence];
+     if(!prior||prior.length!==data.length||!prior.every((x,i)=>x===data[i]))
+      throw Error('VISION_ZIP_OFFSCREEN_CHUNK_REPLAY_MISMATCH');
+     reply({status:'ZIP_CHUNK_ACCEPTED'});return false;
+    }
+    if(m.sequence!==current.sequence||current.seen+decoded.length>current.size)
+     throw Error('VISION_ZIP_OFFSCREEN_SIZE_EXCEEDED');
     current.chunks.push(data);current.seen+=data.length;current.sequence++;
     reply({status:'ZIP_CHUNK_ACCEPTED'});
    }else if(command==='finish'){
-    if(!current||m.chunks!==current.sequence||current.seen!==current.size)
+    if(!current||m.job!==current.job||m.chunks!==current.sequence||current.seen!==current.size)
      throw Error('VISION_ZIP_OFFSCREEN_INCOMPLETE');
     const blob=new Blob(current.chunks,{type:'application/zip'});
     if(blob.size!==current.size)throw Error('VISION_ZIP_OFFSCREEN_BLOB_MISMATCH');
@@ -51,9 +67,10 @@
      if(tail[0]!==0x50||tail[1]!==0x4b||tail[2]!==5||tail[3]!==6)
       throw Error('VISION_ZIP_OFFSCREEN_EOCD_INVALID');
      const url=URL.createObjectURL(blob);
+     const filename=current.filename;
      active.set(url,blob);
      current=null;
-     reply({status:'ZIP_EXTENSION_BLOB_READY',url,bytes:blob.size});
+     reply({status:'ZIP_EXTENSION_BLOB_READY',url,bytes:blob.size,filename});
     })().catch(error=>{
      current=null;reply({status:String(error?.message||'VISION_ZIP_OFFSCREEN_FAILED')});
     });
@@ -65,7 +82,8 @@
     }
     reply({status:'ZIP_RELEASED'});
    }else if(command==='cancel'){
-    current=null;reply({status:'ZIP_CANCELLED'});
+    if(current?.job===m.job)current=null;
+    reply({status:'ZIP_CANCELLED'});
    }else reply({status:'VISION_ZIP_OFFSCREEN_OP_DENIED'});
   }catch(error){
    current=null;
