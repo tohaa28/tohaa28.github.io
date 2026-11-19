@@ -57,3 +57,12 @@
 Preview: https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
 PR: https://github.com/tohaa28/tohaa28.github.io/pull/4
 CI: https://github.com/tohaa28/tohaa28.github.io/actions/workflows/publish-printcheck-vision-preview.yml
+## Проверка и публикация
+GitHub Actions run #44545917824 — SUCCESS.
+https://github.com/tohaa28/tohaa28.github.io/actions/runs/44545917824
+Браузерные PASS: M3.28 range reload; M3.29 TXT import/reload;
+M3.30 двухдоменный launcher; M3.30 ZIP PENDING на 8 секунд,
+сканирование следующей карточки и reload до подтверждения скачивания.
+ZIP опубликован в изолированной preview-папке main,
+sha файла GitHub fe92344faea625072d1930e85c83dcde413960f1.
+PR #4 остаётся OPEN DRAFT; в production код не сливался.
