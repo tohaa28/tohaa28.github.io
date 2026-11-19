@@ -80,7 +80,7 @@ const proxy=createServer((req,res)=>{
  else if(url===image){
   type='image';status=200;body=png;mime='image/png'
  }
- requests.push({type,method:req.method,url});
+ requests.push({type,method:req.method,url,at:Date.now()});
  res.writeHead(status,{'content-type':mime,'content-length':body.length,
   'cache-control':'no-store'});res.end(body);
 });
@@ -119,6 +119,22 @@ try{
  await inputs.nth(1).fill('3200004');
  await inputs.nth(2).fill('1000');
  await page.locator('.vlo-range button').filter({hasText:'Старт / продолжить'}).click();
+ // Change rate *after* scanning starts. The next request must respect it
+ // without resetting the cursor, losing the original ZIP or restarting.
+ await page.waitForFunction(()=>
+  (document.querySelector('.vlo-range p:last-child')?.textContent||'')
+   .includes('Последняя проверка: 3200000'),null,{timeout:20000});
+ await inputs.nth(2).fill('2300');
+ await page.waitForFunction(()=>
+  (document.querySelector('.vlo-range p:last-child')?.textContent||'')
+   .includes('Новая задержка 2300 мс'),null,{timeout:5000});
+ await page.waitForFunction(()=>
+  (document.querySelector('.vlo-range p:last-child')?.textContent||'')
+   .includes('Последняя проверка: 3200001'),null,{timeout:12000});
+ await inputs.nth(2).fill('1500');
+ await page.waitForFunction(()=>
+  (document.querySelector('.vlo-range p:last-child')?.textContent||'')
+   .includes('Новая задержка 1500 мс'),null,{timeout:5000});
  await page.waitForFunction(()=>{
   const t=document.querySelector('.vlo-range p:last-child')?.textContent||'';
   return t.includes('Диапазон полностью проверен.')||t.includes('Ошибка:');
@@ -134,6 +150,11 @@ try{
   'HTTP 502 did not halt enumeration');
  assert.equal(requests.filter(x=>x.type==='unreadable').length,1,
   'HTML without order card also did not halt enumeration');
+ const tOf=kind=>requests.find(x=>x.type===kind)?.at;
+ assert.ok(tOf('unchecked')-tOf('image')>=1950,
+  'live 2300ms delay must be reflected between approved and next order');
+ assert.ok(tOf('not-found')-tOf('unchecked')>=1250,
+  'live 1500ms delay must be reflected between next two probes');
  assert.ok(requests.some(x=>x.type==='image'));
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
  const zip=downloads.find(x=>x.suggestedFilename().startsWith(
@@ -154,6 +175,8 @@ try{
   await chrome.storage.local.get('vision-ai-approved-range-checkpoint-v1')
  )['vision-ai-approved-range-checkpoint-v1']);
  assert.equal(checkpoint.committed_next,3200005);
+ assert.equal(checkpoint.config.delay_ms,1500,
+  'changed time persisted without clearing checkpoint or registry');
  assert.equal(checkpoint.checked_committed,5);
  assert.equal(checkpoint.found_committed,1);
  assert.equal(checkpoint.registry[0].order_number,'3200000');
@@ -161,8 +184,21 @@ try{
   ['3200003','MANUAL_ORDER_HTTP_STATUS'],
   ['3200004','MANUAL_ORDER_CARD_MISSING']
  ]);
+ // Later edit while idle must also persist, without forcing a range reset.
+ await inputs.nth(2).fill('3100');
+ await page.waitForFunction(()=>(
+  document.querySelector('.vlo-range p:last-child')?.textContent||''
+ ).includes('Новая задержка 3100 мс'),null,{timeout:5000});
+ await page.waitForFunction(async()=>false, null,{timeout:100}).catch(()=>{});
+ const edited=await sw.evaluate(async()=>(
+  await chrome.storage.local.get('vision-ai-approved-range-checkpoint-v1')
+ )['vision-ai-approved-range-checkpoint-v1']);
+ assert.equal(edited.config.delay_ms,3100,
+  'idle change persists without reset');
+ assert.equal(edited.committed_next,3200005);
+ assert.equal(edited.registry.length,1);
  assert.deepEqual(errors,[]);
- console.log('Vision M3.26 continue after 502/unreadable, retain failures, preserve ZIP/checkpoint PASS');
+ console.log('Vision M3.27 live 2300→1500→3100 ms pacing and persisted checkpoint PASS');
 }finally{
  if(browser)await browser.close();
  await new Promise(resolve=>proxy.close(resolve));
