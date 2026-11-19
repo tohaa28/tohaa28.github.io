@@ -586,6 +586,29 @@ export function makeApprovalRangeController({
   get running(){return running},
   get pendingCount(){return pending.length},
   receive:(message,expectedOrder)=>batch.receive(message,expectedOrder),
+  remote:async(action,payload={})=>{
+   await initialLoadPromise;
+   if(action==='status')return {mode:'range',running,paused,stopped,
+    checked:checkpoint?.checked_committed||0,next_order:cursor,
+    range_start:config?.start||RANGE_MIN,range_end:config?.end||RANGE_MAX,
+    archives:checkpoint?.archives_completed||0,
+    found:checkpoint?.found_committed||0,pending:pending.length,
+    downloading:!!inflightDownload,delay_ms:liveDelayMs,
+    blocked:restoreBlocked,error:lastError};
+   if(action==='delay'){
+    if(!Number.isSafeInteger(payload.value)||payload.value<100||payload.value>60000)
+     throw Error('MANUAL_RANGE_DELAY_INVALID');
+    rateInput.value=String(payload.value);
+    rateInput.dispatchEvent(new Event('input'));
+    return {status:'VISION_DELAY_UPDATED'};
+   }
+   if(action==='start'){void start();return {status:'VISION_SCAN_START_REQUESTED'}}
+   if(action==='pause'){pauseBtn.click();return {status:'VISION_SCAN_PAUSE_REQUESTED'}}
+   if(action==='stop'){stopBtn.click();return {status:'VISION_SCAN_STOP_REQUESTED'}}
+   if(action==='save'){saveBtn.click();return {status:'VISION_SCAN_ZIP_SAVE_REQUESTED'}}
+   if(action==='export'){registryBtn.click();return {status:'VISION_REGISTRY_EXPORT_REQUESTED'}}
+   return {status:'VISION_REMOTE_ACTION_DENIED'};
+  },
   requestPause:()=>{paused=true},
   requestStop:()=>{stopped=true}
  };
