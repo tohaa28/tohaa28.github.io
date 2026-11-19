@@ -20,6 +20,8 @@ on:
       - vision/orders/approval-order-facts.mjs
       - vision/orders/approval-batch-archive.mjs
       - tests/printcheck-vision-approval-batch-archive.test.mjs
+      - tools/vision_approval_batch_import.py
+      - tests/test_vision_approval_batch_import.py
       - tests/printcheck-vision-approval-order-facts.test.mjs
       - vision/orders/approval-attachments.mjs
       - vision/orders/approval-inline-images.mjs
@@ -167,6 +169,7 @@ jobs:
           node --check tests/printcheck-vision-lan-extension.browser.mjs
           python3 -m py_compile tools/vision_local_lab.py tools/vision_roi_review.py tools/vision_pdf_audit.py tools/vision_private_corpus_stage.py
           python3 tests/test_vision_private_corpus_stage.py
+          python3 tests/test_vision_approval_batch_import.py
           python3 tests/test_vision_local_lab.py
           # Three consecutive independent ROI/PDF regression cycles.
           for cycle in 1 2 3; do
