@@ -15,7 +15,7 @@ MAX_PARTS = 64
 MAX_FILES = 64
 MAX_FILE_BYTES = 16_000_000
 MAX_PART_BYTES = 24_000_000
-MAX_MANIFEST_BYTES = 2_000_000
+MAX_MANIFEST_BYTES = 1024 * 1024
 ENTRY = re.compile(r"attachments/([0-9]{4})/([0-9]{4})\.(pdf|psd|psb|png|jpg|jpeg|webp|tif|tiff|gif|svg|eps|ai|cdr|zip)\Z")
 DIGITS = re.compile(r"[0-9]{1,20}\Z")
 SHA256 = re.compile(r"[a-f0-9]{64}\Z")
@@ -77,7 +77,10 @@ def audit_archives(paths, evidence=None):
                         "ZIP_UNSAFE_ENTRY")
             require(members[0].file_size <= MAX_MANIFEST_BYTES, "MANIFEST_TOO_LARGE")
             try:
-                manifest = read_json(zf.read(members[0]))
+                with zf.open(members[0]) as manifest_stream:
+                    raw_manifest = manifest_stream.read(MAX_MANIFEST_BYTES + 1)
+                require(len(raw_manifest) <= MAX_MANIFEST_BYTES, "MANIFEST_TOO_LARGE")
+                manifest = read_json(raw_manifest)
             except (OSError, RuntimeError, zipfile.BadZipFile):
                 raise AuditError("ZIP_CHECKSUM_INVALID") from None
             require(isinstance(manifest, dict), "MANIFEST_NOT_OBJECT")
