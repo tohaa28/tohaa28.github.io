@@ -37,7 +37,7 @@ export function makeApprovalRangeController({
  root.append(create('strong','Диапазон заказов · статус «ТЗ утверждено»'));
  root.append(create('p','Только отмеченный статус ID 59. Один GET на номер; '+
   'каждые 100 утверждённых заказов — отдельный ZIP. '+
-  'Задержка 1000–60000 мс изменяется во время работы. '+
+  'Задержка 100–60000 мс изменяется во время работы. '+
   'Страница списка должна оставаться открытой.'));
  const fields=create('div');fields.style.cssText='display:flex;gap:5px;flex-wrap:wrap';
  const input=(caption,value)=>{
@@ -51,8 +51,8 @@ export function makeApprovalRangeController({
   rateInput=input('Задержка, мс',1200);
  startInput.min=endInput.min=String(RANGE_MIN);
  startInput.max=endInput.max=String(RANGE_MAX);
- rateInput.min='1000';rateInput.max='60000';rateInput.step='100';
- rateInput.title='Задержка после обработки каждого номера: 1000–60000 мс. Изменения применяются без сброса диапазона.';
+ rateInput.min='100';rateInput.max='60000';rateInput.step='100';
+ rateInput.title='Задержка после обработки каждого номера: 100–60000 мс. Изменения применяются без сброса диапазона.';
  root.append(fields);
  const controls=create('div');controls.className='vlo-actions';
  const progress=create('p','Диапазон не запущен.');
@@ -98,17 +98,17 @@ export function makeApprovalRangeController({
    storage().set({[KEY]:snapshot}));
   await checkpointWrite;
   checkpoint=snapshot;
-  delayDirty=false;
+  delayDirty=liveDelayMs!==snapshot.config.delay_ms;
  }
  function validateDelayInput(){
   const value=Number(rateInput.value);
-  return Number.isSafeInteger(value)&&value>=1000&&value<=60000?
+  return Number.isSafeInteger(value)&&value>=100&&value<=60000?
    value:null;
  }
  rateInput.addEventListener('input',()=>{
   const nextDelay=validateDelayInput();
   if(nextDelay===null){
-   show('Некорректная задержка: разрешено от 1000 до 60000 мс. '+
+   show('Некорректная задержка: разрешено от 100 до 60000 мс. '+
     'Продолжаю с '+liveDelayMs+' мс.');
    return;
   }
