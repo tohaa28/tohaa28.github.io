@@ -1934,3 +1934,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Синтетические тесты:** ba606e1d4791a88ed1aa31c87494f7a45bd5db45 — границы 1 MiB−1, ровно 1 MiB, 1 MiB+1, повреждённый JSON; превышение и повреждение должны оставлять выход отсутствующим.
 **CI до изменения:** GitHub Actions UI smoke/raster safety/rules dataset safety SUCCESS на 1ece012b2885c852c34e65b99fbaa9a3663993fa (runs 44532153534, 44532153445, 44532153427). Preview publish на точном SHA не подтверждён; CircleCI на точном SHA не подтверждён. **Новые тесты:** выполнение на новом SHA ожидает подтверждения CI; локальный git clone недоступен из-за DNS github.com.
 **Ограничения:** модуль аудита ZIP имеет собственный MAX_MANIFEST_BYTES=2_000_000; новый 1 MiB лимит применяется только к конструктору корпуса. Независимые реальные ROI/две экспертные оценки/аджудикация, конструктор, метод нанесения, масштаб, PDF ICC/spot и verified family holdout не подтверждены. training_ready=false; production_approved=false; неизвестное → MANUAL. Приватные клиентские данные не выгружались. Production не менялся, PR не сливался.
+
+
+## 2026-11-19 — M3.49 / bounded independent ZIP archive auditor
+
+**Pre-change HEAD:** dd4efea2636398a6deef3644ba329003558981b6; PR #4 OPEN, draft=true, merged=false. GitHub Actions UI smoke / raster safety / rules-dataset safety SUCCESS; CircleCI vision-contract / vision-raster SUCCESS on that SHA. Preview publish on exact SHA not verified.
+
+**Implementation:** 4cd5b7d5ce7ba837e41fc72348fd874875d68332 updates `tools/vision_approval_archive_audit.py`: `manifest.json` limit aligned to 1 MiB (1048576 bytes), bounded `ZipExtFile.read(limit+1)` plus ZIP metadata guard; reject actual overrun with code-only MANIFEST_TOO_LARGE.
+
+**Synthetic regression:** 5aef5cf6301eddd1bfed68d998a636532136bcd4 updates `tests/test_vision_approval_archive_audit.py`: 1 MiB−1, exactly 1 MiB, 1 MiB+1, malformed JSON and redacted CLI failure. New test execution and CI for changed HEAD are pending verification; do not claim PASS before confirmation.
+
+**Outstanding:** preview publish; triple independent ROI-voice/adjudication regression; Chromium 404/MV3 real anonymous reference_state; PDF ICC/spot; trusted physical mm scale and print process; independent verified ROI/family holdout. No real customer corpus, original names, raw SHA, keys or private images uploaded. No production changes. training_ready=false; production_approved=false; unknown => MANUAL.
