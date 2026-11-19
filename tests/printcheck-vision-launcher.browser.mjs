@@ -35,9 +35,10 @@ try{
  const first=await browser.newPage();
  await first.goto('http://testgifts.local/catalog');
  await first.locator('#vision-ai-scan-launcher').waitFor();
+ const opened=browser.waitForEvent('page',{timeout:12000});
  await first.locator('#vision-ai-scan-launcher').click();
- await browser.waitForEvent('page',{predicate:p=>p.url().startsWith(
-  'http://psk.testgifts.local/devorders'),timeout:12000});
+ const scanner=await opened;
+ await scanner.waitForURL('http://psk.testgifts.local/devorders',{timeout:12000});
  const one=browser.pages().filter(p=>p.url().startsWith(
   'http://psk.testgifts.local/devorders'));
  assert.equal(one.length,1);
