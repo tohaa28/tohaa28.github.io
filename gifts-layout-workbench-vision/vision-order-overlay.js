@@ -3844,6 +3844,105 @@
     return current;
   }
 
+  // vision/orders/approval-range-persistence.mjs
+  var DB_NAME = "vision-ai-approved-range-pending-v1";
+  var DB_VERSION = 1;
+  var JOURNAL = "journal";
+  var ORDERS = "orders";
+  var ACTIVE = "active";
+  var STATUS_SCHEMA = "printcheck.vision.range-journal.v1";
+  var RANGE_JOURNAL_SCHEMA = STATUS_SCHEMA;
+  function openDb(factory = globalThis.indexedDB) {
+    if (!factory?.open) throw Error("MANUAL_RANGE_INDEXEDDB_UNAVAILABLE");
+    return new Promise((resolve, reject2) => {
+      const req = factory.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(JOURNAL)) db.createObjectStore(JOURNAL, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(ORDERS)) db.createObjectStore(ORDERS, { keyPath: "order_number" });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject2(Error("MANUAL_RANGE_INDEXEDDB_OPEN_FAILED"));
+      req.onblocked = () => reject2(Error("MANUAL_RANGE_INDEXEDDB_BLOCKED"));
+    });
+  }
+  function request(req) {
+    return new Promise((resolve, reject2) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject2(Error("MANUAL_RANGE_INDEXEDDB_REQUEST_FAILED"));
+    });
+  }
+  function complete(tx) {
+    return new Promise((resolve, reject2) => {
+      tx.oncomplete = () => resolve();
+      tx.onabort = () => reject2(Error("MANUAL_RANGE_INDEXEDDB_TRANSACTION_ABORTED"));
+      tx.onerror = () => reject2(Error("MANUAL_RANGE_INDEXEDDB_TRANSACTION_FAILED"));
+    });
+  }
+  async function transaction(mode, handler, factory) {
+    const db = await openDb(factory);
+    try {
+      const tx = db.transaction([JOURNAL, ORDERS], mode), done = complete(tx);
+      const result = handler(tx);
+      await done;
+      return await result;
+    } finally {
+      db.close();
+    }
+  }
+  function verifyJournal(state) {
+    if (state?.schema !== STATUS_SCHEMA || !Number.isSafeInteger(state.cursor) || !Number.isSafeInteger(state.archives_completed) || !["running", "paused", "stopped", "downloading"].includes(state.mode) || !Array.isArray(state.pending_registry) || !Array.isArray(state.failed_pending))
+      throw Error("MANUAL_RANGE_JOURNAL_CORRUPTED");
+  }
+  async function loadRangeJournal(factory) {
+    return transaction("readonly", async (tx) => {
+      const journal = await request(tx.objectStore(JOURNAL).get(ACTIVE));
+      if (!journal) return { journal: null, orders: [] };
+      verifyJournal(journal);
+      const orders = await request(tx.objectStore(ORDERS).getAll());
+      return { journal, orders };
+    }, factory);
+  }
+  async function saveRangeJournal(state, orderRecord = null, factory) {
+    verifyJournal(state);
+    if (orderRecord && (!/^\d{5,12}$/.test(orderRecord.order_number) || !Array.isArray(orderRecord.transfers)))
+      throw Error("MANUAL_RANGE_JOURNAL_ORDER_INVALID");
+    return transaction("readwrite", (tx) => {
+      if (orderRecord) tx.objectStore(ORDERS).put(orderRecord);
+      tx.objectStore(JOURNAL).put({ ...state, id: ACTIVE });
+    }, factory);
+  }
+  async function setRangeJournalMode(mode, delayMs = null, factory) {
+    if (!["running", "paused", "stopped", "downloading"].includes(mode))
+      throw Error("MANUAL_RANGE_JOURNAL_MODE");
+    if (delayMs !== null && (!Number.isSafeInteger(delayMs) || delayMs < 100 || delayMs > 6e4))
+      throw Error("MANUAL_RANGE_JOURNAL_DELAY");
+    return transaction("readwrite", async (tx) => {
+      const store = tx.objectStore(JOURNAL), state = await request(store.get(ACTIVE));
+      if (!state) return;
+      verifyJournal(state);
+      store.put({
+        ...state,
+        mode,
+        delay_ms: delayMs ?? state.delay_ms,
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }, factory);
+  }
+  async function replaceRangeJournal(state, factory) {
+    verifyJournal(state);
+    return transaction("readwrite", (tx) => {
+      tx.objectStore(ORDERS).clear();
+      tx.objectStore(JOURNAL).put({ ...state, id: ACTIVE });
+    }, factory);
+  }
+  async function clearRangeJournal(factory) {
+    return transaction("readwrite", (tx) => {
+      tx.objectStore(JOURNAL).clear();
+      tx.objectStore(ORDERS).clear();
+    }, factory);
+  }
+
   // vision/orders/approval-range-controller.mjs
   var KEY = "vision-ai-approved-range-checkpoint-v1";
   var delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -3905,19 +4004,36 @@
     let checkpoint = null, config = null, cursor = null, pending = [], pendingRegistry = [], failedPending = [];
     let batch = new ApprovalBatchSession(), testedThisSession = 0, lastError = null;
     let liveDelayMs = 1200, delayDirty = false, checkpointWrite = Promise.resolve();
+    let journalWrite = Promise.resolve(), initialLoadPromise = Promise.resolve();
+    let inflightDownload = null;
     const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
       void start();
     });
     const pauseBtn = button("\u041F\u0430\u0443\u0437\u0430", () => {
       paused = true;
+      void persistMode("paused");
       show("\u041F\u0430\u0443\u0437\u0430 \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430");
     });
     const stopBtn = button("\u0421\u0442\u043E\u043F \u0438 \u0430\u0440\u0445\u0438\u0432", () => {
       stopped = true;
+      void persistMode("stopped");
       show("\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043F\u0440\u043E\u0441\u0430");
     });
     const saveBtn = button("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E \u043F\u0430\u0440\u0442\u0438\u044E ZIP", () => {
-      if (!running && pending.length) void saveBatch("partial manual");
+      if (running || !pending.length) return;
+      void (async () => {
+        if (inflightDownload) {
+          if (typeof globalThis.confirm === "function" && !globalThis.confirm(
+            "\u041F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 ZIP \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0430. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u043F\u0430\u043F\u043A\u0443 \u0437\u0430\u0433\u0440\u0443\u0437\u043E\u043A Chrome. \u041F\u043E\u0432\u0442\u043E\u0440\u043D\u043E\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u043C\u043E\u0436\u0435\u0442 \u0441\u043E\u0437\u0434\u0430\u0442\u044C \u0434\u0443\u0431\u043B\u0438\u043A\u0430\u0442 \u0430\u0440\u0445\u0438\u0432\u0430. \u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C?"
+          )) return;
+          inflightDownload = null;
+          await persistJournal("paused");
+        }
+        await saveBatch("partial manual");
+      })().catch((error) => {
+        lastError = String(error?.message || "MANUAL_ARCHIVE_RETRY_FAILED");
+        show();
+      });
     });
     const registryBtn = button("\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0440\u0435\u0435\u0441\u0442\u0440\u0430 JSON", () => {
       void exportRegistry();
@@ -3929,6 +4045,41 @@
     root.append(controls, progress);
     pauseBtn.disabled = stopBtn.disabled = saveBtn.disabled = true;
     const storage = () => globalThis.chrome?.storage?.local;
+    function currentMode() {
+      return stopped ? "stopped" : paused ? "paused" : running ? "running" : "paused";
+    }
+    function journalSnapshot(mode = currentMode()) {
+      return {
+        schema: RANGE_JOURNAL_SCHEMA,
+        config: { start: config.start, end: config.end, archive_size: config.archive_size },
+        archives_completed: checkpoint.archives_completed,
+        committed_next: checkpoint.committed_next,
+        cursor,
+        pending_registry: pendingRegistry.slice(),
+        failed_pending: failedPending.slice(),
+        delay_ms: liveDelayMs,
+        download: inflightDownload,
+        mode,
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+    async function persistJournal(mode = currentMode(), orderRecord = null) {
+      const snapshot = journalSnapshot(mode);
+      journalWrite = journalWrite.catch(() => {
+      }).then(() => saveRangeJournal(snapshot, orderRecord));
+      await journalWrite;
+    }
+    async function persistMode(mode) {
+      if (!checkpoint || !config) return;
+      journalWrite = journalWrite.catch(() => {
+      }).then(() => setRangeJournalMode(mode, liveDelayMs));
+      try {
+        await journalWrite;
+      } catch (error) {
+        lastError = String(error?.message || "MANUAL_RANGE_MODE_SAVE_FAILED");
+        show();
+      }
+    }
     function show(message = "") {
       const cp = checkpoint;
       progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 (\u0444\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F) " + liveDelayMs + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0435\u0449\u0451 \u043D\u0435 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + pending.length + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
@@ -3957,6 +4108,7 @@
       delayDirty = true;
       if (config) config = { ...config, delay_ms: liveDelayMs };
       show("\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 " + liveDelayMs + " \u043C\u0441 \u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u0430 \u043A \u0442\u0435\u043A\u0443\u0449\u0435\u043C\u0443 \u043E\u0431\u0445\u043E\u0434\u0443.");
+      if (checkpoint && config) void persistMode(currentMode());
       if (checkpoint && !running) void saveCheckpoint(
         changeRangeDelay(checkpoint, liveDelayMs)
       ).catch(() => {
@@ -4042,9 +4194,11 @@
       ))
         return;
       try {
+        await clearRangeJournal();
         await storage().remove(KEY);
         config = checkpoint = null;
         cursor = null;
+        inflightDownload = null;
         pending = [];
         pendingRegistry = [];
         failedPending = [];
@@ -4060,9 +4214,13 @@
     function audit(phase, rest = {}) {
       return chrome.runtime.sendMessage({ op: "vision-range-download-audit-v1", phase, ...rest });
     }
-    async function waitForChrome(id, size) {
+    async function waitForChrome(id, size, filename) {
       for (let i = 0; i < 240; i++) {
-        const data = await audit("check", { after_id: id, byte_length: size });
+        const data = await audit("check", {
+          after_id: id,
+          byte_length: size,
+          expected_filename: filename
+        });
         if (data?.status === "RANGE_DOWNLOAD_COMPLETE") return true;
         if (data?.status !== "RANGE_DOWNLOAD_PENDING")
           throw Error(data?.status || "MANUAL_RANGE_DOWNLOAD_FAILED");
@@ -4070,8 +4228,44 @@
       }
       throw Error("MANUAL_RANGE_DOWNLOAD_TIMEOUT");
     }
+    async function commitConfirmedArchive(reason) {
+      const next = commitRangeArchive(checkpoint, {
+        next: cursor,
+        found: pendingRegistry,
+        failed_orders: failedPending
+      });
+      await saveCheckpoint(next);
+      pending = [];
+      pendingRegistry = [];
+      failedPending = [];
+      batch = new ApprovalBatchSession();
+      inflightDownload = null;
+      await journalWrite.catch(() => {
+      });
+      await replaceRangeJournal(journalSnapshot(currentMode()));
+      saveBtn.disabled = true;
+      lastError = null;
+      show("ZIP \u2116" + next.archives_completed + " \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D: " + reason + ". \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u0438 \u043D\u043E\u0432\u044B\u0439 \u0436\u0443\u0440\u043D\u0430\u043B \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u044B.");
+    }
+    async function recoverDownload() {
+      if (!inflightDownload) return true;
+      const d = inflightDownload;
+      const result = await audit("check", {
+        after_id: d.after_id,
+        byte_length: d.byte_length,
+        expected_filename: d.filename
+      });
+      if (result?.status === "RANGE_DOWNLOAD_COMPLETE") {
+        await commitConfirmedArchive("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B");
+        return true;
+      }
+      lastError = "MANUAL_ZIP_DOWNLOAD_UNCONFIRMED_" + String(result?.status || "UNKNOWN").slice(0, 50);
+      show("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C ZIP \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0438 \u0432\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E; \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E \u0441\u043A\u0430\u0447\u0430\u0439\u0442\u0435 \u0430\u0440\u0445\u0438\u0432 \u0432\u0440\u0443\u0447\u043D\u0443\u044E.");
+      return false;
+    }
     async function saveBatch(reason = "full") {
       if (!pending.length) return true;
+      if (inflightDownload) return recoverDownload();
       let result;
       try {
         result = batch.finalize(pending);
@@ -4087,6 +4281,12 @@
         const before = await audit("baseline");
         if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
           throw Error("MANUAL_RANGE_DOWNLOAD_BASELINE_FAILED");
+        inflightDownload = {
+          after_id: before.highest_id,
+          byte_length: result.blob.size,
+          filename
+        };
+        await persistJournal("downloading");
         const anchor = create("a");
         anchor.href = blobUrl;
         anchor.download = filename;
@@ -4094,20 +4294,8 @@
         anchor.click();
         anchor.remove();
         show("\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 ZIP \u2116" + part + " (" + pending.length + " \u0437\u0430\u043A\u0430\u0437\u043E\u0432). \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F Chrome...");
-        await waitForChrome(before.highest_id, result.blob.size);
-        const next = commitRangeArchive(checkpoint, {
-          next: cursor,
-          found: pendingRegistry,
-          failed_orders: failedPending
-        });
-        await saveCheckpoint(next);
-        pending = [];
-        pendingRegistry = [];
-        failedPending = [];
-        batch = new ApprovalBatchSession();
-        saveBtn.disabled = true;
-        lastError = null;
-        show("ZIP \u2116" + part + " \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D: " + reason + ". \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u0430.");
+        await waitForChrome(before.highest_id, result.blob.size, filename);
+        await commitConfirmedArchive(reason);
         return true;
       } catch (error) {
         lastError = String(error?.message || "MANUAL_RANGE_DOWNLOAD_UNCONFIRMED");
@@ -4119,6 +4307,8 @@
       }
     }
     async function start() {
+      if (running || getBusy() || isClosed()) return;
+      await initialLoadPromise;
       if (running || getBusy() || isClosed()) return;
       try {
         const selected = rangeConfig(startInput.value, endInput.value, rateInput.value);
@@ -4152,13 +4342,16 @@
       pauseBtn.disabled = stopBtn.disabled = false;
       let message = "";
       try {
+        if (inflightDownload && !await recoverDownload())
+          throw Error("MANUAL_ZIP_DOWNLOAD_REQUIRES_REVIEW");
+        await persistJournal("running");
         if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
           if (!await saveBatch("recovered")) throw Error("MANUAL_BATCH_NOT_SAVED");
         }
         while (cursor <= config.end && !paused && !stopped && !isClosed()) {
           const order = cursor;
           const inspected = await probeTzForOrder(order);
-          let failure2 = null;
+          let failure2 = null, orderRecord = null;
           if (inspected.status === "TZ_APPROVED") {
             activeOrder = String(order);
             let collected;
@@ -4187,6 +4380,10 @@
                 files: collected.files || 0,
                 collected_at: (/* @__PURE__ */ new Date()).toISOString()
               };
+              orderRecord = {
+                order_number: String(order),
+                transfers: batch.exportOrder(String(order))
+              };
               pending.push(record);
               pendingRegistry.push(record);
             }
@@ -4203,13 +4400,16 @@
             };
           }
           if (failure2) failedPending.push(failure2);
+          if (!orderRecord) batch.discardOrder(String(order));
           cursor++;
           testedThisSession++;
+          await persistJournal(currentMode(), orderRecord);
           if (pending.length >= RANGE_ARCHIVE_SIZE || batch.bytesReceived > 12e7) {
             if (!await saveBatch("100 orders / byte threshold")) break;
           } else if (!pending.length && cursor - checkpoint.committed_next >= 50) {
             await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
             failedPending = [];
+            await persistJournal(currentMode());
           }
           if (delayDirty) {
             await saveCheckpoint(changeRangeDelay(checkpoint, liveDelayMs));
@@ -4223,6 +4423,7 @@
         if (!pending.length && (cursor > config.end || stopped || paused) && cursor > checkpoint.committed_next) {
           await saveCheckpoint(commitOnlySkipped(checkpoint, cursor, failedPending));
           failedPending = [];
+          await persistJournal(currentMode());
         }
         if (delayDirty) {
           await saveCheckpoint(changeRangeDelay(checkpoint, liveDelayMs));
@@ -4235,6 +4436,13 @@
         activeOrder = null;
         running = false;
         setBusy(false);
+        if (checkpoint && !inflightDownload) {
+          try {
+            await persistJournal(stopped || cursor > config.end ? "stopped" : "paused");
+          } catch (error) {
+            lastError = String(error?.message || "MANUAL_RANGE_FINAL_JOURNAL_FAILED");
+          }
+        }
         startBtn.disabled = resetBtn.disabled = false;
         pauseBtn.disabled = stopBtn.disabled = true;
         saveBtn.disabled = !pending.length;
@@ -4242,16 +4450,48 @@
         show(message);
       }
     }
-    if (storage()) void storage().get(KEY).then((data) => {
-      const cp = data?.[KEY];
-      if (cp?.schema === "printcheck.vision.range-checkpoint.v1" && !running) {
-        startInput.value = String(cp.config.start);
-        endInput.value = String(cp.config.end);
-        rateInput.value = String(cp.config.delay_ms);
-        liveDelayMs = cp.config.delay_ms;
-        progress.textContent = "\u0421\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430: " + cp.committed_next + ", \u0430\u0440\u0445\u0438\u0432\u043E\u0432 " + cp.archives_completed + ". \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C\xBB \u0434\u043B\u044F \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F.";
+    if (storage()) initialLoadPromise = (async () => {
+      const cp = (await storage().get(KEY))?.[KEY];
+      if (cp?.schema !== "printcheck.vision.range-checkpoint.v1") return false;
+      checkpoint = cp;
+      config = { ...cp.config };
+      cursor = cp.committed_next;
+      startInput.value = String(cp.config.start);
+      endInput.value = String(cp.config.end);
+      rateInput.value = String(cp.config.delay_ms);
+      liveDelayMs = cp.config.delay_ms;
+      let autoResume = false;
+      const { journal, orders } = await loadRangeJournal();
+      if (journal) {
+        const same3 = sameRange(journal.config, cp.config);
+        const compatible = same3 && journal.archives_completed === cp.archives_completed && journal.cursor >= cp.committed_next && journal.cursor <= cp.config.end + 1;
+        autoResume = journal.mode === "running" || journal.mode === "downloading";
+        if (compatible) {
+          if (journal.pending_registry.length !== orders.length || journal.pending_registry.length > RANGE_ARCHIVE_SIZE || !journal.pending_registry.every((r) => orders.some((o) => o.order_number === r.order_number)))
+            throw Error("MANUAL_RANGE_JOURNAL_INCOMPLETE");
+          const rate = rangeConfig(cp.config.start, cp.config.end, journal.delay_ms);
+          liveDelayMs = rate.delay_ms;
+          rateInput.value = String(liveDelayMs);
+          pendingRegistry = journal.pending_registry.slice();
+          pending = pendingRegistry.slice();
+          failedPending = journal.failed_pending.slice();
+          cursor = journal.cursor;
+          inflightDownload = journal.download || null;
+          for (const item of orders) batch.restoreOrder(item.order_number, item.transfers);
+        } else {
+          await clearRangeJournal();
+          autoResume = autoResume && same3;
+        }
       }
-    }, () => {
+      show(journal ? "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B." : "\u041D\u0430\u0439\u0434\u0435\u043D\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C\xBB.");
+      return autoResume;
+    })().catch((error) => {
+      lastError = String(error?.message || "MANUAL_RANGE_RESTORE_FAILED");
+      show("\u041E\u0448\u0438\u0431\u043A\u0430 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F; \u0434\u0430\u043D\u043D\u044B\u0435 \u043D\u0435 \u0441\u0431\u0440\u043E\u0448\u0435\u043D\u044B.");
+      return false;
+    });
+    initialLoadPromise.then((shouldResume) => {
+      if (shouldResume && !isClosed()) void start();
     });
     return {
       element: root,
