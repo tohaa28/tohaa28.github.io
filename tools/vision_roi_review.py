@@ -82,7 +82,19 @@ def verify_original(root: Path, relative: str, expected_sha256: str) -> None:
         not actual.is_file() or actual.stat().st_size > lab.MAX_FILE
     ):
         raise ValueError("SOURCE_PATH_UNSAFE")
-    if hashlib.sha256(actual.read_bytes()).hexdigest() != expected_sha256:
+    # Bound memory regardless of file size; re-check the byte count during read.
+    digest = hashlib.sha256()
+    total = 0
+    try:
+        with actual.open("rb") as source:
+            while chunk := source.read(1024 * 1024):
+                total += len(chunk)
+                if total > lab.MAX_FILE:
+                    raise ValueError("SOURCE_PATH_UNSAFE")
+                digest.update(chunk)
+    except OSError as exc:
+        raise ValueError("SOURCE_PATH_UNSAFE") from exc
+    if digest.hexdigest() != expected_sha256:
         raise ValueError("SOURCE_SHA256_MISMATCH")
 
 
