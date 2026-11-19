@@ -37,6 +37,21 @@ const orderHtml='<html><body><div id="j_cart_host" data-orderid="550">'+
  "window.nativeClicks=0;\ndocument.querySelector('a.j_maketadjusting').addEventListener('click',event=>{\nevent.preventDefault();window.nativeClicks++;\nconst modal=document.createElement('g-modal');\nmodal.innerHTML='<form id=\"j_maketAdjustingForm\"><input type=\"hidden\" name=\"oiid\" value=\"77\">'+\n'<label><input type=\"checkbox\" name=\"ma_problem[]\" value=\"55\" checked>Тонкие линии</label></form>'+\n'<div id=\"j_maketadjustingcomments_counter\">2</div>'+\n'<ul id=\"j_maketadjusting_comments_list\">'+window.fixtureComments+'</ul>';\ndocument.body.append(modal);\nconst gallery=modal.querySelector('g-gallery');\ngallery.attachShadow({mode:'open'}).innerHTML='<section><picture><img src=\"'+\nwindow.fixtureImage+'\"></picture></section><nav><img src=\"'+window.fixtureImage+'\"></nav>';\nmodal.setAttribute('visible','');\n});"+
  '</script></body></html>';
 const png=Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0,0,0,0,0]);
+const readStoredZip=bytes=>{
+ const d=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+ let at=0;const files=new Map();
+ while(at+30<=bytes.length&&d.getUint32(at,true)===0x04034b50){
+  const size=d.getUint32(at+18,true),n=d.getUint16(at+26,true),
+   extra=d.getUint16(at+28,true),offset=at+30+n+extra;
+  const name=new TextDecoder().decode(bytes.subarray(at+30,at+30+n));
+  assert.equal(d.getUint16(at+8,true),0,'batch archive uses STORED entries');
+  assert.ok(offset+size<=bytes.length,'ZIP part length valid');
+  assert.ok(!files.has(name),'no duplicate archive entries');
+  files.set(name,bytes.subarray(offset,offset+size));
+  at=offset+size;
+ }
+ return files;
+};
 // A local HTTP proxy exercises Chrome extension-created tabs too. Playwright
 // route() can miss navigation initiated before a new target is attached.
 const requests=[];
@@ -96,31 +111,32 @@ try{
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
  const status=await page.locator('#vision-local-order-overlay .vlo-stats').innerText();
  assert.match(status,/историй: 1/);
- const sw=browserContext.serviceWorkers().find(x=>x.url().includes('service-worker.js'));
- assert.ok(sw,'MV3 worker available for verified downloads');
- const allNativeDownloads=await sw.evaluate(async()=>{
-  return (await chrome.downloads.search({})).map(x=>({
-   filename:x.filename,state:x.state,mime:x.mime
-  }));
- });
- // Playwright's acceptDownloads rewrites Chrome paths to GUIDs. Verify
- // actual downloaded bytes and structure rather than guessing filenames.
- const downloadedJson=await Promise.all(allNativeDownloads
-  .filter(x=>x.mime==='application/json'&&x.state==='complete')
-  .map(async x=>JSON.parse(await readFile(x.filename,'utf8'))));
- const evidenceFiles=downloadedJson.filter(x=>
-  x.schema==='printcheck.vision.private-approval-collection.v1'&&
-  x.order_number==='8001111');
- assert.equal(evidenceFiles.length,2,'raw and final private JSON are persisted');
- const rawEvidence=evidenceFiles.find(x=>
-  !x.articles[0].history[0].attachments[0].local_get_status);
- const report=evidenceFiles.find(x=>
-  x.articles[0].history[0].attachments[0].local_get_status===
-  'LOCAL_ATTACHMENT_BYTES_ONLY');
- assert.ok(rawEvidence,'pre-binary safety copy exists');
- assert.ok(report,'post-binary evidence with SHA-256 mapping exists');
- assert.ok(allNativeDownloads.filter(x=>x.mime==='application/json')
-  .every(x=>x.state==='complete'),'Chrome confirms completed JSON downloads');
+ const archiveDownload=downloads.find(x=>
+  /^vision-ai-approvals-[\w-]+\.zip$/.test(x.suggestedFilename()));
+ assert.ok(archiveDownload,'one single batch archive download');
+ assert.equal(downloads.filter(x=>x.suggestedFilename().endsWith('.zip')).length,1);
+ assert.ok(!downloads.some(x=>x.suggestedFilename().startsWith(
+  'vision-private-approval-evidence-')),'no per-order JSON downloads');
+ const batchBytes=new Uint8Array(await readFile(await archiveDownload.path()));
+ const archive=readStoredZip(batchBytes);
+ const manifest=JSON.parse(Buffer.from(archive.get('manifest.json')).toString('utf8'));
+ assert.equal(manifest.schema,'printcheck.vision.local-batch-corpus.v1');
+ assert.equal(manifest.training_ready,false);
+ assert.equal(manifest.counts.orders,1);
+ assert.equal(manifest.counts.verified_files,1);
+ const orderRoot='orders/8001111/';
+ const report=JSON.parse(Buffer.from(archive.get(orderRoot+
+  'source/evidence.json')).toString('utf8'));
+ const thread=JSON.parse(Buffer.from(archive.get(orderRoot+
+  'threads/77.json')).toString('utf8'));
+ assert.equal(thread.history.length,2);
+ assert.equal(thread.current_problems.length,1);
+ const filesIndex=JSON.parse(Buffer.from(archive.get(orderRoot+
+  'files-index.json')).toString('utf8'));
+ assert.equal(filesIndex.length,1);
+ assert.equal(filesIndex[0].item_id,'77');
+ assert.equal(filesIndex[0].comment_sequence,1);
+ assert.deepEqual(Buffer.from(archive.get(filesIndex[0].asset_path)),png);
  assert.equal(report.articles[0].observed_human_comments,2);
  assert.equal(report.articles[0].current_problems.length,1);
  assert.equal(report.order_facts.order.internal_order_id,'550');
@@ -137,8 +153,7 @@ try{
  assert.equal(attachment.sha256.length,64);
  assert.ok(JSON.stringify(report).includes('Синтетическая ошибка'));
  assert.equal(JSON.stringify(report).includes('files.testgifts.local'),false);
- assert.ok(downloads.some(x=>
-  x.suggestedFilename()==='vision-private-approval-attachments-8001111-part-0001.zip'));
+ assert.ok(!downloads.some(x=>x.suggestedFilename().includes('approval-attachments')));
  const anonEvent=page.waitForEvent('download');
  await page.locator('#vision-local-order-overlay button')
   .filter({hasText:'Отчёт согласований JSON'}).click();
@@ -146,10 +161,12 @@ try{
  assert.equal(anon.totals.verified_articles,1);
  assert.equal(anon.totals.files,1);
  assert.equal(anon.results[0].private_text_saved,true);
+ assert.equal(anon.results[0].final_evidence_saved,true);
+ assert.equal(anon.results[0].raw_evidence_saved,true);
  assert.equal(JSON.stringify(anon).includes('8001111'),false);
  assert.equal(JSON.stringify(anon).includes('capture.png'),false);
  assert.deepEqual(errors,[]);
- console.log('Vision M3.23 list->approval->complete raw/final JSON+order facts+PNG ZIP PASS');
+ console.log('Vision M3.24 single batch ZIP: named thread, order/item facts, problems, binary SHA PASS');
 }finally{
  if(browserContext)await browserContext.close();
  await new Promise(resolve=>proxy.close(resolve));
