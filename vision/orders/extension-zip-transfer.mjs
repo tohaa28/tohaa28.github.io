@@ -1,54 +1,42 @@
 /**
- * Move user-generated ZIP bytes from insecure HTTP portal to a secure
- * chrome-extension:// Blob origin using the standard MV3 offscreen API.
- * This does NOT disable Chrome Safe Browsing or approve dangerous files.
- * Backpressure on the port prevents unbounded worker message queues.
+ * Backpressured ZIP transport via individual MV3 runtime messages, not a
+ * long-lived Port. Each message is a service-worker event and can recover
+ * from worker idle restarts. A secure extension offscreen document owns Blob.
+ * Chrome's danger checks remain enabled and authoritative.
  */
 export async function startExtensionZipDownload(blob,filename){
  if(!(blob instanceof Blob)||blob.size<100||blob.size>200_000_000||
   !/^vision-ai-(?:range-\d{7}-\d{7}-part|list-part)-\d{5}-\d{7}-\d{7}\.zip$/.test(filename))
   throw Error('VISION_ZIP_TRANSFER_ARGS_INVALID');
- if(!globalThis.chrome?.runtime?.connect)
+ if(!globalThis.chrome?.runtime?.sendMessage)
   throw Error('VISION_ZIP_EXTENSION_TRANSPORT_REQUIRED');
- const port=chrome.runtime.connect({name:'vision-ai-zip-secure-v1'});
- let onMessage,onDisconnect;
- let sequence=0;
- let resolver=null,done=false;
- const fail=code=>{
-  if(resolver){const r=resolver;resolver=null;r.reject(Error(code))}
-  try{port.disconnect()}catch{}
- };
- port.onMessage.addListener(message=>{
-  if(!resolver)return;
-  const r=resolver;resolver=null;
-  if(message?.status==='ZIP_READY_FOR_CHUNK'||message?.status==='ZIP_CHUNK_ACCEPTED')
-   r.resolve(message);
-  else if(message?.status==='ZIP_DOWNLOAD_STARTED'&&
-   Number.isSafeInteger(message.download_id)&&message.download_id>=0)
-   r.resolve(message);
-  else r.reject(Error(message?.status||'VISION_ZIP_TRANSFER_FAILED'));
- });
- port.onDisconnect.addListener(()=>fail('VISION_ZIP_EXTENSION_DISCONNECTED'));
- const send=message=>new Promise((resolve,reject)=>{
-  resolver={resolve,reject};
-  try{port.postMessage(message)}catch(error){resolver=null;reject(error)}
- });
+ const random=new Uint8Array(16);crypto.getRandomValues(random);
+ const job=Array.from(random,b=>b.toString(16).padStart(2,'0')).join('');
+ const command=(op,extra={})=>
+  chrome.runtime.sendMessage({op:'vision-zip-secure-message-v1',action:op,
+   job,...extra});
+ const begin=await command('begin',{filename,size:blob.size});
+ if(begin?.status!=='ZIP_READY_FOR_CHUNK')
+  throw Error(begin?.status||'VISION_ZIP_BEGIN_FAILED');
+ let finished=false;
  try{
-  await send({op:'begin',filename,size:blob.size});
-  // Uint8Array chunks sent as base64: unlike millions of JSON integers,
-  // this remains reasonably bounded for 100-order production archives.
-  for(let start=0;start<blob.size;start+=48_000){
-   const bytes=new Uint8Array(await blob.slice(start,start+48_000).arrayBuffer());
+  let sequence=0;
+  for(let offset=0;offset<blob.size;offset+=48_000){
+   const part=new Uint8Array(await blob.slice(offset,offset+48_000).arrayBuffer());
    let binary='';
-   for(let i=0;i<bytes.length;i+=8192)
-    binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
-   await send({op:'chunk',sequence:sequence++,base64:btoa(binary)});
+   for(let i=0;i<part.length;i+=8192)
+    binary+=String.fromCharCode(...part.subarray(i,i+8192));
+   const result=await command('chunk',{sequence,base64:btoa(binary)});
+   if(result?.status!=='ZIP_CHUNK_ACCEPTED')
+    throw Error(result?.status||'VISION_ZIP_CHUNK_FAILED');
+   sequence++;
   }
-  const result=await send({op:'finish',chunks:sequence});
-  done=true;
-  return result.download_id;
+  const result=await command('finish',{chunks:sequence});
+  if(result?.status!=='ZIP_DOWNLOAD_STARTED'||
+   !Number.isSafeInteger(result.download_id)||result.download_id<0)
+   throw Error(result?.status||'VISION_ZIP_FINISH_FAILED');
+  finished=true;return result.download_id;
  }finally{
-  if(!done)try{port.postMessage({op:'cancel'})}catch{}
-  try{port.disconnect()}catch{}
+  if(!finished)void command('cancel').catch(()=>{});
  }
 }
