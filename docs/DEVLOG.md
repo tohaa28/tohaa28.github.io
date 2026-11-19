@@ -1822,3 +1822,43 @@ Python-тесты импорта/защиты от ZIP-slip. Весь код о�
 - Experimental code commit 3e9ebe1db04f266d3fc35cf95f63d3a331d70ade: ZIP entries now decompress in bounded chunks to private 0600 entry-stage files; cumulative actual uncompressed budget and per-entry 16 MiB enforced while streaming; SHA-256 computed incrementally. The byte_lookup contains staged paths, hashes and sizes instead of in-memory binary data. Unique assets are moved into private assets; residual staging is removed before manifest creation. Existing transactional outer staging cleans failures.
 - Synthetic test commit 2d625cb092a36e29f7e10c84311f7bd4bb5a891a: valid corpus must succeed with the old in-memory bounded_zip_entry disabled and leave no entry-stage directory. CI results for this change must be checked; no unobserved PASS claimed.
 - Remaining limitations: ZIP manifest is still loaded in memory; source ZIP copies remain on disk; Windows ACL independent verification, triple independent ROI adjudication, authenticated 404/MV3 reference_state, exact PDF/ICC/spot and physical scale, verified family holdout and real-world accuracy not confirmed. No customer data, keys, original identifiers or real SHA published. Unknown => MANUAL, training_ready=false, production_approved=false.
+
+
+## 2026-11-19 — M3.25 / Vision Check v0.1.9 — диапазон 3.2M–8.2M
+
+**Запрос:** пройти номера от 3200000 до 8200000, проверять
+статус «ТЗ УТВЕРЖДЕНО», только у утверждённых читать согласования,
+формировать реестр, ZIP по 100 заказов, паузу/стоп/продолжение.
+
+**Источник в сохранённой карточке \`Заказ 8097051.html\`:**
+состояние \`input.j_toggle_status[data-id="59"]\` в \`.cart-log\`,
+подписи \`.on/.off\` обе содержат «ТЗ утверждено». В
+исходном заказе input не отмечен. Проверка **только checked**,
+с совпадением номера \`.cart-header-number [data-clipboard-text]\`
+и существованием \`#j_cart_host[data-orderid]\`.
+Отсутствующий/противоречивый статус — MANUAL, не ложное одобрение.
+
+**Новые файлы:**
+\`vision/orders/approval-range-scanner.mjs\` — pure/async
+preflight одного order GET, schema checkpoint и ограничения:
+3.2M–8.2M, не менее 1000 мс между последовательными карточками.
+\`vision/orders/approval-range-controller.mjs\` — UI, очередь,
+статусы, Chrome Storage checkpoint, найденные заказы и ZIP-партии
+по 100 утверждённых/120 МБ.
+Временно полученные данные сохраняются только в памяти страницы
+списка. Сканируемая временная вкладка повторно перепроверяет
+checked ТЗ до чтения native approval. Chrome Downloads audit
+проверяет ZIP complete до сохранения долговременного курсора.
+Фонового автономного сканера нет, вкладка должна оставаться открытой.
+Прерывание до полного сохранения партии приводит к повторному
+обходу от последней безопасной точки — без silent data loss.
+Добавлено разрешение Chrome storage; production Gifts исключён.
+
+**Тестирование:** JS unit status 59 (вкл/выкл),
+неправильный номер, порог частоты, checkpoint commit; browser
+synthetic 3 карточек: approved → native 2+ discussion / unchecked
+→ ровно один GET без модалки / HTTP404 → пропуск; проверка
+одного ZIP и JSON реестра из Storage, полей автора и вложений.
+UI/corpus regression & CI изолированного preview.
+Никаких реальных клиентских материалов в GitHub. Только
+\`feature/printcheck-vision-copy-v01\`, PR #4 оставить DRAFT.
