@@ -5,6 +5,7 @@ import {mkdtemp,cp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright';
+import {createServer} from 'node:http';
 const dir=await mkdtemp(path.join(os.tmpdir(),'vision-launcher-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-launcher-profile-'));
 for(const f of ['manifest.json','content-transport.js','service-worker.js',
@@ -12,11 +13,33 @@ for(const f of ['manifest.json','content-transport.js','service-worker.js',
  await cp(path.resolve('vision/orders/extension',f),path.join(dir,f));
 for(const f of ['vision-order-overlay.js','vision-order-approval.js'])
  await cp(path.resolve(f),path.join(dir,f));
+// Chrome.tabs-created inactive tabs may initiate navigation before Playwright
+// page.route has attached. A loopback proxy also services those browser-level
+// requests and ensures no real testgifts order/server is contacted.
+const proxy=createServer((req,res)=>{
+ let u;
+ try{u=new URL(req.url)}catch{
+  res.writeHead(400);res.end();return;
+ }
+ if(!['http://testgifts.local','http://psk.testgifts.local'].includes(u.origin)){
+  res.writeHead(403);res.end();return;
+ }
+ const isLogin=/^\/auth\/?$/.test(u.pathname);
+ const isMissing=/^\/private\/order\/9999999$/.test(u.pathname);
+ const body=isLogin?
+  '<html><body><form name="authform"><input type="password"></form></body></html>':
+  '<html><body><main id="authorized">Synthetic authorized test page</main></body></html>';
+ res.writeHead(isMissing?404:200,{'Content-Type':'text/html; charset=utf-8'});
+ res.end(body);
+});
+await new Promise(resolve=>proxy.listen(0,'127.0.0.1',resolve));
 let browser;
 try{
  browser=await chromium.launchPersistentContext(profile,{
   channel:'chromium',headless:true,acceptDownloads:true,
-  args:['--disable-extensions-except='+dir,'--load-extension='+dir]
+  args:['--disable-extensions-except='+dir,'--load-extension='+dir,
+   '--proxy-server=http://127.0.0.1:'+proxy.address().port,
+   '--proxy-bypass-list=<-loopback>']
  });
  const errors=[];
  browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
@@ -88,6 +111,7 @@ try{
  console.log('Vision M3.31 inline remote panel, TXT import, scan, cross-portal status and login guard PASS');
 }finally{
  if(browser)await browser.close();
+ await new Promise(resolve=>proxy.close(resolve));
  await rm(dir,{recursive:true,force:true});
  await rm(profile,{recursive:true,force:true});
 }
