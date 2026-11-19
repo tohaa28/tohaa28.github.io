@@ -1956,3 +1956,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Regression:** b6a3e613a8bfa79c6e72ad13bc91ad8dbd74b545 — synthetic tests for evidence overrun, CLI path redaction and exact-boundary invalid JSON. Test execution on changed HEAD not yet confirmed; CI pending. No customer inputs used.
 
 **Unresolved:** exact-HEAD four GitHub CI and CircleCI confirmation; triple independent ROI voices/adjudication; authenticated 404/MV3 anonymous reference_state; PDF/ICC/spot and exact physical scale; verified print method, constructor and family holdout. `training_ready=false`, `production_approved=false`; all unknowns => MANUAL. No production module changes, no merge or public private-data upload.
+
+
+## 2026-11-20 — M3.54 / bounded-memory original SHA verification (synthetic)
+
+**Before change:** 5c0bb44fe52c2e5e4d848aac6407f9c32d98d306; PR #4 OPEN, draft=true, merged=false. GitHub Actions UI smoke 44577410086, raster safety 44577410847, rules/dataset safety 44577410089 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS on before-change SHA. Preview publish on exact SHA not verified.
+
+**Implementation:** 42c3746069e94f3f4736ed9777d0838ac482618e — `tools/vision_roi_review.py` now computes original SHA-256 incrementally with 1 MiB chunks, checks the cumulative size against `lab.MAX_FILE`, and maps file I/O errors to a code-only `SOURCE_PATH_UNSAFE`. Existing resolved-path, symlink, file-size and digest guards remain; no customer material processed.
+
+**Synthetic tests:** d179165eba8764c486e87c7b484ca94ba599ea09 — `tests/test_vision_roi_review.py` checks valid SHA, modified source, oversized source, unsafe traversal and path-free errors. Execution of newly added tests, threefold ROI/adjudication regressions and CI on the changed HEAD remain **unverified**; local git clone blocked by DNS resolution of github.com. Do not claim PASS without actual execution.
+
+**Outstanding:** exact-HEAD four-contour CI including preview publish; three independent regression rounds; real anonymous Chromium 404/MV3 reference_state; PDF/ICC/spot, trusted mm scale and print method, two verified independent ROI voices and adjudication, verified family holdout. No real accuracy claim, automatic training, public customer data or production changes. `training_ready=false`, `production_approved=false`; unknown => MANUAL. PR #4 remains draft and must not be merged.
