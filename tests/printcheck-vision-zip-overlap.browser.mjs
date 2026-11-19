@@ -147,10 +147,13 @@ try{
  assert.equal(final.success,100);
  assert.equal(orders.filter(x=>x.endsWith('3000100')).length,1);
  assert.equal(orders.filter(x=>x.endsWith('3000101')).length,1);
- const zips=downloads.filter(d=>d.suggestedFilename().endsWith('.zip'));
- assert.equal(zips.length,1);
- assert.equal(zips[0].suggestedFilename(),
-  'vision-ai-list-part-00001-3000000-3000099.zip');
+ const swForZip=browser.serviceWorkers().find(w=>w.url().endsWith('service-worker.js'));
+ assert.ok(swForZip);
+ const completed=await swForZip.evaluate(async()=>(
+  await chrome.downloads.search({})
+ ).filter(x=>x.state==='complete'&&x.mime==='application/zip'&&
+   x.url.startsWith('blob:chrome-extension://')));
+ assert.equal(completed.length,1,'one extension-origin ZIP');
  assert.deepEqual(errors,[]);
  console.log('Vision M3.30 two-batch buffering: scan during ZIP PENDING and reload PASS');
 }finally{
