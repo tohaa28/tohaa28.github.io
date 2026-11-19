@@ -107,6 +107,10 @@ try{
    '--proxy-bypass-list=<-loopback>']
  });
  const downloads=[],errors=[];
+ browser.on('serviceworker',w=>{
+  w.on('console',m=>console.log('MV3_ZIP_WORKER',m.type(),m.text()));
+  w.on('close',()=>console.log('MV3_ZIP_WORKER_CLOSED'));
+ });
  browser.on('page',p=>{
   p.on('download',d=>downloads.push(d));
   p.on('pageerror',e=>errors.push(String(e)));
