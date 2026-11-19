@@ -1,37 +1,37 @@
 # Vision Check — handoff: refresh-safe range scanning
 
-Дата: 2026-11-19. Ветка: \`feature/printcheck-vision-copy-v01\`.
+Дата: 2026-11-19. Ветка: `feature/printcheck-vision-copy-v01`.
 PR: https://github.com/tohaa28/tohaa28.github.io/pull/4 (Draft).
-Production \`main\` и \`gifts-layout-workbench-mockups-source\` не изменять.
+Production `main` и `gifts-layout-workbench-mockups-source` не изменять.
 
 ## Контекст и регрессия
 
 - Диапазон №3200000–8200000. Фильтр: только точный отмеченный
-  \`input.j_toggle_status[data-id="59"]\` «ТЗ УТВЕРЖДЕНО».
+  `input.j_toggle_status[data-id="59"]` «ТЗ УТВЕРЖДЕНО».
 - При совпадении: «Согласование макета» с бейджем 2+,
   замечания, обсуждения, вложенные файлы, ZIP партии по 100 заказов,
   реестр удачных и неудачных, пауза и остановка.
 - Отсутствующие и сломанные отдельные карточки пропускать с реестром
   повторной проверки; 401/403/429 не считать отсутствующими.
 - Старая версия v0.1.11: только завершённые ZIP фиксировались в
-  \`chrome.storage.local\`; невыгруженные данные жили в памяти вкладки.
-  Автообновление \`/devorders\` раз в пять минут уничтожало незавершённую партию.
+  `chrome.storage.local`; невыгруженные данные жили в памяти вкладки.
+  Автообновление `/devorders` раз в пять минут уничтожало незавершённую партию.
 
 ## Изменения v0.1.12
 
-1. \`vision/orders/approval-range-persistence.mjs\` — транзакционный журнал
+1. `vision/orders/approval-range-persistence.mjs` — транзакционный журнал
    IndexedDB и хранилище двоичных частей по ID заказа.
-2. \`vision/orders/approval-batch-archive.mjs\` — экспорт/восстановление
+2. `vision/orders/approval-batch-archive.mjs` — экспорт/восстановление
    полностью полученных частей, удаление частей неудачного обхода.
-3. \`vision/orders/approval-range-controller.mjs\` — атомарная запись
+3. `vision/orders/approval-range-controller.mjs` — атомарная запись
    следующего курсора вместе с данными заказа, восстановление/автозапуск
    после reload, сохранение режимов и задержки, очередь ошибок.
 4. Маркер начатой ZIP-загрузки хранится до подтверждения Chrome Downloads.
    Сверка включает имя, размер, происхождение, ID и состояние COMPLETE;
    при неопределённости не подтверждать архив автоматически.
-5. \`service-worker.js\` — отдельная операция проверки, что предыдущая
+5. `service-worker.js` — отдельная операция проверки, что предыдущая
    фоновая вкладка окончания обхода не конкурирует с новым запуском.
-6. Browser regression \`tests/printcheck-vision-approval-range.browser.mjs\`
+6. Browser regression `tests/printcheck-vision-approval-range.browser.mjs`
    перезагружает вкладку до первого ZIP; ожидается один итоговый архив,
    сохранённые файлы и курсор без повторных открытий карточек.
 
@@ -40,10 +40,10 @@ Production \`main\` и \`gifts-layout-workbench-mockups-source\` не измен
 - Порядок: готовые transfer chunks → IndexedDB transaction(order + cursor)
   → следующий номер. Если транзакция не удалась — остановка без движения
   надёжного курсора; тот же номер будет перепроверен.
-- Курсор в \`chrome.storage.local\` подтверждается только после
-  \`downloads.complete\` для ZIP, кроме безопасных интервалов без
+- Курсор в `chrome.storage.local` подтверждается только после
+  `downloads.complete` для ZIP, кроме безопасных интервалов без
   неархивированных утверждённых заказов.
-- После загрузки ZIP: \`chrome.storage.local\` commit →
+- После загрузки ZIP: `chrome.storage.local` commit →
   атомарная замена IndexedDB журнала на пустую партию.
 - При отличии номера завершённых архивов у журнала/контрольной точки
   приоритет у последней. Временный журнал не должен возвращать старую партию.
@@ -54,9 +54,9 @@ Production \`main\` и \`gifts-layout-workbench-mockups-source\` не измен
 
 ## Проверки и открытые ограничения
 
-- \`node --check\`: оба файла контроллера/хранилища и service worker;
-  \`node --test tests/printcheck-vision-approval-range.test.mjs\`.
-- Браузер: \`node tests/printcheck-vision-approval-range.browser.mjs\` после
+- `node --check`: оба файла контроллера/хранилища и service worker;
+  `node --test tests/printcheck-vision-approval-range.test.mjs`.
+- Браузер: `node tests/printcheck-vision-approval-range.browser.mjs` после
   esbuild. Проверять реальное скачивание Chrome ZIP и HTML reload.
 - На текущий момент **реальная 5-минутная перезагрузка тестового сервера
   и CI не подтверждены**: не считать изменения проверенными в production.
