@@ -65,7 +65,7 @@ export function makeApprovalRangeController({
  let batch=new ApprovalBatchSession(),testedThisSession=0,lastError=null;
  let liveDelayMs=1200,delayDirty=false,checkpointWrite=Promise.resolve();
  let journalWrite=Promise.resolve(),initialLoadPromise=Promise.resolve();
- let inflightDownload=null;
+ let inflightDownload=null,restoreBlocked=false;
  const startBtn=button('Старт / продолжить',()=>{void start()});
  const pauseBtn=button('Пауза',()=>{
   paused=true;void persistMode('paused');show('Пауза после текущего запроса');
@@ -240,9 +240,11 @@ export function makeApprovalRangeController({
    'Очистить реестр и контрольную точку диапазона? Уже загруженные ZIP останутся на диске.'))
    return;
   try{
+   await journalWrite.catch(()=>{});
+   await checkpointWrite.catch(()=>{});
    await clearRangeJournal();
    await storage().remove(KEY);
-   config=checkpoint=null;cursor=null;inflightDownload=null;
+   config=checkpoint=null;cursor=null;inflightDownload=null;restoreBlocked=false;
    pending=[];pendingRegistry=[];failedPending=[];testedThisSession=0;
    batch=new ApprovalBatchSession();lastError=null;
    saveBtn.disabled=true;show('Сброшено');
@@ -346,6 +348,7 @@ export function makeApprovalRangeController({
   await initialLoadPromise;
   if(running||getBusy()||isClosed())return;
   try{
+   if(restoreBlocked)throw Error('MANUAL_RANGE_JOURNAL_REPAIR_REQUIRED');
    const selected=rangeConfig(startInput.value,endInput.value,rateInput.value);
    if(!storage()||typeof globalThis.__visionLocalTrustedTransport!=='function')
     throw Error('MANUAL_MV3_TRANSPORT_AND_STORAGE_REQUIRED');
@@ -507,11 +510,13 @@ export function makeApprovalRangeController({
     autoResume=autoResume&&same;
    }
   }
+  saveBtn.disabled=!pending.length;
   show(journal?'Сканирование восстановлено после обновления страницы.':
    'Найдена сохранённая контрольная точка. Нажмите «Старт / продолжить».');
   return autoResume;
  })().catch(error=>{
   lastError=String(error?.message||'MANUAL_RANGE_RESTORE_FAILED');
+  restoreBlocked=true;
   show('Ошибка восстановления; данные не сброшены.');return false;
  });
  initialLoadPromise.then(shouldResume=>{
