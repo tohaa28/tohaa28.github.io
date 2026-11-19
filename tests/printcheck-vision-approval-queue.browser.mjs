@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 import {createServer} from 'node:http';
 const extensionDir=await mkdtemp(path.join(os.tmpdir(),'vision-approval-queue-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-approval-queue-profile-'));
-for(const name of ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js'])
+for(const name of ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js'])
  await cp(path.resolve('vision/orders/extension',name),path.join(extensionDir,name));
 for(const name of ['vision-order-overlay.js','vision-order-approval.js'])
  await cp(path.resolve(name),path.join(extensionDir,name));
