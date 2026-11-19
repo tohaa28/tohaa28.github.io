@@ -3625,6 +3625,15 @@
     }
   };
 
+  // vision/orders/approval-file-list.mjs
+  var ORDER_LIST_MIN = 1e6;
+  var ORDER_LIST_MAX = 9999999;
+  function explicitListOrderUrl(order) {
+    if (!Number.isSafeInteger(order) || order < ORDER_LIST_MIN || order > ORDER_LIST_MAX)
+      throw Error("MANUAL_ORDER_LIST_ID_INVALID");
+    return "http://testgifts.local/private/order/" + order;
+  }
+
   // vision/orders/approval-range-scanner.mjs
   var RANGE_MIN = 32e5;
   var RANGE_MAX = 82e5;
@@ -3706,9 +3715,10 @@
   async function probeTzForOrder(orderNumber, {
     fetcher = globalThis.__visionLocalTrustedTransport,
     DOMParserClass = globalThis.DOMParser,
-    signal
+    signal,
+    explicitList = false
   } = {}) {
-    const url = rangeOrderUrl(orderNumber);
+    const url = explicitList ? explicitListOrderUrl(orderNumber) : rangeOrderUrl(orderNumber);
     if (typeof fetcher !== "function") return { status: "MANUAL_MV3_TRANSPORT_REQUIRED" };
     let response;
     try {
