@@ -17,6 +17,8 @@ const list='http://psk.testgifts.local/devorders?status=140';
 const first='http://testgifts.local/private/order/3200000';
 const second='http://testgifts.local/private/order/3200001';
 const third='http://testgifts.local/private/order/3200002';
+const fourth='http://testgifts.local/private/order/3200003';
+const fifth='http://testgifts.local/private/order/3200004';
 const image='http://files.testgifts.local/maketadjusting/11313/3200000/77/capture.png';
 const listing='<html><body><table><tbody><tr><td>'+
  '<a href="'+first+'">3200000</a></td></tr></tbody></table></body></html>';
@@ -72,6 +74,9 @@ const proxy=createServer((req,res)=>{
  }else if(url===second){
   type='unchecked';status=200;body=Buffer.from(html('3200001',false))
  }else if(url===third){type='not-found';status=404}
+ else if(url===fourth){type='server-failed';status=502}
+ else if(url===fifth){type='unreadable';status=200;
+  body=Buffer.from('<html><body>Missing cart</body></html>')}
  else if(url===image){
   type='image';status=200;body=png;mime='image/png'
  }
@@ -111,7 +116,7 @@ try{
  await page.locator('.vlo-range').waitFor({timeout:15000});
  const inputs=page.locator('.vlo-range input');
  await inputs.nth(0).fill('3200000');
- await inputs.nth(1).fill('3200002');
+ await inputs.nth(1).fill('3200004');
  await inputs.nth(2).fill('1000');
  await page.locator('.vlo-range button').filter({hasText:'Старт / продолжить'}).click();
  await page.waitForFunction(()=>{
@@ -125,10 +130,14 @@ try{
  assert.equal(requests.filter(x=>x.type==='unchecked').length,1,
   'unapproved order only one GET, no modal or hidden page');
  assert.equal(requests.filter(x=>x.type==='not-found').length,1);
+ assert.equal(requests.filter(x=>x.type==='server-failed').length,1,
+  'HTTP 502 did not halt enumeration');
+ assert.equal(requests.filter(x=>x.type==='unreadable').length,1,
+  'HTML without order card also did not halt enumeration');
  assert.ok(requests.some(x=>x.type==='image'));
  assert.ok(requests.every(x=>x.method==='GET'&&x.type!=='unexpected'));
  const zip=downloads.find(x=>x.suggestedFilename().startsWith(
-  'vision-ai-range-3200000-3200002-part-00001-'));
+  'vision-ai-range-3200000-3200004-part-00001-'));
  assert.ok(zip,'one verified batch file');
  assert.equal(downloads.filter(x=>x.suggestedFilename().endsWith('.zip')).length,1);
  const files=readZip(new Uint8Array(await readFile(await zip.path())));
@@ -144,12 +153,16 @@ try{
  const checkpoint=await sw.evaluate(async()=>(
   await chrome.storage.local.get('vision-ai-approved-range-checkpoint-v1')
  )['vision-ai-approved-range-checkpoint-v1']);
- assert.equal(checkpoint.committed_next,3200003);
- assert.equal(checkpoint.checked_committed,3);
+ assert.equal(checkpoint.committed_next,3200005);
+ assert.equal(checkpoint.checked_committed,5);
  assert.equal(checkpoint.found_committed,1);
  assert.equal(checkpoint.registry[0].order_number,'3200000');
+ assert.deepEqual(checkpoint.failed_orders.map(row=>[row.order_number,row.reason]),[
+  ['3200003','MANUAL_ORDER_HTTP_STATUS'],
+  ['3200004','MANUAL_ORDER_CARD_MISSING']
+ ]);
  assert.deepEqual(errors,[]);
- console.log('Vision M3.25 exact checked TZ filter, range, registry, one batch and durable checkpoint PASS');
+ console.log('Vision M3.26 continue after 502/unreadable, retain failures, preserve ZIP/checkpoint PASS');
 }finally{
  if(browser)await browser.close();
  await new Promise(resolve=>proxy.close(resolve));
