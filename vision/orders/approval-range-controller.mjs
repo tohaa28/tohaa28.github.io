@@ -7,7 +7,7 @@
 import {ApprovalBatchSession} from './approval-batch-archive.mjs';
 import {RANGE_MIN,RANGE_MAX,RANGE_ARCHIVE_SIZE,rangeConfig,
  rangeOrderUrl,probeTzForOrder,freshRangeCheckpoint,
- commitRangeArchive,commitOnlySkipped} from './approval-range-scanner.mjs';
+ commitRangeArchive,commitOnlySkipped,isRecoverableRangeFailure} from './approval-range-scanner.mjs';
 
 const KEY='vision-ai-approved-range-checkpoint-v1';
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -54,7 +54,7 @@ export function makeApprovalRangeController({
  const progress=create('p','Диапазон не запущен.');
  progress.style.whiteSpace='pre-line';
  let running=false,paused=false,stopped=false,activeOrder=null;
- let checkpoint=null,config=null,cursor=null,pending=[],pendingRegistry=[];
+ let checkpoint=null,config=null,cursor=null,pending=[],pendingRegistry=[],failedPending=[];
  let batch=new ApprovalBatchSession(),testedThisSession=0,lastError=null;
  const startBtn=button('Старт / продолжить',()=>{void start()});
  const pauseBtn=button('Пауза',()=>{paused=true;show('Пауза после текущего запроса')});
@@ -79,6 +79,8 @@ export function makeApprovalRangeController({
    ' · архивов: '+(cp?.archives_completed||0)+
    ' · найдено и архивировано: '+(cp?.found_committed||0)+
    ' · ещё не архивировано: '+pending.length+
+   ' · ошибок открытия (реестр): '+
+    ((cp?.failed_orders?.length||0)+failedPending.length)+
    (lastError?'\nОшибка: '+lastError:'')+
    (message?'\n'+message:'');
  }
@@ -112,6 +114,8 @@ export function makeApprovalRangeController({
    checked_committed:checkpoint.checked_committed,
    found_archived:checkpoint.registry,
    found_pending:pendingRegistry,
+   failed_orders:checkpoint.failed_orders||[],
+   failed_pending:failedPending,
    training_ready:false
   };
  }
@@ -138,7 +142,7 @@ export function makeApprovalRangeController({
   try{
    await storage().remove(KEY);
    config=checkpoint=null;cursor=null;
-   pending=[];pendingRegistry=[];testedThisSession=0;
+   pending=[];pendingRegistry=[];failedPending=[];testedThisSession=0;
    batch=new ApprovalBatchSession();lastError=null;
    saveBtn.disabled=true;show('Сброшено');
   }catch{show('MANUAL_CHECKPOINT_RESET_FAILED')}
@@ -179,9 +183,10 @@ export function makeApprovalRangeController({
    show('Скачивание ZIP №'+part+' ('+pending.length+
     ' заказов). Ожидание подтверждения Chrome...');
    await waitForChrome(before.highest_id,result.blob.size);
-   const next=commitRangeArchive(checkpoint,{next:cursor,found:pendingRegistry});
+   const next=commitRangeArchive(checkpoint,{next:cursor,found:pendingRegistry,
+    failed_orders:failedPending});
    await saveCheckpoint(next);
-   pending=[];pendingRegistry=[];batch=new ApprovalBatchSession();
+   pending=[];pendingRegistry=[];failedPending=[];batch=new ApprovalBatchSession();
    saveBtn.disabled=true;lastError=null;
    show('ZIP №'+part+' сохранён: '+reason+'. Контрольная точка записана.');
    return true;
@@ -224,6 +229,7 @@ export function makeApprovalRangeController({
    while(cursor<=config.end&&!paused&&!stopped&&!isClosed()){
     const order=cursor;
     const inspected=await probeTzForOrder(order);
+    let failure=null;
     if(inspected.status==='TZ_APPROVED'){
      activeOrder=String(order);
      let collected;
@@ -231,38 +237,56 @@ export function makeApprovalRangeController({
      catch{collected={status:'MANUAL_NATIVE_APPROVAL_QUEUE_FAILED'}}
      finally{activeOrder=null}
      if(collected?.status!=='COMPLETE'||collected?.final_evidence_saved!==true){
-      lastError='MANUAL_APPROVAL_NOT_COMPLETE '+String(collected?.status||'UNKNOWN');
-      break;
+      // The order URL may have disappeared, timed out or closed in its
+      // temporary tab. Never block the entire numeric survey for it.
+      // Keep a retry record; do not mark it as a verified training case.
+      const reason=isRecoverableRangeFailure(collected?.status)?
+       collected.status:'MANUAL_APPROVAL_COLLECTION_INCOMPLETE';
+      failure={order_number:String(order),reason,phase:'native_approval',
+       observed_status:String(collected?.status||'UNKNOWN').slice(0,80)};
+     }else{
+      const record={
+       order_number:String(order),status:'TZ_APPROVED',
+       native_status_id:'59',eligible_articles:collected.eligible_articles||0,
+       verified_articles:collected.verified_articles||0,
+       files:collected.files||0,collected_at:new Date().toISOString()
+      };
+      pending.push(record);pendingRegistry.push(record);
      }
-     const record={
-      order_number:String(order),status:'TZ_APPROVED',
-      native_status_id:'59',eligible_articles:collected.eligible_articles||0,
-      verified_articles:collected.verified_articles||0,
-      files:collected.files||0,collected_at:new Date().toISOString()
-     };
-     pending.push(record);pendingRegistry.push(record);
     }else if(inspected.status!=='TZ_NOT_APPROVED'&&
       inspected.status!=='ORDER_NOT_FOUND'){
-     lastError='MANUAL_ORDER_PROBE '+String(inspected.status);
-     break;
+     // Auth errors and rate-limit responses are global failures, not
+     // individual inaccessible pages. Pause to avoid false mass skips.
+     if(!isRecoverableRangeFailure(inspected.status)){
+      lastError='MANUAL_ORDER_PROBE '+String(inspected.status);
+      break;
+     }
+     failure={order_number:String(order),reason:inspected.status,
+      phase:'order_card',
+      ...(Number.isInteger(inspected.http_status)?
+       {http_status:inspected.http_status}:{})};
     }
+    if(failure)failedPending.push(failure);
     cursor++;testedThisSession++;
     if(pending.length>=RANGE_ARCHIVE_SIZE||batch.bytesReceived>120_000_000){
      if(!await saveBatch('100 orders / byte threshold'))break;
     }else if(!pending.length&&cursor-checkpoint.committed_next>=50){
-     await saveCheckpoint(commitOnlySkipped(checkpoint,cursor));
+     await saveCheckpoint(commitOnlySkipped(checkpoint,cursor,failedPending));
+     failedPending=[];
     }
-    show('Последняя проверка: '+order+' — '+inspected.status);
+    show('Последняя проверка: '+order+' — '+
+     (failure?'недоступна, внесена в реестр ошибок ('+failure.reason+')':
+       inspected.status));
     if(!paused&&!stopped)await delay(config.delay_ms);
    }
    if((stopped||cursor>config.end)&&pending.length)
     if(!await saveBatch(stopped?'stopped partial':'final partial'))paused=true;
-   if(cursor>config.end&&!pending.length)
-    await saveCheckpoint(commitOnlySkipped(checkpoint,cursor));
-   else if((stopped||paused)&&!pending.length&&
-    cursor>checkpoint.committed_next)
-    await saveCheckpoint(commitOnlySkipped(checkpoint,cursor));
-   message=lastError?'ОСТАНОВКА ПО ОШИБКЕ; неудачный номер будет проверен вновь.':
+   if(!pending.length&&(cursor>config.end||stopped||paused)&&
+    cursor>checkpoint.committed_next){
+    await saveCheckpoint(commitOnlySkipped(checkpoint,cursor,failedPending));
+    failedPending=[];
+   }
+   message=lastError?'ОСТАНОВКА: общий сбой авторизации, лимит запросов или сохранения.':
     paused?'ПАУЗА. Можно продолжить; неполная партия остаётся в памяти.':
     stopped?'Остановлено, сохранён частичный архив.':
     cursor>config.end?'Диапазон полностью проверен.':'Сканирование завершено.';
