@@ -275,7 +275,7 @@ const QUEUE_RUN='vision-approval-order-queue-v1';
 const ORDER_URL=/^http:\/\/testgifts\.local\/private\/order\/[0-9]{5,12}$/;
 let queueRunning=false;
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function runNativeApprovalOrder(url,listTabId){
+async function runNativeApprovalOrder(url,listTabId,rangeMode=false){
  let tab=null;
  try{
   tab=await chrome.tabs.create({url,active:false});
@@ -288,7 +288,7 @@ async function runNativeApprovalOrder(url,listTabId){
    try{
     result=await Promise.race([
       chrome.tabs.sendMessage(tab.id,{op:'vision-approval-order-collect-v1',
-       order_url:url,batch_mode:true}),
+       order_url:url,batch_mode:true,require_tz_approved:rangeMode}),
       new Promise((_,reject)=>setTimeout(()=>reject(Error('QUEUE_ORDER_TIMEOUT')),180000))
     ]);
     ready=true;break;
@@ -351,7 +351,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
    respond({status:'MANUAL_QUEUE_ALREADY_RUNNING'});return false;
   }
   queueRunning=true;
-  runNativeApprovalOrder(url,sender?.tab?.id).then(respond,()=>
+  runNativeApprovalOrder(url,sender?.tab?.id,message.require_tz_approved===true).then(respond,()=>
    respond({status:'MANUAL_BACKGROUND_ORDER_FAILED'})).finally(()=>{
     queueRunning=false;
   });
