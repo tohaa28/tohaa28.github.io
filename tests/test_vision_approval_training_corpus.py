@@ -147,6 +147,27 @@ class TrainingCorpusTests(unittest.TestCase):
                 transform([self.evidence], [self.archive], out)
         self.assertFalse((out / "raw" / f"attachments-{ORDER}-part-0001.zip").exists())
 
+    def test_bounded_zip_entry_accepts_small_synthetic_attachment(self):
+        with zipfile.ZipFile(self.archive, "r") as z:
+            self.assertEqual(corpus.bounded_zip_entry(z, ENTRY), PNG)
+
+    def test_bounded_zip_entry_rejects_decompression_over_limit(self):
+        with patch.object(corpus, "MAX_PRIVATE_ATTACHMENT_BYTES", len(PNG) - 1):
+            with zipfile.ZipFile(self.archive, "r") as z:
+                with self.assertRaisesRegex(CorpusError, "PRIVATE_ATTACHMENT_SIZE_LIMIT"):
+                    corpus.bounded_zip_entry(z, ENTRY)
+
+    def test_bounded_zip_entry_rejects_forged_small_header(self):
+        with zipfile.ZipFile(self.archive, "r") as z:
+            info = z.getinfo(ENTRY)
+            original = info.file_size
+            try:
+                info.file_size = len(PNG) - 1
+                with self.assertRaisesRegex(CorpusError, "PRIVATE_ATTACHMENT_SIZE_MISMATCH|PRIVATE_ATTACHMENT_SIZE_LIMIT"):
+                    corpus.bounded_zip_entry(z, ENTRY)
+            finally:
+                info.file_size = original
+
     def test_missing_binary_keeps_case_unapproved_with_explicit_reason(self):
         self.source["articles"][0]["history"][1]["attachments"][0].update({
             "local_get_status": "MANUAL_HTTP_ERROR",
