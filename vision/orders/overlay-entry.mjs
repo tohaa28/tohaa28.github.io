@@ -11,6 +11,7 @@ import {rowOrderTarget,inspectOrderPageFromRow,fetchOrderResourceBytes,
   from './order-page-discovery.mjs';
 import {makeLocalExpertDataset,exportLocalDatasetParts} from './local-training-zip.mjs';
 import {ApprovalBatchSession} from './approval-batch-archive.mjs';
+import {makeApprovalRangeController} from './approval-range-controller.mjs';
 const ID='vision-local-order-overlay',STYLE_ID='vision-local-order-style';
 const CSS=[
  '#vision-local-order-overlay{position:fixed!important;top:12px!important;right:12px!important;z-index:2147483640!important;width:min(390px,calc(100vw - 24px))!important;max-height:76vh!important;overflow:auto!important;background:#24383c!important;border:1px solid #5c777a!important;border-radius:9px!important;box-shadow:0 8px 35px #101b22a8!important;color:#eef5f2!important;padding:15px!important;text-align:left!important;font:13px/1.45 system-ui,sans-serif!important}',
@@ -70,7 +71,7 @@ export function initLocalOrdersOverlay(){
  const style=node('style');style.id=STYLE_ID;style.textContent=CSS;document.head.append(style);
  const panel=node('section');panel.id=ID;
  panel.setAttribute('aria-label','Vision Check — таблица тестовых заказов');
- const title=node('h2','Vision Check v0.1.8 · тестовые заказы');
+ const title=node('h2','Vision Check v0.1.9 · тестовые заказы');
  const description=node('p',
    'Только локальная сеть. Ссылки на макеты загружаются в память браузера после вашего нажатия; файлы не отправляются на GitHub.');
  const actions=node('div',undefined,'vlo-actions');
@@ -79,7 +80,7 @@ export function initLocalOrdersOverlay(){
  const warning=node('p','Это исследовательский анализ, не допуск к печати. Нет найденных мест ≠ макет годен. PDF и сложные векторы: MANUAL. Локальный ZIP содержит исходные тестовые файлы — не публикуйте его.','vlo-note');
  let rows=[],busy=false,closed=false,pauseRequested=false,nextRowIndex=0;
  function close(){
-   closed=true;pauseRequested=true;panel.remove();style.remove();
+   closed=true;pauseRequested=true;rangeController.requestStop();panel.remove();style.remove();
    document.querySelectorAll('[data-vision-order-cell]').forEach(n=>n.remove());
    if(window.__visionLocalOrderOverlay?.close===close)
      delete window.__visionLocalOrderOverlay;
@@ -199,6 +200,23 @@ export function initLocalOrdersOverlay(){
  // collects only badge>1 approvals, and saves private text/images locally.
  let approvalQueueIndex=0,approvalQueueStop=false,approvalQueueUrls=null;
  let approvalBatch=new ApprovalBatchSession(),activeBatchOrder=null;
+ const rangeController=makeApprovalRangeController({
+  getBusy:()=>busy,
+  setBusy:value=>{busy=value;
+   approvalQueueBtn.disabled=value;
+   refreshBtn.disabled=value;
+  },
+  scanOrder:async(url,require_tz_approved)=>{
+   activeBatchOrder=new URL(url).pathname.split('/').at(-1);
+   try{return await chrome.runtime.sendMessage({
+    op:'vision-approval-order-queue-v1',order_url:url,
+    require_tz_approved:require_tz_approved===true
+   })}
+   finally{activeBatchOrder=null}
+  },
+  isClosed:()=>closed,
+  refreshControls:()=>{refreshBtn.disabled=busy;updateBatchControls()}
+ });
  let preparedBundle=null;
  function downloadApprovalBatch(){
   if(!preparedBundle)return;
@@ -221,7 +239,9 @@ export function initLocalOrdersOverlay(){
    if(sender?.id!==chrome.runtime.id||!activeBatchOrder||closed){
     respond({status:'MANUAL_BATCH_LIST_SENDER_DENIED'});return false;
    }
-   respond(approvalBatch.receive(message,activeBatchOrder));
+   const recipient=rangeController.activeOrder===activeBatchOrder?
+    rangeController:approvalBatch;
+   respond(recipient.receive(message,activeBatchOrder));
    return false;
   });
  }
@@ -367,7 +387,7 @@ export function initLocalOrdersOverlay(){
   }
  }
 
- actions.append(approvalQueueBtn,approvalQueueStopBtn,approvalZipBtn,approvalQueueDiagBtn,
+ actions.append(rangeController.element,approvalQueueBtn,approvalQueueStopBtn,approvalZipBtn,approvalQueueDiagBtn,
    refreshBtn,scanBtn,discussionBtn,pauseBtn,
    exportBtn,discussionExportBtn,diagnosticBtn,bundleBtn,
    makeButton('Закрыть',close));
