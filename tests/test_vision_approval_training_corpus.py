@@ -241,6 +241,26 @@ class TrainingCorpusTests(unittest.TestCase):
                 self.assertEqual(corpus.bounded_zip_entry(z, ENTRY, budget), PNG)
             self.assertEqual(budget[0], len(PNG))
 
+    def test_late_failure_removes_private_staging_and_never_publishes(self):
+        """An invalid order header fails after the first raw evidence write."""
+        self.source["order_facts"] = {"order": {"order_number": "9999999"}}
+        self.evidence.write_text(json.dumps(self.source), encoding="utf-8")
+        out = self.root / "transactional-failure"
+        before = set(self.root.iterdir())
+        with self.assertRaisesRegex(CorpusError, "ORDER_FACTS_NUMBER_MISMATCH"):
+            transform([self.evidence], [self.archive], out)
+        self.assertFalse(out.exists())
+        self.assertEqual(set(self.root.iterdir()), before)
+
+    def test_success_has_no_private_staging_residue(self):
+        out = self.root / "transactional-success"
+        before = set(self.root.iterdir())
+        result = transform([self.evidence], [self.archive], out)
+        self.assertFalse(result["training_ready"])
+        self.assertFalse(result.get("production_approved", False))
+        self.assertTrue((out / "manifest.json").is_file())
+        self.assertEqual(set(self.root.iterdir()) - before, {out})
+
     def test_missing_binary_keeps_case_unapproved_with_explicit_reason(self):
         self.source["articles"][0]["history"][1]["attachments"][0].update({
             "local_get_status": "MANUAL_HTTP_ERROR",
