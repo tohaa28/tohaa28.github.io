@@ -515,32 +515,52 @@ export function makeApprovalRangeController({
   rateInput.value=String(cp.config.delay_ms);
   liveDelayMs=cp.config.delay_ms;
   let autoResume=false;
-  const {journal,orders}=await loadRangeJournal();
+  const loaded=await loadRangeJournal();
+  let journal=loaded.journal,orders=loaded.orders;
   if(journal){
    const same=sameRange(journal.config,cp.config);
-   const compatible=same&&journal.archives_completed===cp.archives_completed&&
-    journal.cursor>=cp.committed_next&&journal.cursor<=cp.config.end+1;
+   if(!same)throw Error('MANUAL_RANGE_JOURNAL_DIFFERENT_CONFIG');
    autoResume=journal.mode==='running'||journal.mode==='downloading';
-   if(compatible){
-    if(journal.pending_registry.length!==orders.length||
-     journal.pending_registry.length>RANGE_ARCHIVE_SIZE||
-     !journal.pending_registry.every(r=>
-      orders.some(o=>o.order_number===r.order_number)))
-     throw Error('MANUAL_RANGE_JOURNAL_INCOMPLETE');
-    const rate=rangeConfig(cp.config.start,cp.config.end,journal.delay_ms);
-    liveDelayMs=rate.delay_ms;rateInput.value=String(liveDelayMs);
-    pendingRegistry=journal.pending_registry.slice();
-    pending=pendingRegistry.slice();
-    failedPending=journal.failed_pending.slice();
-    cursor=journal.cursor;
-    inflightDownload=journal.download||null;
-    for(const item of orders)batch.restoreOrder(item.order_number,item.transfers);
-   }else{
-    // Archive checkpoint is authoritative after a completed download.
-    // Discard only an older journal, never the committed archive registry.
-    await clearRangeJournal();
-    autoResume=autoResume&&same;
+   if(journal.download&&!Array.isArray(journal.download.order_numbers)){
+    // Safe migration of 0.1.12–0.1.13 download intent: no following batch
+    // existed in those releases, so the entire pending set belongs to ZIP.
+    journal={...journal,download:{...journal.download,
+     order_numbers:journal.pending_registry.map(x=>x.order_number),
+     end_cursor:journal.cursor,part:journal.archives_completed+1,
+     failed_orders:journal.failed_pending.slice()}};
+    await saveRangeJournal(journal);
    }
+   // Crash after chrome.storage checkpoint, before IndexedDB prune:
+   // reconcile the exact previously confirmed ZIP without deleting newer
+   // approved orders gathered during that Chrome download.
+   const d=journal.download;
+   if(journal.archives_completed+1===cp.archives_completed&&d&&
+     d.part===cp.archives_completed&&d.end_cursor===cp.committed_next){
+    const ids=new Set(d.order_numbers);
+    const old=new Set((d.failed_orders||[]).map(x=>x.order_number));
+    journal={...journal,archives_completed:cp.archives_completed,
+     committed_next:cp.committed_next,download:null,
+     pending_registry:journal.pending_registry.filter(x=>!ids.has(x.order_number)),
+     failed_pending:journal.failed_pending.filter(x=>!old.has(x.order_number))};
+    await pruneRangeJournalOrders(journal,[...ids]);
+    orders=orders.filter(x=>!ids.has(x.order_number));
+   }
+   const compatible=journal.archives_completed===cp.archives_completed&&
+    journal.cursor>=cp.committed_next&&journal.cursor<=cp.config.end+1;
+   if(!compatible)throw Error('MANUAL_RANGE_JOURNAL_RECONCILE_REQUIRED');
+   if(journal.pending_registry.length!==orders.length||
+    journal.pending_registry.length>RANGE_ARCHIVE_SIZE*2||
+    !journal.pending_registry.every(r=>
+     orders.some(o=>o.order_number===r.order_number)))
+    throw Error('MANUAL_RANGE_JOURNAL_INCOMPLETE');
+   const rate=rangeConfig(cp.config.start,cp.config.end,journal.delay_ms);
+   liveDelayMs=rate.delay_ms;rateInput.value=String(liveDelayMs);
+   pendingRegistry=journal.pending_registry.slice();
+   pending=pendingRegistry.slice();
+   failedPending=journal.failed_pending.slice();
+   cursor=journal.cursor;
+   inflightDownload=journal.download||null;
+   for(const item of orders)batch.restoreOrder(item.order_number,item.transfers);
   }
   saveBtn.disabled=!pending.length;
   show(journal?'Сканирование восстановлено после обновления страницы.':
