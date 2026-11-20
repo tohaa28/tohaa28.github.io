@@ -5308,7 +5308,8 @@
           files_missing: info.missing_files ?? null,
           entry_count: info.entry_count ?? null,
           confirmed_at: (/* @__PURE__ */ new Date()).toISOString(),
-          status: "CHROME_COMPLETE"
+          storage: info.kind === "directory" ? "selected_directory" : "chrome_downloads",
+          status: info.kind === "directory" ? "DIRECTORY_VERIFIED" : "CHROME_COMPLETE"
         },
         mode: currentMode()
       };
@@ -5323,6 +5324,21 @@
     async function resumePreparingZip() {
       const info = state?.download;
       if (info?.stage !== "preparing") return true;
+      if (info.kind === "directory") {
+        if (typeof globalThis.__visionArchiveSave !== "function")
+          throw Error("VISION_DIRECTORY_ENGINE_REQUIRED");
+        const selected2 = new Set(info.order_ids);
+        const rows2 = pending.filter((row) => selected2.has(row.id));
+        if (!rows2.length || rows2.length !== info.order_ids.length)
+          throw Error("VISION_DIRECTORY_PENDING_ROWS_MISSING");
+        const temp2 = new ApprovalBatchSession();
+        for (const row of rows2) temp2.restoreOrder(row.id, row.transfers);
+        const blob2 = temp2.finalize(rows2).blob;
+        if (blob2.size !== info.bytes) throw Error("VISION_DIRECTORY_ZIP_SIZE_CHANGED");
+        await globalThis.__visionArchiveSave(blob2, info.filename);
+        await commitDownloaded();
+        return true;
+      }
       const check = await audit("check", {
         after_id: info.after_id,
         byte_length: info.bytes,
@@ -5363,6 +5379,8 @@
     async function recoverDownload(waitForCompletion = false) {
       if (!state?.download) return true;
       try {
+        if (state.download.kind === "directory")
+          return await resumePreparingZip();
         await resumePreparingZip();
         if (!state.download) return true;
         const info = state.download;
@@ -5389,11 +5407,11 @@
       }
     }
     async function saveBatch(reason) {
-      let rows = activeRows();
+      let rows = activeRows().slice(0, 1);
       if (!rows.length) return true;
       if (state.download) {
         if (!await recoverDownload(true)) return false;
-        rows = activeRows();
+        rows = activeRows().slice(0, 1);
         if (!rows.length) return true;
       }
       let result;
@@ -5406,6 +5424,28 @@
       }
       const filename = "vision-ai-list-part-" + pad(state.archive_count + 1) + "-" + rows[0].id + "-" + rows.at(-1).id + ".zip";
       try {
+        const target = typeof globalThis.__visionArchiveSettings === "function" ? await globalThis.__visionArchiveSettings() : { ready: true, mode: "downloads" };
+        if (!target.ready) throw Error(target.reason || "VISION_ARCHIVE_FOLDER_REQUIRED");
+        if (target.mode === "directory") {
+          const download2 = {
+            kind: "directory",
+            bytes: result.blob.size,
+            filename,
+            order_ids: rows.map((x) => x.id),
+            stage: "preparing",
+            verified_files: result.counts.verified_files,
+            missing_files: result.counts.missing_files,
+            entry_count: result.entry_count
+          };
+          const snapshot2 = { ...state, download: download2, mode: currentMode() };
+          await write(() => saveOrderFileStatus(snapshot2));
+          state = snapshot2;
+          const saved = await globalThis.__visionArchiveSave(result.blob, filename);
+          if (saved?.status !== "VISION_LOCAL_ARCHIVE_VERIFIED")
+            throw Error("VISION_DIRECTORY_FILE_UNCONFIRMED");
+          await commitDownloaded();
+          return true;
+        }
         const before = await audit("baseline");
         if (before?.status !== "RANGE_DOWNLOAD_BASELINE")
           throw Error("MANUAL_ORDER_LIST_DOWNLOAD_BASELINE");
@@ -5582,6 +5622,14 @@
         show();
         return;
       }
+      if (typeof globalThis.__visionArchiveSettings === "function") {
+        const target = await globalThis.__visionArchiveSettings().catch(() => ({ ready: false, reason: "VISION_ARCHIVE_FOLDER_CHECK_FAILED" }));
+        if (!target.ready) {
+          lastError = target.reason || "VISION_ARCHIVE_FOLDER_REQUIRED";
+          show("\u041F\u0435\u0440\u0435\u0434 \u0441\u0442\u0430\u0440\u0442\u043E\u043C \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E \u0432\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u043F\u0430\u043F\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F ZIP.");
+          return;
+        }
+      }
       const rate = validateDelay();
       if (rate === null) {
         lastError = "MANUAL_ORDER_LIST_DELAY_INVALID";
@@ -5603,8 +5651,8 @@
         if (state.download && !await recoverDownload())
           throw Error("MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
         await setMode("running");
-        if (activeRows().length >= 100 || activeBytes() > 12e7) {
-          if (!await saveBatch("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F"))
+        while (activeRows().length) {
+          if (!await saveBatch("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u044B\u0439 \u0437\u0430\u043A\u0430\u0437"))
             throw Error("MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW");
         }
         while (state.index < state.total && !paused && !stopped && !isClosed()) {
@@ -5697,15 +5745,19 @@
           else batch.discardOrder(order_number);
           checkedSession++;
           if (state.download && !await recoverDownload(false)) break;
-          if (activeRows().length >= 100 || activeBytes() > 12e7) {
-            if (!await saveBatch("100 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 / \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u0438\u0435 \u0440\u0430\u0437\u043C\u0435\u0440\u0430")) break;
+          if (record || activeRows().length) {
+            if (!await saveBatch("\u043E\u0434\u0438\u043D \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0439 \u0437\u0430\u043A\u0430\u0437")) break;
           }
           show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440: " + order_number + " \u2014 " + (failure2 ? failure2.reason : inspected.status));
           if (!paused && !stopped) await dynamicDelay();
         }
         if ((stopped && !stopWithoutZip || state.index >= state.total) && pending.length) {
-          if (activeRows().length && !await saveBatch(stopped ? "\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430" : "\u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430"))
-            paused = true;
+          while (activeRows().length) {
+            if (!await saveBatch(stopped ? "\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430" : "\u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430")) {
+              paused = true;
+              break;
+            }
+          }
           if (state.download && !await recoverDownload(true)) paused = true;
         }
         message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041B\u0415\u041D\u041E: " + lastError : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C. \u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : stopped ? stopWithoutZip ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u041A\u0443\u0440\u0441\u043E\u0440 \u0438 \u0444\u0430\u0439\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u0432 IndexedDB; ZIP \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E." : "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u0420\u0435\u0435\u0441\u0442\u0440 \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : state.index >= state.total ? "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E.";
@@ -5840,6 +5892,13 @@
           return { status: "VISION_DELAY_UPDATED" };
         }
         if (action === "start") {
+          if (running || getBusy()) return { status: "VISION_SCAN_ALREADY_RUNNING" };
+          if (restoreBlocked) return { status: "VISION_SCAN_RESTORE_BLOCKED", reason: lastError };
+          if (!state || !queue) return { status: "VISION_SCAN_TXT_REQUIRED" };
+          if (typeof globalThis.__visionArchiveSettings === "function") {
+            const place = await globalThis.__visionArchiveSettings().catch(() => ({ ready: false, reason: "VISION_ARCHIVE_FOLDER_CHECK_FAILED" }));
+            if (!place.ready) return { status: place.reason || "VISION_ARCHIVE_FOLDER_REQUIRED" };
+          }
           void start();
           return { status: "VISION_SCAN_START_REQUESTED" };
         }
