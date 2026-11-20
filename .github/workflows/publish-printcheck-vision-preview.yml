@@ -273,6 +273,7 @@ jobs:
           # v0.2.0 replaces the old /devorders extension integration.
           # Historical v0.1.x browser fixtures remain in the repository.
           node tests/printcheck-vision-scanner-host.browser.mjs
+          node tests/printcheck-vision-host-approvals.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher
