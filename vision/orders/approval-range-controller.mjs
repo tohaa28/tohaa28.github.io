@@ -6,6 +6,7 @@
  */
 import {ApprovalBatchSession} from './approval-batch-archive.mjs';
 import {startExtensionZipDownload} from './extension-zip-transfer.mjs';
+import {controlledOrderProbe,freshNetworkHealth,normalizeNetworkHealth} from './approval-network-control.mjs';
 import {RANGE_MIN,RANGE_MAX,RANGE_ARCHIVE_SIZE,rangeConfig,
  rangeOrderUrl,probeTzForOrder,freshRangeCheckpoint,
  commitRangeArchive,commitOnlySkipped,isRecoverableRangeFailure,
@@ -67,6 +68,8 @@ export function makeApprovalRangeController({
  let liveDelayMs=1200,delayDirty=false,checkpointWrite=Promise.resolve();
  let journalWrite=Promise.resolve(),initialLoadPromise=Promise.resolve();
  let inflightDownload=null,restoreBlocked=false;
+ let networkHealth=freshNetworkHealth(),lastActivityAt=null;
+ let stopWithoutZip=false,stage='idle';
  const activePending=()=>pending.filter(x=>!inflightDownload?.order_numbers?.includes(x.order_number));
  const activeBytes=()=>[...batch.transfers.values()].reduce((n,t)=>
   n+(inflightDownload?.order_numbers?.includes(t.order)?0:t.size||0),0);
@@ -107,7 +110,8 @@ export function makeApprovalRangeController({
    committed_next:checkpoint.committed_next,
    cursor,pending_registry:pendingRegistry.slice(),
    failed_pending:failedPending.slice(),delay_ms:liveDelayMs,
-   download:inflightDownload,mode,updated_at:new Date().toISOString()
+   download:inflightDownload,network:networkHealth,mode,
+   updated_at:new Date().toISOString()
   };
  }
  async function persistJournal(mode=currentMode(),orderRecord=null){
@@ -136,6 +140,10 @@ export function makeApprovalRangeController({
    ' · найдено и архивировано: '+(cp?.found_committed||0)+
    ' · текущая партия: '+activePending().length+
    ' · ZIP загружается: '+(inflightDownload?1:0)+
+   ' · сеть: '+networkHealth.state+
+   ' · повторов GET: '+networkHealth.retries+
+   ' · сетевых ошибок: '+networkHealth.transient_errors+
+   ' · фаза: '+stage+
    ' · ошибок открытия (реестр): '+
     ((cp?.failed_orders?.length||0)+failedPending.length)+
    (lastError?'\nОшибка: '+lastError:'')+
@@ -239,9 +247,9 @@ export function makeApprovalRangeController({
    setTimeout(()=>URL.revokeObjectURL(url),10000);
   }catch{show('MANUAL_REGISTRY_EXPORT_FAILED')}
  }
- async function reset(){
-  if(running||getBusy())return;
-  if(typeof globalThis.confirm==='function'&&!globalThis.confirm(
+ async function reset(remote=false){
+  if(running||getBusy())return {status:'VISION_RESET_STOP_FIRST'};
+  if(!remote&&typeof globalThis.confirm==='function'&&!globalThis.confirm(
    'Очистить реестр и контрольную точку диапазона? Уже загруженные ZIP останутся на диске.'))
    return;
   try{
@@ -252,8 +260,10 @@ export function makeApprovalRangeController({
    config=checkpoint=null;cursor=null;inflightDownload=null;restoreBlocked=false;
    pending=[];pendingRegistry=[];failedPending=[];testedThisSession=0;
    batch=new ApprovalBatchSession();lastError=null;
+   networkHealth=freshNetworkHealth();lastActivityAt=null;stopWithoutZip=false;
    saveBtn.disabled=true;show('Сброшено');
-  }catch{show('MANUAL_CHECKPOINT_RESET_FAILED')}
+   return {status:'VISION_RESET_COMPLETE'};
+  }catch{show('MANUAL_CHECKPOINT_RESET_FAILED');return {status:'VISION_RESET_FAILED'}}
  }
  function audit(phase,rest={}){
   return chrome.runtime.sendMessage({op:'vision-range-download-audit-v1',phase,...rest});
@@ -277,10 +287,15 @@ export function makeApprovalRangeController({
   const found=pendingRegistry.filter(x=>selected.has(x.order_number));
   if(found.length!==ids.length||!found.length)
    throw Error('MANUAL_RANGE_ARCHIVE_ROWS_LOST');
-  const next=commitRangeArchive(checkpoint,{
+  const next=commitRangeArchive({...checkpoint,network:networkHealth},{
    next:info.end_cursor??cursor,found,
    failed_orders:info.failed_orders||failedPending
   });
+  next.last_archive={filename:info.filename,bytes:info.byte_length,
+   orders:found.length,status:'CHROME_COMPLETE',
+   confirmed_at:new Date().toISOString()};
+  next.files_committed=(checkpoint.files_committed||0)+
+   found.reduce((n,x)=>n+(x.files||0),0);
   // Crash between checkpoint and IDB prune is reconciled on reload.
   await saveCheckpoint(next);
   pendingRegistry=pendingRegistry.filter(x=>!selected.has(x.order_number));
@@ -444,10 +459,21 @@ export function makeApprovalRangeController({
     if(!await saveBatch('recovered'))throw Error('MANUAL_BATCH_NOT_SAVED');
    while(cursor<=config.end&&!paused&&!stopped&&!isClosed()){
     const order=cursor;
-    const inspected=await probeTzForOrder(order);
+    stage='checking_order';lastActivityAt=new Date().toISOString();
+    const measured=await controlledOrderProbe(order,
+     n=>probeTzForOrder(n),{health:networkHealth});
+    networkHealth=measured.health;
+    checkpoint={...checkpoint,network:networkHealth};
+    const inspected=measured.result;
+    if(measured.halt){
+     lastError=measured.reason;paused=true;
+     await persistJournal('paused');
+     show('Общий сбой сети. Очередь и курсор сохранены.');
+     break;
+    }
     let failure=null,orderRecord=null;
     if(inspected.status==='TZ_APPROVED'){
-     activeOrder=String(order);
+     activeOrder=String(order);stage='collecting_approvals';
      let collected;
      try{
       await waitForPreviousOrderTab();
@@ -492,6 +518,7 @@ export function makeApprovalRangeController({
     if(failure)failedPending.push(failure);
     if(!orderRecord)batch.discardOrder(String(order));
     cursor++;testedThisSession++;
+    lastActivityAt=new Date().toISOString();
     await persistJournal(currentMode(),orderRecord);
     if(inflightDownload&&!await recoverDownload(false))break;
     if(activePending().length>=RANGE_ARCHIVE_SIZE||activeBytes()>120_000_000||
@@ -510,7 +537,7 @@ export function makeApprovalRangeController({
        inspected.status));
     if(!paused&&!stopped)await waitDynamicDelay();
    }
-   if((stopped||cursor>config.end)&&pending.length){
+   if(((stopped&&!stopWithoutZip)||cursor>config.end)&&pending.length){
     if(activePending().length&&
       !await saveBatch(stopped?'stopped partial':'final partial'))paused=true;
     if(inflightDownload&&!await recoverDownload(true))paused=true;
@@ -532,7 +559,7 @@ export function makeApprovalRangeController({
    lastError=String(error?.message||'MANUAL_RANGE_SCAN_FAILED');
    message='Остановка по ошибке: '+lastError;
   }finally{
-   activeOrder=null;running=false;setBusy(false);
+   activeOrder=null;running=false;setBusy(false);stage='idle';
    if(checkpoint){
     try{await persistJournal(stopped||cursor>config.end?'stopped':'paused')}
     catch(error){lastError=String(error?.message||'MANUAL_RANGE_FINAL_JOURNAL_FAILED')}
@@ -547,6 +574,8 @@ export function makeApprovalRangeController({
   const cp=(await storage().get(KEY))?.[KEY];
   if(cp?.schema!=='printcheck.vision.range-checkpoint.v1')return false;
   checkpoint=cp;config={...cp.config};cursor=cp.committed_next;
+  networkHealth=normalizeNetworkHealth(cp.network);
+  lastActivityAt=cp.updated_at||null;
   startInput.value=String(cp.config.start);
   endInput.value=String(cp.config.end);
   rateInput.value=String(cp.config.delay_ms);
@@ -592,6 +621,8 @@ export function makeApprovalRangeController({
     throw Error('MANUAL_RANGE_JOURNAL_INCOMPLETE');
    const rate=rangeConfig(cp.config.start,cp.config.end,journal.delay_ms);
    liveDelayMs=rate.delay_ms;rateInput.value=String(liveDelayMs);
+   networkHealth=normalizeNetworkHealth(journal.network||cp.network);
+   lastActivityAt=journal.updated_at||lastActivityAt;
    pendingRegistry=journal.pending_registry.slice();
    pending=pendingRegistry.slice();
    failedPending=journal.failed_pending.slice();
@@ -624,7 +655,14 @@ export function makeApprovalRangeController({
   remote:async(action,payload={})=>{
    await initialLoadPromise;
    if(action==='status')return {mode:'range',running,paused,stopped,
-    checked:checkpoint?.checked_committed||0,next_order:cursor,
+    checked:config&&cursor!==null?cursor-config.start:0,
+    total:config?config.end-config.start+1:RANGE_MAX-RANGE_MIN+1,
+    progress_percent:config&&cursor!==null?
+     Math.floor(100*(cursor-config.start)/(config.end-config.start+1)):0,
+    next_order:cursor,phase:stage,last_activity_at:lastActivityAt,
+    network:{...networkHealth},last_archive:checkpoint?.last_archive||null,
+    files_archived:checkpoint?.files_committed||0,
+    files_staged:pending.reduce((n,x)=>n+(x.files||0),0),
     range_start:config?.start||RANGE_MIN,range_end:config?.end||RANGE_MAX,
     archives:checkpoint?.archives_completed||0,
     found:checkpoint?.found_committed||0,pending:pending.length,
@@ -639,8 +677,15 @@ export function makeApprovalRangeController({
    }
    if(action==='start'){void start();return {status:'VISION_SCAN_START_REQUESTED'}}
    if(action==='pause'){pauseBtn.click();return {status:'VISION_SCAN_PAUSE_REQUESTED'}}
-   if(action==='stop'){stopBtn.click();return {status:'VISION_SCAN_STOP_REQUESTED'}}
+   if(action==='stop'){
+    stopped=true;stopWithoutZip=true;await persistMode('stopped');
+    return {status:'VISION_SCAN_STOP_REQUESTED'};
+   }
    if(action==='save'){saveBtn.click();return {status:'VISION_SCAN_ZIP_SAVE_REQUESTED'}}
+   if(action==='reset'){
+    if(payload.confirmed!==true)return {status:'VISION_RESET_CONFIRMATION_REQUIRED'};
+    return await reset(true);
+   }
    if(action==='export'){registryBtn.click();return {status:'VISION_REGISTRY_EXPORT_REQUESTED'}}
    return {status:'VISION_REMOTE_ACTION_DENIED'};
   },
