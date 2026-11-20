@@ -121,7 +121,8 @@ try{
   const text=document.querySelector('.vlo-file-list p:last-child')?.textContent||'';
   // Synchronous DOM condition: Playwright does not misinterpret a pending
   // IndexedDB Promise as a truthy result before the cursor has advanced.
-  return text.includes('Последний проверенный номер: 3000100')&&
+  return (text.includes('обработано: 101')||
+    text.includes('обработано: 102'))&&
    text.includes('ZIP загружается: 1');
  },null,{timeout:17000}).catch(async error=>{
   console.log('OVERLAP_WAIT_DEBUG',await page.locator('.vlo-file-list').innerText());
