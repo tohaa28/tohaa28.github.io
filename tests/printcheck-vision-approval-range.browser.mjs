@@ -1,7 +1,7 @@
 // Fully synthetic 3-number range: approved, unchecked, nonexistent.
 // Real customer data and production servers are never accessed.
 import assert from 'node:assert/strict';
-import {mkdtemp,cp,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,cp,readFile,writeFile,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright';
@@ -9,10 +9,21 @@ import {createServer} from 'node:http';
 
 const ext=await mkdtemp(path.join(os.tmpdir(),'vision-range-ext-'));
 const profile=await mkdtemp(path.join(os.tmpdir(),'vision-range-profile-'));
-for(const name of ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js'])
+for(const name of ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','archive-registry.js','zip-offscreen.html','zip-offscreen.js'])
  await cp(path.resolve('vision/orders/extension',name),path.join(ext,name));
 for(const name of ['vision-order-overlay.js','vision-order-approval.js'])
  await cp(path.resolve(name),path.join(ext,name));
+ // Backward-compatibility test: emulate the old v0.1.x injector only inside
+ // this synthetic fixture. The released v0.2.0 manifest has NO table scanner.
+ const legacyManifestPath=path.join(ext,'manifest.json');
+ const legacyManifest=JSON.parse(await readFile(legacyManifestPath,'utf8'));
+ legacyManifest.content_scripts.unshift({
+  matches:['http://psk.testgifts.local/devorders*'],
+  js:['content-transport.js','vision-order-overlay.js'],
+  run_at:'document_idle',all_frames:false
+ });
+ await writeFile(legacyManifestPath,JSON.stringify(legacyManifest));
+
 const list='http://psk.testgifts.local/devorders?status=140';
 const first='http://testgifts.local/private/order/3200000';
 const second='http://testgifts.local/private/order/3200001';
