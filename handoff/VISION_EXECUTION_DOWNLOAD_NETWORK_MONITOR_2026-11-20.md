@@ -66,3 +66,20 @@ tests/printcheck-vision-launcher.browser.mjs проверяет панель с 
 ## Публикация
 Сборка: https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
 GitHub Actions: https://github.com/tohaa28/tohaa28.github.io/actions/workflows/publish-printcheck-vision-preview.yml
+
+
+## Итог верификации и публикации
+GitHub Actions run #44694201203: COMPLETED SUCCESS.
+https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694201203
+Браузерные проверки M3.28/M3.29/M3.30/M3.31: PASS.
+M3.30: во время искусственно задержанного ZIP Chrome PENDING
+продолжается GET по следующему заказу, после reload ZIP подтверждается.
+Unit-тесты сетевого контроллера (6 ошибок/circuit, HTTP 503 retry,
+HTTP 403 auth, HTTP 429): PASS.
+Chrome ZIP опубликован только по изолированному URL
+https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+ZIP size 136041 bytes, GitHub content SHA
+68df31ab7a2bc9da7d6532261f78e5a69d90f886.
+Текущая manifest version 0.1.16.
+PR #4 OPEN DRAFT (no merge). Production code unchanged.
+Старые данные и контрольные точки v0.1.15 не очищать при обновлении.
