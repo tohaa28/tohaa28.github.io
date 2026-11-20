@@ -336,7 +336,12 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
    const status=matching.some(x=>x.state==='complete')?
     'RANGE_DOWNLOAD_COMPLETE':matching.some(x=>x.state==='interrupted')?
     'MANUAL_RANGE_DOWNLOAD_INTERRUPTED':'RANGE_DOWNLOAD_PENDING';
-   respond({status,matched:matching.length});
+   const verified=matching.find(x=>x.state==='complete')||matching[0];
+   respond({status,matched:matching.length,
+    ...(verified?{download_id:verified.id,
+     bytes_saved:Number.isSafeInteger(verified.fileSize)?verified.fileSize:0,
+     download_state:verified.state||'unknown',
+     danger:verified.danger||'unknown'}:{})});
   },()=>respond({status:'MANUAL_RANGE_AUDIT_FAILED'}));
   return true;
  });
@@ -535,7 +540,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
    respond({status:'VISION_REMOTE_SOURCE_DENIED'});return false;
   }
   if(!['file','range'].includes(message.mode)||
-   !['status','start','pause','stop','import','delay','save','export'].includes(message.action)||
+   !['status','start','pause','stop','reset','import','delay','save','export'].includes(message.action)||
    (message.mode==='range'&&message.action==='import')){
    respond({status:'VISION_REMOTE_COMMAND_DENIED'});return false;
   }
