@@ -175,7 +175,8 @@ try{
   'approved item preflight + native GET, no duplicate from reload');
  assert.equal(requests.filter(r=>r.type==='unchecked').length,1);
  assert.equal(requests.filter(r=>r.type==='not-found').length,1);
- assert.equal(requests.filter(r=>r.type==='server-failed').length,1);
+ assert.equal(requests.filter(r=>r.type==='server-failed').length,4,
+  'one initial HTTP 502 + three bounded retries, then next order');
  assert.equal(requests.filter(r=>r.type==='unreadable').length,1);
  assert.ok(requests.some(r=>r.type==='image'));
  assert.ok(requests.every(r=>r.method==='GET'&&r.type!=='unexpected'));
