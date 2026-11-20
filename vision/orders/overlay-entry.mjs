@@ -244,7 +244,7 @@ export function initLocalOrdersOverlay(){
    if(sender?.id!==chrome.runtime.id||closed)return false;
    const kind=message.mode,action=message.action;
    if(!['file','range'].includes(kind)||
-    !['status','import','start','pause','stop','save','export','delay'].includes(action)||
+    !['status','import','start','pause','stop','reset','save','export','delay'].includes(action)||
     (kind==='range'&&action==='import')){
     respond({status:'VISION_ENGINE_COMMAND_DENIED'});return false;
    }
