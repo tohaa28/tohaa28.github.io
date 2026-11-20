@@ -101,7 +101,7 @@ try{
    schema:'vision.ai.synthetic-registry-test.v1',training_ready:false,
    note:'Synthetic ZIP contains no customer data',padding:'x'.repeat(200)
   }))},
-  {name:'samples/0001.txt',bytes:new TextEncoder().encode('Synthetic fixture\\n')}
+  {name:'samples/0001.bin',bytes:new TextEncoder().encode('Synthetic fixture\\n')}
  ]);
  const encoded=Buffer.from(await testZip.arrayBuffer()).toString('base64');
  const archiveName='vision-ai-list-part-00001-9999999-9999999.zip';
