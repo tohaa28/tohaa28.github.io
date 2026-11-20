@@ -22,10 +22,11 @@ src=src.replace("const RANGE_DOWNLOAD_AUDIT='vision-range-download-audit-v1';",
  "const RANGE_DOWNLOAD_AUDIT='vision-range-download-audit-v1';");
 src=src.replace("   if(phase==='baseline'){\n", 
  "   if(phase==='baseline'){\n    syntheticPendingUntil=Date.now()+8000;\n");
-src=src.replace("   respond({status,matched:matching.length});",
+src=src.replace("   respond({status,matched:matching.length,",
  "   respond({status:Date.now()<syntheticPendingUntil?"+
- "'RANGE_DOWNLOAD_PENDING':status,matched:matching.length});");
-if(!src.includes("syntheticPendingUntil=Date.now()+8000"))
+ "'RANGE_DOWNLOAD_PENDING':status,matched:matching.length,");
+if(!src.includes("syntheticPendingUntil=Date.now()+8000")||
+ !src.includes("status:Date.now()<syntheticPendingUntil"))
  throw Error('SYNTHETIC_AUDIT_PATCH_MISSING');
 await writeFile(worker,src);
 const BASE='http://psk.testgifts.local';
