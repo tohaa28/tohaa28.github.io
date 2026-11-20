@@ -5,6 +5,7 @@ import {mkdtemp,cp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright';
+import {makeLocalStoredZip} from '../vision/orders/local-training-zip.mjs';
 import {createServer} from 'node:http';
 
 const ext=await mkdtemp(path.join(os.tmpdir(),'vision-ext-host-'));
@@ -92,6 +93,47 @@ try{
  await page.getByRole('button',{name:'Список сохранённых ZIP'}).click();
  await page.locator('#vision-ai-scanner-remote').getByText(/Сохранённых или ожидающих ZIP пока нет/)
   .waitFor({timeout:10000});
+ // Test a REAL completed Chrome download, not merely a click on Save.
+ // Create a 100%-synthetic ZIP and transfer it through the same MV3 offscreen
+ // chunk protocol as an approved-order batch. No real LAN data is used.
+ const testZip=makeLocalStoredZip([
+  {name:'manifest.json',bytes:new TextEncoder().encode(JSON.stringify({
+   schema:'vision.ai.synthetic-registry-test.v1',training_ready:false,
+   note:'Synthetic ZIP contains no customer data',padding:'x'.repeat(200)
+  }))},
+  {name:'samples/0001.txt',bytes:new TextEncoder().encode('Synthetic fixture\\n')}
+ ]);
+ const encoded=Buffer.from(await testZip.arrayBuffer()).toString('base64');
+ const archiveName='vision-ai-list-part-00001-9999999-9999999.zip';
+ const initiated=await host.evaluate(async ({raw,name,size})=>{
+  const job='1234567890abcdef1234567890abcdef';
+  const send=(action,extra={})=>chrome.runtime.sendMessage({
+   op:'vision-zip-secure-message-v1',action,job,...extra
+  });
+  const begin=await send('begin',{filename:name,size});
+  if(begin?.status!=='ZIP_READY_FOR_CHUNK')return begin;
+  const written=await send('chunk',{sequence:0,base64:raw});
+  if(written?.status!=='ZIP_CHUNK_ACCEPTED')return written;
+  return send('finish',{chunks:1});
+ },{raw:encoded,name:archiveName,size:testZip.size});
+ assert.equal(initiated?.status,'ZIP_DOWNLOAD_STARTED',
+  'archive must be submitted to native Chrome Downloads');
+ let saved=null;
+ for(let i=0;i<60;i++){
+  const history=await host.evaluate(()=>chrome.runtime.sendMessage({
+   op:'vision-archive-settings-v1',action:'list'
+  }));
+  saved=history?.items?.find(row=>row.expected_name===
+   'vision-ai-list-part-00001-9999999-9999999.zip');
+  if(saved?.state==='saved')break;
+  await page.waitForTimeout(250);
+ }
+ assert.equal(saved?.state,'saved','Chrome-completed ZIP must enter archive registry');
+ assert.equal(saved?.expected_bytes,testZip.size);
+ assert.ok(saved.local_path,'registry must retain Chrome actual local path');
+ await page.getByRole('button',{name:'Список сохранённых ZIP'}).click();
+ await page.locator('#vision-ai-scanner-remote').getByText(/СОХРАНЁН/).waitFor();
+
  const second=await browser.newPage();
  await second.goto('http://psk.testgifts.local/catalog');
  await second.locator('#vision-ai-scan-launcher').waitFor();
