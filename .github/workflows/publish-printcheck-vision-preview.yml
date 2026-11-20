@@ -48,6 +48,7 @@ on:
       - vision/orders/order-page-discovery.mjs
       - vision/orders/extension/**
       - tests/printcheck-vision-scanner-host.browser.mjs
+      - tests/printcheck-vision-one-order-per-zip.browser.mjs
       - tests/printcheck-vision-lan-failure-stages.test.mjs
       - tests/printcheck-vision-extension-worker.test.mjs
       - tests/printcheck-vision-lan-extension.browser.mjs
@@ -275,6 +276,7 @@ jobs:
           # Historical v0.1.x browser fixtures remain in the repository.
           node tests/printcheck-vision-scanner-host.browser.mjs
           node tests/printcheck-vision-host-approvals.browser.mjs
+          node tests/printcheck-vision-one-order-per-zip.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher
