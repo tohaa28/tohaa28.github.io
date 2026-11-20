@@ -167,6 +167,36 @@ class ReviewWorkflowTests(unittest.TestCase):
                         verdict="confirmed_defect")
         self.assertEqual(review.queue(self.root)[0]["review_count"], 0)
 
+    def test_tamper_between_two_votes_blocks_second_review(self):
+        case = self.proposal()
+        review.vote(self.root, case_id=case, expert="expert_a",
+                    verdict="confirmed_defect")
+        item = lab.list_samples(self.root)[0]
+        (self.root / item["path"]).write_bytes(SVG + b"changed after first vote")
+        with self.assertRaisesRegex(ValueError, "^SOURCE_SHA256_MISMATCH$"):
+            review.vote(self.root, case_id=case, expert="expert_b",
+                        verdict="confirmed_defect")
+        state = review.queue(self.root)[0]
+        self.assertEqual(state["review_count"], 1)
+        self.assertEqual(state["state"], "NEEDS_SECOND_INDEPENDENT_REVIEW")
+        self.assertFalse(state["training_approved"])
+
+    def test_tamper_after_disagreement_blocks_adjudication(self):
+        case = self.proposal()
+        review.vote(self.root, case_id=case, expert="expert_a",
+                    verdict="confirmed_defect")
+        review.vote(self.root, case_id=case, expert="expert_b",
+                    verdict="false_positive")
+        item = lab.list_samples(self.root)[0]
+        (self.root / item["path"]).write_bytes(SVG + b"changed before adjudication")
+        with self.assertRaisesRegex(ValueError, "^SOURCE_SHA256_MISMATCH$"):
+            review.adjudicate(self.root, case_id=case, expert="expert_c",
+                              verdict="uncertain")
+        state = review.queue(self.root)[0]
+        self.assertEqual(state["state"], "DISAGREEMENT_NEEDS_ADJUDICATION")
+        self.assertFalse(state["adjudicated"])
+        self.assertFalse(state["training_approved"])
+
     def test_local_queue_does_not_expose_original_filenames_or_file_bytes(self):
         case = self.proposal()
         string = json.dumps(review.queue(self.root), ensure_ascii=False)
