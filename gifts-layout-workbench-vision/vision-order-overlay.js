@@ -3723,7 +3723,11 @@
       "EXTENSION_FETCH_TIMEOUT",
       "MANUAL_NON_HTML_RESPONSE"
     ].includes(status)) return "transient";
-    if (status === "MANUAL_ORDER_HTTP_STATUS" && (result.http_status === 408 || result.http_status >= 500)) return "transient";
+    if (status === "MANUAL_ORDER_HTTP_STATUS") {
+      if (result.http_status === 401 || result.http_status === 403) return "auth";
+      if (result.http_status === 429) return "rate_limit";
+      if (result.http_status === 408 || result.http_status >= 500 && result.http_status <= 599) return "transient";
+    }
     if (["TZ_APPROVED", "TZ_NOT_APPROVED", "ORDER_NOT_FOUND"].includes(status))
       return "ok";
     return "other";
