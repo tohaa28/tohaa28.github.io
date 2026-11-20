@@ -2023,3 +2023,16 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification at initial post-commit query:** no GitHub Actions runs or CircleCI statuses returned for c92d640e. New tests have NOT been independently executed in this run; local git access failed DNS resolution of github.com. No threefold independent local ROI/PDF/private-stage/Chromium regression run. CI outcome on new SHA is pending, not PASS. No real customer files used.
 
 **Outstanding:** four-contour exact-HEAD CI (including preview publish); independent 3× review/adjudication and private 512 MiB streaming regression; anonymous authenticated 404/MV3 reference_state; PDF/ICC/spot provenance; two verified independent real ROI reviewers, constructor/print method, trusted physical scale, verified family holdout. No automatic training or real-world accuracy claim. `training_ready=false`; `production_approved=false`; unknown => MANUAL. No production changes, customer uploads, PR merge or release.
+
+
+## 2026-11-20 — M3.69 / exact-HEAD CI and draft-gate checkpoint (no promotion)
+
+**Verified HEAD:** 94dd5a6f93ea8b07ccc6a8dde353f6953a60a846; branch comparison identical (ahead=0, behind=0). PR #4 OPEN, machine draft=true, merged=false; head SHA matches.
+
+**GitHub Actions on exact SHA:** experimental UI smoke [44714754467](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44714754467) SUCCESS; independent raster safety [44714754598](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44714754598) SUCCESS; rules/dataset safety [44714754589](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44714754589) SUCCESS. CircleCI statuses on same SHA: vision-contract SUCCESS (workflow d277ce8e-7fd3-4669-a151-65e575f90c49), vision-raster SUCCESS (workflow 6523e5d0-57ea-4454-959e-b28388258aa2). Exact-SHA preview publish NOT VERIFIED; absence of a publish run from pull-request-filtered results does not prove failure.
+
+**Read-only review:** tools/vision_roi_review.py, tools/vision_pdf_audit.py, tools/vision_private_corpus_stage.py and tests/printcheck-vision-order-404.browser.mjs exist on verified HEAD. No independent 3x local ROI/adjudication, PDF --all, 512 MB private streaming or Chromium 404/MV3 execution in this cycle: local git ls-remote failed DNS resolution of github.com. No real anonymous authenticated reference_state report collected. No source/test code changes in this checkpoint.
+
+**Next bounded implementation:** restore executable checkout; independently run 3x synthetic ROI/two voices/adjudication, PDF audit and private staging, then Chromium 404/MV3 with code-only reference_state (STILL_LISTED_IN_POPUP / MISSING_FROM_POPUP / POPUP_RECHECK_UNAVAILABLE) and network-failure classification; add a regression test only for a reproduced gap. Do not bypass auth or infer alternate download endpoints.
+
+**Closed gates:** training_ready=false; production_approved=false; unknown geometry/physical mm/process/ICC/spot => MANUAL. Two independently verified real ROI voices, adjudication, constructor/process linkage and verified family holdout remain missing. Candidate filename labels are unreviewed, not ground truth. No client files, raw hashes, original names, HMAC keys, secrets or private imagery published; no production modification or PR merge.
