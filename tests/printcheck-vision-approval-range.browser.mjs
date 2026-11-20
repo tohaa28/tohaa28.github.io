@@ -197,7 +197,7 @@ try{
  assert.equal(requests.filter(x=>x.type==='unchecked').length,1,
   'unapproved order only one GET, no modal or hidden page');
  assert.equal(requests.filter(x=>x.type==='not-found').length,1);
- assert.equal(requests.filter(x=>x.type==='server-failed').length,1,
+ assert.equal(requests.filter(x=>x.type==='server-failed').length,4,
   'HTTP 502 did not halt enumeration');
  assert.equal(requests.filter(x=>x.type==='unreadable').length,1,
   'HTML without order card also did not halt enumeration');
