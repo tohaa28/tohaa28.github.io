@@ -1978,3 +1978,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **CircleCI commit statuses:** vision-contract SUCCESS (workflow 53f0033e-2f58-4c21-b28c-7e3d8337ec9a); vision-raster SUCCESS (workflow 464f799f-3cf1-4c53-b42e-1e7c392e6ef6). Preview publish on this exact SHA NOT VERIFIED. Browser 404/MV3 anonymous real reference_state NOT OBTAINED. Local independent triple run NOT PERFORMED: github.com DNS resolution unavailable in runner. No new source-code changes or real customer inputs in this checkpoint.
 
 **Gates remain closed:** training_ready=false; production_approved=false; no verified real two-voice ROI/adjudication, constructor/process/physical scale, ICC/spot provenance or verified family holdout. Unknown geometry/color/scale => MANUAL. No private files, SHA, names or keys uploaded; no production change or PR merge.
+
+
+## 2026-11-20 — M3.57 / ROI source mutation between independent review stages (synthetic regression)
+
+**Pre-change HEAD:** dfb5cc16320844d28acadfbc2f465e100e96df7c; PR #4 OPEN, draft=true, merged=false. GitHub Actions on pre-change HEAD: UI smoke 44627862975 SUCCESS, raster safety 44627863132 SUCCESS, rules/dataset safety 44627863104 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact HEAD not verified.
+
+**Change:** c92d640efc91178d361d56217fe4834ce104a7ff modifies only `tests/test_vision_roi_review.py`. Two synthetic regressions exercise SHA mismatch after first independent reviewer vote and after two disagreeing votes but before independent adjudication. Both require refusal without recording a second vote/adjudication or promoting training. Existing `verify_original()` already guards the relevant paths; production code unchanged.
+
+**Verification at initial post-commit query:** no GitHub Actions runs or CircleCI statuses returned for c92d640e. New tests have NOT been independently executed in this run; local git access failed DNS resolution of github.com. No threefold independent local ROI/PDF/private-stage/Chromium regression run. CI outcome on new SHA is pending, not PASS. No real customer files used.
+
+**Outstanding:** four-contour exact-HEAD CI (including preview publish); independent 3× review/adjudication and private 512 MiB streaming regression; anonymous authenticated 404/MV3 reference_state; PDF/ICC/spot provenance; two verified independent real ROI reviewers, constructor/print method, trusted physical scale, verified family holdout. No automatic training or real-world accuracy claim. `training_ready=false`; `production_approved=false`; unknown => MANUAL. No production changes, customer uploads, PR merge or release.
