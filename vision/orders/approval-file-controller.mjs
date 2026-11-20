@@ -8,6 +8,7 @@ import {parseOrderListText,explicitListOrderUrl,ORDER_LIST_MAX_BYTES}
 import {probeTzForOrder,isRecoverableRangeFailure} from './approval-range-scanner.mjs';
 import {ApprovalBatchSession} from './approval-batch-archive.mjs';
 import {startExtensionZipDownload} from './extension-zip-transfer.mjs';
+import {controlledOrderProbe,normalizeNetworkHealth,freshNetworkHealth} from './approval-network-control.mjs';
 import {loadOrderFileState,importOrderFileQueue,saveOrderFileProgress,
  saveOrderFileStatus,commitOrderFileArchive,exportOrderFileRegistry,
  clearOrderFileQueue} from './approval-file-persistence.mjs';
@@ -67,6 +68,8 @@ export function makeApprovalFileListController({
  let running=false,paused=false,stopped=false,activeOrder=null;
  let currentDelay=1200,lastError=null,checkedSession=0;
  let restoreBlocked=false,writeChain=Promise.resolve();
+ let networkHealth=freshNetworkHealth(),lastActivityAt=null;
+ let stopWithoutZip=false,stage='idle';
  let init=Promise.resolve(false);
  const write=fn=>{
   writeChain=writeChain.catch(()=>{}).then(fn);
@@ -88,6 +91,10 @@ export function makeApprovalFileListController({
    ' · в текущей партии: '+activeRows().length+
    ' · ZIP загружается: '+(state?.download?1:0)+
    ' · ошибок открытия: '+(state?.failed_count||0)+
+   ' · сеть: '+networkHealth.state+
+   ' · повторов GET: '+networkHealth.retries+
+   ' · сетевых ошибок: '+networkHealth.transient_errors+
+   ' · фаза: '+stage+
    (lastError?'\nОшибка: '+lastError:'')+
    (message?'\n'+message:'');
  }
@@ -163,7 +170,11 @@ export function makeApprovalFileListController({
   if(rows.length!==ids.length||!rows.length)
    throw Error('MANUAL_ORDER_LIST_DOWNLOAD_ROWS_MISSING');
   const updated={...state,download:null,archive_count:state.archive_count+1,
-   found_committed:state.found_committed+rows.length,mode:currentMode()};
+   found_committed:state.found_committed+rows.length,
+   files_committed:(state.files_committed||0)+rows.reduce((n,x)=>n+(x.files||0),0),
+   last_archive:{filename:info.filename,bytes:info.bytes,
+    orders:rows.length,confirmed_at:new Date().toISOString(),
+    status:'CHROME_COMPLETE'},mode:currentMode()};
   await write(()=>commitOrderFileArchive(updated,rows));
   state=updated;pending=pending.filter(x=>!selected.has(x.id));
   for(const id of ids)batch.discardOrder(id);
@@ -296,6 +307,7 @@ export function makeApprovalFileListController({
    const next=await importOrderFileQueue(parsed.numbers,file.name,currentDelay);
    state=next;queue=Uint32Array.from(parsed.numbers);
    pending=[];batch=new ApprovalBatchSession();checkedSession=0;
+   networkHealth=freshNetworkHealth();lastActivityAt=null;stopWithoutZip=false;
    lastError=null;restoreBlocked=false;paused=stopped=false;
    saveBtn.disabled=true;
    show('Файл принят. Уникальных номеров: '+parsed.numbers.length+
@@ -311,20 +323,23 @@ export function makeApprovalFileListController({
   fileInput.value='';
   void importFile(file);
  });
- async function reset(){
+ async function reset(remote=false){
   await init;
-  if(running||getBusy())return;
-  if(typeof globalThis.confirm==='function'&&!globalThis.confirm(
+  if(running||getBusy())return {status:'VISION_RESET_STOP_FIRST'};
+  if(!remote&&typeof globalThis.confirm==='function'&&!globalThis.confirm(
    'Удалить весь импортированный список, результаты и контрольную точку? '+
    'Скачанные ZIP останутся на диске.'))return;
   try{
    await writeChain.catch(()=>{});
    await clearOrderFileQueue();
    queue=state=null;pending=[];batch=new ApprovalBatchSession();
+   networkHealth=freshNetworkHealth();lastActivityAt=null;stopWithoutZip=false;
    checkedSession=0;lastError=null;restoreBlocked=false;
    paused=stopped=false;saveBtn.disabled=true;show('Список и прогресс очищены');
+   return {status:'VISION_RESET_COMPLETE'};
   }catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_RESET_FAILED');show();
+   return {status:'VISION_RESET_FAILED'};
   }
  }
  async function exportRegistry(){
@@ -375,10 +390,22 @@ export function makeApprovalFileListController({
      throw Error('MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW');
    while(state.index<state.total&&!paused&&!stopped&&!isClosed()){
     const id=queue[state.index],order_number=String(id);
-    const inspected=await probeTzForOrder(id,{explicitList:true});
+    stage='checking_order';lastActivityAt=new Date().toISOString();
+   const measured=await controlledOrderProbe(id,n=>
+    probeTzForOrder(n,{explicitList:true}),{health:networkHealth});
+   networkHealth=measured.health;
+   const inspected=measured.result;
+   if(measured.halt){
+    lastError=measured.reason;
+    const blocked={...state,network:networkHealth,mode:'paused',
+     last_activity_at:lastActivityAt};
+    await write(()=>saveOrderFileStatus(blocked));state=blocked;
+    paused=true;show('Обнаружен общий сбой сети. Очередь сохранена.');
+    break;
+   }
     let record=null,failure=null;
     if(inspected.status==='TZ_APPROVED'){
-     activeOrder=order_number;
+     activeOrder=order_number;stage='collecting_approvals';
      let collected;
      try{
       await waitForPreviousOrder();
@@ -418,9 +445,10 @@ export function makeApprovalFileListController({
     // The current item is revisited after reload if this write does not finish.
     const next={...state,index:state.index+1,
      failed_count:state.failed_count+(failure?1:0),
-     delay_ms:currentDelay,mode:currentMode()};
+     delay_ms:currentDelay,mode:currentMode(),network:networkHealth,
+     last_activity_at:new Date().toISOString()};
     await write(()=>saveOrderFileProgress(next,record,failure));
-    state=next;
+    state=next;lastActivityAt=next.last_activity_at;
     if(record)pending.push(record);
     else batch.discardOrder(order_number);
     checkedSession++;
@@ -432,7 +460,7 @@ export function makeApprovalFileListController({
      ' — '+(failure?failure.reason:inspected.status));
     if(!paused&&!stopped)await dynamicDelay();
    }
-   if((stopped||state.index>=state.total)&&pending.length){
+   if(((stopped&&!stopWithoutZip)||state.index>=state.total)&&pending.length){
     if(activeRows().length&&!await saveBatch(stopped?'остановка':'окончание файла'))
      paused=true;
     if(state.download&&!await recoverDownload(true))paused=true;
@@ -445,7 +473,7 @@ export function makeApprovalFileListController({
    lastError=String(error?.message||'MANUAL_ORDER_LIST_SCAN_FAILED');
    message='ОСТАНОВКА ПО ОШИБКЕ: '+lastError;
   }finally{
-   activeOrder=null;running=false;setBusy(false);
+   activeOrder=null;running=false;setBusy(false);stage='idle';
    if(state)await setMode(stopped||state.index>=state.total?
     'stopped':'paused');
    startBtn.disabled=resetBtn.disabled=false;
@@ -465,6 +493,8 @@ export function makeApprovalFileListController({
    await saveOrderFileStatus(state);
   }
   currentDelay=state.delay_ms;rateInput.value=String(currentDelay);
+  networkHealth=normalizeNetworkHealth(state.network);
+  lastActivityAt=state.last_activity_at||state.updated_at||null;
   if(saved.pending.some(x=>
    !Array.isArray(x.transfers)||!x.transfers.length))
    throw Error('MANUAL_ORDER_LIST_PENDING_INVALID');
@@ -492,7 +522,12 @@ export function makeApprovalFileListController({
     await init;
     return {mode:'file',running,paused,stopped,
      filename:state?.filename||null,total:state?.total||0,
-     checked:state?.index||0,next_order:queue&&state?.index<state?.total?
+     checked:state?.index||0,
+     progress_percent:state?.total?Math.floor(100*state.index/state.total):0,
+     last_activity_at:lastActivityAt||state?.updated_at||null,
+     phase:stage,network:{...networkHealth},last_archive:state?.last_archive||null,
+     files_archived:state?.files_committed||0,
+     files_staged:pending.reduce((n,x)=>n+(x.files||0),0),next_order:queue&&state?.index<state?.total?
       String(queue[state.index]):null,
      archives:state?.archive_count||0,found:state?.found_committed||0,
      pending:pending.length,downloading:!!state?.download,
@@ -517,8 +552,15 @@ export function makeApprovalFileListController({
    }
    if(action==='start'){void start();return {status:'VISION_SCAN_START_REQUESTED'}}
    if(action==='pause'){pauseBtn.click();return {status:'VISION_SCAN_PAUSE_REQUESTED'}}
-   if(action==='stop'){stopBtn.click();return {status:'VISION_SCAN_STOP_REQUESTED'}}
+   if(action==='stop'){
+    stopped=true;stopWithoutZip=true;await setMode('stopped');
+    return {status:'VISION_SCAN_STOP_REQUESTED'};
+   }
    if(action==='save'){saveBtn.click();return {status:'VISION_SCAN_ZIP_SAVE_REQUESTED'}}
+   if(action==='reset'){
+    if(payload.confirmed!==true)return {status:'VISION_RESET_CONFIRMATION_REQUIRED'};
+    return await reset(true);
+   }
    if(action==='export'){exportBtn.click();return {status:'VISION_REGISTRY_EXPORT_REQUESTED'}}
    return {status:'VISION_REMOTE_ACTION_DENIED'};
   },
