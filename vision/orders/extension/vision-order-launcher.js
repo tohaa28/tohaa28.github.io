@@ -1,7 +1,7 @@
 /**
- * Vision AI 0.1.15: full remote scanner controls on ANY authorized page of
+ * Vision AI 0.2.0: file-list scanner on ANY authorized test portal page of
  * psk.testgifts.local or testgifts.local. Underlying engine and its IndexedDB
- * stay in the canonical inactive /devorders tab; no navigation is required.
+ * stay inside the extension-owned host; no order-table tab is required.
  * Only approved local extension messages, never arbitrary site scripts.
  */
 (()=>{
@@ -58,14 +58,10 @@
   });
   return b;
  };
- const label=make('label','Режим: ',css+'color:#eaf4ef!important;');
- const mode=make('select',undefined,css+
-  'background:#fff!important;color:#1d3438!important;padding:5px!important;');
- for(const [value,text] of [['file','По списку TXT'],['range','Диапазон номеров']]){
-  const item=make('option',text);item.value=value;mode.append(item);
- }
- label.append(mode);
- panel.append(title);row(label);
+ const mode={value:'file'};
+ panel.append(title);
+ panel.append(make('p','Режим: только импортированный TXT. Очередь работает в расширении, без открытия таблицы заказов.',
+  css+'font-size:11px!important;color:#d9e6df!important;'));
  const fileLabel=make('label','Файл с номерами заказов (TXT): ',css+
   'color:#eaf4ef!important;display:block!important;');
  const file=make('input');file.type='file';file.accept='.txt,text/plain';
@@ -136,6 +132,81 @@
   showMessage('Проверено состояние Chrome Downloads и локального реестра.');
  });
  row(verifyBtn);
+
+ const archiveHeading=make('strong','Архивы ZIP',css+
+  'display:block!important;color:#fff!important;margin-top:12px!important;');
+ panel.append(archiveHeading);
+ const archiveMode=make('select',undefined,css+
+  'background:#fff!important;color:#203438!important;padding:5px!important;');
+ for(const [value,description] of [
+  ['downloads','Автоматически в подпапку Загрузок'],
+  ['ask','Выбирать папку для каждого ZIP']
+ ]){
+  const option=make('option',description);option.value=value;archiveMode.append(option);
+ }
+ const folder=make('input',undefined,css+
+  'max-width:145px!important;background:white!important;color:#203438!important;padding:5px!important;');
+ folder.placeholder='Имя подпапки';folder.value='VisionAI';
+ const archiveRpc=(action,extra={})=>chrome.runtime.sendMessage({
+  op:'vision-archive-settings-v1',action,...extra
+ });
+ const setArchive=control('Применить',async()=>{
+  try{
+   const result=await archiveRpc('set',{payload:{mode:archiveMode.value,folder:folder.value}});
+   showMessage(result.status||'VISION_ARCHIVE_SETTINGS_FAILED');
+   await updateStatus();
+  }catch(error){showMessage(String(error?.message||'Ошибка настроек'))}
+ });
+ row(archiveMode,folder,setArchive);
+ const archiveResults=make('div','',css+
+  'white-space:pre-line!important;color:#d3e6dd!important;'+
+  'font-size:11px!important;max-height:190px!important;overflow:auto!important;');
+ panel.append(archiveResults);
+ const listSaved=async(limit=100)=>{
+  const reply=await archiveRpc('list',{limit});
+  if(reply?.status!=='VISION_ARCHIVE_LIST_OK')
+   throw Error(reply?.status||'VISION_ARCHIVE_LIST_FAILED');
+  return reply.items||[];
+ };
+ const showArchives=control('Список сохранённых ZIP',async()=>{
+  try{
+   const list=await listSaved();
+   archiveResults.textContent=list.length?
+    list.map(x=>[
+     x.state==='saved'?'СОХРАНЁН':String(x.state||'ОЖИДАНИЕ').toUpperCase(),
+     x.expected_name||'без имени',
+     x.local_path||'путь ещё не подтверждён',
+     (x.actual_bytes??x.expected_bytes??0)+' байт'
+    ].join(' · ')).join('\n\n'):
+    'Сохранённых или ожидающих ZIP пока нет.';
+  }catch(error){showMessage(String(error?.message||'Ошибка реестра ZIP'))}
+ });
+ const exportArchives=control('Экспорт реестра ZIP',async()=>{
+  try{
+   const list=await listSaved(10000);
+   const blob=new Blob([JSON.stringify({schema:'vision.ai.archive-registry.v2',
+    created_at:new Date().toISOString(),entries:list},null,2)+'\n'],
+    {type:'application/json'});
+   const url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='vision-ai-archives-registry.json';
+   document.body.append(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),15000);
+   showMessage('Реестр передан в загрузки Chrome.');
+  }catch(error){showMessage(String(error?.message||'Ошибка экспорта'))}
+ });
+ row(showArchives,exportArchives);
+ const recover=control('Восстановить сканер',async()=>{
+  if(!confirm('Перезапустить локальный механизм сканирования? Незаконченный заказ будет проверен повторно, сохранённые архивы не удалятся.'))return;
+  try{
+   const result=await chrome.runtime.sendMessage({op:'vision-recover-scanner-v1'});
+   showMessage(result?.status||'VISION_RECOVER_FAILED');
+  }catch(error){showMessage(String(error?.message||'Ошибка восстановления'))}
+ });
+ row(recover);
+ void archiveRpc('get').then(result=>{
+  if(result?.status!=='VISION_ARCHIVE_SETTINGS_OK')return;
+  archiveMode.value=result.mode;folder.value=result.folder;
+ }).catch(()=>{});
  const more=control('Открыть подробные настройки',async()=>{
   try{
    const r=await chrome.runtime.sendMessage({op:'vision-open-scanner-v1'});
@@ -220,11 +291,7 @@
    status.textContent='Сканер недоступен: '+String(error?.message||'UNKNOWN');
   }finally{requesting=false}
  };
- mode.addEventListener('change',()=>{
-  fileLabel.style.display=importBtn.style.display=
-   mode.value==='file'?'block':'none';
-  void updateStatus();
- });
+ 
  button.addEventListener('click',event=>{
   event.preventDefault();event.stopPropagation();
   opened=!opened;

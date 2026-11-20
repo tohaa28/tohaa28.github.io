@@ -5,6 +5,10 @@
  * No response data is stored, logged, uploaded, cached, or posted to the site.
  */
 'use strict';
+if(typeof importScripts==='function')importScripts('archive-registry.js');
+const ENGINE_PAGE='scanner-host.html';
+const ENGINE_URL=()=>chrome.runtime.getURL(ENGINE_PAGE);
+const isEnginePage=u=>typeof chrome?.runtime?.getURL==='function'&&u.href===ENGINE_URL();
 const TEST_HOSTS=new Set(['psk.testgifts.local','testgifts.local','files.testgifts.local']);
 const TABLE_ORIGIN='http://psk.testgifts.local';
 const PORT_NAME='vision-order-lan-readonly-v1';
@@ -13,7 +17,7 @@ const CHUNK_BYTES=48*1024;
 function sourceAllowed(sender){
  try{
   const u=new URL(sender?.url||sender?.tab?.url||'');
-  return sender.frameId===0&&(
+  return isEnginePage(u)||(sender.frameId===0&&(
     (u.origin===TABLE_ORIGIN&&
      (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/')))||
     (u.origin==='http://testgifts.local'&&
@@ -262,11 +266,14 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
     !Number.isInteger(message.sequence)||!Number.isInteger(message.chunk_count)){
    respond({status:'MANUAL_BATCH_RELAY_DENIED'});return false;
   }
-  chrome.tabs.sendMessage(running.listTabId,{
+  const transfer={
    op:BATCH_ACCEPT,order_number:order,kind:message.kind,
    stage:message.stage,part:message.part,
    sequence:message.sequence,chunk_count:message.chunk_count,chunk:data
-  }).then(result=>respond(result||{status:'MANUAL_BATCH_LIST_NOT_READY'}),
+  };
+  const relay=running.engineHost?chrome.runtime.sendMessage(transfer):
+   chrome.tabs.sendMessage(running.listTabId,transfer);
+  relay.then(result=>respond(result||{status:'MANUAL_BATCH_LIST_NOT_READY'}),
    ()=>respond({status:'MANUAL_BATCH_LIST_NOT_READY'}));
   return true;
  });
@@ -281,8 +288,9 @@ const RANGE_DOWNLOAD_AUDIT='vision-range-download-audit-v1';
 function isApprovedListSender(sender){
  try{
   const u=new URL(sender?.url||'');
-  return sender?.frameId===0&&Number.isInteger(sender?.tab?.id)&&
-   u.origin===TABLE_ORIGIN&&/^\/devorders(?:\/|$)/.test(u.pathname);
+  return (isEnginePage(u)||(sender?.frameId===0&&
+   Number.isInteger(sender?.tab?.id)&&u.origin===TABLE_ORIGIN&&
+    /^\/devorders(?:\/|$)/.test(u.pathname)));
  }catch{return false}
 }
 if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
@@ -360,13 +368,13 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
  });
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function runNativeApprovalOrder(url,listTabId,rangeMode=false){
+async function runNativeApprovalOrder(url,listTabId,rangeMode=false,engineHost=false){
  let tab=null;
  try{
   tab=await chrome.tabs.create({url,active:false});
   if(!Number.isInteger(tab?.id))return {status:'MANUAL_BACKGROUND_TAB_FAILED'};
-  if(!Number.isInteger(listTabId))return {status:'MANUAL_SOURCE_TAB_UNKNOWN'};
-  activeBatch={orderTabId:tab.id,listTabId,orderUrl:url};
+  if(!engineHost&&!Number.isInteger(listTabId))return {status:'MANUAL_SOURCE_TAB_UNKNOWN'};
+  activeBatch={orderTabId:tab.id,listTabId,orderUrl:url,engineHost};
   let result=null,ready=false;
   // An MV3 document_idle content script may register after tab completed.
   for(let attempt=0;attempt<40;attempt++){
@@ -426,8 +434,9 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   let sourceOK=false;
   try{
    const u=new URL(sender?.url||'');
-   sourceOK=sender?.frameId===0&&u.origin===TABLE_ORIGIN&&
-    (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/'));
+   sourceOK=sender?.frameId===0&&(isEnginePage(u)||
+    (u.origin===TABLE_ORIGIN&&
+     (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/'))));
   }catch{}
   if(!sourceOK||typeof url!=='string'||!ORDER_URL.test(url)){
    respond({status:'MANUAL_QUEUE_SOURCE_DENIED'});return false;
@@ -436,7 +445,8 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
    respond({status:'MANUAL_QUEUE_ALREADY_RUNNING'});return false;
   }
   queueRunning=true;
-  runNativeApprovalOrder(url,sender?.tab?.id,message.require_tz_approved===true).then(respond,()=>
+  runNativeApprovalOrder(url,sender?.tab?.id,message.require_tz_approved===true,
+   sender?.url===ENGINE_URL()).then(respond,()=>
    respond({status:'MANUAL_BACKGROUND_ORDER_FAILED'})).finally(()=>{
     queueRunning=false;
   });
@@ -445,49 +455,27 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
 }
 
 
-/** A click from either authorized test portal focuses ONE canonical scanner tab.
- * Only the existing /devorders content script performs scanning and persists
- * the queue. Do not redirect or clone IndexedDB into another origin.
+/** The dedicated extension-origin engine replaces the old /devorders host.
+ * It never navigates to the order table. The active portal remains visible.
  */
 const SCANNER_START='vision-open-scanner-v1';
 if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
  chrome.runtime.onMessage.addListener((message,sender,respond)=>{
   if(message?.op!==SCANNER_START)return false;
-  let allowed=false;
-  try{
-   const u=new URL(sender?.url||'');
-   allowed=sender?.frameId===0&&Number.isInteger(sender?.tab?.id)&&
-    u.protocol==='http:'&&
-    ['psk.testgifts.local','testgifts.local'].includes(u.hostname);
-  }catch{}
-  if(!allowed){
+  if(!isAuthorizedPortalSender(sender)){
    respond({status:'VISION_SCANNER_SOURCE_DENIED'});return false;
   }
   (async()=>{
-   const tabs=await chrome.tabs.query({});
-   const current=tabs.find(t=>{
-    try{
-     const u=new URL(t.url||'');
-     return u.origin===TABLE_ORIGIN&&/^\/devorders(?:\/|$)/.test(u.pathname);
-    }catch{return false}
-   });
-   const tab=current?await chrome.tabs.update(current.id,{active:true}):
-    await chrome.tabs.create({url:TABLE_ORIGIN+'/devorders',active:true});
-   if(Number.isInteger(tab.windowId))
-    await chrome.windows.update(tab.windowId,{focused:true}).catch(()=>{});
-   return {status:'VISION_SCANNER_OPENED',reused:!!current};
+   const host=await ensureScannerTab();
+   await chrome.tabs.update(host.id,{active:true});
+   if(Number.isInteger(host.windowId))
+    await chrome.windows.update(host.windowId,{focused:true}).catch(()=>{});
+   return {status:'VISION_SCANNER_OPENED',reused:true};
   })().then(respond,()=>respond({status:'VISION_SCANNER_TAB_FAILED'}));
   return true;
  });
 }
 
-
-/**
- * Vision 0.1.15: remote control from BOTH authorized portal origins.
- * Create the canonical scan engine without stealing foreground focus. The
- * user stays on their current order/catalog page while the original psk
- * tab retains the 333k-element IndexedDB queue and native attachment relay.
- */
 const REMOTE_SCAN='vision-remote-scanner-v1';
 let creatingScannerTab=null;
 function isAuthorizedPortalSender(sender){
@@ -499,18 +487,15 @@ function isAuthorizedPortalSender(sender){
  }catch{return false}
 }
 async function ensureScannerTab(){
- const tabs=await chrome.tabs.query({});
- const found=tabs.find(t=>{
-  try{
-   const u=new URL(t.url||t.pendingUrl||'');
-   return u.origin===TABLE_ORIGIN&&/^\/devorders(?:\/|$)/.test(u.pathname);
-  }catch{return false}
- });
- if(found)return found;
+ const url=ENGINE_URL(),tabs=await chrome.tabs.query({});
+ const found=tabs.find(t=>t.url===url||t.pendingUrl===url);
+ if(found){
+  if(found.discarded)await chrome.tabs.reload(found.id);
+  return found;
+ }
  if(!creatingScannerTab){
-  creatingScannerTab=chrome.tabs.create({
-   url:TABLE_ORIGIN+'/devorders',active:false
-  }).finally(()=>{creatingScannerTab=null});
+  creatingScannerTab=chrome.tabs.create({url,active:false})
+   .finally(()=>{creatingScannerTab=null});
  }
  return creatingScannerTab;
 }
@@ -518,11 +503,11 @@ const remoteWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function forwardScannerAction(request){
  const tab=await ensureScannerTab();
  if(!Number.isInteger(tab?.id))return {status:'VISION_ENGINE_TAB_UNAVAILABLE'};
- const message={op:'vision-engine-command-v1',mode:request.mode,
+ const message={op:'vision-engine-command-v1',mode:'file',
   action:request.action,payload:request.payload||{}};
  for(let attempt=0;attempt<40;attempt++){
   try{
-   const result=await chrome.tabs.sendMessage(tab.id,message);
+   const result=await chrome.runtime.sendMessage(message);
    if(result&&typeof result==='object')return result;
   }catch(error){
    const reason=String(error?.message||error||'');
@@ -539,9 +524,8 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   if(!isAuthorizedPortalSender(sender)){
    respond({status:'VISION_REMOTE_SOURCE_DENIED'});return false;
   }
-  if(!['file','range'].includes(message.mode)||
-   !['status','start','pause','stop','reset','import','delay','save','export'].includes(message.action)||
-   (message.mode==='range'&&message.action==='import')){
+  if(message.mode!=='file'||
+   !['status','start','pause','stop','reset','import','delay','save','export'].includes(message.action)){
    respond({status:'VISION_REMOTE_COMMAND_DENIED'});return false;
   }
   if(message.action==='import'){
@@ -657,8 +641,16 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
     throw Error(result.status||'VISION_ZIP_BLOB_INVALID');
    let id;
    try{
+    const pref=await VisionArchives.config();
+    const suggested=pref.mode==='ask'?result.filename:
+     pref.folder+'/'+result.filename;
     id=await chrome.downloads.download({url:result.url,
-     filename:result.filename,conflictAction:'uniquify',saveAs:false});
+     filename:suggested,conflictAction:'uniquify',saveAs:pref.mode==='ask'});
+    if(Number.isSafeInteger(id))try{
+     await VisionArchives.begin(id,result.filename,result.bytes,pref);
+    }catch(error){
+     console.error('VISION_ARCHIVE_REGISTRY',String(error?.message||'UNKNOWN').slice(0,80));
+    }
     if(!Number.isSafeInteger(id)||id<0)
      throw Error('VISION_ZIP_DOWNLOAD_ID_INVALID');
    }catch{
@@ -680,5 +672,55 @@ if(typeof chrome!=='undefined'&&chrome.downloads?.onChanged){
   // The onChanged event wakes a previously stopped MV3 worker; recover
   // transient Blob mapping from storage.session, then release its memory.
   void releaseZipBlob(delta.id).catch(()=>{});
+  if(typeof VisionArchives!=='undefined')
+   void VisionArchives.reconcile(delta.id).catch(()=>{});
+ });
+}
+
+/** Archive settings are available on any authorized test-portal page.
+ * Never accept arbitrary paths, web URLs or upload destinations.
+ */
+const ARCHIVE_CONTROL='vision-archive-settings-v1';
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.op!==ARCHIVE_CONTROL)return false;
+  if(!isAuthorizedPortalSender(sender)&&!isApprovedListSender(sender)){
+   reply({status:'VISION_ARCHIVE_SOURCE_DENIED'});return false;
+  }
+  (async()=>{
+   if(message.action==='get')return {status:'VISION_ARCHIVE_SETTINGS_OK',
+    ...await VisionArchives.config()};
+   if(message.action==='set')return VisionArchives.setConfig(message.payload);
+   if(message.action==='list')return {status:'VISION_ARCHIVE_LIST_OK',
+    items:await VisionArchives.inspect(message.limit===10000?10000:100),
+    config:await VisionArchives.config()};
+   return {status:'VISION_ARCHIVE_ACTION_DENIED'};
+  })().then(reply,error=>reply({status:'VISION_ARCHIVE_STORE_FAILED',
+   reason:String(error?.message||'UNKNOWN').slice(0,90)}));
+  return true;
+ });
+}
+/** Explicit, non-destructive engine reload clears an in-memory stale flag. */
+if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
+ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.op!=='vision-recover-scanner-v1')return false;
+  if(!isAuthorizedPortalSender(sender)){
+   reply({status:'VISION_RECOVER_SOURCE_DENIED'});return false;
+  }
+  (async()=>{
+   const tab=await ensureScannerTab();
+   await chrome.tabs.reload(tab.id);
+   return {status:'VISION_SCANNER_RELOAD_REQUESTED'};
+  })().then(reply,()=>reply({status:'VISION_SCANNER_RELOAD_FAILED'}));
+  return true;
+ });
+}
+/** Remove obsolete range checkpoint automatically on extension update.
+ * Never remove prior site-origin IndexedDB with unconfirmed raw files.
+ */
+if(typeof chrome!=='undefined'&&chrome.runtime?.onInstalled){
+ chrome.runtime.onInstalled.addListener(details=>{
+  if(details.reason==='update')
+   void chrome.storage.local.remove('vision-ai-approved-range-checkpoint-v1').catch(()=>{});
  });
 }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Vision Check — тестовая сеть (локальный адаптер)",
-  "version": "0.1.16",
-  "description": "Vision AI: управление с любой страницы обоих тестовых доменов, контроль прогресса, сетевых ошибок и сохранения ZIP, остановка и сброс. Только локальная тестовая сеть.",
+  "name": "Vision AI — сканер заказов по TXT",
+  "version": "0.2.0",
+  "description": "Сканирование по TXT с любых страниц тестовых доменов, без таблицы заказов; выбор места ZIP и реестр проверенных архивов. Только тестовая сеть.",
   "host_permissions": [
     "http://psk.testgifts.local/*",
     "http://testgifts.local/*",
@@ -12,17 +12,6 @@
     "service_worker": "service-worker.js"
   },
   "content_scripts": [
-    {
-      "matches": [
-        "http://psk.testgifts.local/devorders*"
-      ],
-      "js": [
-        "content-transport.js",
-        "vision-order-overlay.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": false
-    },
     {
       "matches": [
         "http://testgifts.local/private/order/*"

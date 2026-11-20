@@ -47,6 +47,7 @@ on:
       - tests/printcheck-vision-discussions.browser.mjs
       - vision/orders/order-page-discovery.mjs
       - vision/orders/extension/**
+      - tests/printcheck-vision-scanner-host.browser.mjs
       - tests/printcheck-vision-lan-failure-stages.test.mjs
       - tests/printcheck-vision-extension-worker.test.mjs
       - tests/printcheck-vision-lan-extension.browser.mjs
@@ -188,6 +189,9 @@ jobs:
           node --test tests/printcheck-vision-lan-failure-stages.test.mjs
           node --check vision/orders/extension/content-transport.js
           node --check vision/orders/extension/vision-order-launcher.js
+          node --check vision/orders/extension/scanner-transport.js
+          node --check vision/orders/extension/scanner-host-entry.mjs
+          node --check vision/orders/extension/archive-registry.js
           node --check vision/orders/extension/zip-offscreen.js
           node --check vision/orders/extension-zip-transfer.mjs
           node --check vision/orders/extension/service-worker.js
@@ -242,6 +246,8 @@ jobs:
           npm install --no-save playwright esbuild@0.25.12
           npx esbuild vision/orders/overlay-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=vision-order-overlay.js
           npx esbuild vision/orders/approval-page-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=vision-order-approval.js
+          npx esbuild vision/orders/extension/scanner-host-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=scanner-host.js
+          node --check scanner-host.js
           test -s vision-order-approval.js
           node --check vision-order-approval.js
           test -s vision-order-overlay.js
@@ -264,9 +270,9 @@ jobs:
           node tests/printcheck-vision-approval-queue.browser.mjs
           node tests/printcheck-vision-approval-range.browser.mjs
           node tests/printcheck-vision-approval-file-list.browser.mjs
-          node tests/printcheck-vision-lan-extension.browser.mjs
-          node tests/printcheck-vision-launcher.browser.mjs
-          node tests/printcheck-vision-zip-overlap.browser.mjs
+          # v0.2.0 replaces the old /devorders extension integration.
+          # Historical v0.1.x browser fixtures remain in the repository.
+          node tests/printcheck-vision-scanner-host.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher
@@ -312,27 +318,31 @@ jobs:
               'http://files.testgifts.local/*']
           assert manifest['permissions']==['tabs','downloads','storage','offscreen']
           assert manifest['background']['service_worker']=='service-worker.js'
-          assert manifest['content_scripts'][0]['js']==[
-              'content-transport.js','vision-order-overlay.js']
-          assert manifest['content_scripts'][1]['matches']==[
+          assert manifest['version']=='0.2.0'
+          assert len(manifest['content_scripts'])==2
+          assert manifest['content_scripts'][0]['matches']==[
               'http://testgifts.local/private/order/*']
-          assert manifest['content_scripts'][1]['js']==[
+          assert manifest['content_scripts'][0]['js']==[
               'content-transport.js','vision-order-approval.js']
-          assert manifest['content_scripts'][2]['matches']==[
+          assert manifest['content_scripts'][1]['matches']==[
               'http://psk.testgifts.local/*','http://testgifts.local/*']
-          assert manifest['content_scripts'][2]['js']==['vision-order-launcher.js']
+          assert manifest['content_scripts'][1]['js']==['vision-order-launcher.js']
           with zipfile.ZipFile('vision-local-lan-extension.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
-              for file in ['manifest.json','service-worker.js','content-transport.js','vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js','README_RU.md']:
+              for file in ['manifest.json','service-worker.js','content-transport.js',
+                  'vision-order-launcher.js','scanner-host.html',
+                  'scanner-transport.js','archive-registry.js',
+                  'zip-offscreen.html','zip-offscreen.js','README_RU.md']:
                   z.write(package/file,file)
-              z.write('vision-order-overlay.js','vision-order-overlay.js')
+              z.write('scanner-host.js','scanner-host.js')
               z.write('vision-order-approval.js','vision-order-approval.js')
           with zipfile.ZipFile('vision-local-lan-extension.zip') as z:
               assert z.testzip() is None
               assert set(z.namelist())=={
                   'manifest.json','service-worker.js','content-transport.js',
-                  'vision-order-launcher.js','zip-offscreen.html','zip-offscreen.js',
-                  'README_RU.md','vision-order-overlay.js',
-                  'vision-order-approval.js'}
+                  'vision-order-launcher.js','scanner-host.html',
+                  'scanner-transport.js','scanner-host.js','archive-registry.js',
+                  'zip-offscreen.html','zip-offscreen.js',
+                  'README_RU.md','vision-order-approval.js'}
           print('Local-only Chrome MV3 extension verified: exact LAN hosts, zero remote code')
           PY
           cp vision-local-lan-extension.zip "$PREVIEW/"
