@@ -14,6 +14,14 @@
 - Остаточный риск: до завершения извлечения могут остаться частичные файлы локального корпуса. Следующий шаг — потоковое извлечение в приватные временные файлы, общий бюджет распаковки, атомарная публикация только после полной валидации, тесты rollback и повторных вложений.
 - Статус: `training_ready=false`, `production_approved=false`; реальные два ROI, аджудикация, связь с конструктором/техпроцессом, доказанный масштаб, ICC/spot, verified family holdout, 404/MV3 и реальная точность не подтверждены. Клиентские данные в GitHub не передавались.
 
+## M3.58 — same-size ROI source substitution regression (2026-11-20)
+
+- Before change HEAD: `d2b7e321f545cc18701dda15d49f92c36be5e0b2`; PR #4 OPEN, draft=true, merged=false.
+- GitHub Actions on previous HEAD: UI smoke [44644849799](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44644849799), raster safety [44644849658](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44644849658), rules/dataset safety [44644849616](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44644849616) — SUCCESS. CircleCI vision-contract and vision-raster — success. Preview publish on this HEAD not confirmed.
+- `1cfc1bda9f671427f4530894afc9f7a5263e079e`: added synthetic regression for byte-for-byte *same-length* source replacement after two disagreeing independent ROI votes, before adjudication. Requires `SOURCE_SHA256_MISMATCH`, no adjudication, no training approval, and refusal to propose from the modified source. No customer data.
+- Local test execution unavailable: container DNS cannot resolve github.com; CI for the new commit not yet confirmed. Do not claim three independent local cycles or real-world accuracy.
+- Remaining: Chromium 404/MV3 reference_state, triple ROI/PDF/private-stage regressions, preview publish, two verified real expert ROI votes, verified constructor/print process/physical scale, ICC/spot, verified family holdout. `training_ready=false`, `production_approved=false`; unknown => MANUAL.
+
 ## Правила ведения и контроля
 
 1. Перед изменением: зафиксировать источники, дату, точное требование, целевой модуль, версию и известные риски.
