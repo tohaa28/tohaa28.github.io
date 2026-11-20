@@ -79,3 +79,24 @@ test('network metrics deserialize safely and reject invalid large counters',()=>
  assert.equal(restored.last_http_status,503);
  assert.equal(restored.state,'degraded');
 });
+
+test('generic HTTP 401/403/429 fail closed without retry or leaking response body',async()=>{
+ for(const [code,kind,reason] of [
+  [401,'auth','VISION_NETWORK_AUTH_REQUIRED'],
+  [403,'auth','VISION_NETWORK_AUTH_REQUIRED'],
+  [429,'rate_limit','VISION_NETWORK_RATE_LIMITED']
+ ]){
+  let calls=0;
+  const r=await controlledOrderProbe(3200000,async()=>{
+   calls++;return {status:'MANUAL_ORDER_HTTP_STATUS',http_status:code,
+    body:'PRIVATE_ORDER_CONTENT'};
+  },{sleep:async()=>{throw Error('unexpected retry')},now});
+  assert.equal(calls,1);
+  assert.equal(r.kind,kind);
+  assert.equal(r.halt,true);
+  assert.equal(r.reason,reason);
+  assert.equal(r.health.retries,0);
+  assert.equal(r.health.last_http_status,code);
+  assert.equal(JSON.stringify(r.health).includes('PRIVATE_ORDER_CONTENT'),false);
+ }
+});
