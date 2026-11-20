@@ -292,10 +292,15 @@ export function makeApprovalRangeController({
    failed_orders:info.failed_orders||failedPending
   });
   next.last_archive={filename:info.filename,bytes:info.byte_length,
-   orders:found.length,status:'CHROME_COMPLETE',
+   orders:found.length,
+   files_verified:info.verified_files??null,
+   files_missing:info.missing_files??null,
+   entry_count:info.entry_count??null,
+   status:'CHROME_COMPLETE',
    confirmed_at:new Date().toISOString()};
   next.files_committed=(checkpoint.files_committed||0)+
-   found.reduce((n,x)=>n+(x.files||0),0);
+   (Number.isInteger(info.verified_files)?info.verified_files:
+    found.reduce((n,x)=>n+(x.files||0),0));
   // Crash between checkpoint and IDB prune is reconciled on reload.
   await saveCheckpoint(next);
   pendingRegistry=pendingRegistry.filter(x=>!selected.has(x.order_number));
@@ -407,7 +412,10 @@ export function makeApprovalRangeController({
    inflightDownload={after_id:before.highest_id,
     byte_length:result.blob.size,filename,part,end_cursor:cursor,
     order_numbers:rows.map(x=>x.order_number),
-    failed_orders:failedPending.slice(),stage:'preparing'};
+    failed_orders:failedPending.slice(),stage:'preparing',
+    verified_files:result.counts.verified_files,
+    missing_files:result.counts.missing_files,
+    entry_count:result.entry_count};
    await persistJournal(currentMode());
    const downloadId=await startExtensionZipDownload(result.blob,filename);
    inflightDownload={...inflightDownload,after_id:downloadId-1,
@@ -473,6 +481,7 @@ export function makeApprovalRangeController({
     }
     let failure=null,orderRecord=null;
     if(inspected.status==='TZ_APPROVED'){
+     checkpoint={...checkpoint,browser_scans:(checkpoint.browser_scans||0)+1};
      activeOrder=String(order);stage='collecting_approvals';
      let collected;
      try{
@@ -654,7 +663,20 @@ export function makeApprovalRangeController({
   receive:(message,expectedOrder)=>batch.receive(message,expectedOrder),
   remote:async(action,payload={})=>{
    await initialLoadPromise;
-   if(action==='status')return {mode:'range',running,paused,stopped,
+   if(action==='status'){
+    let archive_audit=null;
+    if(inflightDownload){
+     const d=inflightDownload;
+     try{archive_audit=await audit('check',{
+      after_id:d.after_id,byte_length:d.byte_length,
+      expected_filename:d.filename})}
+     catch{archive_audit={status:'VISION_DOWNLOAD_AUDIT_UNAVAILABLE'}}
+    }
+    return {mode:'range',running,paused,stopped,
+     archive_audit,download_details:inflightDownload?{
+      filename:inflightDownload.filename,bytes:inflightDownload.byte_length,
+      files_verified:inflightDownload.verified_files??null,
+      files_missing:inflightDownload.missing_files??null}:null,
     checked:config&&cursor!==null?cursor-config.start:0,
     total:config?config.end-config.start+1:RANGE_MAX-RANGE_MIN+1,
     progress_percent:config&&cursor!==null?
@@ -663,11 +685,14 @@ export function makeApprovalRangeController({
     network:{...networkHealth},last_archive:checkpoint?.last_archive||null,
     files_archived:checkpoint?.files_committed||0,
     files_staged:pending.reduce((n,x)=>n+(x.files||0),0),
+    direct_http_checks:networkHealth.attempts,
+    browser_scans:checkpoint?.browser_scans||0,
     range_start:config?.start||RANGE_MIN,range_end:config?.end||RANGE_MAX,
     archives:checkpoint?.archives_completed||0,
     found:checkpoint?.found_committed||0,pending:pending.length,
     downloading:!!inflightDownload,delay_ms:liveDelayMs,
     blocked:restoreBlocked,error:lastError};
+   }
    if(action==='delay'){
     if(!Number.isSafeInteger(payload.value)||payload.value<100||payload.value>60000)
      throw Error('MANUAL_RANGE_DELAY_INVALID');
