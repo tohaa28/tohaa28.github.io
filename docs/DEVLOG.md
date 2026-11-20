@@ -22,6 +22,14 @@
 - Local test execution unavailable: container DNS cannot resolve github.com; CI for the new commit not yet confirmed. Do not claim three independent local cycles or real-world accuracy.
 - Remaining: Chromium 404/MV3 reference_state, triple ROI/PDF/private-stage regressions, preview publish, two verified real expert ROI votes, verified constructor/print process/physical scale, ICC/spot, verified family holdout. `training_ready=false`, `production_approved=false`; unknown => MANUAL.
 
+## M3.59 — equal-length source substitution before second ROI vote (2026-11-20)
+
+- Before change HEAD: `cc072e4923c63f8d01195d603de87dacd21d9e12` (branch comparison identical); PR #4 OPEN, title Draft, API draft flag not independently available through issue endpoint.
+- Previous HEAD GitHub Actions: UI smoke [44652593703](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44652593703), raster safety [44652593680](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44652593680), rules/dataset safety [44652593695](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44652593695) — SUCCESS. CircleCI vision-contract and vision-raster — success. Preview publish not confirmed.
+- `4524e87b085a395e6dcec1d84b672c3f30900089`: added synthetic regression rejecting same-byte-length original replacement between first and second independent ROI votes. Expected SOURCE_SHA256_MISMATCH, one retained vote, no second vote, no training approval. Test fixture contains no customer content.
+- Local triple regressions not executed; new-head CI not yet confirmed at the time of this log entry. No claims about real-world accuracy.
+- Remaining: independent triple ROI/PDF/private-stage/Chromium 404/MV3 checks, anonymized reference_state, preview publish, two verified real ROI reviews, verified constructor/print process/physical scale, ICC/spot and verified family holdout. `training_ready=false`, `production_approved=false`, unknown => MANUAL. No production files or customer material changed.
+
 ## Правила ведения и контроля
 
 1. Перед изменением: зафиксировать источники, дату, точное требование, целевой модуль, версию и известные риски.
