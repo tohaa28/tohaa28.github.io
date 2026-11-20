@@ -101,6 +101,26 @@ try{
   'http://psk.testgifts.local/devorders')).length,1,
   'remote panel must reuse original engine and IndexedDB');
  assert.equal(await second.locator('#vision-ai-scanner-remote').isVisible(),true);
+ // Status and ZIP verification are visible without leaving the order page.
+ const displayed=await second.locator('#vision-ai-scanner-remote-status').innerText();
+ assert.match(displayed,/Прямых HTTP-запросов:/);
+ assert.match(displayed,/Сеть:/);
+ assert.match(displayed,/ZIP подтверждено Chrome:/);
+ assert.match(displayed,/Вложений: подтверждено/);
+ // Reset is destructive: the modal must be shown on this foreground page.
+ const accepted=second.waitForEvent('dialog');
+ await second.getByRole('button',{name:'Сбросить прогресс'}).click();
+ const confirmation=await accepted;
+ assert.match(confirmation.message(),/Удалить текущую очередь/);
+ await confirmation.accept();
+ await second.waitForFunction(()=>
+  document.querySelector('#vision-ai-scanner-remote-status')?.
+   textContent.includes('Проверено: 0 / 0'),null,{timeout:12000});
+ assert.match(await second.locator('#vision-ai-scanner-remote-status').innerText(),
+  /VISION_RESET_COMPLETE/);
+ // The inactive canonical engine tab stays available for another import.
+ assert.equal(browser.pages().filter(p=>p.url().startsWith(
+  'http://psk.testgifts.local/devorders')).length,1);
  const auth=await browser.newPage();
  await auth.goto('http://testgifts.local/auth');
  assert.equal(await auth.locator('#vision-ai-scan-launcher').count(),0);
