@@ -7,18 +7,26 @@ const VisionArchives=(()=>{
  const DB='vision-ai-archive-registry-v2', STORE='downloads';
  const PREF='vision-ai-archive-save-preferences-v2';
  const NAME=/^vision-ai-list-part-\d{5}-\d{7}-\d{7}\.zip$/;
- const modeSafe=x=>x==='ask'?'ask':'downloads';
+ const modeSafe=x=>x==='ask'||x==='directory'?x:'downloads';
  const folderSafe=x=>typeof x==='string'&&/^[a-zA-Z0-9 _.-]{1,60}$/.test(x)&&
   x!=='.'&&x!=='..'&&!x.startsWith('.')&&!x.endsWith('.')&&!x.includes('..');
+ const displayFolderSafe=x=>typeof x==='string'&&x.length>0&&x.length<=120&&
+  !/[\\/\x00-\x1f\x7f]/.test(x)&&x!=='.'&&x!=='..';
  const defaults={mode:'downloads',folder:'VisionAI'};
  async function config(){
   const result=await chrome.storage.local.get(PREF),raw=result[PREF]||{};
-  return {mode:modeSafe(raw.mode),folder:folderSafe(raw.folder)?raw.folder:defaults.folder};
+  return {mode:modeSafe(raw.mode),
+   folder:modeSafe(raw.mode)==='directory'?
+    (displayFolderSafe(raw.folder)?raw.folder:defaults.folder):
+    (folderSafe(raw.folder)?raw.folder:defaults.folder),
+   configured:typeof raw.configured_at==='string'&&raw.configured_at.length>0};
  }
  async function setConfig(input){
-  if(!input||!['ask','downloads'].includes(input.mode)||
-   !folderSafe(input.folder))return {status:'VISION_ARCHIVE_SETTINGS_INVALID'};
-  const value={mode:input.mode,folder:input.folder};
+  if(!input||!['ask','downloads','directory'].includes(input.mode)||
+   !(input.mode==='directory'?displayFolderSafe(input.folder):
+     folderSafe(input.folder)))return {status:'VISION_ARCHIVE_SETTINGS_INVALID'};
+  const value={mode:input.mode,folder:input.folder,
+   configured_at:new Date().toISOString()};
   await chrome.storage.local.set({[PREF]:value});
   return {status:'VISION_ARCHIVE_SETTINGS_SAVED',...value};
  }
@@ -60,6 +68,8 @@ const VisionArchives=(()=>{
  async function reconcile(id){
   const prior=await get(id);
   if(!prior)return null;
+  if(prior.destination_mode==='directory'||typeof id!=='number')
+   return prior;
   const files=await chrome.downloads.search({id}),found=files[0];
   if(!found)return prior;
   const safe=found.danger==='safe'||found.danger==='accepted';
@@ -95,6 +105,20 @@ const VisionArchives=(()=>{
    });
   }finally{handle.close()}
  }
+ async function recordLocal({filename,bytes,sha256,folder}){
+  if(typeof filename!=='string'||!/^(?:vision-ai-list-part-\d{5}-\d{7}-\d{7})(?:\.copy-\d+)?\.zip$/.test(filename)||
+   !Number.isSafeInteger(bytes)||bytes<100||
+   !/^[a-f0-9]{64}$/.test(sha256||'')||!displayFolderSafe(folder))
+   throw Error('VISION_LOCAL_ARCHIVE_RECORD_INVALID');
+  const now=new Date().toISOString();
+  const row={download_id:'directory:'+folder+'/'+filename,
+   expected_name:filename,expected_bytes:bytes,actual_bytes:bytes,
+   destination_mode:'directory',destination_folder:folder,
+   state:'saved',local_path:folder+'/'+filename,sha256,
+   file_exists:true,danger:'not_applicable',
+   saved_at:now,checked_at:now,created_at:now};
+  await put(row);return row;
+ }
  async function inspect(limit=100){
   const entries=await list(limit);
   const result=[];
@@ -102,5 +126,6 @@ const VisionArchives=(()=>{
    row.state==='saved'?await reconcile(row.download_id)||row:row);
   return result;
  }
- return {config,setConfig,begin,reconcile,list,inspect,NAME,folderSafe};
+ return {config,setConfig,begin,reconcile,list,inspect,recordLocal,NAME,folderSafe};
 })();
+globalThis.VisionArchives=VisionArchives;

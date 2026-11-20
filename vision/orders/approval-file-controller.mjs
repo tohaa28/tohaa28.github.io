@@ -179,7 +179,9 @@ export function makeApprovalFileListController({
     files_missing:info.missing_files??null,
     entry_count:info.entry_count??null,
     confirmed_at:new Date().toISOString(),
-    status:'CHROME_COMPLETE'},mode:currentMode()};
+    storage:info.kind==='directory'?'selected_directory':'chrome_downloads',
+    status:info.kind==='directory'?'DIRECTORY_VERIFIED':'CHROME_COMPLETE'},
+   mode:currentMode()};
   await write(()=>commitOrderFileArchive(updated,rows));
   state=updated;pending=pending.filter(x=>!selected.has(x.id));
   for(const id of ids)batch.discardOrder(id);
@@ -189,6 +191,21 @@ export function makeApprovalFileListController({
  async function resumePreparingZip(){
   const info=state?.download;
   if(info?.stage!=='preparing')return true;
+  if(info.kind==='directory'){
+   if(typeof globalThis.__visionArchiveSave!=='function')
+    throw Error('VISION_DIRECTORY_ENGINE_REQUIRED');
+   const selected=new Set(info.order_ids);
+   const rows=pending.filter(row=>selected.has(row.id));
+   if(!rows.length||rows.length!==info.order_ids.length)
+    throw Error('VISION_DIRECTORY_PENDING_ROWS_MISSING');
+   const temp=new ApprovalBatchSession();
+   for(const row of rows)temp.restoreOrder(row.id,row.transfers);
+   const blob=temp.finalize(rows).blob;
+   if(blob.size!==info.bytes)throw Error('VISION_DIRECTORY_ZIP_SIZE_CHANGED');
+   await globalThis.__visionArchiveSave(blob,info.filename);
+   await commitDownloaded();
+   return true;
+  }
   // A reload might land between download initiation and IDB stage commit.
   // Never send a duplicate ZIP if Chrome already sees the original request.
   const check=await audit('check',{after_id:info.after_id,
@@ -222,6 +239,8 @@ export function makeApprovalFileListController({
  async function recoverDownload(waitForCompletion=false){
   if(!state?.download)return true;
   try{
+   if(state.download.kind==='directory')
+    return await resumePreparingZip();
    await resumePreparingZip();
    if(!state.download)return true;
    const info=state.download;
@@ -243,11 +262,12 @@ export function makeApprovalFileListController({
   }
  }
  async function saveBatch(reason){
-  let rows=activeRows();
+  // v0.2.1: a separate ZIP for EVERY approved order, never 100 in one.
+  let rows=activeRows().slice(0,1);
   if(!rows.length)return true;
   if(state.download){
    if(!await recoverDownload(true))return false;
-   rows=activeRows();
+   rows=activeRows().slice(0,1);
    if(!rows.length)return true;
   }
   let result;
@@ -259,6 +279,23 @@ export function makeApprovalFileListController({
   const filename='vision-ai-list-part-'+pad(state.archive_count+1)+
    '-'+rows[0].id+'-'+rows.at(-1).id+'.zip';
   try{
+   const target=typeof globalThis.__visionArchiveSettings==='function'?
+    await globalThis.__visionArchiveSettings():{ready:true,mode:'downloads'};
+   if(!target.ready)throw Error(target.reason||'VISION_ARCHIVE_FOLDER_REQUIRED');
+   if(target.mode==='directory'){
+    const download={kind:'directory',bytes:result.blob.size,
+     filename,order_ids:rows.map(x=>x.id),stage:'preparing',
+     verified_files:result.counts.verified_files,
+     missing_files:result.counts.missing_files,
+     entry_count:result.entry_count};
+    const snapshot={...state,download,mode:currentMode()};
+    await write(()=>saveOrderFileStatus(snapshot));state=snapshot;
+    const saved=await globalThis.__visionArchiveSave(result.blob,filename);
+    if(saved?.status!=='VISION_LOCAL_ARCHIVE_VERIFIED')
+     throw Error('VISION_DIRECTORY_FILE_UNCONFIRMED');
+    await commitDownloaded();
+    return true;
+   }
    const before=await audit('baseline');
    if(before?.status!=='RANGE_DOWNLOAD_BASELINE')
     throw Error('MANUAL_ORDER_LIST_DOWNLOAD_BASELINE');
@@ -379,6 +416,15 @@ export function makeApprovalFileListController({
   if(!globalThis.__visionLocalTrustedTransport){
    lastError='MANUAL_MV3_TRANSPORT_REQUIRED';show();return;
   }
+  if(typeof globalThis.__visionArchiveSettings==='function'){
+   const target=await globalThis.__visionArchiveSettings().catch(()=>
+    ({ready:false,reason:'VISION_ARCHIVE_FOLDER_CHECK_FAILED'}));
+   if(!target.ready){
+    lastError=target.reason||'VISION_ARCHIVE_FOLDER_REQUIRED';
+    show('Перед стартом обязательно выберите папку сохранения ZIP.');
+    return;
+   }
+  }
   const rate=validateDelay();
   if(rate===null){lastError='MANUAL_ORDER_LIST_DELAY_INVALID';show();return}
   currentDelay=rate;
@@ -393,9 +439,10 @@ export function makeApprovalFileListController({
    if(state.download&&!await recoverDownload())
     throw Error('MANUAL_ORDER_LIST_ZIP_UNCONFIRMED');
    await setMode('running');
-   if(activeRows().length>=100||activeBytes()>120_000_000)
-    if(!await saveBatch('восстановленная партия'))
+   while(activeRows().length){
+    if(!await saveBatch('восстановленный заказ'))
      throw Error('MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW');
+   }
    while(state.index<state.total&&!paused&&!stopped&&!isClosed()){
     const id=queue[state.index],order_number=String(id);
     stage='checking_order';lastActivityAt=new Date().toISOString();
@@ -462,16 +509,19 @@ export function makeApprovalFileListController({
     else batch.discardOrder(order_number);
     checkedSession++;
     if(state.download&&!await recoverDownload(false))break;
-    if(activeRows().length>=100||activeBytes()>120_000_000){
-     if(!await saveBatch('100 заказов / ограничение размера'))break;
+    if(record||activeRows().length){
+     if(!await saveBatch('один утверждённый заказ'))break;
     }
     show('Последний проверенный номер: '+order_number+
      ' — '+(failure?failure.reason:inspected.status));
     if(!paused&&!stopped)await dynamicDelay();
    }
    if(((stopped&&!stopWithoutZip)||state.index>=state.total)&&pending.length){
-    if(activeRows().length&&!await saveBatch(stopped?'остановка':'окончание файла'))
-     paused=true;
+    while(activeRows().length){
+     if(!await saveBatch(stopped?'остановка':'окончание файла')){
+      paused=true;break;
+     }
+    }
     if(state.download&&!await recoverDownload(true))paused=true;
    }
    message=lastError?'ОСТАНОВЛЕНО: '+lastError:
@@ -572,7 +622,17 @@ export function makeApprovalFileListController({
     rateInput.dispatchEvent(new Event('input'));
     return {status:'VISION_DELAY_UPDATED'};
    }
-   if(action==='start'){void start();return {status:'VISION_SCAN_START_REQUESTED'}}
+   if(action==='start'){
+    if(running||getBusy())return {status:'VISION_SCAN_ALREADY_RUNNING'};
+    if(restoreBlocked)return {status:'VISION_SCAN_RESTORE_BLOCKED',reason:lastError};
+    if(!state||!queue)return {status:'VISION_SCAN_TXT_REQUIRED'};
+    if(typeof globalThis.__visionArchiveSettings==='function'){
+     const place=await globalThis.__visionArchiveSettings().catch(()=>
+      ({ready:false,reason:'VISION_ARCHIVE_FOLDER_CHECK_FAILED'}));
+     if(!place.ready)return {status:place.reason||'VISION_ARCHIVE_FOLDER_REQUIRED'};
+    }
+    void start();return {status:'VISION_SCAN_START_REQUESTED'};
+   }
    if(action==='pause'){pauseBtn.click();return {status:'VISION_SCAN_PAUSE_REQUESTED'}}
    if(action==='stop'){
     stopped=true;stopWithoutZip=true;await setMode('stopped');

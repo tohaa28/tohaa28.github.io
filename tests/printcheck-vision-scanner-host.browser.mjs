@@ -82,6 +82,19 @@ try{
   null,{timeout:15000});
  await page.getByRole('button',{name:'Старт / продолжить'}).click();
  await page.waitForFunction(()=>
+  document.querySelector('#vision-ai-scanner-remote-status')?.textContent.includes('VISION_ARCHIVE_FOLDER_NOT_CONFIGURED'),
+  null,{timeout:15000});
+ const choose=page.locator('#vision-ai-scanner-remote select').last();
+ await choose.selectOption('downloads');
+ await page.locator('#vision-ai-scanner-remote input[placeholder="Имя подпапки"]')
+  .fill('VisionAI-Lab');
+ await page.getByRole('button',{name:'Применить',exact:true}).last().click();
+ await page.waitForFunction(()=>
+  document.querySelector('#vision-ai-scanner-remote-status')?.textContent.includes('VISION_ARCHIVE_SETTINGS_SAVED')||
+  document.querySelector('#vision-ai-scanner-remote-status')?.textContent.includes('Папка задана'),
+  null,{timeout:8000}).catch(()=>{});
+ await page.getByRole('button',{name:'Старт / продолжить'}).click();
+ await page.waitForFunction(()=>
   document.querySelector('#vision-ai-scanner-remote-status')?.textContent.includes('Проверено: 1 / 1'),
   null,{timeout:20000});
  assert.equal(page.url(),'http://testgifts.local/catalog');

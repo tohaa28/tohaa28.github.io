@@ -128,8 +128,15 @@
  });
  row(resetBtn);
  const verifyBtn=control('Проверить сохранение ZIP',async()=>{
-  await updateStatus();
-  showMessage('Проверено состояние Chrome Downloads и локального реестра.');
+  try{
+   const r=await chrome.runtime.sendMessage({op:'vision-archive-settings-v1',
+    action:'list'});
+   if(r?.status!=='VISION_ARCHIVE_LIST_OK')throw Error(r?.status||'NO_AUDIT');
+   const saved=r.items.filter(x=>x.state==='saved').length;
+   const unresolved=r.items.length-saved;
+   showMessage('Архивы: сохранено '+saved+', ожидают или требуют проверки '+unresolved);
+   await updateStatus();
+  }catch(error){showMessage(String(error?.message||'Ошибка проверки ZIP'))}
  });
  row(verifyBtn);
 
@@ -140,7 +147,7 @@
   'background:#fff!important;color:#203438!important;padding:5px!important;');
  for(const [value,description] of [
   ['downloads','Автоматически в подпапку Загрузок'],
-  ['ask','Выбирать папку для каждого ZIP']
+  ['directory','Выбранная папка на диске']
  ]){
   const option=make('option',description);option.value=value;archiveMode.append(option);
  }
@@ -152,12 +159,24 @@
  });
  const setArchive=control('Применить',async()=>{
   try{
-   const result=await archiveRpc('set',{payload:{mode:archiveMode.value,folder:folder.value}});
-   showMessage(result.status||'VISION_ARCHIVE_SETTINGS_FAILED');
+   if(archiveMode.value==='directory'){
+    showMessage('Выберите папку в открывающемся окне сканера Chrome.');
+    await chrome.runtime.sendMessage({op:'vision-open-scanner-v1'});
+    return;
+   }
+   const result=await archiveRpc('set',{payload:{mode:'downloads',folder:folder.value}});
+   showMessage(result.status==='VISION_ARCHIVE_SETTINGS_SAVED'?
+    'Папка задана: Загрузки / '+folder.value:result.status);
    await updateStatus();
   }catch(error){showMessage(String(error?.message||'Ошибка настроек'))}
  });
  row(archiveMode,folder,setArchive);
+ const chooseFolder=control('Выбрать папку на диске…',async()=>{
+  showMessage('В открывшейся вкладке сканера нажмите «Выбрать папку на диске».');
+  try{await chrome.runtime.sendMessage({op:'vision-open-scanner-v1'})}
+  catch{showMessage('Не удалось открыть внутреннюю страницу сканера')}
+ });
+ row(chooseFolder);
  const archiveResults=make('div','',css+
   'white-space:pre-line!important;color:#d3e6dd!important;'+
   'font-size:11px!important;max-height:190px!important;overflow:auto!important;');
@@ -205,7 +224,9 @@
  row(recover);
  void archiveRpc('get').then(result=>{
   if(result?.status!=='VISION_ARCHIVE_SETTINGS_OK')return;
-  archiveMode.value=result.mode;folder.value=result.folder;
+  archiveMode.value=result.mode==='directory'?'directory':'downloads';
+  folder.value=result.folder;
+  if(!result.configured)showMessage('Перед запуском выберите папку для архивов');
  }).catch(()=>{});
  const more=control('Открыть подробные настройки',async()=>{
   try{
@@ -219,10 +240,10 @@
   'padding:7px!important;border-top:1px solid #547570!important;');
  status.setAttribute('role','status');status.id='vision-ai-scanner-remote-status';
  panel.append(status);
- const notice=make('p','Проверка статуса заказа выполняется прямым GET без '+
-  'открытия карточки. Для чтения динамических обсуждений при необходимости '+
-  'используется неактивная вкладка. Данные остаются локально; '+
-  'Chrome самостоятельно проверяет безопасность ZIP.',css+
+ const notice=make('p','До запуска обязательно укажите папку. '+
+  'Каждый утверждённый заказ сохраняется отдельным ZIP с переписками, '+
+  'замечаниями и доступными вложениями. Для динамических согласований '+
+  'временно используется неактивная карточка заказа. Данные остаются локально.',css+
   'font-size:11px!important;color:#b8d0c4!important;');
  panel.append(notice);
  let opened=false,editingDelay=false,lastMessage='',requesting=false;
@@ -257,7 +278,7 @@
     ' ('+(data.progress_percent??0)+'%)'+
     '\nСледующий заказ: '+(data.next_order??'—')+
     '\nЭтап: '+(data.phase||'ожидание')+
-    '\nZIP подтверждено Chrome: '+(data.archives??0)+
+    '\nАрхивов подтверждено: '+(data.archives??0)+
     ' · текущая загрузка: '+(data.downloading?'да':'нет')+
     (pendingZip.filename?'\nЗагрузка: '+pendingZip.filename+
      ' · байт '+(pendingZip.bytes??0):'')+

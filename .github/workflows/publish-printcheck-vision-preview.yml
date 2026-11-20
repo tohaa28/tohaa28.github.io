@@ -192,6 +192,7 @@ jobs:
           node --check vision/orders/extension/scanner-transport.js
           node --check vision/orders/extension/scanner-host-entry.mjs
           node --check vision/orders/extension/archive-registry.js
+          node --check vision/orders/extension/archive-local-files.mjs
           node --check vision/orders/extension/zip-offscreen.js
           node --check vision/orders/extension-zip-transfer.mjs
           node --check vision/orders/extension/service-worker.js
@@ -319,7 +320,7 @@ jobs:
               'http://files.testgifts.local/*']
           assert manifest['permissions']==['tabs','downloads','storage','offscreen']
           assert manifest['background']['service_worker']=='service-worker.js'
-          assert manifest['version']=='0.2.0'
+          assert manifest['version']=='0.2.1'
           assert len(manifest['content_scripts'])==2
           assert manifest['content_scripts'][0]['matches']==[
               'http://testgifts.local/private/order/*']

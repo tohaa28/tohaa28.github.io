@@ -13,7 +13,16 @@ a{color:#9ddccd}.vlo-actions{display:flex;flex-wrap:wrap;gap:8px;margin:9px 0}
 таблицы заказов. Сохраняйте архивы только на доверенный компьютер.
 Закрытие вкладки прерывает текущий запрос; незавершённая партия остаётся
 в IndexedDB расширения и восстанавливается после повторного запуска.</p>
+<section style="border:1px solid #779993;border-radius:8px;padding:12px;margin-bottom:14px">
+<strong>Папка для сохранения ZIP — обязательно до запуска</strong>
+<p>Для произвольной папки нажмите «Выбрать папку» и подтвердите доступ Chrome.
+Либо на странице тестового портала укажите подпапку стандартных «Загрузок»
+и нажмите «Применить». Данные сохраняются по одному заказу.</p>
+<button id="vision-choose-archive-folder" style="padding:9px">Выбрать папку на диске…</button>
+<p id="vision-archive-folder-status" role="status">Место сохранения не задано.</p>
+</section>
 <div id="vision-scanner-host"></div>
+<script src="archive-registry.js"></script>
 <script src="scanner-transport.js"></script>
 <script src="scanner-host.js"></script>
 </body></html>

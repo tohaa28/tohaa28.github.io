@@ -165,9 +165,10 @@ try{
   [2999999,3200000,3200001,3200002,3200003]);
  assert.equal(stateBefore.state.index,3);
  assert.equal(stateBefore.state.mode,'running');
- assert.deepEqual(stateBefore.pending.map(x=>x.id),['2999999']);
- assert.ok(stateBefore.pending[0].parts>=2,
-  'review evidence and original screenshot persisted before reload');
+ assert.equal(stateBefore.state.archive_count,1,
+  'v0.2.1 must save one approved order immediately, not wait for 100');
+ assert.deepEqual(stateBefore.pending.map(x=>x.id),[],
+  'once Chrome confirms a ZIP its payload leaves pending IDB');
  await page.reload();
  await page.locator('.vlo-file-list').waitFor({timeout:15000});
  await page.waitForFunction(()=>(

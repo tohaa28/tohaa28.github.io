@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Vision AI — сканер заказов по TXT",
-  "version": "0.2.0",
-  "description": "Сканирование по TXT с любых страниц тестовых доменов, без таблицы заказов; выбор места ZIP и реестр проверенных архивов. Только тестовая сеть.",
+  "version": "0.2.1",
+  "description": "Vision AI: TXT, один ZIP на заказ, обязательная настройка папки перед запуском; реестр и восстановление. Только тестовая сеть.",
   "host_permissions": [
     "http://psk.testgifts.local/*",
     "http://testgifts.local/*",
