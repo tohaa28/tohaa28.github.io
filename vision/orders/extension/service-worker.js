@@ -434,9 +434,9 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   let sourceOK=false;
   try{
    const u=new URL(sender?.url||'');
-   sourceOK=sender?.frameId===0&&(isEnginePage(u)||
-    (u.origin===TABLE_ORIGIN&&
-     (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/'))));
+   sourceOK=isEnginePage(u)||(sender?.frameId===0&&
+    u.origin===TABLE_ORIGIN&&
+    (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/')));
   }catch{}
   if(!sourceOK||typeof url!=='string'||!ORDER_URL.test(url)){
    respond({status:'MANUAL_QUEUE_SOURCE_DENIED'});return false;
