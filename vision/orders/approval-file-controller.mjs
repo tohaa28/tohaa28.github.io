@@ -476,7 +476,7 @@ export function makeApprovalFileListController({
    }
    message=lastError?'ОСТАНОВЛЕНО: '+lastError:
     paused?'ПАУЗА. Можно продолжить. Данные партии сохранены.':
-    stopped?'Остановлено. Реестр и архив сохранены.':
+    stopped?(stopWithoutZip?'Остановлено. Курсор и файлы сохранены в IndexedDB; ZIP — отдельно.':'Остановлено. Реестр и архив сохранены.'):
     state.index>=state.total?'Список полностью проверен.':'Сканирование прервано.';
   }catch(error){
    lastError=String(error?.message||'MANUAL_ORDER_LIST_SCAN_FAILED');
