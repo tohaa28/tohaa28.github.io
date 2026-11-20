@@ -171,9 +171,14 @@ export function makeApprovalFileListController({
    throw Error('MANUAL_ORDER_LIST_DOWNLOAD_ROWS_MISSING');
   const updated={...state,download:null,archive_count:state.archive_count+1,
    found_committed:state.found_committed+rows.length,
-   files_committed:(state.files_committed||0)+rows.reduce((n,x)=>n+(x.files||0),0),
+   files_committed:(state.files_committed||0)+
+    (Number.isInteger(info.verified_files)?info.verified_files:rows.reduce((n,x)=>n+(x.files||0),0)),
    last_archive:{filename:info.filename,bytes:info.bytes,
-    orders:rows.length,confirmed_at:new Date().toISOString(),
+    orders:rows.length,
+    files_verified:info.verified_files??null,
+    files_missing:info.missing_files??null,
+    entry_count:info.entry_count??null,
+    confirmed_at:new Date().toISOString(),
     status:'CHROME_COMPLETE'},mode:currentMode()};
   await write(()=>commitOrderFileArchive(updated,rows));
   state=updated;pending=pending.filter(x=>!selected.has(x.id));
@@ -258,7 +263,10 @@ export function makeApprovalFileListController({
    if(before?.status!=='RANGE_DOWNLOAD_BASELINE')
     throw Error('MANUAL_ORDER_LIST_DOWNLOAD_BASELINE');
    const download={after_id:before.highest_id,bytes:result.blob.size,
-    filename,order_ids:rows.map(x=>x.id),stage:'preparing'};
+    filename,order_ids:rows.map(x=>x.id),stage:'preparing',
+    verified_files:result.counts.verified_files,
+    missing_files:result.counts.missing_files,
+    entry_count:result.entry_count};
    const snapshot={...state,download,mode:currentMode()};
    await write(()=>saveOrderFileStatus(snapshot));state=snapshot;
    // Secure extension-origin Blob, not an anchor on an insecure HTTP page.
@@ -446,6 +454,7 @@ export function makeApprovalFileListController({
     const next={...state,index:state.index+1,
      failed_count:state.failed_count+(failure?1:0),
      delay_ms:currentDelay,mode:currentMode(),network:networkHealth,
+     browser_scans:(state.browser_scans||0)+(inspected.status==='TZ_APPROVED'?1:0),
      last_activity_at:new Date().toISOString()};
     await write(()=>saveOrderFileProgress(next,record,failure));
     state=next;lastActivityAt=next.last_activity_at;
@@ -520,14 +529,27 @@ export function makeApprovalFileListController({
   remote:async(action,payload={})=>{
    if(action==='status'){
     await init;
+    let archive_audit=null;
+    if(state?.download){
+     const d=state.download;
+     try{archive_audit=await audit('check',{after_id:d.after_id,
+      byte_length:d.bytes,expected_filename:d.filename})}
+     catch{archive_audit={status:'VISION_DOWNLOAD_AUDIT_UNAVAILABLE'}}
+    }
     return {mode:'file',running,paused,stopped,
+     archive_audit,download_details:state?.download?{
+      filename:state.download.filename,bytes:state.download.bytes,
+      files_verified:state.download.verified_files??null,
+      files_missing:state.download.missing_files??null}:null,
      filename:state?.filename||null,total:state?.total||0,
      checked:state?.index||0,
      progress_percent:state?.total?Math.floor(100*state.index/state.total):0,
      last_activity_at:lastActivityAt||state?.updated_at||null,
      phase:stage,network:{...networkHealth},last_archive:state?.last_archive||null,
      files_archived:state?.files_committed||0,
-     files_staged:pending.reduce((n,x)=>n+(x.files||0),0),next_order:queue&&state?.index<state?.total?
+     files_staged:pending.reduce((n,x)=>n+(x.files||0),0),
+     direct_http_checks:networkHealth.attempts,
+     browser_scans:state?.browser_scans||0,next_order:queue&&state?.index<state?.total?
       String(queue[state.index]):null,
      archives:state?.archive_count||0,found:state?.found_committed||0,
      pending:pending.length,downloading:!!state?.download,
