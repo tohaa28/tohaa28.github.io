@@ -15,7 +15,10 @@ applyMaketnayaProvenance();
 stampComponentVersions();
 import fs from "node:fs";
 
-const base = "https://tohaa28.github.io/gifts-layout-workbench-mockups/";
+const base = process.env.WORKBENCH_BASE || "https://tohaa28.github.io/gifts-layout-workbench-mockups/";
+if (!/^https:\/\/tohaa28\.github\.io\/[-a-z0-9/]+\/$/.test(base)) throw new Error("Unsafe WORKBENCH_BASE");
+const isVisionPreview = base === "https://tohaa28.github.io/gifts-layout-workbench-vision/";
+const frameTitle = isVisionPreview ? "Макетная · PrintCheck Vision" : "Макетная + мокапы";
 const assetStamp = Date.now().toString(36);
 let app = fs.readFileSync(new URL("../editor.html", import.meta.url), "utf8");
 let direct = fs.readFileSync(new URL("../direct-mode.js", import.meta.url), "utf8");
@@ -57,8 +60,13 @@ app = app
 
 const source = `(() => {
   const ID = "gifts-layout-workbench-host";
+  const VARIANT = ${JSON.stringify(isVisionPreview ? "vision" : "mockups")};
   const old = document.getElementById(ID);
   if (old) {
+    if (VARIANT === "vision" && old.dataset.gwbVariant !== VARIANT) {
+      alert("Основная Макетная уже открыта. Сохраните изменения и закройте её перед запуском «Макетная Vision».");
+      return;
+    }
     old.classList.remove("gwb-opening");
     old.classList.add("gwb-closing");
     setTimeout(() => {
@@ -70,12 +78,13 @@ const source = `(() => {
   }
 
   if (location.hostname !== "gifts.ru") {
-    alert("Откройте gifts.ru и запустите закладку «Макетная + мокапы» там.");
+    alert(${JSON.stringify(isVisionPreview ? "Откройте авторизованную страницу gifts.ru и запустите закладку «Макетная Vision» там." : "Откройте gifts.ru и запустите закладку «Макетная + мокапы» там.")});
     return;
   }
 
   const host = document.createElement("div");
   host.id = ID;
+  host.dataset.gwbVariant = VARIANT;
 
   const style = document.createElement("style");
   style.textContent = ${JSON.stringify(launcherCss)}
@@ -83,7 +92,7 @@ const source = `(() => {
 
   const frame = document.createElement("iframe");
   frame.className = "gwb-frame";
-  frame.title = "Макетная + мокапы";
+  frame.title = ${JSON.stringify(frameTitle)};
   frame.setAttribute("allowfullscreen", "");
   frame.setAttribute("allow", "fullscreen");
 

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Vision Lab — локальная визуальная ROI-разметка</title>
+<style>
+:root{font:14px/1.45 system-ui,sans-serif;color:#e2e9e8;background:#171d22}
+body{margin:0;padding:20px}main{max-width:1100px;margin:auto}
+h1{font-size:23px;margin:0 0 8px}p{color:#abbcbd}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px;margin:18px 0}
+label{display:grid;gap:5px;font-weight:600}input,select,button{font:inherit;color:#e2e9e8;background:#222c32;border:1px solid #485b63;border-radius:5px;padding:9px;min-width:0}
+button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
+#frame{position:relative;display:inline-block;max-width:100%;border:1px solid #576b73;touch-action:none;line-height:0}
+#preview{display:block;max-width:100%;height:auto}
+#layer{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+#rect{position:absolute;display:none;border:1px solid #ff7171;background:rgba(255,113,113,.16);pointer-events:none}
+#result{white-space:pre-wrap;overflow-wrap:anywhere;padding:14px;background:#222c32;border-radius:5px;min-height:50px}
+#error{color:#f9acac;min-height:22px}small{color:#9aafb4}
+</style>
+</head>
+<body>
+<main>
+<h1>Vision Lab — визуальная разметка ROI</h1>
+<p>Работает только в браузере на вашем компьютере. Исходные файлы не отправляются в сеть. Выберите локальный SVG или растровое изображение, выделите область мышью, получите команду для лаборатории. PDF размечается отдельно в координатах страницы после векторного аудита.</p>
+<div class="controls">
+<label>Локальный файл (SVG/PNG/JPEG/WebP)<input id="file" type="file" accept=".svg,.png,.jpg,.jpeg,.webp"></label>
+<label>Идентификатор образца из команды list<input id="sample" placeholder="20261117T120000_0123456789:0001" autocomplete="off"></label>
+<label>SHA-256 образца из команды list<input id="expectedSha" placeholder="64 символа SHA-256" maxlength="64" autocomplete="off"></label>
+<label>Эксперт<input id="expert" value="tech_01" maxlength="36"></label>
+<label>Технология<input id="technology" value="screen_print" maxlength="64"></label>
+<label>Тип области<select id="kind"><option value="thin_line">Тонкая линия</option><option value="narrow_gap">Узкий просвет</option><option value="tiny_object">Мелкий объект</option><option value="overprint">Перекрытие</option><option value="other">Другое</option></select></label>
+</div>
+<div id="error" role="status"></div>
+<div id="frame"><img id="preview" alt="Загруженное локально изображение"><div id="layer"><div id="rect"></div></div></div>
+<p id="measure">Выберите файл и выделите прямоугольник.</p>
+<h2>Команда сохранения предложения ROI</h2>
+<pre id="result">Нет размеченной области.</pre>
+<button id="copy" type="button" disabled>Скопировать команду</button>
+<p><small>Это только предложение области, а не проверенный дефект. Два независимых эксперта затем используют команды <code>vote</code>; при расхождении нужен <code>adjudicate</code>. Подтверждение не включает автоматическое обучение и не даёт разрешения на печать.</small></p>
+</main>
+<script>
+"use strict";
+(()=>{
+const $=id=>document.getElementById(id),file=$("file"),image=$("preview"),
+      layer=$("layer"),region=$("rect"),error=$("error"),
+      result=$("result"),measure=$("measure"),copy=$("copy");
+let blobUrl=null,unit=null,fullWidth=0,fullHeight=0,start=null,selection=null,actualSha=null;
+const idPattern=/^\d{8}T\d{6}_[0-9a-f]{10}:\d{4}$/;
+const safeId=/^[A-Za-z0-9_-]{2,36}$/;
+const safeTechnology=/^[A-Za-z0-9_-]{2,64}$/;
+function fail(message){error.textContent=message;result.textContent="Нет допустимой ROI-команды.";copy.disabled=true}
+function setBox(b){
+ region.style.display="block";
+ region.style.left=(b.x*100).toFixed(4)+"%";
+ region.style.top=(b.y*100).toFixed(4)+"%";
+ region.style.width=(b.w*100).toFixed(4)+"%";
+ region.style.height=(b.h*100).toFixed(4)+"%";
+}
+function coords(e){
+ const b=layer.getBoundingClientRect();
+ return {x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),
+         y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))};
+}
+function render(){
+ copy.disabled=true;
+ if(!selection||!unit){result.textContent="Нет размеченной области.";return}
+ const {x,y,w,h}=selection;
+ if(w<.00001||h<.00001){result.textContent="Выделите область больше нуля.";return}
+ const values=[x*fullWidth,y*fullHeight,w*fullWidth,h*fullHeight];
+ measure.textContent="ROI: x="+values[0].toFixed(4)+", y="+values[1].toFixed(4)+
+   ", ширина="+values[2].toFixed(4)+", высота="+values[3].toFixed(4)+" ("+unit+")";
+ if(!idPattern.test($("sample").value.trim())){result.textContent="Введите точный sample-id из локального списка образцов.";return}
+ if(!actualSha||!(/^[0-9a-f]{64}$/i.test($("expectedSha").value.trim()))||
+    actualSha!==$("expectedSha").value.trim().toLowerCase()){
+    result.textContent="SHA-256 выбранного файла не совпадает с образцом из локальной лаборатории. Проверьте файл и sample-id.";
+    return;
+ }
+ if(!safeId.test($("expert").value.trim())||!safeTechnology.test($("technology").value.trim())){
+   result.textContent="Проверьте код эксперта и название технологии (буквы латиницы, цифры, _ и -).";
+   return;
+ }
+ const args=values.map((n,i)=>" --"+["x","y","width","height"][i]+" "+n.toFixed(6)).join("");
+ result.textContent='py -3 tools\\vision_roi_review.py propose --root "D:\\VisionCheckLab"'+
+   ' --sample-id "'+$("sample").value.trim()+'" --expert "'+$("expert").value.trim()+'"'+
+   ' --kind '+$("kind").value+' --technology '+$("technology").value.trim()+
+   ' --units '+unit+args;
+ copy.disabled=false;
+}
+for(const name of ["sample","expectedSha","expert","technology","kind"])$(name).addEventListener("input",render);
+layer.addEventListener("pointerdown",e=>{
+ if(!unit)return;
+ start=coords(e);selection=null;layer.setPointerCapture(e.pointerId);
+ setBox({x:start.x,y:start.y,w:0,h:0});
+});
+layer.addEventListener("pointermove",e=>{
+ if(!start)return;
+ const end=coords(e);
+ selection={x:Math.min(start.x,end.x),y:Math.min(start.y,end.y),
+            w:Math.abs(start.x-end.x),h:Math.abs(start.y-end.y)};
+ setBox(selection);render();
+});
+layer.addEventListener("pointerup",e=>{
+ if(!start)return;
+ const end=coords(e);
+ selection={x:Math.min(start.x,end.x),y:Math.min(start.y,end.y),
+            w:Math.abs(start.x-end.x),h:Math.abs(start.y-end.y)};
+ start=null;setBox(selection);render();
+});
+async function load(){
+ error.textContent="";selection=start=null;region.style.display="none";
+ unit=null;actualSha=null;copy.disabled=true;result.textContent="Нет размеченной области.";
+ if(blobUrl){URL.revokeObjectURL(blobUrl);blobUrl=null}
+ const src=file.files?.[0];
+ if(!src)return;
+ if(src.size>16_000_000){fail("Локальный файл больше разрешённых 16 МБ.");return}
+ const ext=(src.name.match(/\.([^.]+)$/)?.[1]||"").toLowerCase();
+ if(!["svg","png","jpg","jpeg","webp"].includes(ext)){
+   fail("Поддерживаются только SVG и изображения PNG/JPEG/WebP.");return
+ }
+ if(ext==="svg"){
+   if(src.size>256_000){fail("Сложный SVG требует ручной проверки.");return}
+   const source=await src.text();
+   if(/<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b|@import\b|url\s*\(/i.test(source)){
+     fail("Небезопасная структура SVG.");return;
+   }
+   const xml=new DOMParser().parseFromString(source,"image/svg+xml");
+   const svg=xml.documentElement;
+   if(svg.namespaceURI!=="http://www.w3.org/2000/svg"||
+      svg.localName!=="svg"||xml.querySelector("parsererror")){
+     fail("SVG не прошёл проверку XML.");return;
+   }
+   for(const el of [svg,...svg.querySelectorAll("*")]){
+     for(const attr of el.attributes){
+       if(/^on/i.test(attr.localName)||/^(?:href|src)$/i.test(attr.localName)||
+          /url\s*\(/i.test(attr.value)){
+         fail("SVG содержит внешние ресурсы/события.");return;
+       }
+     }
+   }
+   const width=/^(\d+(?:\.\d+)?)mm$/.exec(svg.getAttribute("width")||"");
+   const height=/^(\d+(?:\.\d+)?)mm$/.exec(svg.getAttribute("height")||"");
+   const vb=(svg.getAttribute("viewBox")||"").trim().split(/[\s,]+/).map(Number);
+   if(!width||!height||vb.length!==4||vb.some(x=>!Number.isFinite(x))||
+       vb[0]!==0||vb[1]!==0||vb[2]<=0||vb[3]<=0||
+       Math.abs(vb[2]/vb[3]-Number(width[1])/Number(height[1]))>1e-5){
+     fail("Масштаб SVG недоказан: требуются width/height в mm и совпадающий по пропорциям viewBox с началом 0/0.");
+     return;
+   }
+   fullWidth=Number(width[1]);fullHeight=Number(height[1]);
+   unit="svg_document_mm";
+ }else{
+   unit="raster_pixel";
+ }
+ // Bind the selected local bytes to their imported sample; wrong-file
+ // coordinates must never be attributed to another customer's artwork.
+ if(!globalThis.crypto?.subtle){fail("SHA-256 недоступен в текущем локальном браузере.");return}
+ const digest=await crypto.subtle.digest("SHA-256",await src.arrayBuffer());
+ actualSha=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
+ blobUrl=URL.createObjectURL(src);
+ image.onload=()=>{
+   if(unit==="raster_pixel"){
+     fullWidth=image.naturalWidth;fullHeight=image.naturalHeight;
+   }
+   if(fullWidth<=0||fullHeight<=0){unit=null;fail("Размер изображения не определён.");return}
+   image.style.width=Math.min(880,image.naturalWidth||880)+"px";
+   measure.textContent="Режим: "+unit+"; размер "+
+     fullWidth+" × "+fullHeight+" (координаты локального изображения).";
+ };
+ image.onerror=()=>{unit=null;fail("Изображение не удалось безопасно открыть.")};
+ image.src=blobUrl;
+}
+file.addEventListener("change",()=>{load().catch(()=>fail("Локальное чтение файла не удалось."))});
+copy.addEventListener("click",()=>{if(!copy.disabled)navigator.clipboard?.writeText(result.textContent).catch(()=>{})});
+})();
+</script>
+</body>
+</html>

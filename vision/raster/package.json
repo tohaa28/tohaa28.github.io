@@ -1,0 +1,12 @@
+{
+  "name": "printcheck-vision-independent-raster-research",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated, research-only independent pixel rerender. Never production deployment.",
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "@napi-rs/canvas": "1.0.9",
+    "pdfjs-dist": "6.5.438"
+  }
+}

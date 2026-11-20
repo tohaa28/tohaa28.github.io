@@ -3,33 +3,85 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Макетная + мокапы</title>
+  <title>Макетная Vision — запуск внутри Gifts.ru</title>
+  <meta name="description" content="Изолированная тестовая Макетная Vision: запуск поверх авторизованной страницы Gifts.ru через закладку браузера.">
   <style>
     :root{font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#405157;background:#f5f7f7}
-    *{box-sizing:border-box}body{margin:0}.wrap{max-width:760px;margin:0 auto;padding:42px 18px}
-    .card{background:#fff;border:1px solid #dce2e2;border-top:4px solid #81b315;border-radius:8px;padding:24px;box-shadow:0 10px 35px #33444b12}
-    h1{margin:0 0 8px;font-size:30px;color:#36464d}.muted{color:#708087}
-    .open{display:inline-block;margin-top:12px;margin-right:8px;padding:12px 18px;border:1px solid #cad4d4;border-radius:6px;color:#405157;text-decoration:none;background:#fff}
-    .open.primary{border-color:#81b315;background:#81b315;color:#fff;font-weight:600}
-    ol{padding-left:22px}.note{margin-top:20px;padding:14px;background:#f2f6ed;border-left:3px solid #81b315}
+    *{box-sizing:border-box}body{margin:0}.wrap{max-width:800px;margin:0 auto;padding:42px 18px}
+    .card{background:#fff;border:1px solid #dce2e2;border-top:4px solid #81b315;border-radius:8px;padding:28px;box-shadow:0 10px 35px #33444b12}
+    h1{margin:0 0 8px;font-size:30px;color:#36464d}h2{font-size:17px;margin:24px 0 8px;color:#36464d}
+    p{margin:10px 0}.muted{color:#708087}.note{margin-top:20px;padding:13px 15px;background:#f2f6ed;border-left:3px solid #81b315;font-size:14px}
+    .action{display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin:8px 8px 6px 0;padding:10px 17px;border:1px solid #cad4d4;border-radius:6px;color:#405157;text-decoration:none;background:#fff;font:600 15px/1.35 inherit;cursor:pointer}
+    .action.primary{border-color:#81b315;background:#81b315;color:#fff;box-shadow:0 2px 6px #72972a25}
+    .action:focus-visible{outline:3px solid #a9c766;outline-offset:3px}
+    .steps{padding-left:25px}.steps li{margin:9px 0}.status{color:#486914;min-height:25px;font-size:13px}
+    .small{font-size:13px}.code{width:100%;min-height:78px;padding:10px;border:1px solid #cbd7d6;border-radius:5px;background:#fafcfa;color:#3e5056;font:12px/1.4 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+    .code[hidden]{display:none}.divider{border:0;border-top:1px solid #e3e9e8;margin:24px 0 18px}
+    @media(max-width:520px){.card{padding:20px}h1{font-size:25px}.action{width:100%;margin-right:0}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <section class="card">
-      <h1>Макетная + мокапы</h1>
-      <p>Независимая копия актуальной Макетной с отдельным редактором мокапов. Редактор запускается непосредственно внутри <b>gifts.ru</b>, поэтому использует обычную авторизацию сайта, читает корзину и загружает PDF как same-origin запросы.</p>
-      <ol>
-        <li>Скачайте и запустите установщик закладки <b>Макетная</b> или создайте её вручную.</li>
-        <li>Если создаёте вручную — вставьте в адрес закладки код запуска Макетной.</li>
-        <li>Откройте gifts.ru и нажмите эту закладку.</li>
-        <li>Редактор откроется поверх текущей страницы gifts.ru.</li>
+      <h1>Макетная · PrintCheck Vision</h1>
+      <p>Тестовая копия запускается <strong>поверх текущей авторизованной страницы gifts.ru</strong> — тем же способом, что основная «Макетная». Вводить пароль на этой странице или входить на GitHub Pages не требуется.</p>
+      <h2>Добавить отдельную закладку «Макетная Vision»</h2>
+      <ol class="steps">
+        <li>Покажите панель закладок браузера (<strong>Ctrl + Shift + B</strong>).</li>
+        <li><strong>Перетащите зелёную кнопку ниже на панель закладок.</strong> Она сохранится как «Макетная Vision» и не заменит основную закладку.</li>
+        <li>Вернитесь на <strong>gifts.ru</strong>, где вы уже авторизованы, и нажмите новую закладку. Копия откроется поверх страницы со всеми данными текущей сессии.</li>
       </ol>
-      <a class="open primary" href="./editor.html">Открыть Макетную с мокапами</a>
-      <a class="open" href="https://gifts.ru/" target="_blank" rel="noopener">Открыть gifts.ru ↗</a><a class="open" id="mockupBookmark" href="javascript:(()=>{const s=document.createElement('script');s.src='https://tohaa28.github.io/gifts-layout-workbench-mockups/launcher.js?v='+Date.now();document.documentElement.appendChild(s)})()">Запуск поверх gifts.ru</a>
-      <div class="note">Макетная только читает корзину/заказы и загружает шаблоны. Статусы заказа и «Согласования макетов» не изменяются.</div>
-      <p class="muted">Эта версия публикуется отдельно от рабочей Макетной. Изменения мокапов не затрагивают /gifts-layout-workbench/.</p>
+      <a id="visionBookmarklet" class="action primary" draggable="true" href="javascript:(()=>{if(location.hostname!=='gifts.ru'){alert('Откройте авторизованную страницу gifts.ru и запустите закладку там.');return;}const s=document.createElement('script');s.src='https://tohaa28.github.io/gifts-layout-workbench-vision/launcher.js?v='+Date.now();s.onerror=()=>alert('Не удалось загрузить тестовую Макетную Vision. Проверьте доступность GitHub Pages.');document.documentElement.appendChild(s)})()">Макетная Vision — перетащить в закладки</a>
+      <button id="copyCode" class="action" type="button">Скопировать код закладки</button>
+      <p id="installStatus" class="status" role="status" aria-live="polite"></p>
+      <p class="small muted">Если перетаскивание запрещено браузером: создайте обычную закладку с именем «Макетная Vision», затем вставьте скопированный код в поле «URL/Адрес» этой закладки.</p>
+      <textarea id="bookmarkletCode" class="code" readonly hidden aria-label="Код запуска закладки"></textarea>
+      <hr class="divider">
+      <a class="action" href="https://gifts.ru/" target="_blank" rel="noopener noreferrer">Открыть Gifts.ru</a>
+      <h2>Векторная проверка SVG — основной режим</h2>
+      <a class="action primary" href="./vision-vector.html">Проверить векторный макет SVG</a>
+      <p class="small muted">Исходные контуры, кривые Безье и пробелы: локальные измерения в мм без растрирования. Экспорт разметки в SVG и JSON. Пока исследовательский режим, размеры размещения из заказа не подтверждены.</p>
+      <h2>Vision Check на таблице тестовых заказов</h2>
+      <a class="action primary" href="./vision-local-orders.html">Подключить тестовые заказы (LAN)</a>
+      <p class="small muted">Закладка для http://psk.testgifts.local/devorders?status=140: локальное скачивание вложений только по нажатию, SVG-геометрия и исследовательский растр, диагностический статус в каждой строке. PDF пока отмечается для ручной проверки. Исходные файлы не выгружаются в GitHub.</p>
+      <h2>Растровый AI — дополнительный режим</h2>
+      <a class="action" href="./vision-ai.html">Проверить PNG, JPEG или WEBP</a>
+      <p class="small muted">Нейросеть MLP обучена только на синтетике. Локальная тепловая карта, без производственного допуска. Векторный PDF пока требует отдельного проверенного разбора содержимого.</p>
+      <h2>Экспертные инструменты (локальная исследовательская работа)</h2>
+      <a class="action" href="./vision-studio.html">Подготовить области</a>
+      <a class="action" href="./vision-review.html">Независимая проверка</a>
+      <p class="small muted">Эти страницы не используют сессию сайта Gifts.ru, работают только с файлами, явно выбранными в браузере, и не формируют производственный допуск.</p>
+      <p class="small muted">Прямая ссылка на editor.html не используется для работы с заказами: при открытии отдельно от gifts.ru у страницы нет сессии сайта.</p>
+      <div class="note"><strong>Отдельный безопасный контур.</strong> Копия использует текущую сессию gifts.ru и обращается к заказам через origin сайта. Экспериментальная проверка Vision пока не является производственным допуском. Основная «Макетная» и её закладка не изменяются.</div>
     </section>
   </main>
+  <script>
+    (() => {
+      const bookmark = document.getElementById('visionBookmarklet');
+      const status = document.getElementById('installStatus');
+      const code = document.getElementById('bookmarkletCode');
+      const bookmarklet = bookmark.getAttribute('href');
+      bookmark.addEventListener('click', event => {
+        // A click on this GitHub Pages installer does not have gifts.ru cookies.
+        // The bookmarklet itself runs only once saved and clicked on gifts.ru.
+        event.preventDefault();
+        status.textContent = 'Перетащите кнопку в закладки, затем запустите её на gifts.ru.';
+      });
+      document.getElementById('copyCode').addEventListener('click', async () => {
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('clipboard unavailable');
+          await navigator.clipboard.writeText(bookmarklet);
+          status.textContent = 'Код скопирован. Создайте закладку «Макетная Vision» и вставьте его в поле адреса.';
+          code.hidden = true;
+        } catch {
+          code.hidden = false;
+          code.value = bookmarklet;
+          code.focus();
+          code.select();
+          status.textContent = 'Копирование заблокировано браузером. Выделенный код можно скопировать Ctrl + C.';
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

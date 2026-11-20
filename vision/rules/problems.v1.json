@@ -1,0 +1,397 @@
+{
+  "schema": "printcheck.vision.problems.v1",
+  "revision": "2026-11-16-rules-research-1",
+  "source": {
+    "index_url": "https://gifts.ru/maket-problems",
+    "retrieved_at": "2026-11-16",
+    "source_class": "official_index",
+    "source_body_hash": null
+  },
+  "status": "catalog_only_not_active_checks",
+  "problems": [
+    {
+      "code": "PC-001",
+      "gifts_id": "10002344",
+      "name_ru": "Вид или место нанесения не соответствует заказу",
+      "source_url": "https://gifts.ru/maket-problems/10002344",
+      "method": "deterministic",
+      "needs": [
+        "order",
+        "constructor"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-002",
+      "gifts_id": "10002358",
+      "name_ru": "Не указан цвет ленты",
+      "source_url": "https://gifts.ru/maket-problems/10002358",
+      "method": "hybrid",
+      "needs": [
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-003",
+      "gifts_id": "10002357",
+      "name_ru": "Не указан цвет шеврона",
+      "source_url": "https://gifts.ru/maket-problems/10002357",
+      "method": "hybrid",
+      "needs": [
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-004",
+      "gifts_id": "10002361",
+      "name_ru": "Высота букв меньше 2 мм",
+      "source_url": "https://gifts.ru/maket-problems/10002361",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-005",
+      "gifts_id": "10002360",
+      "name_ru": "Высота букв меньше 5 мм",
+      "source_url": "https://gifts.ru/maket-problems/10002360",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "material",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-006",
+      "gifts_id": "10002347",
+      "name_ru": "Важные элементы близко к линии реза (наклейка/офсет)",
+      "source_url": "https://gifts.ru/maket-problems/10002347",
+      "method": "deterministic",
+      "needs": [
+        "constructor",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-007",
+      "gifts_id": "10003320",
+      "name_ru": "Изображение смещено относительно осей конструктора",
+      "source_url": "https://gifts.ru/maket-problems/10003320",
+      "method": "deterministic",
+      "needs": [
+        "constructor",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-008",
+      "gifts_id": "10002348",
+      "name_ru": "Изображение близко к краю (шильды/шевроны)",
+      "source_url": "https://gifts.ru/maket-problems/10002348",
+      "method": "deterministic",
+      "needs": [
+        "constructor",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-009",
+      "gifts_id": "10002345",
+      "name_ru": "Изображение выходит за поле нанесения",
+      "source_url": "https://gifts.ru/maket-problems/10002345",
+      "method": "deterministic",
+      "needs": [
+        "constructor",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-010",
+      "gifts_id": "10002351",
+      "name_ru": "Белые элементы на неокрашенном конструкторе",
+      "source_url": "https://gifts.ru/maket-problems/10002351",
+      "method": "hybrid",
+      "needs": [
+        "constructor",
+        "material"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-011",
+      "gifts_id": "10002349",
+      "name_ru": "Нерастрированные градиенты/прозрачности/эффекты",
+      "source_url": "https://gifts.ru/maket-problems/10002349",
+      "method": "deterministic",
+      "needs": [
+        "pdf"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-012",
+      "gifts_id": "10002340",
+      "name_ru": "Конструктор не соответствует артикулу",
+      "source_url": "https://gifts.ru/maket-problems/10002340",
+      "method": "deterministic",
+      "needs": [
+        "order",
+        "constructor"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-013",
+      "gifts_id": "10002341",
+      "name_ru": "Масштаб или геометрия конструктора искажены",
+      "source_url": "https://gifts.ru/maket-problems/10002341",
+      "method": "deterministic",
+      "needs": [
+        "constructor",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-014",
+      "gifts_id": "10003007",
+      "name_ru": "Растр не подходит технологии / слит с конструктором",
+      "source_url": "https://gifts.ru/maket-problems/10003007",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "constructor"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-015",
+      "gifts_id": "10002342",
+      "name_ru": "Не выполнены дополнительные требования конструктора",
+      "source_url": "https://gifts.ru/maket-problems/10002342",
+      "method": "hybrid",
+      "needs": [
+        "constructor"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-016",
+      "gifts_id": "10002355",
+      "name_ru": "Цветовая модель не соответствует CMYK",
+      "source_url": "https://gifts.ru/maket-problems/10002355",
+      "method": "deterministic",
+      "needs": [
+        "technology",
+        "pdf"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-017",
+      "gifts_id": "10002343",
+      "name_ru": "Посторонняя информация в макете",
+      "source_url": "https://gifts.ru/maket-problems/10002343",
+      "method": "hybrid",
+      "needs": [
+        "order",
+        "constructor"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-018",
+      "gifts_id": "10003319",
+      "name_ru": "Пересекающиеся контуры и абрисы",
+      "source_url": "https://gifts.ru/maket-problems/10003319",
+      "method": "deterministic",
+      "needs": [
+        "pdf"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-019",
+      "gifts_id": "10002339",
+      "name_ru": "Отсутствует макет",
+      "source_url": "https://gifts.ru/maket-problems/10002339",
+      "method": "deterministic",
+      "needs": [
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-020",
+      "gifts_id": "10003008",
+      "name_ru": "Не указан обрезной размер/форма",
+      "source_url": "https://gifts.ru/maket-problems/10003008",
+      "method": "hybrid",
+      "needs": [
+        "constructor",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-021",
+      "gifts_id": "10002359",
+      "name_ru": "Не указано место пришива",
+      "source_url": "https://gifts.ru/maket-problems/10002359",
+      "method": "hybrid",
+      "needs": [
+        "order",
+        "constructor"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-022",
+      "gifts_id": "10003321",
+      "name_ru": "Не указан цвет обшивки шеврона",
+      "source_url": "https://gifts.ru/maket-problems/10003321",
+      "method": "hybrid",
+      "needs": [
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-023",
+      "gifts_id": "10002350",
+      "name_ru": "Недостаточное эффективное DPI",
+      "source_url": "https://gifts.ru/maket-problems/10002350",
+      "method": "deterministic",
+      "needs": [
+        "technology",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-024",
+      "gifts_id": "10002346",
+      "name_ru": "Текст не преобразован в кривые",
+      "source_url": "https://gifts.ru/maket-problems/10002346",
+      "method": "deterministic",
+      "needs": [
+        "pdf"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-025",
+      "gifts_id": "10003006",
+      "name_ru": "Soft Touch: слишком тонкие элементы",
+      "source_url": "https://gifts.ru/maket-problems/10003006",
+      "method": "deterministic",
+      "needs": [
+        "technology",
+        "material",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-026",
+      "gifts_id": "10002362",
+      "name_ru": "Толщина линии меньше техтребований",
+      "source_url": "https://gifts.ru/maket-problems/10002362",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "scale"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-027",
+      "gifts_id": "10002356",
+      "name_ru": "Не рекомендован цвет шелкографии на тёмной основе",
+      "source_url": "https://gifts.ru/maket-problems/10002356",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "material",
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-028",
+      "gifts_id": "10002354",
+      "name_ru": "Несоответствие палитре Pantone",
+      "source_url": "https://gifts.ru/maket-problems/10002354",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified_detail_429"
+    },
+    {
+      "code": "PC-029",
+      "gifts_id": "10002353",
+      "name_ru": "Несоответствие палитре деколи",
+      "source_url": "https://gifts.ru/maket-problems/10002353",
+      "method": "hybrid",
+      "needs": [
+        "technology",
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    },
+    {
+      "code": "PC-030",
+      "gifts_id": "10002352",
+      "name_ru": "Цвет нанесения не соответствует заказу",
+      "source_url": "https://gifts.ru/maket-problems/10002352",
+      "method": "deterministic",
+      "needs": [
+        "order"
+      ],
+      "implementation": "planned",
+      "source_review": "index_verified"
+    }
+  ]
+}

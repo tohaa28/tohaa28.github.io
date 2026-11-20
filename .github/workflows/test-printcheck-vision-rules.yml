@@ -1,0 +1,209 @@
+name: PrintCheck Vision rules and dataset safety
+
+on:
+  push:
+    branches:
+      - feature/printcheck-vision-copy-v01
+    paths:
+      - "vision/**"
+      - "tests/printcheck-vision-discussions.test.mjs"
+      - "tests/printcheck-vision-approval-inline-images.test.mjs"
+      - "tests/printcheck-vision-discussions.browser.mjs"
+      - "tests/printcheck-vision-rules.test.mjs"
+      - "tests/printcheck-vision-topology.test.mjs"
+      - "tests/printcheck-vision-svg-viewport.test.mjs"
+      - "tests/printcheck-vision-vector-corridors.test.mjs"
+      - "tests/printcheck-vision-spatial-index.test.mjs"
+      - "tests/printcheck-vision-curved-normals.test.mjs"
+      - "vision/dataset/review-task.mjs"
+      - "tests/printcheck-vision-review-task.test.mjs"
+      - "vision/dataset/compare-region-methods.mjs"
+      - "vision/dataset/compare-reviews.mjs"
+      - "tests/printcheck-vision-region-methods.test.mjs"
+      - "tests/printcheck-vision-compare-reviews.test.mjs"
+      - "vision/dataset/pilot-attestation.mjs"
+      - "vision/dataset/prepare-pilot-signoff.mjs"
+      - "tests/printcheck-vision-pilot-attestation.test.mjs"
+      - "vision/dataset/visual-fingerprint.mjs"
+      - "vision/dataset/cohort-leakage-audit.mjs"
+      - "tests/printcheck-vision-visual-fingerprint.test.mjs"
+      - "tests/printcheck-vision-cohort-leakage.test.mjs"
+      - "vision/dataset/locked-pilot-gate.mjs"
+      - "tests/printcheck-vision-locked-pilot.test.mjs"
+      - "vision/dataset/strict-png-decoder.mjs"
+      - "vision/dataset/cohort-image-provenance.mjs"
+      - "tests/helpers/synthetic-png.mjs"
+      - "tests/printcheck-vision-strict-png.test.mjs"
+      - "tests/printcheck-vision-image-provenance.test.mjs"
+      - "vision/dataset/render-calibration-attestation.mjs"
+      - "tests/printcheck-vision-render-calibration.test.mjs"
+      - "vision/dataset/exact-pixel-replay.mjs"
+      - "tests/printcheck-vision-exact-pixel-replay.test.mjs"
+      - "tests/printcheck-vision-pdf-raw-paint-gate.test.mjs"
+      - "vision/raster/pdf-source-color-audit.mjs"
+      - "tests/printcheck-vision-pdf-source-color-audit.test.mjs"
+      - "vision/ai/synthetic-feature-model.mjs"
+      - "tests/printcheck-vision-synthetic-ai.test.mjs"
+      - "vision/ai/scan-worker.mjs"
+      - "tests/printcheck-vision-worker.test.mjs"
+      - "vision/raster/replay-engines.mjs"
+      - "vision/raster/verify-independent-replay.mjs"
+      - "vision/raster/package.json"
+      - "tests/printcheck-vision-independent-raster.integration.mjs"
+      - "tests/printcheck-vision-raster-locked-pilot.integration.mjs"
+      - "tests/helpers/synthetic-simple-pdf.mjs"
+      - "vision/dataset/verify-render-files.mjs"
+      - "tests/printcheck-vision-render-files.test.mjs"
+      - "vision/dataset/verify-cohort-images.mjs"
+      - "tests/printcheck-vision-cohort-files.test.mjs"
+      - "vision/dataset/blind-sampling-plan.mjs"
+      - "tests/printcheck-vision-blind-sampling.test.mjs"
+      - "vision/dataset/prepare-blind-control-task.mjs"
+      - "tests/printcheck-vision-blind-control-task.test.mjs"
+      - "tests/printcheck-vision-pilot-python-e2e.mjs"
+      - "tests/bench-printcheck-vision-spatial.mjs"
+      - "tests/bench-printcheck-vision-curved.mjs"
+      - "tests/printcheck-vision-pdf-bridge.test.mjs"
+      - "tests/printcheck-vision-placement-context.test.mjs"
+      - "tests/printcheck-vision-svg-dom.test.mjs"
+      - "tests/printcheck-vision-inventory.test.py"
+      - "tests/test_printcheck_vision_evaluate.py"
+      - "tests/test_printcheck_vision_training_split.py"
+      - "tools/vision_local_lab.py"
+      - "tools/vision_roi_review.py"
+      - "tools/vision_pdf_audit.py"
+      - "tools/vision_private_corpus_stage.py"
+      - "tests/test_vision_private_corpus_stage.py"
+      - "tests/test_vision_roi_review.py"
+      - "tests/test_vision_pdf_audit.py"
+      - "tools/vision_approval_archive_audit.py"
+      - "tests/test_vision_approval_archive_audit.py"
+      - "tools/vision_approval_training_corpus.py"
+      - "tests/test_vision_approval_training_corpus.py"
+      - "docs/DEVLOG.md"
+      - ".github/workflows/test-printcheck-vision-rules.yml"
+  pull_request:
+    branches:
+      - gifts-layout-workbench-mockups-source
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rule-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify source and tests syntax
+        run: |
+          node --check vision/orders/discussion-probe.mjs
+          node --check vision/orders/approval-inline-images.mjs
+          node --test tests/printcheck-vision-approval-inline-images.test.mjs
+          node --test tests/printcheck-vision-approval-batch-archive.test.mjs
+          node --test tests/printcheck-vision-approval-range.test.mjs
+          node --check tests/printcheck-vision-discussions.test.mjs
+          node --test tests/printcheck-vision-discussions.test.mjs
+          node --check vision/rules/resolver.mjs
+          node --check tests/printcheck-vision-rules.test.mjs
+          node --check vision/geometry/mask-components.mjs
+          node --check tests/printcheck-vision-topology.test.mjs
+          node --check vision/geometry/svg-viewport.mjs
+          node --check tests/printcheck-vision-svg-viewport.test.mjs
+          node --check vision/geometry/svg-path-subset.mjs
+          node --check vision/geometry/vector-corridors.mjs
+          node --check tests/printcheck-vision-vector-corridors.test.mjs
+          node --check tests/printcheck-vision-spatial-index.test.mjs
+          node --check vision/geometry/curved-normal-probes.mjs
+          node --check tests/printcheck-vision-curved-normals.test.mjs
+          node --check vision/dataset/review-task.mjs
+          node --check tests/printcheck-vision-review-task.test.mjs
+          node --check vision/dataset/compare-region-methods.mjs
+          node --check vision/dataset/compare-reviews.mjs
+          node --check tests/printcheck-vision-region-methods.test.mjs
+          node --check tests/printcheck-vision-compare-reviews.test.mjs
+          node --check vision/dataset/pilot-attestation.mjs
+          node --check vision/dataset/prepare-pilot-signoff.mjs
+          node --check tests/printcheck-vision-pilot-attestation.test.mjs
+          node --check vision/dataset/visual-fingerprint.mjs
+          node --check vision/dataset/cohort-leakage-audit.mjs
+          node --check tests/printcheck-vision-visual-fingerprint.test.mjs
+          node --check tests/printcheck-vision-cohort-leakage.test.mjs
+          node --check vision/dataset/locked-pilot-gate.mjs
+          node --check tests/printcheck-vision-locked-pilot.test.mjs
+          node --check vision/dataset/strict-png-decoder.mjs
+          node --check vision/dataset/cohort-image-provenance.mjs
+          node --check tests/helpers/synthetic-png.mjs
+          node --check tests/printcheck-vision-strict-png.test.mjs
+          node --check tests/printcheck-vision-image-provenance.test.mjs
+          node --check vision/dataset/render-calibration-attestation.mjs
+          node --check tests/printcheck-vision-render-calibration.test.mjs
+          node --check vision/dataset/exact-pixel-replay.mjs
+          node --check tests/printcheck-vision-exact-pixel-replay.test.mjs
+          node --check tests/printcheck-vision-pdf-raw-paint-gate.test.mjs
+          node --check vision/raster/pdf-source-color-audit.mjs
+          node --check tests/printcheck-vision-pdf-source-color-audit.test.mjs
+          node --check vision/ai/synthetic-feature-model.mjs
+          node --check tests/printcheck-vision-synthetic-ai.test.mjs
+          node --check vision/ai/scan-worker.mjs
+          node --check tests/printcheck-vision-worker.test.mjs
+          node --check vision/raster/replay-engines.mjs
+          node --check vision/raster/verify-independent-replay.mjs
+          node --check tests/printcheck-vision-independent-raster.integration.mjs
+          node --check vision/dataset/verify-render-files.mjs
+          node --check tests/printcheck-vision-render-files.test.mjs
+          node --check vision/dataset/verify-cohort-images.mjs
+          node --check tests/printcheck-vision-cohort-files.test.mjs
+          node --check vision/dataset/blind-sampling-plan.mjs
+          node --check tests/printcheck-vision-blind-sampling.test.mjs
+          node --check vision/dataset/prepare-blind-control-task.mjs
+          node --check tests/printcheck-vision-blind-control-task.test.mjs
+          node --check tests/printcheck-vision-pilot-python-e2e.mjs
+          node --check tests/bench-printcheck-vision-spatial.mjs
+          node --check tests/bench-printcheck-vision-curved.mjs
+          node --check vision/geometry/pdfjs-vector-bridge.mjs
+          node --check tests/printcheck-vision-pdf-bridge.test.mjs
+          node --check vision/geometry/placement-context.mjs
+          node --check tests/printcheck-vision-placement-context.test.mjs
+          node --check vision/geometry/svg-dom-vector-bridge.mjs
+          node --check tests/printcheck-vision-svg-dom.test.mjs
+      - name: Run deterministic rule tests
+        run: node --test tests/printcheck-vision-rules.test.mjs tests/printcheck-vision-topology.test.mjs tests/printcheck-vision-svg-viewport.test.mjs tests/printcheck-vision-vector-corridors.test.mjs tests/printcheck-vision-spatial-index.test.mjs tests/printcheck-vision-curved-normals.test.mjs tests/printcheck-vision-pdf-bridge.test.mjs tests/printcheck-vision-placement-context.test.mjs tests/printcheck-vision-svg-dom.test.mjs tests/printcheck-vision-review-task.test.mjs tests/printcheck-vision-region-methods.test.mjs tests/printcheck-vision-compare-reviews.test.mjs tests/printcheck-vision-pilot-attestation.test.mjs tests/printcheck-vision-visual-fingerprint.test.mjs tests/printcheck-vision-cohort-leakage.test.mjs tests/printcheck-vision-locked-pilot.test.mjs tests/printcheck-vision-blind-sampling.test.mjs tests/printcheck-vision-blind-control-task.test.mjs tests/printcheck-vision-strict-png.test.mjs tests/printcheck-vision-image-provenance.test.mjs tests/printcheck-vision-cohort-files.test.mjs tests/printcheck-vision-render-calibration.test.mjs tests/printcheck-vision-render-files.test.mjs tests/printcheck-vision-exact-pixel-replay.test.mjs tests/printcheck-vision-pdf-raw-paint-gate.test.mjs tests/printcheck-vision-pdf-source-color-audit.test.mjs tests/printcheck-vision-synthetic-ai.test.mjs tests/printcheck-vision-worker.test.mjs
+      - name: Report synthetic CPU performance and exact result parity
+        run: node tests/bench-printcheck-vision-spatial.mjs
+      - name: Report synthetic curved-boundary CPU scaling
+        run: node tests/bench-printcheck-vision-curved.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cyclic offline ROI, PDF, expert-consensus and privacy safety checks
+        run: |
+          python -m py_compile tools/vision_local_lab.py tools/vision_roi_review.py tools/vision_pdf_audit.py
+          for cycle in 1 2 3; do
+            echo "Review/PDF independent cycle $cycle/3"
+            python tests/test_vision_roi_review.py
+            python tests/test_vision_pdf_audit.py
+          done
+      - name: Verify offline native approval archive integrity and source mapping
+        run: python -m unittest discover -s tests -p 'test_vision_approval_archive_audit.py' -v
+      - name: Verify linked approval conversations and candidate corpus never auto-train
+        run: |
+          python -m py_compile tools/vision_approval_training_corpus.py
+          python -m unittest discover -s tests -p 'test_vision_approval_training_corpus.py' -v
+      - name: Verify private large-file corpus staging and grouped review safety
+        run: |
+          python -m py_compile tools/vision_private_corpus_stage.py
+          for cycle in 1 2 3; do
+            echo "Private corpus safety cycle $cycle/3"
+            python tests/test_vision_private_corpus_stage.py
+          done
+      - name: Verify private archive inventory utility on synthetic ZIPs
+        run: python -m unittest discover -s tests -p 'test_printcheck_vision_inventory.py' -v
+      - name: Validate private expert-region metrics and grouped holdouts
+        run: python -m unittest discover -s tests -p 'test_printcheck_vision_evaluate.py' -v
+      - name: Verify signed pilot through Python evaluator in private synthetic fixture
+        run: node tests/printcheck-vision-pilot-python-e2e.mjs
