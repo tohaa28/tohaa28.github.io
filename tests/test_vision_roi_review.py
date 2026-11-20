@@ -77,6 +77,27 @@ class ReviewWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "SOURCE_PATH_UNSAFE"):
             review.verify_original(self.root, "../outside.svg", expected)
 
+    def test_same_size_source_substitution_blocks_review_and_adjudication(self):
+        case = self.proposal()
+        review.vote(self.root, case_id=case, expert="expert_a",
+                    verdict="confirmed_defect")
+        review.vote(self.root, case_id=case, expert="expert_b",
+                    verdict="false_positive")
+        original = self.root / lab.list_samples(self.root)[0]["path"]
+        # Keep byte count identical: metadata-only checks must not pass.
+        replacement = bytes([SVG[0] ^ 1]) + SVG[1:]
+        self.assertEqual(len(replacement), len(SVG))
+        original.write_bytes(replacement)
+        with self.assertRaisesRegex(ValueError, "^SOURCE_SHA256_MISMATCH$"):
+            review.adjudicate(self.root, case_id=case, expert="expert_c",
+                              verdict="uncertain")
+        with self.assertRaisesRegex(ValueError, "^SOURCE_SHA256_MISMATCH$"):
+            self.proposal()
+        state = review.queue(self.root)[0]
+        self.assertEqual(state["state"], "DISAGREEMENT_NEEDS_ADJUDICATION")
+        self.assertFalse(state["adjudicated"])
+        self.assertFalse(state["training_approved"])
+
     def test_distinct_independent_votes_create_research_consensus_not_training(self):
         case = self.proposal()
         review.vote(self.root, case_id=case, expert="expert_a",
