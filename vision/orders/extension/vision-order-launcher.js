@@ -107,7 +107,7 @@
  row(delayLabel,applyDelay);
  const commands=[
   ['Старт / продолжить','start'],['Пауза','pause'],
-  ['Стоп и ZIP','stop'],['Сохранить ZIP','save'],
+  ['Остановить','stop'],['Сохранить ZIP','save'],
   ['Реестр JSON','export']
  ];
  row(...commands.map(([label,action])=>control(label,async()=>{
@@ -115,6 +115,27 @@
    showMessage(result.status||'Запрос отправлен');await updateStatus()}
   catch(error){showMessage(String(error?.message||'Ошибка подключения'))}
  })));
+ const resetBtn=control('Сбросить прогресс',async()=>{
+  const before=await rpc('status').catch(()=>({}));
+  if(before.running){
+   showMessage('Сначала остановите сканирование и дождитесь завершения текущего заказа.');
+   await updateStatus();return;
+  }
+  if(!confirm('Удалить текущую очередь, контрольную точку, реестр и '+
+   'невыгруженные вложения выбранного режима? Уже сохранённые ZIP на диске '+
+   'останутся. Это действие необратимо.'))return;
+  try{
+   const result=await rpc('reset',{confirmed:true});
+   showMessage(result?.status||'VISION_RESET_FAILED');
+   await updateStatus();
+  }catch(error){showMessage(String(error?.message||'Ошибка сброса'))}
+ });
+ row(resetBtn);
+ const verifyBtn=control('Проверить сохранение ZIP',async()=>{
+  await updateStatus();
+  showMessage('Проверено состояние Chrome Downloads и локального реестра.');
+ });
+ row(verifyBtn);
  const more=control('Открыть подробные настройки',async()=>{
   try{
    const r=await chrome.runtime.sendMessage({op:'vision-open-scanner-v1'});
@@ -127,9 +148,10 @@
   'padding:7px!important;border-top:1px solid #547570!important;');
  status.setAttribute('role','status');status.id='vision-ai-scanner-remote-status';
  panel.append(status);
- const notice=make('p','Данные остаются локально. Работа продолжается и при '+
-  'переходе между страницами. Заблокированные Chrome ZIP требуют '+ 
-  'проверки в загрузках браузера.',css+
+ const notice=make('p','Проверка статуса заказа выполняется прямым GET без '+
+  'открытия карточки. Для чтения динамических обсуждений при необходимости '+
+  'используется неактивная вкладка. Данные остаются локально; '+
+  'Chrome самостоятельно проверяет безопасность ZIP.',css+
   'font-size:11px!important;color:#b8d0c4!important;');
  panel.append(notice);
  let opened=false,editingDelay=false,lastMessage='',requesting=false;
@@ -151,14 +173,44 @@
    }
    const running=data.running?'В РАБОТЕ':data.blocked?'Ошибка восстановления':
     data.paused?'ПАУЗА':data.stopped?'Остановлено':'Ожидает запуска';
-   status.textContent=running+
+   const net=data.network||{};
+   const lastZip=data.last_archive||{};
+   const zipAudit=data.archive_audit||{};
+   const pendingZip=data.download_details||{};
+   const lastTime=data.last_activity_at?Date.parse(data.last_activity_at):NaN;
+   const stale=data.running&&Number.isFinite(lastTime)&&
+    Date.now()-lastTime>240000;
+   status.textContent=running+(stale?' · НЕТ ПРОГРЕССА БОЛЕЕ 4 МИНУТ':'')+
     '\n'+(data.filename?'Файл: '+data.filename+'\n':'')+
     'Проверено: '+(data.checked??0)+' / '+(data.total??'—')+
+    ' ('+(data.progress_percent??0)+'%)'+
     '\nСледующий заказ: '+(data.next_order??'—')+
-    '\nZIP готово: '+(data.archives??0)+
-    ' · скачивается: '+(data.downloading?'да':'нет')+
-    '\nНайдено: '+(data.found??0)+
+    '\nЭтап: '+(data.phase||'ожидание')+
+    '\nZIP подтверждено Chrome: '+(data.archives??0)+
+    ' · текущая загрузка: '+(data.downloading?'да':'нет')+
+    (pendingZip.filename?'\nЗагрузка: '+pendingZip.filename+
+     ' · байт '+(pendingZip.bytes??0):'')+
+    (zipAudit.status?'\nПроверка Chrome: '+zipAudit.status+
+     (zipAudit.danger?' · '+zipAudit.danger:''):'')+
+    (lastZip.filename?'\nПоследний сохранённый ZIP: '+lastZip.filename+
+     ' · '+(lastZip.bytes??0)+' байт'+
+     (lastZip.confirmed_at?' · '+lastZip.confirmed_at:''):'')+
+    '\nЗаказов архивировано: '+(data.found??0)+
     ' · партия: '+(data.pending??0)+
+    '\nВложений: подтверждено '+(data.files_archived??0)+
+    ' · ожидает ZIP '+(data.files_staged??0)+
+    (Number.isInteger(lastZip.files_missing)?
+     ' · отсутствует в последнем ZIP '+lastZip.files_missing:'')+
+    '\nПрямых HTTP-запросов: '+(data.direct_http_checks??0)+
+    ' · фоновых карточек: '+(data.browser_scans??0)+
+    '\nСеть: '+(net.state||'нет данных')+
+    ' · повторов '+(net.retries??0)+
+    ' · ошибок '+(net.transient_errors??0)+
+    ' · подряд '+(net.consecutive_errors??0)+
+    (net.last_http_status?' · HTTP '+net.last_http_status:'')+
+    (net.last_error?'\nПоследняя сетевая ошибка: '+net.last_error:'')+
+    (data.last_activity_at?'\nПоследняя активность: '+
+     data.last_activity_at:'')+
     (data.errors?'\nОшибок: '+data.errors:'')+
     (data.error?'\nОшибка: '+data.error:'')+
     (lastMessage?'\n'+lastMessage:'');
