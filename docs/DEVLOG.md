@@ -4,6 +4,16 @@
 Изолированное сравнение: draft PR https://github.com/tohaa28/tohaa28.github.io/pull/4
 Правило: любой цикл должен заканчиваться проверяемым результатом (commit + тесты + статус + ограничения), а не обещанием. Не редактировать действующую Макетную и не сливать черновой PR без независимой приёмки.
 
+## M3.60 — verified CI for M3.59; regression execution boundary (2026-11-20)
+
+- Before change HEAD: `e156b7827ab7ecd15254f5248aae506093e107b0`; branch comparison against this SHA: identical (ahead=0, behind=0). PR #4: OPEN, draft=true, merged=false.
+- GitHub Actions on exact source HEAD: [UI smoke 44660054515](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44660054515), [raster safety 44660054442](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44660054442), [rules/dataset safety 44660054430](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44660054430) — completed SUCCESS. The rules/dataset job reports successful steps for cyclic offline ROI/PDF/expert-consensus/privacy, private staging and grouped holdout checks; UI job reports successful blinded two-reviewer smoke. These are CI workflow results, not independently verified three local runs.
+- CircleCI statuses on source SHA: `ci/circleci: vision-contract` SUCCESS and `ci/circleci: vision-raster` SUCCESS. Preview publish on this SHA not confirmed; no preview publishing action taken.
+- Reviewed `tools/vision_roi_review.py`, `tests/test_vision_roi_review.py`, `tests/test_vision_pdf_audit.py`, `tests/test_vision_private_corpus_stage.py` and research contract. Synthetic same-size source replacement between independent reviews is covered by the prior test commit; no new test run outside CI claimed.
+- Local checkout and three independent local regression runs blocked by DNS failure resolving github.com (`git ls-remote` failed). No speculative code edit or customer-data processing was performed. This cycle records independently fetched CI evidence only.
+- Next bounded task: obtain reproducible local checkout, execute ROI/PDF/private-stage synthetic tests three times with per-run exit codes and check Chromium 404/MV3 anonymized reference_state; only then introduce a minimal regression fix if a failure is reproduced. Keep any real ROI, keys, source SHA, filenames and client documents entirely private.
+- Outstanding: preview publish, actual anonymized 404 reference_state, independently verified real ROI votes/adjudication, verified constructor/print method/physical scale, ICC/spot and verified family holdout. `training_ready=false`, `production_approved=false`, unknown => MANUAL.
+
 ## M3.35 — ограничение распаковки вложений ZIP (2026-11-19)
 
 - Исходный HEAD: `6f7353288fede1e686bee27d30904c806e3fa06f`; PR #4 до изменения: OPEN, draft=true, merged=false.
