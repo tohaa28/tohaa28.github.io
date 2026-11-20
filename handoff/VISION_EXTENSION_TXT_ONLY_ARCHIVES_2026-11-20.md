@@ -63,3 +63,27 @@ https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extensi
 `chrome://extensions`, перезагрузить страницы двух доменов.
 Для сохранения прежней очереди v0.1.16 сначала экспортируйте её ZIP
 и реестр: новый движок хранит очередь отдельно и начинает с пустого TXT.
+
+## Итоговая контрольная точка проверки (20.11.2026)
+- Последний проверенный исходный commit перед записью журнала:
+  `0beaeb297605c428b1839733681936a8e76cb518`.
+- Публикация GitHub Actions:
+  https://github.com/tohaa28/tohaa28.github.io/actions/runs/44708815769
+  **COMPLETED SUCCESS**.
+- Новая сборка Chrome ZIP:
+  https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+  размер: **87 234 байта**, GitHub blob SHA:
+  `1317f5b58dc50323c15b83d3e11f1293c6c6e595`.
+- Browser smoke `tests/printcheck-vision-scanner-host.browser.mjs`: PASS.
+  Реально инициирован синтетический ZIP через MV3 offscreen/Downloads,
+  подтвержден `downloads.state=complete`, exact bytes, реестр `saved`,
+  локальный путь, плюс старт с /catalog, TXT, смена портала, отсутствие
+  /devorders и остановка/reset.
+- Остальные независимые PrintCheck Vision synthetic suites и
+  publish package integrity: PASS.
+- PR #4 остаётся OPEN DRAFT, merged=false. Боевой Gifts.ru не изменён.
+- **Нет подтверждения работы в реальной авторизованной LAN-сессии**;
+  реальную выборку, cookies и оригиналы CI не проверял.
+- Установить обновление в тот же каталог extension, затем нажать «Обновить»
+  в `chrome://extensions` и перезагрузить страницу тестового сайта.
+  Старую очередь v0.1.16 перед переходом выгрузить в ZIP при необходимости.
