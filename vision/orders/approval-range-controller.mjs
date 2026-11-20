@@ -562,7 +562,7 @@ export function makeApprovalRangeController({
    }
    message=lastError?'ОСТАНОВКА: общий сбой авторизации, лимит запросов или сохранения.':
     paused?'ПАУЗА. Можно продолжить; неполная партия остаётся в памяти.':
-    stopped?'Остановлено, сохранён частичный архив.':
+    stopped?(stopWithoutZip?'Остановлено. Данные партии сохранены локально; ZIP — отдельно.':'Остановлено, сохранён частичный архив.'):
     cursor>config.end?'Диапазон полностью проверен.':'Сканирование завершено.';
   }catch(error){
    lastError=String(error?.message||'MANUAL_RANGE_SCAN_FAILED');
