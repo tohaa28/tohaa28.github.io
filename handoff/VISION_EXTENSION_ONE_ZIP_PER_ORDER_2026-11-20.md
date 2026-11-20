@@ -75,3 +75,27 @@ PR #4 остаётся OPEN DRAFT; не объединять с боевой М�
 Версия extension: `0.2.1`. Исходная базовая точка v0.2.0:
 `a4d79809c167f1e5cb18ab69bb8f73624f098949`.
 Журнал и файлы хранятся только в экспериментальной ветке.
+
+## Подтверждение публикации и регрессий
+- Исходная точка CI: `1988049413e2333e4d9b204e56d025743260e34b`.
+- GitHub Actions `Publish isolated PrintCheck Vision preview`:
+  https://github.com/tohaa28/tohaa28.github.io/actions/runs/44714371266
+  — **COMPLETED SUCCESS**, синтетические браузерные тесты пройдены.
+- Отдельная регрессия:
+  `tests/printcheck-vision-one-order-per-zip.browser.mjs`:
+  **TWO approved orders → TWO complete conversation ZIPs PASS**.
+- Тест `tests/printcheck-vision-host-approvals.browser.mjs`:
+  реальное получение через синтетический auth DOM, история сообщений,
+  замечания, исходный графический файл, reload и ZIP — **PASS**.
+- `tests/printcheck-vision-scanner-host.browser.mjs`:
+  новая проверка обязательного назначения папки и сценария
+  Downloads/регистра ZIP — **PASS**.
+- Published ZIP:
+  https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+  GitHub blob SHA `4b3cec67c7cb07fee7cdadec2c8d1ae41e6b0b3f`,
+  размер **91 553 байта**.
+- **Уточнение:** выбор произвольной папки File System Access требует
+  ручного подтверждения в установленном Chrome. CI не способен проверить
+  нативный системный диалог и доступ к реальной авторизованной LAN.
+  Вариант сохранения в папку Downloads и реестра проверен в Chromium CI.
+- PR #4 не сливать. Production files outside isolated preview не менять.
