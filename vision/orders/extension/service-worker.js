@@ -21,7 +21,7 @@ function sourceAllowed(sender){
     (u.origin===TABLE_ORIGIN&&
      (u.pathname==='/devorders'||u.pathname.startsWith('/devorders/')))||
     (u.origin==='http://testgifts.local'&&
-     /^\/private\/order\/\d{5,12}\/?$/.test(u.pathname)));
+     /^\/private\/order\/\d{5,12}\/?$/.test(u.pathname))));
  }catch{return false}
 }
 function validatedTarget(raw,sender){
