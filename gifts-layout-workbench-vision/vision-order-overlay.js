@@ -3667,6 +3667,126 @@
     }
   }
 
+  // vision/orders/approval-network-control.mjs
+  var NETWORK_RETRY_LIMIT = 3;
+  var NETWORK_CIRCUIT_LIMIT = 6;
+  var freshNetworkHealth = () => ({
+    attempts: 0,
+    retries: 0,
+    transient_errors: 0,
+    consecutive_errors: 0,
+    auth_errors: 0,
+    rate_limits: 0,
+    last_error: null,
+    last_http_status: null,
+    last_error_at: null,
+    last_success_at: null,
+    last_request_at: null,
+    state: "idle",
+    last_duration_ms: null
+  });
+  function normalizeNetworkHealth(value) {
+    const base = freshNetworkHealth();
+    if (!value || typeof value !== "object") return base;
+    for (const key of [
+      "attempts",
+      "retries",
+      "transient_errors",
+      "consecutive_errors",
+      "auth_errors",
+      "rate_limits"
+    ]) {
+      const n = value[key];
+      if (Number.isSafeInteger(n) && n >= 0) base[key] = n;
+    }
+    for (const key of [
+      "last_error",
+      "last_error_at",
+      "last_success_at",
+      "last_request_at",
+      "state"
+    ]) {
+      if (typeof value[key] === "string" && value[key].length <= 100)
+        base[key] = value[key];
+    }
+    if (Number.isInteger(value.last_http_status) && value.last_http_status >= 100 && value.last_http_status <= 599) base.last_http_status = value.last_http_status;
+    if (Number.isSafeInteger(value.last_duration_ms) && value.last_duration_ms >= 0)
+      base.last_duration_ms = value.last_duration_ms;
+    return base;
+  }
+  function networkFailureType(result) {
+    const status = String(result?.status || "");
+    if (status === "MANUAL_ORDER_AUTH_REQUIRED") return "auth";
+    if (status === "MANUAL_ORDER_RATE_LIMITED") return "rate_limit";
+    if ([
+      "MANUAL_ORDER_FETCH_FAILED",
+      "EXTENSION_FETCH_TIMEOUT",
+      "MANUAL_NON_HTML_RESPONSE"
+    ].includes(status)) return "transient";
+    if (status === "MANUAL_ORDER_HTTP_STATUS" && (result.http_status === 408 || result.http_status >= 500)) return "transient";
+    if (["TZ_APPROVED", "TZ_NOT_APPROVED", "ORDER_NOT_FOUND"].includes(status))
+      return "ok";
+    return "other";
+  }
+  async function controlledOrderProbe(order, probe, {
+    health = freshNetworkHealth(),
+    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    now = () => (/* @__PURE__ */ new Date()).toISOString(),
+    maxRetries = NETWORK_RETRY_LIMIT
+  } = {}) {
+    if (typeof probe !== "function" || !Number.isInteger(maxRetries) || maxRetries < 0 || maxRetries > 3) throw Error("VISION_NETWORK_CONFIG_INVALID");
+    const stats = normalizeNetworkHealth(health);
+    const started = Date.now();
+    let response = null, kind = "other", used = 0;
+    stats.last_request_at = now();
+    stats.state = "requesting";
+    for (let n = 0; n <= maxRetries; n++) {
+      stats.attempts++;
+      try {
+        response = await probe(order);
+      } catch {
+        response = { status: "MANUAL_ORDER_FETCH_FAILED" };
+      }
+      kind = networkFailureType(response);
+      if (kind !== "transient" || n === maxRetries) break;
+      stats.retries++;
+      used++;
+      await sleep(Math.min(2e3, 400 * (n + 1)));
+    }
+    stats.last_duration_ms = Math.max(0, Date.now() - started);
+    if (kind === "ok") {
+      stats.consecutive_errors = 0;
+      stats.last_success_at = now();
+      stats.last_error = null;
+      stats.last_http_status = null;
+      stats.state = "online";
+    } else {
+      stats.last_error = String(response?.status || "MANUAL_ORDER_PROBE_UNKNOWN").slice(0, 80);
+      stats.last_http_status = Number.isInteger(response?.http_status) ? response.http_status : null;
+      stats.last_error_at = now();
+      if (kind === "transient") {
+        stats.transient_errors++;
+        stats.consecutive_errors++;
+        stats.state = stats.consecutive_errors >= NETWORK_CIRCUIT_LIMIT ? "circuit_open" : "degraded";
+      } else if (kind === "auth") {
+        stats.auth_errors++;
+        stats.state = "auth_required";
+      } else if (kind === "rate_limit") {
+        stats.rate_limits++;
+        stats.state = "rate_limited";
+      } else stats.state = "degraded";
+    }
+    const halt = kind === "auth" || kind === "rate_limit" || kind === "transient" && stats.consecutive_errors >= NETWORK_CIRCUIT_LIMIT;
+    return {
+      result: response,
+      health: stats,
+      retries: used,
+      kind,
+      halt,
+      reason: halt ? kind === "transient" ? "VISION_NETWORK_CIRCUIT_OPEN" : kind === "auth" ? "VISION_NETWORK_AUTH_REQUIRED" : "VISION_NETWORK_RATE_LIMITED" : null
+    };
+  }
+
   // vision/orders/approval-file-list.mjs
   var ORDER_LIST_MIN = 1e6;
   var ORDER_LIST_MAX = 9999999;
@@ -4092,6 +4212,8 @@
     let liveDelayMs = 1200, delayDirty = false, checkpointWrite = Promise.resolve();
     let journalWrite = Promise.resolve(), initialLoadPromise = Promise.resolve();
     let inflightDownload = null, restoreBlocked = false;
+    let networkHealth = freshNetworkHealth(), lastActivityAt = null;
+    let stopWithoutZip = false, stage = "idle";
     const activePending = () => pending.filter((x) => !inflightDownload?.order_numbers?.includes(x.order_number));
     const activeBytes = () => [...batch.transfers.values()].reduce((n, t) => n + (inflightDownload?.order_numbers?.includes(t.order) ? 0 : t.size || 0), 0);
     const startBtn = button("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C", () => {
@@ -4147,6 +4269,7 @@
         failed_pending: failedPending.slice(),
         delay_ms: liveDelayMs,
         download: inflightDownload,
+        network: networkHealth,
         mode,
         updated_at: (/* @__PURE__ */ new Date()).toISOString()
       };
@@ -4170,7 +4293,7 @@
     }
     function show(message = "") {
       const cp = checkpoint;
-      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 (\u0444\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F) " + liveDelayMs + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0442\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F: " + activePending().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (inflightDownload ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (cp ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D " + cp.config.start + "\u2013" + cp.config.end + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430 (\u0444\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F) " + liveDelayMs + " \u043C\u0441" : "\u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043D\u043E\u043C\u0435\u0440: " + (cursor ?? cp?.committed_next ?? "\u2014") + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u0441\u0435\u0439\u0447\u0430\u0441: " + testedThisSession + " \xB7 \u0430\u0440\u0445\u0438\u0432\u043E\u0432: " + (cp?.archives_completed || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (cp?.found_committed || 0) + " \xB7 \u0442\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F: " + activePending().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (inflightDownload ? 1 : 0) + " \xB7 \u0441\u0435\u0442\u044C: " + networkHealth.state + " \xB7 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432 GET: " + networkHealth.retries + " \xB7 \u0441\u0435\u0442\u0435\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A: " + networkHealth.transient_errors + " \xB7 \u0444\u0430\u0437\u0430: " + stage + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F (\u0440\u0435\u0435\u0441\u0442\u0440): " + ((cp?.failed_orders?.length || 0) + failedPending.length) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     async function saveCheckpoint(next) {
       if (!storage()) throw Error("MANUAL_CHROME_STORAGE_UNAVAILABLE");
@@ -4275,9 +4398,9 @@
         show("MANUAL_REGISTRY_EXPORT_FAILED");
       }
     }
-    async function reset() {
-      if (running || getBusy()) return;
-      if (typeof globalThis.confirm === "function" && !globalThis.confirm(
+    async function reset(remote = false) {
+      if (running || getBusy()) return { status: "VISION_RESET_STOP_FIRST" };
+      if (!remote && typeof globalThis.confirm === "function" && !globalThis.confirm(
         "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0440\u0435\u0435\u0441\u0442\u0440 \u0438 \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0443\u044E \u0442\u043E\u0447\u043A\u0443 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430? \u0423\u0436\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043D\u044B\u0435 ZIP \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u043D\u0430 \u0434\u0438\u0441\u043A\u0435."
       ))
         return;
@@ -4298,10 +4421,15 @@
         testedThisSession = 0;
         batch = new ApprovalBatchSession();
         lastError = null;
+        networkHealth = freshNetworkHealth();
+        lastActivityAt = null;
+        stopWithoutZip = false;
         saveBtn.disabled = true;
         show("\u0421\u0431\u0440\u043E\u0448\u0435\u043D\u043E");
+        return { status: "VISION_RESET_COMPLETE" };
       } catch {
         show("MANUAL_CHECKPOINT_RESET_FAILED");
+        return { status: "VISION_RESET_FAILED" };
       }
     }
     function audit(phase, rest = {}) {
@@ -4329,11 +4457,22 @@
       const found = pendingRegistry.filter((x) => selected.has(x.order_number));
       if (found.length !== ids.length || !found.length)
         throw Error("MANUAL_RANGE_ARCHIVE_ROWS_LOST");
-      const next = commitRangeArchive(checkpoint, {
+      const next = commitRangeArchive({ ...checkpoint, network: networkHealth }, {
         next: info.end_cursor ?? cursor,
         found,
         failed_orders: info.failed_orders || failedPending
       });
+      next.last_archive = {
+        filename: info.filename,
+        bytes: info.byte_length,
+        orders: found.length,
+        files_verified: info.verified_files ?? null,
+        files_missing: info.missing_files ?? null,
+        entry_count: info.entry_count ?? null,
+        status: "CHROME_COMPLETE",
+        confirmed_at: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      next.files_committed = (checkpoint.files_committed || 0) + (Number.isInteger(info.verified_files) ? info.verified_files : found.reduce((n, x) => n + (x.files || 0), 0));
       await saveCheckpoint(next);
       pendingRegistry = pendingRegistry.filter((x) => !selected.has(x.order_number));
       pending = pendingRegistry.slice();
@@ -4455,7 +4594,10 @@
           end_cursor: cursor,
           order_numbers: rows.map((x) => x.order_number),
           failed_orders: failedPending.slice(),
-          stage: "preparing"
+          stage: "preparing",
+          verified_files: result.counts.verified_files,
+          missing_files: result.counts.missing_files,
+          entry_count: result.entry_count
         };
         await persistJournal(currentMode());
         const downloadId = await startExtensionZipDownload(result.blob, filename);
@@ -4519,10 +4661,28 @@
         }
         while (cursor <= config.end && !paused && !stopped && !isClosed()) {
           const order = cursor;
-          const inspected = await probeTzForOrder(order);
+          stage = "checking_order";
+          lastActivityAt = (/* @__PURE__ */ new Date()).toISOString();
+          const measured = await controlledOrderProbe(
+            order,
+            (n) => probeTzForOrder(n),
+            { health: networkHealth }
+          );
+          networkHealth = measured.health;
+          checkpoint = { ...checkpoint, network: networkHealth };
+          const inspected = measured.result;
+          if (measured.halt) {
+            lastError = measured.reason;
+            paused = true;
+            await persistJournal("paused");
+            show("\u041E\u0431\u0449\u0438\u0439 \u0441\u0431\u043E\u0439 \u0441\u0435\u0442\u0438. \u041E\u0447\u0435\u0440\u0435\u0434\u044C \u0438 \u043A\u0443\u0440\u0441\u043E\u0440 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B.");
+            break;
+          }
           let failure2 = null, orderRecord = null;
           if (inspected.status === "TZ_APPROVED") {
+            checkpoint = { ...checkpoint, browser_scans: (checkpoint.browser_scans || 0) + 1 };
             activeOrder = String(order);
+            stage = "collecting_approvals";
             let collected;
             try {
               await waitForPreviousOrderTab();
@@ -4573,6 +4733,7 @@
           if (!orderRecord) batch.discardOrder(String(order));
           cursor++;
           testedThisSession++;
+          lastActivityAt = (/* @__PURE__ */ new Date()).toISOString();
           await persistJournal(currentMode(), orderRecord);
           if (inflightDownload && !await recoverDownload(false)) break;
           if (activePending().length >= RANGE_ARCHIVE_SIZE || activeBytes() > 12e7 || inflightDownload && batch.bytesReceived > 16e7) {
@@ -4588,7 +4749,7 @@
           show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430: " + order + " \u2014 " + (failure2 ? "\u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430, \u0432\u043D\u0435\u0441\u0435\u043D\u0430 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043E\u0448\u0438\u0431\u043E\u043A (" + failure2.reason + ")" : inspected.status));
           if (!paused && !stopped) await waitDynamicDelay();
         }
-        if ((stopped || cursor > config.end) && pending.length) {
+        if ((stopped && !stopWithoutZip || cursor > config.end) && pending.length) {
           if (activePending().length && !await saveBatch(stopped ? "stopped partial" : "final partial")) paused = true;
           if (inflightDownload && !await recoverDownload(true)) paused = true;
         }
@@ -4600,7 +4761,7 @@
         if (delayDirty) {
           await saveCheckpoint(changeRangeDelay(checkpoint, liveDelayMs));
         }
-        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410: \u043E\u0431\u0449\u0438\u0439 \u0441\u0431\u043E\u0439 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438, \u043B\u0438\u043C\u0438\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432 \u0438\u043B\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F." : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C; \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E, \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432." : cursor > config.end ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E.";
+        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410: \u043E\u0431\u0449\u0438\u0439 \u0441\u0431\u043E\u0439 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438, \u043B\u0438\u043C\u0438\u0442 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432 \u0438\u043B\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F." : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C; \u043D\u0435\u043F\u043E\u043B\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0432 \u043F\u0430\u043C\u044F\u0442\u0438." : stopped ? stopWithoutZip ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E; ZIP \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E." : "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E, \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0447\u0430\u0441\u0442\u0438\u0447\u043D\u044B\u0439 \u0430\u0440\u0445\u0438\u0432." : cursor > config.end ? "\u0414\u0438\u0430\u043F\u0430\u0437\u043E\u043D \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E.";
       } catch (error) {
         lastError = String(error?.message || "MANUAL_RANGE_SCAN_FAILED");
         message = "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 \u043F\u043E \u043E\u0448\u0438\u0431\u043A\u0435: " + lastError;
@@ -4608,6 +4769,7 @@
         activeOrder = null;
         running = false;
         setBusy(false);
+        stage = "idle";
         if (checkpoint) {
           try {
             await persistJournal(stopped || cursor > config.end ? "stopped" : "paused");
@@ -4628,6 +4790,8 @@
       checkpoint = cp;
       config = { ...cp.config };
       cursor = cp.committed_next;
+      networkHealth = normalizeNetworkHealth(cp.network);
+      lastActivityAt = cp.updated_at || null;
       startInput.value = String(cp.config.start);
       endInput.value = String(cp.config.end);
       rateInput.value = String(cp.config.delay_ms);
@@ -4671,6 +4835,8 @@
         const rate = rangeConfig(cp.config.start, cp.config.end, journal.delay_ms);
         liveDelayMs = rate.delay_ms;
         rateInput.value = String(liveDelayMs);
+        networkHealth = normalizeNetworkHealth(journal.network || cp.network);
+        lastActivityAt = journal.updated_at || lastActivityAt;
         pendingRegistry = journal.pending_registry.slice();
         pending = pendingRegistry.slice();
         failedPending = journal.failed_pending.slice();
@@ -4707,23 +4873,55 @@
       receive: (message, expectedOrder) => batch.receive(message, expectedOrder),
       remote: async (action, payload = {}) => {
         await initialLoadPromise;
-        if (action === "status") return {
-          mode: "range",
-          running,
-          paused,
-          stopped,
-          checked: checkpoint?.checked_committed || 0,
-          next_order: cursor,
-          range_start: config?.start || RANGE_MIN,
-          range_end: config?.end || RANGE_MAX,
-          archives: checkpoint?.archives_completed || 0,
-          found: checkpoint?.found_committed || 0,
-          pending: pending.length,
-          downloading: !!inflightDownload,
-          delay_ms: liveDelayMs,
-          blocked: restoreBlocked,
-          error: lastError
-        };
+        if (action === "status") {
+          let archive_audit = null;
+          if (inflightDownload) {
+            const d = inflightDownload;
+            try {
+              archive_audit = await audit("check", {
+                after_id: d.after_id,
+                byte_length: d.byte_length,
+                expected_filename: d.filename
+              });
+            } catch {
+              archive_audit = { status: "VISION_DOWNLOAD_AUDIT_UNAVAILABLE" };
+            }
+          }
+          return {
+            mode: "range",
+            running,
+            paused,
+            stopped,
+            archive_audit,
+            download_details: inflightDownload ? {
+              filename: inflightDownload.filename,
+              bytes: inflightDownload.byte_length,
+              files_verified: inflightDownload.verified_files ?? null,
+              files_missing: inflightDownload.missing_files ?? null
+            } : null,
+            checked: config && cursor !== null ? cursor - config.start : 0,
+            total: config ? config.end - config.start + 1 : RANGE_MAX - RANGE_MIN + 1,
+            progress_percent: config && cursor !== null ? Math.floor(100 * (cursor - config.start) / (config.end - config.start + 1)) : 0,
+            next_order: cursor,
+            phase: stage,
+            last_activity_at: lastActivityAt,
+            network: { ...networkHealth },
+            last_archive: checkpoint?.last_archive || null,
+            files_archived: checkpoint?.files_committed || 0,
+            files_staged: pending.reduce((n, x) => n + (x.files || 0), 0),
+            direct_http_checks: networkHealth.attempts,
+            browser_scans: checkpoint?.browser_scans || 0,
+            range_start: config?.start || RANGE_MIN,
+            range_end: config?.end || RANGE_MAX,
+            archives: checkpoint?.archives_completed || 0,
+            found: checkpoint?.found_committed || 0,
+            pending: pending.length,
+            downloading: !!inflightDownload,
+            delay_ms: liveDelayMs,
+            blocked: restoreBlocked,
+            error: lastError
+          };
+        }
         if (action === "delay") {
           if (!Number.isSafeInteger(payload.value) || payload.value < 100 || payload.value > 6e4)
             throw Error("MANUAL_RANGE_DELAY_INVALID");
@@ -4740,12 +4938,18 @@
           return { status: "VISION_SCAN_PAUSE_REQUESTED" };
         }
         if (action === "stop") {
-          stopBtn.click();
+          stopped = true;
+          stopWithoutZip = true;
+          await persistMode("stopped");
           return { status: "VISION_SCAN_STOP_REQUESTED" };
         }
         if (action === "save") {
           saveBtn.click();
           return { status: "VISION_SCAN_ZIP_SAVE_REQUESTED" };
+        }
+        if (action === "reset") {
+          if (payload.confirmed !== true) return { status: "VISION_RESET_CONFIRMATION_REQUIRED" };
+          return await reset(true);
         }
         if (action === "export") {
           registryBtn.click();
@@ -4994,6 +5198,8 @@
     let running = false, paused = false, stopped = false, activeOrder = null;
     let currentDelay = 1200, lastError = null, checkedSession = 0;
     let restoreBlocked = false, writeChain = Promise.resolve();
+    let networkHealth = freshNetworkHealth(), lastActivityAt = null;
+    let stopWithoutZip = false, stage = "idle";
     let init = Promise.resolve(false);
     const write = (fn) => {
       writeChain = writeChain.catch(() => {
@@ -5003,7 +5209,7 @@
     const currentMode = () => stopped ? "stopped" : paused ? "paused" : running ? "running" : "paused";
     function show(message = "") {
       const next = state && state.index < state.total ? String(queue[state.index]) : "\u2014";
-      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438: " + activeRows().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (state?.download ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438: " + activeRows().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (state?.download ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + " \xB7 \u0441\u0435\u0442\u044C: " + networkHealth.state + " \xB7 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432 GET: " + networkHealth.retries + " \xB7 \u0441\u0435\u0442\u0435\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A: " + networkHealth.transient_errors + " \xB7 \u0444\u0430\u0437\u0430: " + stage + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     const activeRows = () => pending.filter((row) => !state?.download?.order_ids?.includes(row.id));
     const activeBytes = () => activeRows().reduce((sum, row) => sum + row.transfers.reduce((n, t) => n + (t.data?.byteLength || 0), 0), 0);
@@ -5089,6 +5295,17 @@
         download: null,
         archive_count: state.archive_count + 1,
         found_committed: state.found_committed + rows.length,
+        files_committed: (state.files_committed || 0) + (Number.isInteger(info.verified_files) ? info.verified_files : rows.reduce((n, x) => n + (x.files || 0), 0)),
+        last_archive: {
+          filename: info.filename,
+          bytes: info.bytes,
+          orders: rows.length,
+          files_verified: info.verified_files ?? null,
+          files_missing: info.missing_files ?? null,
+          entry_count: info.entry_count ?? null,
+          confirmed_at: (/* @__PURE__ */ new Date()).toISOString(),
+          status: "CHROME_COMPLETE"
+        },
         mode: currentMode()
       };
       await write(() => commitOrderFileArchive(updated, rows));
@@ -5193,7 +5410,10 @@
           bytes: result.blob.size,
           filename,
           order_ids: rows.map((x) => x.id),
-          stage: "preparing"
+          stage: "preparing",
+          verified_files: result.counts.verified_files,
+          missing_files: result.counts.missing_files,
+          entry_count: result.entry_count
         };
         const snapshot = { ...state, download, mode: currentMode() };
         await write(() => saveOrderFileStatus(snapshot));
@@ -5256,6 +5476,9 @@
         pending = [];
         batch = new ApprovalBatchSession();
         checkedSession = 0;
+        networkHealth = freshNetworkHealth();
+        lastActivityAt = null;
+        stopWithoutZip = false;
         lastError = null;
         restoreBlocked = false;
         paused = stopped = false;
@@ -5272,10 +5495,10 @@
       fileInput.value = "";
       void importFile(file);
     });
-    async function reset() {
+    async function reset(remote = false) {
       await init;
-      if (running || getBusy()) return;
-      if (typeof globalThis.confirm === "function" && !globalThis.confirm(
+      if (running || getBusy()) return { status: "VISION_RESET_STOP_FIRST" };
+      if (!remote && typeof globalThis.confirm === "function" && !globalThis.confirm(
         "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0435\u0441\u044C \u0438\u043C\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u044B\u0439 \u0441\u043F\u0438\u0441\u043E\u043A, \u0440\u0435\u0437\u0443\u043B\u044C\u0442\u0430\u0442\u044B \u0438 \u043A\u043E\u043D\u0442\u0440\u043E\u043B\u044C\u043D\u0443\u044E \u0442\u043E\u0447\u043A\u0443? \u0421\u043A\u0430\u0447\u0430\u043D\u043D\u044B\u0435 ZIP \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u043D\u0430 \u0434\u0438\u0441\u043A\u0435."
       )) return;
       try {
@@ -5285,15 +5508,20 @@
         queue = state = null;
         pending = [];
         batch = new ApprovalBatchSession();
+        networkHealth = freshNetworkHealth();
+        lastActivityAt = null;
+        stopWithoutZip = false;
         checkedSession = 0;
         lastError = null;
         restoreBlocked = false;
         paused = stopped = false;
         saveBtn.disabled = true;
         show("\u0421\u043F\u0438\u0441\u043E\u043A \u0438 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043E\u0447\u0438\u0449\u0435\u043D\u044B");
+        return { status: "VISION_RESET_COMPLETE" };
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_RESET_FAILED");
         show();
+        return { status: "VISION_RESET_FAILED" };
       }
     }
     async function exportRegistry() {
@@ -5377,10 +5605,29 @@
         }
         while (state.index < state.total && !paused && !stopped && !isClosed()) {
           const id = queue[state.index], order_number = String(id);
-          const inspected = await probeTzForOrder(id, { explicitList: true });
+          stage = "checking_order";
+          lastActivityAt = (/* @__PURE__ */ new Date()).toISOString();
+          const measured = await controlledOrderProbe(id, (n) => probeTzForOrder(n, { explicitList: true }), { health: networkHealth });
+          networkHealth = measured.health;
+          const inspected = measured.result;
+          if (measured.halt) {
+            lastError = measured.reason;
+            const blocked = {
+              ...state,
+              network: networkHealth,
+              mode: "paused",
+              last_activity_at: lastActivityAt
+            };
+            await write(() => saveOrderFileStatus(blocked));
+            state = blocked;
+            paused = true;
+            show("\u041E\u0431\u043D\u0430\u0440\u0443\u0436\u0435\u043D \u043E\u0431\u0449\u0438\u0439 \u0441\u0431\u043E\u0439 \u0441\u0435\u0442\u0438. \u041E\u0447\u0435\u0440\u0435\u0434\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430.");
+            break;
+          }
           let record = null, failure2 = null;
           if (inspected.status === "TZ_APPROVED") {
             activeOrder = order_number;
+            stage = "collecting_approvals";
             let collected;
             try {
               await waitForPreviousOrder();
@@ -5434,10 +5681,14 @@
             index: state.index + 1,
             failed_count: state.failed_count + (failure2 ? 1 : 0),
             delay_ms: currentDelay,
-            mode: currentMode()
+            mode: currentMode(),
+            network: networkHealth,
+            browser_scans: (state.browser_scans || 0) + (inspected.status === "TZ_APPROVED" ? 1 : 0),
+            last_activity_at: (/* @__PURE__ */ new Date()).toISOString()
           };
           await write(() => saveOrderFileProgress(next, record, failure2));
           state = next;
+          lastActivityAt = next.last_activity_at;
           if (record) pending.push(record);
           else batch.discardOrder(order_number);
           checkedSession++;
@@ -5448,12 +5699,12 @@
           show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440: " + order_number + " \u2014 " + (failure2 ? failure2.reason : inspected.status));
           if (!paused && !stopped) await dynamicDelay();
         }
-        if ((stopped || state.index >= state.total) && pending.length) {
+        if ((stopped && !stopWithoutZip || state.index >= state.total) && pending.length) {
           if (activeRows().length && !await saveBatch(stopped ? "\u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430" : "\u043E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430"))
             paused = true;
           if (state.download && !await recoverDownload(true)) paused = true;
         }
-        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041B\u0415\u041D\u041E: " + lastError : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C. \u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u0420\u0435\u0435\u0441\u0442\u0440 \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : state.index >= state.total ? "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E.";
+        message = lastError ? "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041B\u0415\u041D\u041E: " + lastError : paused ? "\u041F\u0410\u0423\u0417\u0410. \u041C\u043E\u0436\u043D\u043E \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C. \u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u0430\u0440\u0442\u0438\u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : stopped ? stopWithoutZip ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u041A\u0443\u0440\u0441\u043E\u0440 \u0438 \u0444\u0430\u0439\u043B\u044B \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B \u0432 IndexedDB; ZIP \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E." : "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E. \u0420\u0435\u0435\u0441\u0442\u0440 \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u044B." : state.index >= state.total ? "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043B\u043D\u043E\u0441\u0442\u044C\u044E \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D." : "\u0421\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E.";
       } catch (error) {
         lastError = String(error?.message || "MANUAL_ORDER_LIST_SCAN_FAILED");
         message = "\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u041A\u0410 \u041F\u041E \u041E\u0428\u0418\u0411\u041A\u0415: " + lastError;
@@ -5461,6 +5712,7 @@
         activeOrder = null;
         running = false;
         setBusy(false);
+        stage = "idle";
         if (state) await setMode(stopped || state.index >= state.total ? "stopped" : "paused");
         startBtn.disabled = resetBtn.disabled = false;
         pauseBtn.disabled = stopBtn.disabled = true;
@@ -5483,6 +5735,8 @@
       }
       currentDelay = state.delay_ms;
       rateInput.value = String(currentDelay);
+      networkHealth = normalizeNetworkHealth(state.network);
+      lastActivityAt = state.last_activity_at || state.updated_at || null;
       if (saved.pending.some((x) => !Array.isArray(x.transfers) || !x.transfers.length))
         throw Error("MANUAL_ORDER_LIST_PENDING_INVALID");
       batch = new ApprovalBatchSession();
@@ -5515,14 +5769,43 @@
       remote: async (action, payload = {}) => {
         if (action === "status") {
           await init;
+          let archive_audit = null;
+          if (state?.download) {
+            const d = state.download;
+            try {
+              archive_audit = await audit("check", {
+                after_id: d.after_id,
+                byte_length: d.bytes,
+                expected_filename: d.filename
+              });
+            } catch {
+              archive_audit = { status: "VISION_DOWNLOAD_AUDIT_UNAVAILABLE" };
+            }
+          }
           return {
             mode: "file",
             running,
             paused,
             stopped,
+            archive_audit,
+            download_details: state?.download ? {
+              filename: state.download.filename,
+              bytes: state.download.bytes,
+              files_verified: state.download.verified_files ?? null,
+              files_missing: state.download.missing_files ?? null
+            } : null,
             filename: state?.filename || null,
             total: state?.total || 0,
             checked: state?.index || 0,
+            progress_percent: state?.total ? Math.floor(100 * state.index / state.total) : 0,
+            last_activity_at: lastActivityAt || state?.updated_at || null,
+            phase: stage,
+            network: { ...networkHealth },
+            last_archive: state?.last_archive || null,
+            files_archived: state?.files_committed || 0,
+            files_staged: pending.reduce((n, x) => n + (x.files || 0), 0),
+            direct_http_checks: networkHealth.attempts,
+            browser_scans: state?.browser_scans || 0,
             next_order: queue && state?.index < state?.total ? String(queue[state.index]) : null,
             archives: state?.archive_count || 0,
             found: state?.found_committed || 0,
@@ -5561,12 +5844,18 @@
           return { status: "VISION_SCAN_PAUSE_REQUESTED" };
         }
         if (action === "stop") {
-          stopBtn.click();
+          stopped = true;
+          stopWithoutZip = true;
+          await setMode("stopped");
           return { status: "VISION_SCAN_STOP_REQUESTED" };
         }
         if (action === "save") {
           saveBtn.click();
           return { status: "VISION_SCAN_ZIP_SAVE_REQUESTED" };
+        }
+        if (action === "reset") {
+          if (payload.confirmed !== true) return { status: "VISION_RESET_CONFIRMATION_REQUIRED" };
+          return await reset(true);
         }
         if (action === "export") {
           exportBtn.click();
@@ -5850,7 +6139,7 @@
         if (message?.op !== "vision-engine-command-v1") return false;
         if (sender?.id !== chrome.runtime.id || closed) return false;
         const kind = message.mode, action = message.action;
-        if (!["file", "range"].includes(kind) || !["status", "import", "start", "pause", "stop", "save", "export", "delay"].includes(action) || kind === "range" && action === "import") {
+        if (!["file", "range"].includes(kind) || !["status", "import", "start", "pause", "stop", "reset", "save", "export", "delay"].includes(action) || kind === "range" && action === "import") {
           respond({ status: "VISION_ENGINE_COMMAND_DENIED" });
           return false;
         }
