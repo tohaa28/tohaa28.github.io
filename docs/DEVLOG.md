@@ -4,6 +4,14 @@
 Изолированное сравнение: draft PR https://github.com/tohaa28/tohaa28.github.io/pull/4
 Правило: любой цикл должен заканчиваться проверяемым результатом (commit + тесты + статус + ограничения), а не обещанием. Не редактировать действующую Макетную и не сливать черновой PR без независимой приёмки.
 
+## M3.65 — generic HTTP auth/rate-limit fail-closed regression (2026-11-20)
+
+- Verified pre-change PR #4: OPEN, draft=true, merged=false, HEAD `3fba348a2d2d55f19a8fa473de76f797996ed1b1`. Compared with `6ce0b37e`: 20 commits ahead, 0 behind. Existing CI on exact source HEAD: UI smoke [44694527192](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694527192), raster safety [44694527123](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694527123), rules/dataset safety [44694527255](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694527255) all SUCCESS; CircleCI `vision-contract` and `vision-raster` success. Preview publish on this SHA not independently confirmed.
+- `04c2e4941df74d9c234efda4a3f356c25349f976`: fixed `vision/orders/approval-network-control.mjs` so generic `MANUAL_ORDER_HTTP_STATUS` 401/403 maps to auth halt, 429 maps to rate-limit halt; 408 and 5xx remain transient. This closes a fail-open case where an HTTP error was treated as an ordinary `other` result and scanning could continue.
+- `936d1a9f97ceb883d03859065ac3d4758af72da5`: added synthetic Node regression covering 401, 403, 429, one probe only, halt reason, no retry and no response-body leak into network health. No customer data or network requests in fixtures.
+- CI for the new code/test HEAD was not available immediately after the commits; no PASS claimed for these new tests. Local checkout still blocked by DNS `Could not resolve host: github.com`; triple independent ROI/PDF/private-stage runs not performed. Preview publish remains unconfirmed. PR #4 confirmed draft=true, merged=false after the test commit.
+- Next: verify exact-head GitHub/CircleCI results, run independent three-pass synthetic ROI/adjudication, PDF `--all`, private staging (including 512 MiB limits), Chromium 404/MV3 `reference_state`, and verify isolated preview publish. Real-world accuracy, verified constructor/print method/physical scale, ICC/spot, two real independent expert ROI votes and verified family holdout remain blocked. `training_ready=false`, `production_approved=false`, unknown => MANUAL. No production edits, no PR merge, no private corpus upload.
+
 ## M3.60 — verified CI for M3.59; regression execution boundary (2026-11-20)
 
 - Before change HEAD: `e156b7827ab7ecd15254f5248aae506093e107b0`; branch comparison against this SHA: identical (ahead=0, behind=0). PR #4: OPEN, draft=true, merged=false.
