@@ -135,6 +135,27 @@ class ReviewWorkflowTests(unittest.TestCase):
             review.adjudicate(self.root, case_id=case, expert="expert_d",
                               verdict="confirmed_defect")
 
+    def test_proposer_cannot_adjudicate_three_synthetic_disagreements(self):
+        """The ROI proposer is not an independent third reviewer."""
+        for cycle in range(3):
+            with self.subTest(cycle=cycle):
+                case = self.proposal(x=12.0 + cycle)
+                review.vote(self.root, case_id=case, expert="expert_a",
+                            verdict="confirmed_defect")
+                review.vote(self.root, case_id=case, expert="expert_b",
+                            verdict="false_positive")
+                with self.assertRaisesRegex(
+                    ValueError, "^ADJUDICATOR_MUST_BE_INDEPENDENT$"
+                ):
+                    review.adjudicate(self.root, case_id=case, expert="designer",
+                                      verdict="confirmed_defect")
+                state = next(item for item in review.queue(self.root)
+                             if item["case_id"] == case)
+                self.assertEqual(state["state"], "DISAGREEMENT_NEEDS_ADJUDICATION")
+                self.assertFalse(state["adjudicated"])
+                self.assertFalse(state["training_approved"])
+        self.assertEqual(review.summary(self.root)["training_approved"], 0)
+
     def test_identity_and_votes_are_immutable(self):
         case = self.proposal()
         with self.assertRaisesRegex(ValueError, "REVIEWER_MUST_BE_INDEPENDENT"):
