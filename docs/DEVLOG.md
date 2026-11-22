@@ -2083,3 +2083,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Change:** 74f8719c3b3c5babc00c0c6ae36f1a7e0500a81e updates only tests/test_vision_private_corpus_stage.py. Synthetic HMAC rotation test now repeats the rotated-key staging three times and asserts stable family/content pseudonyms, identical summaries, and automatic_training_enabled=false; restoring the original key must reproduce both original pseudonyms. No real data or secrets used.
 
 **Verification:** new test NOT independently executed locally; new-HEAD CI pending at write time. 512 MB x3 opt-in streaming/RSS budget still unverified. No real dual-voice ROI/adjudication, proven constructor/physical mm/process, ICC/spot, verified family holdout or authenticated anonymous 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No production files modified, PR merge or customer material upload.
+
+
+## 2026-11-23 — M3.15 / triple synthetic independent ROI adjudication regression
+
+**Pre-change HEAD:** 792e806cfaae3d195004bfc67d4c5179d36c4301, branch compare identical. PR #4 OPEN, draft=true, merged=false confirmed via GitHub API before write. Exact pre-change GitHub Actions: UI smoke 45054540842 SUCCESS, raster safety 45054540859 SUCCESS, rules/dataset safety 45054540930 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact SHA NOT VERIFIED.
+
+**Change:** 781f4656960f5ed098375a453d651cb4c0ed4bdb updates only tests/test_vision_roi_review.py. Adds three separate synthetic ROI proposals with two independent conflicting expert votes and a third independent adjudicator; checks DISAGREEMENT_NEEDS_ADJUDICATION then ADJUDICATED_RESEARCH_ONLY, uncertain label, physical_scale_verified=false, training_approved=false and no automatic training. This is a synthetic test of workflow safety, NOT three real independent expert reviews.
+
+**Verification:** new test NOT independently executed locally; post-change CI not yet verified at entry time. No real customer material, filenames, hashes, keys or expert answers uploaded. The 512 MB x3 resource/RSS bounded runner is still missing and opt-in 512 MB execution unverified. Four-contour preview publish not confirmed. Chromium 404/MV3 anonymous reference_state, PDF --all real audit, physical mm constructor/process, ICC/spot and verified family holdout remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No production changes or PR merge.
