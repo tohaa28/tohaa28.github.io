@@ -197,6 +197,19 @@ class ReviewWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "EXPERT_ID_INVALID"):
             self.proposal(expert="<html>")
 
+    def test_malformed_technology_metadata_fails_closed_three_times(self):
+        """Malformed process metadata must not create reviewable ROI cases."""
+        for cycle in range(3):
+            with self.subTest(cycle=cycle):
+                for invalid in (None, 0, False, [], {}, "unknown process"):
+                    with self.assertRaisesRegex(
+                        ValueError, "^ROI_CLASS_OR_TECHNOLOGY_INVALID$"
+                    ):
+                        self.proposal(technology=invalid)
+                self.assertEqual(review.summary(self.root)["total_cases"], 0)
+                self.assertEqual(review.summary(self.root)["training_approved"], 0)
+                self.assertFalse(review.summary(self.root)["automatic_training_enabled"])
+
     def test_modified_original_cannot_be_used_for_new_or_existing_roi_votes(self):
         case = self.proposal()
         item = lab.list_samples(self.root)[0]
