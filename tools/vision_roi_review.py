@@ -102,7 +102,9 @@ def propose(root: Path, *, sample_id: str, expert: str, kind: str,
             technology: str, units: str, x: float, y: float,
             width: float, height: float, page_number: int | None = None) -> str:
     ensure_expert(expert)
-    if kind not in KINDS or units not in UNITS or not TECHNOLOGY.fullmatch(technology):
+    if (not isinstance(kind, str) or kind not in KINDS or
+        not isinstance(units, str) or units not in UNITS or
+        not isinstance(technology, str) or not TECHNOLOGY.fullmatch(technology)):
         raise ValueError("ROI_CLASS_OR_TECHNOLOGY_INVALID")
     if any(type(n) not in (int, float) or not math.isfinite(n)
            for n in (x, y, width, height)):
