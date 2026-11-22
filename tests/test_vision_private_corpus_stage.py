@@ -107,6 +107,20 @@ class PrivateCorpusStageTests(unittest.TestCase):
         self.assertFalse(rotated_summary["automatic_training_enabled"])
         self.assertFalse(rotated_task["training_approved"])
         self.assertNotIn("7771769", json.dumps(rotated))
+        # Three independent repeats must reproduce each keyed pseudonym exactly.
+        # Restoring the original key must restore the original tokens.
+        for attempt in range(3):
+            with self.subTest(attempt=attempt):
+                again_summary, again = stage.stage(self.manifest, self.out, self.key)
+                self.assertEqual(again_summary, rotated_summary)
+                self.assertEqual(again["review_tasks"][0]["family_token"], rotated_task["family_token"])
+                self.assertEqual(again["review_tasks"][0]["content_token"], rotated_task["content_token"])
+                self.assertFalse(again_summary["automatic_training_enabled"])
+        self.key.write_bytes(bytes(range(32)))
+        restored_summary, restored = stage.stage(self.manifest, self.out, self.key)
+        self.assertEqual(restored_summary, first_summary)
+        self.assertEqual(restored["review_tasks"][0]["family_token"], first_task["family_token"])
+        self.assertEqual(restored["review_tasks"][0]["content_token"], first_task["content_token"])
 
     def test_streams_files_exceeding_browser_limit_and_caps_huge_files(self):
         big = b"%PDF-" + b"X" * 16_000_100
