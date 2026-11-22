@@ -2092,3 +2092,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Change:** 781f4656960f5ed098375a453d651cb4c0ed4bdb updates only tests/test_vision_roi_review.py. Adds three separate synthetic ROI proposals with two independent conflicting expert votes and a third independent adjudicator; checks DISAGREEMENT_NEEDS_ADJUDICATION then ADJUDICATED_RESEARCH_ONLY, uncertain label, physical_scale_verified=false, training_approved=false and no automatic training. This is a synthetic test of workflow safety, NOT three real independent expert reviews.
 
 **Verification:** new test NOT independently executed locally; post-change CI not yet verified at entry time. No real customer material, filenames, hashes, keys or expert answers uploaded. The 512 MB x3 resource/RSS bounded runner is still missing and opt-in 512 MB execution unverified. Four-contour preview publish not confirmed. Chromium 404/MV3 anonymous reference_state, PDF --all real audit, physical mm constructor/process, ICC/spot and verified family holdout remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No production changes or PR merge.
+
+
+## 2026-11-23 — M3.16 / proposer-independence adjudication regression
+
+**Pre-change HEAD:** 118747dd9bb6851a69c19e6eb1c49b7c4bd3ec2d; PR #4 OPEN, draft=true, merged=false confirmed via GitHub connector. Exact-head GitHub Actions: UI smoke 45065934536 SUCCESS, raster safety 45065934585 SUCCESS, rules/dataset safety 45065934503 SUCCESS. CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact SHA NOT VERIFIED.
+
+**Change:** 78bcb1b32727a7417ff6ed3a569bd9ebb4a8d412 updates only tests/test_vision_roi_review.py: three synthetic disagreement cycles verify that the original ROI proposer cannot serve as the third adjudicator; rejection must leave the case awaiting adjudication and training unapproved. No production module or private material changed. This is a regression test for existing independence enforcement, not new real expert evidence.
+
+**Verification:** Test not independently executed in this cycle. Post-change CI and CircleCI pending at log-writing time; no PASS claim for changed SHA. Optional 512 MB triple run with measured peak RSS, preview publish, authenticated anonymous 404/MV3 reference_state, real PDF --all, dual real expert ROI, verified constructor/physical scale/print method, ICC/spot and verified family holdout remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No customer data, SHA, keys or original filenames uploaded. No PR merge.
