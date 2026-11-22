@@ -279,5 +279,30 @@ class ReviewWorkflowTests(unittest.TestCase):
         self.assertEqual(review.queue(self.root)[0]["review_count"], 0)
 
 
+    def test_three_independent_disagreement_adjudication_cycles_remain_research_only(self):
+        """Three synthetic review cycles never imply physical scale or training approval."""
+        for cycle in range(3):
+            with self.subTest(cycle=cycle):
+                case = self.proposal(x=2.0 + cycle)
+                review.vote(self.root, case_id=case, expert="expert_a",
+                            verdict="confirmed_defect")
+                review.vote(self.root, case_id=case, expert="expert_b",
+                            verdict="false_positive")
+                pending = next(item for item in review.queue(self.root)
+                               if item["case_id"] == case)
+                self.assertEqual(pending["state"], "DISAGREEMENT_NEEDS_ADJUDICATION")
+                self.assertFalse(pending["training_approved"])
+                review.adjudicate(self.root, case_id=case, expert="expert_c",
+                                  verdict="uncertain")
+                finished = next(item for item in review.queue(self.root)
+                                if item["case_id"] == case)
+                self.assertEqual(finished["state"], "ADJUDICATED_RESEARCH_ONLY")
+                self.assertEqual(finished["research_label"], "uncertain")
+                self.assertFalse(finished["physical_scale_verified"])
+                self.assertFalse(finished["training_approved"])
+                self.assertEqual(review.summary(self.root)["training_approved"], 0)
+                self.assertEqual(lab.report(self.root)["auto_approved_training_samples"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
