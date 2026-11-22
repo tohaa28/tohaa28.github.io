@@ -2054,3 +2054,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification:** actual 512 MB opt-in execution NOT PERFORMED in this cycle; no performance, RAM ceiling or three-pass PASS claim. Post-change GitHub Actions and CircleCI pending. Review-stage two-voice/adjudication triple run, Chromium 404/MV3 real anonymous reference_state, PDF --all real audit and preview publish remain unverified.
 
 **Gates:** independent verified real ROI, trusted constructor/physical mm scale/print method, PDF ICC/spot and verified family holdout missing. `training_ready=false`, `production_approved=false`; unknown => MANUAL. No private customer files, original names, raw SHA or HMAC keys published. No production change or PR merge.
+
+
+## 2026-11-22 — M3.12 / portable opt-in 512 MB memory observation
+
+**Pre-change HEAD:** 2b7e5f1d2f4a277fd7db0c6dc990cebdba3e0281; compare identical; PR #4 OPEN, draft=true, merged=false, head feature/printcheck-vision-copy-v01. GitHub Actions on pre-change SHA: UI smoke 45021795689 SUCCESS, raster safety 45021795752 SUCCESS, rules/dataset safety 45021795699 SUCCESS. CircleCI vision-contract and vision-raster SUCCESS. Exact-SHA preview publish NOT VERIFIED.
+
+**Change:** b838b76202b7c7488cd736ad8ca84b1929a09b9a changes only tests/test_vision_private_corpus_stage.py. Opt-in 512 MB three-pass test replaces unconditional POSIX-only `resource` import and nonportable same-process ru_maxrss high-water comparison with `tracemalloc` allocation observation. `tracemalloc` is explicitly NOT an RSS measurement and proves no absolute RAM ceiling. Existing streamed SHA, 511999999/512000000/512000001-byte boundaries, training-off assertions and opt-in guard remain. This is a portability correction, not resource certification.
+
+**Verification:** No independent local Python execution or opt-in 512 MB three-pass execution performed in this cycle. CI on new HEAD pending; do not claim PASS. Next task: separate bounded subprocess with real peak RSS, timeout and explicit disk/RAM budget, followed by 3x synthetic execution. Real ROI dual votes/adjudication, verified constructor/print process/physical scale, ICC/spot, family holdout and anonymous 404/MV3 reference_state remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No private customer files, SHA, names, keys or images uploaded; no production changes or PR merge.
