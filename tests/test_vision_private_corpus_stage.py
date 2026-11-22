@@ -160,5 +160,48 @@ class PrivateCorpusStageTests(unittest.TestCase):
         self.assertNotIn(str(secret), json.dumps(summary))
 
 
+    def test_same_size_sha_substitution_is_rejected_three_times(self):
+        """A changed PDF with identical byte count must never pass verification."""
+        original = b"%PDF-1.7\\nSYNTHETIC-ALPHA\\n"
+        changed = b"%PDF-1.7\\nSYNTHETIC-OMEGA\\n"
+        self.assertEqual(len(original), len(changed))
+        row = self.add(1, 1, "7771769", "unlabeled_reference", original)
+        self.save([row])
+        (self.root / row["stored_as"]).write_bytes(changed)
+        for attempt in range(3):
+            with self.subTest(attempt=attempt):
+                summary, output = stage.stage(self.manifest, self.out, self.key)
+                self.assertEqual(summary["verified_pdf_files"], 0)
+                self.assertEqual(summary["verification_statuses"]["SOURCE_SHA256_MISMATCH"], 1)
+                self.assertEqual(output["review_tasks"][0]["source_status"], "SOURCE_SHA256_MISMATCH")
+                self.assertFalse(output["review_tasks"][0]["training_approved"])
+                self.assertFalse(summary["automatic_training_enabled"])
+
+    def test_stream_limit_boundary_three_passes_synthetic(self):
+        """Exercise actual streamed bytes at the minimum allowed 16 MB cap."""
+        limit = 16_000_000
+        payload = b"%PDF-" + b"X" * (limit - 5)
+        row = self.add(1, 1, "7771769", "unlabeled_reference", payload)
+        self.save([row])
+        source = self.root / row["stored_as"]
+        for attempt in range(3):
+            with self.subTest(attempt=attempt, boundary="equal"):
+                summary, _ = stage.stage(self.manifest, self.out, self.key, max_bytes=limit)
+                self.assertEqual(summary["verified_pdf_files"], 1)
+            with source.open("ab") as stream:
+                stream.write(b"X")
+            row["bytes"] = limit + 1
+            row["sha256"] = hashlib.sha256(payload + b"X").hexdigest()
+            self.save([row])
+            with self.subTest(attempt=attempt, boundary="over"):
+                summary, queue = stage.stage(self.manifest, self.out, self.key, max_bytes=limit)
+                self.assertEqual(summary["verification_statuses"]["SOURCE_OVER_LIMIT"], 1)
+                self.assertFalse(queue["review_tasks"][0]["training_approved"])
+            source.write_bytes(payload)
+            row["bytes"] = limit
+            row["sha256"] = hashlib.sha256(payload).hexdigest()
+            self.save([row])
+
+
 if __name__=="__main__":
     unittest.main()
