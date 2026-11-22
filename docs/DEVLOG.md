@@ -2063,3 +2063,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Change:** b838b76202b7c7488cd736ad8ca84b1929a09b9a changes only tests/test_vision_private_corpus_stage.py. Opt-in 512 MB three-pass test replaces unconditional POSIX-only `resource` import and nonportable same-process ru_maxrss high-water comparison with `tracemalloc` allocation observation. `tracemalloc` is explicitly NOT an RSS measurement and proves no absolute RAM ceiling. Existing streamed SHA, 511999999/512000000/512000001-byte boundaries, training-off assertions and opt-in guard remain. This is a portability correction, not resource certification.
 
 **Verification:** No independent local Python execution or opt-in 512 MB three-pass execution performed in this cycle. CI on new HEAD pending; do not claim PASS. Next task: separate bounded subprocess with real peak RSS, timeout and explicit disk/RAM budget, followed by 3x synthetic execution. Real ROI dual votes/adjudication, verified constructor/print process/physical scale, ICC/spot, family holdout and anonymous 404/MV3 reference_state remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No private customer files, SHA, names, keys or images uploaded; no production changes or PR merge.
+
+
+## 2026-11-22 — M3.13 / synthetic private HMAC rotation regression
+
+**Pre-change HEAD:** 6cf733cc25a3c11ab1fc3d8092ad02b6ed380dd7; branch identical, PR #4 open/draft=true/merged=false. GitHub Actions on pre-change HEAD: UI smoke 45043389819 SUCCESS, raster safety 45043389826 SUCCESS, rules/dataset safety 45043389874 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Exact-SHA preview publish NOT VERIFIED.
+
+**Change:** 8d1a64ec3b3f5a9a39591a49b11883965c447964 modifies only tests/test_vision_private_corpus_stage.py, adding a synthetic regression for rotation of the private HMAC grouping key. It asserts both family/content pseudonyms change, verified synthetic PDF count stays stable, no automatic training is enabled, and no raw family identifier appears in the serialized review output. No real customer data, SHA, key or original filename was uploaded.
+
+**Post-change observation:** branch comparison identical, PR #4 still open/draft=true/merged=false. GitHub Actions runs and CircleCI statuses were not yet returned for the changed SHA. The new test has NOT been independently executed in this cycle. No success claim on new HEAD. The 512 MB x3 opt-in resource test and independent child-process peak RSS/time budget remain unexecuted/unimplemented.
+
+**Outstanding:** exact-HEAD UI/raster/rules CI, CircleCI and preview publish; 3x independent ROI votes/adjudication; real anonymous authenticated 404/MV3 reference_state; PDF --all and ICC/spot; trusted physical mm scale and print method; verified real ROI/family holdout. training_ready=false; production_approved=false; unknown => MANUAL. No production modification, PR merge or public customer upload.
