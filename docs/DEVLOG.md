@@ -2043,3 +2043,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Next bounded implementation:** restore executable checkout; independently run 3x synthetic ROI/two voices/adjudication, PDF audit and private staging, then Chromium 404/MV3 with code-only reference_state (STILL_LISTED_IN_POPUP / MISSING_FROM_POPUP / POPUP_RECHECK_UNAVAILABLE) and network-failure classification; add a regression test only for a reproduced gap. Do not bypass auth or infer alternate download endpoints.
 
 **Closed gates:** training_ready=false; production_approved=false; unknown geometry/physical mm/process/ICC/spot => MANUAL. Two independently verified real ROI voices, adjudication, constructor/process linkage and verified family holdout remain missing. Candidate filename labels are unreviewed, not ground truth. No client files, raw hashes, original names, HMAC keys, secrets or private imagery published; no production modification or PR merge.
+
+
+## 2026-11-22 — M3.11 / opt-in 512 MB synthetic streaming boundary
+
+**Pre-change HEAD:** 0cd321b3016c3192e24f423d94619a489b593e89; branch compare identical (ahead=0, behind=0). PR #4 OPEN, draft=true, merged=false; head SHA matched. GitHub Actions on pre-change SHA: UI smoke 45007165731 SUCCESS, raster safety 45007165757 SUCCESS, rules/dataset safety 45007165707 SUCCESS. Preview publish not independently confirmed; CircleCI exact-SHA not rechecked in this change.
+
+**Change:** 00d7a22c548c7fe74df4ca14e0a92901497af510 modifies only `tests/test_vision_private_corpus_stage.py`: opt-in `VISION_RUN_512MB_BOUNDARY=1` synthetic sparse PDF test for 511999999 / 512000000 / 512000001 bytes, repeated three times; real streamed SHA-256 is independently calculated, source status, verified count and training gates are checked. Default CI skips this heavy test to avoid unbudgeted disk/time use. The test observes process high-water memory but DOES NOT enforce a portable absolute RAM ceiling; an isolated resource-budget runner is still needed. No customer files are used.
+
+**Verification:** actual 512 MB opt-in execution NOT PERFORMED in this cycle; no performance, RAM ceiling or three-pass PASS claim. Post-change GitHub Actions and CircleCI pending. Review-stage two-voice/adjudication triple run, Chromium 404/MV3 real anonymous reference_state, PDF --all real audit and preview publish remain unverified.
+
+**Gates:** independent verified real ROI, trusted constructor/physical mm scale/print method, PDF ICC/spot and verified family holdout missing. `training_ready=false`, `production_approved=false`; unknown => MANUAL. No private customer files, original names, raw SHA or HMAC keys published. No production change or PR merge.
