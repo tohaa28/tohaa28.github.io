@@ -4,6 +4,13 @@
 Изолированное сравнение: draft PR https://github.com/tohaa28/tohaa28.github.io/pull/4
 Правило: любой цикл должен заканчиваться проверяемым результатом (commit + тесты + статус + ограничения), а не обещанием. Не редактировать действующую Макетную и не сливать черновой PR без независимой приёмки.
 
+## M3.10 — synthetic streaming boundary and same-length SHA regression (2026-11-22)
+
+- Before change PR #4 OPEN, draft=true, merged=false, source HEAD `df7d983689512c87ef231c2da683c14d41756857`. GitHub Actions exact-head UI smoke [44734919976](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44734919976), raster safety [44734920042](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44734920042), rules/dataset safety [44734919821](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44734919821) all SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on that SHA unconfirmed.
+- Commit `62ba92c0d63b4788627cdceaffeda428bf93bda5`: added synthetic-only three-pass tests for streamed 16,000,000-byte equality/16,000,001-byte refusal and for equal-length source substitution with SHA-256 mismatch. This exercises the actual streaming path at the minimum supported cap. **It does not test the full 512,000,000-byte maximum**, nor prove bounded peak memory.
+- New-head CI and independent local execution NOT confirmed at writing. No PASS claimed for new tests. The next task is a resource-budgeted optional 511,999,999/512,000,000/512,000,001-byte sparse-file boundary suite, measured peak RSS and triple repetition, without CI disk exhaustion.
+- Outstanding: 404/MV3 anonymized reference_state, preview publish, independent ROI/adjudication/PDF/Chromium triple cycles, real expert ROI pair, verified constructor/print method/physical scale, ICC/spot and family holdout. `training_ready=false`, `production_approved=false`; unknown => MANUAL. No customer files, SHA, private keys, or source names published. No production edits or PR merge.
+
 ## M3.65 — generic HTTP auth/rate-limit fail-closed regression (2026-11-20)
 
 - Verified pre-change PR #4: OPEN, draft=true, merged=false, HEAD `3fba348a2d2d55f19a8fa473de76f797996ed1b1`. Compared with `6ce0b37e`: 20 commits ahead, 0 behind. Existing CI on exact source HEAD: UI smoke [44694527192](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694527192), raster safety [44694527123](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694527123), rules/dataset safety [44694527255](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44694527255) all SUCCESS; CircleCI `vision-contract` and `vision-raster` success. Preview publish on this SHA not independently confirmed.
