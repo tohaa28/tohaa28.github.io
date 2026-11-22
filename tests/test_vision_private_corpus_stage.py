@@ -203,5 +203,52 @@ class PrivateCorpusStageTests(unittest.TestCase):
             self.save([row])
 
 
+    @unittest.skipUnless(__import__("os").environ.get("VISION_RUN_512MB_BOUNDARY") == "1",
+                         "Opt-in 512 MB resource regression; never default CI")
+    def test_actual_512mb_boundary_three_passes_opt_in(self):
+        """Sparse synthetic PDF: real streamed SHA and strict decimal-byte cap."""
+        import os
+        import resource
+        limit = stage.MAX_FILE_BYTES
+        self.assertEqual(limit, 512_000_000)
+        source = self.root / "private_originals" / "archive1_file0001.pdf"
+        with source.open("wb") as stream:
+            stream.write(b"%PDF-1.7\\nSYNTHETIC\\n")
+            stream.truncate(limit)
+        row = {
+            "archive": 1, "sequence": 1, "stored_as": "private_originals/archive1_file0001.pdf",
+            "bytes": limit, "sha256": "", "original_filename": "SYNTHETIC.pdf",
+            "order_group": "7771769", "provisional_label": "unlabeled_reference",
+            "filename_defect_tags": [], "label_verification": "NOT_VERIFIED",
+            "training_approved": False
+        }
+        def streamed_sha():
+            digest = hashlib.sha256()
+            with source.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(stage.CHUNK_BYTES), b""):
+                    digest.update(chunk)
+            return digest.hexdigest()
+        for attempt in range(3):
+            for size, accepted in ((limit - 1, True), (limit, True), (limit + 1, False)):
+                with self.subTest(attempt=attempt, size=size):
+                    with source.open("r+b") as stream:
+                        stream.truncate(size)
+                    row["bytes"] = size
+                    row["sha256"] = streamed_sha()
+                    self.save([row])
+                    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                    summary, output = stage.stage(self.manifest, self.out, self.key)
+                    after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                    expected = ("SOURCE_VERIFIED_RESEARCH_ONLY" if accepted
+                                else "SOURCE_OVER_LIMIT")
+                    self.assertEqual(summary["verification_statuses"].get(expected), 1)
+                    self.assertEqual(summary["verified_pdf_files"], int(accepted))
+                    self.assertFalse(summary["automatic_training_enabled"])
+                    self.assertFalse(output["review_tasks"][0]["training_approved"])
+                    # ru_maxrss is KiB on Linux, bytes on macOS; intentionally
+                    # avoid an OS-dependent hard threshold in portable CI.
+                    self.assertGreaterEqual(after, before)
+
+
 if __name__=="__main__":
     unittest.main()
