@@ -2074,3 +2074,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Post-change observation:** branch comparison identical, PR #4 still open/draft=true/merged=false. GitHub Actions runs and CircleCI statuses were not yet returned for the changed SHA. The new test has NOT been independently executed in this cycle. No success claim on new HEAD. The 512 MB x3 opt-in resource test and independent child-process peak RSS/time budget remain unexecuted/unimplemented.
 
 **Outstanding:** exact-HEAD UI/raster/rules CI, CircleCI and preview publish; 3x independent ROI votes/adjudication; real anonymous authenticated 404/MV3 reference_state; PDF --all and ICC/spot; trusted physical mm scale and print method; verified real ROI/family holdout. training_ready=false; production_approved=false; unknown => MANUAL. No production modification, PR merge or public customer upload.
+
+
+## 2026-11-22 — M3.14 / deterministic private HMAC rotation regression
+
+**Pre-change HEAD:** 6794ec274f0a0b907bf1eba269fef4010de0e34d; PR #4 OPEN, draft=true, merged=false, head branch feature/printcheck-vision-copy-v01. Exact-SHA GitHub Actions: UI smoke 45049507142 SUCCESS, raster safety 45049507129 SUCCESS, rules/dataset safety 45049507099 SUCCESS. Preview publish not verified; CircleCI exact-SHA not independently verified.
+
+**Change:** 74f8719c3b3c5babc00c0c6ae36f1a7e0500a81e updates only tests/test_vision_private_corpus_stage.py. Synthetic HMAC rotation test now repeats the rotated-key staging three times and asserts stable family/content pseudonyms, identical summaries, and automatic_training_enabled=false; restoring the original key must reproduce both original pseudonyms. No real data or secrets used.
+
+**Verification:** new test NOT independently executed locally; new-HEAD CI pending at write time. 512 MB x3 opt-in streaming/RSS budget still unverified. No real dual-voice ROI/adjudication, proven constructor/physical mm/process, ICC/spot, verified family holdout or authenticated anonymous 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No production files modified, PR merge or customer material upload.
