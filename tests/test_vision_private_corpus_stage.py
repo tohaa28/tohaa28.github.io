@@ -208,7 +208,7 @@ class PrivateCorpusStageTests(unittest.TestCase):
     def test_actual_512mb_boundary_three_passes_opt_in(self):
         """Sparse synthetic PDF: real streamed SHA and strict decimal-byte cap."""
         import os
-        import resource
+        import tracemalloc
         limit = stage.MAX_FILE_BYTES
         self.assertEqual(limit, 512_000_000)
         source = self.root / "private_originals" / "archive1_file0001.pdf"
@@ -236,18 +236,21 @@ class PrivateCorpusStageTests(unittest.TestCase):
                     row["bytes"] = size
                     row["sha256"] = streamed_sha()
                     self.save([row])
-                    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-                    summary, output = stage.stage(self.manifest, self.out, self.key)
-                    after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                    tracemalloc.start()
+                    try:
+                        summary, output = stage.stage(self.manifest, self.out, self.key)
+                        _, python_peak_bytes = tracemalloc.get_traced_memory()
+                    finally:
+                        tracemalloc.stop()
                     expected = ("SOURCE_VERIFIED_RESEARCH_ONLY" if accepted
                                 else "SOURCE_OVER_LIMIT")
                     self.assertEqual(summary["verification_statuses"].get(expected), 1)
                     self.assertEqual(summary["verified_pdf_files"], int(accepted))
                     self.assertFalse(summary["automatic_training_enabled"])
                     self.assertFalse(output["review_tasks"][0]["training_approved"])
-                    # ru_maxrss is KiB on Linux, bytes on macOS; intentionally
-                    # avoid an OS-dependent hard threshold in portable CI.
-                    self.assertGreaterEqual(after, before)
+                    # tracemalloc tracks Python allocations, NOT process RSS.
+                    # An independent child-process RSS/time budget remains required.
+                    self.assertGreater(python_peak_bytes, 0)
 
 
 if __name__=="__main__":
