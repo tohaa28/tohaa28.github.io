@@ -91,6 +91,23 @@ class PrivateCorpusStageTests(unittest.TestCase):
         self.assertEqual(summary2,summary)
         self.assertEqual(output2,output)
 
+    def test_hmac_key_rotation_changes_tokens_without_training(self):
+        """Synthetic family/content pseudonyms must be key-dependent and fail closed."""
+        row = self.add(1, 1, "7771769", "unlabeled_reference")
+        self.save([row])
+        first_summary, first = stage.stage(self.manifest, self.out, self.key)
+        first_task = first["review_tasks"][0]
+        self.key.write_bytes(bytes(reversed(range(32))))
+        rotated_summary, rotated = stage.stage(self.manifest, self.out, self.key)
+        rotated_task = rotated["review_tasks"][0]
+        self.assertNotEqual(first_task["family_token"], rotated_task["family_token"])
+        self.assertNotEqual(first_task["content_token"], rotated_task["content_token"])
+        self.assertEqual(first_summary["verified_pdf_files"], 1)
+        self.assertEqual(rotated_summary["verified_pdf_files"], 1)
+        self.assertFalse(rotated_summary["automatic_training_enabled"])
+        self.assertFalse(rotated_task["training_approved"])
+        self.assertNotIn("7771769", json.dumps(rotated))
+
     def test_streams_files_exceeding_browser_limit_and_caps_huge_files(self):
         big = b"%PDF-" + b"X" * 16_000_100
         self.save([self.add(1,1,"7771769","unlabeled_reference",big)])
