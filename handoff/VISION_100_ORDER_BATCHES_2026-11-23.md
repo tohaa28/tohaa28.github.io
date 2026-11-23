@@ -48,3 +48,28 @@ v0.2.1 принудительно выполняла `saveBatch` после ка
 ## Ссылки
 Сборка: https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
 Журнал: https://github.com/tohaa28/tohaa28.github.io/blob/feature/printcheck-vision-copy-v01/handoff/VISION_100_ORDER_BATCHES_2026-11-23.md
+
+## Итоговая проверка и публикация
+- Исправлен исторический браузерный тест, ожидавший один ZIP
+  на каждый заказ; новая проверка утверждает наличие неполной партии
+  в IndexedDB до окончания списка.
+- Синтетическая фикстура двух утверждённых заказов скорректирована:
+  у каждого заказа собственный путь изображения. Проверка не ослаблена.
+- Коммит кода/тестов: `9cb539979860bc5e700de388be3f29bd0e7faf69`.
+- Публикация GitHub Actions:
+  https://github.com/tohaa28/tohaa28.github.io/actions/runs/45135965382
+  статус **COMPLETED SUCCESS**.
+- Подтверждено из CI: `Vision v0.2.3 TWO approved -> ONE complete final ZIP, reload PASS`.
+- Подтверждено из CI: `Vision v0.2.3 host approved conversation, attachment, pending resume, final ZIP PASS`.
+- Подтверждено из CI: `Vision 13-message 7-link native approvals: 1 PSD + 6 PDF, bytes and comment mapping PASS`.
+- Проверки `99/100/101` и разделения по объёму выполнены как unit-тесты в Static validation.
+- В корне GitHub Pages main обновлён **только изолированный ZIP расширения**
+  по пути `gifts-layout-workbench-vision/vision-local-lan-extension.zip`;
+  SHA git blob `fc7562067b6eea9e1d4449c77f29f47c29ffd3c6`, размер 93 095 байт.
+- PR #4 остаётся OPEN DRAFT, merged=false; production Макетная не изменена.
+
+### Ограничения
+Настоящая авторизованная сеть `testgifts.local` не доступна через CI.
+Бинарные данные оригиналов №8084489 нельзя проверить без запуска
+сканирования на компьютере пользователя. Ручной выбор каталога
+с File System Access API требует реального взаимодействия в Chrome.
