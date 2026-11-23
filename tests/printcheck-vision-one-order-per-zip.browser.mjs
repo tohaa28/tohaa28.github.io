@@ -188,7 +188,8 @@ try{
  });
  const finalText=await progress.innerText();
  assert.match(finalText,/обработано: 5/);
- assert.match(finalText,/найдено и архивировано: 2/);
+ assert.equal(await page.locator('.vlo-metric').nth(1).locator('strong').innerText(),'2',
+  'archived-order count must be displayed in its own metric');
  assert.equal(requests.filter(r=>r.type==='approved').length,2,
   'approved item preflight + native GET, no duplicate from reload');
  assert.equal(requests.filter(r=>r.type==='approved-second').length,2,
