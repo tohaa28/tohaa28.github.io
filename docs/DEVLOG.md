@@ -2169,3 +2169,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification:** Changes and test source committed through GitHub connector. Independent integrated Python execution and exact-post-change CI were NOT yet verified when this entry was written (isolated container cannot resolve github.com). The existing watchdog still cannot guarantee a peak RSS observation if a child exits before the first valid /proc measurement; kernel-enforced cgroup v2 remains a research task. No claim of OS-enforced memory cap or real 512 MB run.
 
 **Outstanding:** exact-new-HEAD four-contour CI (especially preview publish), CircleCI, optional 512 MB x3 nine-case resource test, real dual independent ROI votes/adjudication, verified constructor/print process/physical mm scale, ICC/spot, verified family holdout, local private PDF --all and authenticated anonymous 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No production modifications, PR merge, private customer PDFs, names, SHA, HMAC keys or expert answers uploaded.
+
+
+## 2026-11-23 — M3.27 / Python syntax repair in resource watchdog
+
+**Pre-change HEAD:** 559ab9156f7c90906dde2d6168ee9ca2b69ab614; compare identical, PR #4 returned by GitHub is:open is:draft search. Exact pre-change Actions UI 45183829923 SUCCESS, raster 45183829803 SUCCESS, rules 45183829900 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact SHA not confirmed.
+
+**Change:** c38bf1bcc5bde4a6466f7264632a1d2fc69f6fc0 fixes literal escaped \\n sequences in tools/vision_resource_runner.py duplicate VmRSS/VmHWM guard which made the Python module syntactically invalid. bb4a690cc72b5d5a2b55e8b891dfa376e0b024c4 adds three compile(source, path, 'exec') regression repetitions in tests/test_vision_resource_runner.py. Changes restricted to experimental tools/tests; no customer data.
+
+**Verification:** connector source inspection confirmed escaped characters before fix; independent integrated test execution and post-change CI pending, not asserted PASS. The new syntax test is synthetic only. Kernel-enforced RSS ceiling/cgroup v2, 512 MB nine-case opt-in, verified dual ROI/adjudication, constructor/physical mm/process, ICC/spot, family holdout, real private PDF --all, authenticated anonymous 404/MV3 reference_state and preview publish remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No production modifications, private uploads or PR merge.
