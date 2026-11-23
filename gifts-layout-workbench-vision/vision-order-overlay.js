@@ -5176,18 +5176,25 @@
   } = {}) {
     const root = el("div");
     root.className = "vlo-file-list";
-    root.style.cssText = "width:100%;border:1px solid #69898b;border-radius:8px;padding:10px;margin:10px 0;";
-    root.append(el("strong", "\u0421\u043F\u0438\u0441\u043E\u043A \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430 TXT"));
-    root.append(el("p", "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0441 \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u043C\u0438 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438: \u043E\u0434\u0438\u043D \u043D\u043E\u043C\u0435\u0440 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435. \u041F\u043E\u0432\u0442\u043E\u0440\u044B \u0443\u0434\u0430\u043B\u044F\u044E\u0442\u0441\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u044F\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u043E\u043C\u0435\u0440\u0430 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430, \u043D\u0435\u0437\u0430\u0432\u0438\u0441\u0438\u043C\u043E \u043E\u0442 \u0433\u0440\u0430\u043D\u0438\u0446 \u0440\u0435\u0436\u0438\u043C\u0430 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430. ZIP \u043F\u043E 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432; \u043F\u0440\u0438 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0438 \u0441\u043F\u0438\u0441\u043A\u0430 \u0438\u043B\u0438 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0435 \u2014 ZIP \u043D\u0435\u043F\u043E\u043B\u043D\u043E\u0439 \u043F\u0430\u0440\u0442\u0438\u0438. \u041F\u0440\u0438 \u043F\u0440\u0435\u0432\u044B\u0448\u0435\u043D\u0438\u0438 \u0431\u0435\u0437\u043E\u043F\u0430\u0441\u043D\u043E\u0433\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0430 ZIP \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0440\u0430\u043D\u044C\u0448\u0435."));
-    const fileLabel = el("label", "\u0412\u044B\u0431\u0440\u0430\u0442\u044C TXT \u0441\u043E \u0441\u043F\u0438\u0441\u043A\u043E\u043C ");
+    root.style.cssText = "width:100%;";
+    const heading = el("div");
+    heading.className = "vlo-head";
+    heading.append(el("strong", "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 \u0437\u0430\u043A\u0430\u0437\u043E\u0432"));
+    const intro = el("div", "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 TXT \u0441 \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u043C\u0438 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438. \u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043D\u044B\u0435 \u0438 \u043E\u0448\u0438\u0431\u043E\u0447\u043D\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B \u043D\u0435 \u0432\u0445\u043E\u0434\u044F\u0442 \u0432 \u043F\u0430\u0440\u0442\u0438\u044E \u0438\u0437 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432.");
+    intro.className = "vlo-intro";
+    heading.append(intro);
+    root.append(heading);
+    const config = el("div");
+    config.className = "vlo-config";
+    const fileLabel = el("label", "\u0424\u0430\u0439\u043B \u0441 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438 \u0437\u0430\u043A\u0430\u0437\u043E\u0432 (TXT)");
     const fileInput = el("input");
     fileInput.type = "file";
     fileInput.accept = ".txt,text/plain";
-    fileInput.title = "\u041E\u0434\u0438\u043D \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440 \u0437\u0430\u043A\u0430\u0437\u0430 \u0432 \u043A\u0430\u0436\u0434\u043E\u0439 \u0441\u0442\u0440\u043E\u043A\u0435, \u0434\u043E 20 \u041C\u0411";
-    fileInput.style.cssText = "max-width:100%;margin:4px 0;";
+    fileInput.title = "\u041E\u0434\u0438\u043D \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435, \u0444\u0430\u0439\u043B \u0434\u043E 20 \u041C\u0411";
     fileLabel.append(fileInput);
-    root.append(fileLabel);
-    const rateLabel = el("label", "\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430 \u043C\u0435\u0436\u0434\u0443 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438, \u043C\u0441 ");
+    config.append(fileLabel);
+    const rateLabel = el("label", "\u0417\u0430\u0434\u0435\u0440\u0436\u043A\u0430 \u043C\u0435\u0436\u0434\u0443 \u0437\u0430\u043A\u0430\u0437\u0430\u043C\u0438, \u043C\u0441");
+    rateLabel.className = "vlo-delay-label";
     const rateInput = el("input");
     rateInput.type = "number";
     rateInput.value = "1200";
@@ -5195,12 +5202,28 @@
     rateInput.max = "60000";
     rateInput.step = "100";
     rateInput.title = "100\u201360000 \u043C\u0441, \u043F\u0440\u0438\u043C\u0435\u043D\u044F\u0435\u0442\u0441\u044F \u0441\u0440\u0430\u0437\u0443";
-    rateInput.style.cssText = "max-width:110px;color:#203436;background:#f2f8f3;padding:5px;border-radius:4px;";
     rateLabel.append(rateInput);
-    root.append(rateLabel);
-    const controls = el("div");
-    controls.className = "vlo-actions";
+    config.append(rateLabel);
+    root.append(config);
+    const groups = el("div");
+    groups.className = "vlo-groups";
+    root.append(groups);
+    const group = (title, description, className = "") => {
+      const block = el("section");
+      block.className = "vlo-group " + className;
+      block.append(el("h3", title), el("p", description));
+      const actions = el("div");
+      actions.className = "vlo-actions";
+      block.append(actions);
+      groups.append(block);
+      return actions;
+    };
+    const scanActions = group(
+      "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u043E\u0439",
+      "\u041F\u0430\u0443\u0437\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442 \u043F\u0430\u0440\u0442\u0438\u044E. \u0421\u0442\u043E\u043F \u0432\u044B\u0433\u0440\u0443\u0436\u0430\u0435\u0442 \u043E\u0441\u0442\u0430\u0442\u043E\u043A ZIP \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430."
+    );
     const startBtn = button2("\u0421\u0442\u0430\u0440\u0442 / \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u043F\u043E \u0441\u043F\u0438\u0441\u043A\u0443", () => start());
+    startBtn.className = "vlo-primary";
     const pauseBtn = button2("\u041F\u0430\u0443\u0437\u0430 \u0441\u043F\u0438\u0441\u043A\u0430", () => {
       paused = true;
       void setMode("paused");
@@ -5213,13 +5236,60 @@
       show("\u0421\u043E\u0445\u0440\u0430\u043D\u044E \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E ZIP-\u043F\u0430\u0440\u0442\u0438\u044E \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430");
       if (!running) void manualSave();
     });
+    scanActions.append(startBtn, pauseBtn, stopBtn);
+    const archiveActions = group(
+      "\u0410\u0440\u0445\u0438\u0432\u044B \u0438 \u043E\u0442\u0447\u0451\u0442\u044B",
+      "\u041E\u0434\u0438\u043D ZIP \u2014 \u0434\u043E 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432. \u041C\u043E\u0436\u043D\u043E \u0432\u044B\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E \u043F\u0430\u0440\u0442\u0438\u044E."
+    );
     const saveBtn = button2("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E ZIP \u0441\u043F\u0438\u0441\u043A\u0430", () => manualSave());
     const exportBtn = button2("\u0420\u0435\u0435\u0441\u0442\u0440 \u0441\u043F\u0438\u0441\u043A\u0430 JSON", () => exportRegistry());
+    archiveActions.append(saveBtn, exportBtn);
+    const serviceActions = group(
+      "\u041E\u0447\u0438\u0441\u0442\u043A\u0430 \u0434\u0430\u043D\u043D\u044B\u0445",
+      "\u0421\u0431\u0440\u043E\u0441 \u0443\u0434\u0430\u043B\u044F\u0435\u0442 \u043D\u0435\u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u0443\u044E \u043E\u0447\u0435\u0440\u0435\u0434\u044C \u0438 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441.",
+      "vlo-service"
+    );
     const resetBtn = button2("\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0441\u043F\u0438\u0441\u043E\u043A \u0438 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441", () => reset());
-    controls.append(startBtn, pauseBtn, stopBtn, saveBtn, exportBtn, resetBtn);
-    root.append(controls);
+    resetBtn.className = "vlo-danger";
+    serviceActions.append(resetBtn);
+    const readout = el("section");
+    readout.className = "vlo-readout";
+    readout.append(el("h3", "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u0438 \u0441\u043A\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F"));
+    const stateText = el("p", "\u041E\u0436\u0438\u0434\u0430\u0435\u0442 \u0437\u0430\u043F\u0443\u0441\u043A\u0430");
+    stateText.className = "vlo-state";
+    readout.append(stateText);
+    const progressTrack = el("div");
+    progressTrack.className = "vlo-progress-track";
+    progressTrack.setAttribute("role", "progressbar");
+    progressTrack.setAttribute("aria-label", "\u041F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0441\u043F\u0438\u0441\u043A\u0430");
+    progressTrack.setAttribute("aria-valuemin", "0");
+    progressTrack.setAttribute("aria-valuemax", "100");
+    const progressBar = el("div");
+    progressBar.className = "vlo-progress-bar";
+    progressTrack.append(progressBar);
+    readout.append(progressTrack);
+    const metricValues = {};
+    const metricGrid = el("div");
+    metricGrid.className = "vlo-metrics";
+    for (const [key, caption] of [
+      ["checked", "\u041F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043D\u043E\u043C\u0435\u0440\u043E\u0432"],
+      ["approved", "\u0417\u0430\u043A\u0430\u0437\u043E\u0432 \u0432 ZIP"],
+      ["pending", "\u0412 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438"],
+      ["zips", "ZIP \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E"],
+      ["files", "\u0412\u043B\u043E\u0436\u0435\u043D\u0438\u0439 \u0432 ZIP"],
+      ["errors", "\u041E\u0448\u0438\u0431\u043E\u043A"]
+    ]) {
+      const box = el("div");
+      box.className = "vlo-metric";
+      const label = el("span", caption), value = el("strong", "0");
+      box.append(label, value);
+      metricGrid.append(box);
+      metricValues[key] = value;
+    }
+    readout.append(metricGrid);
+    root.append(readout);
     const progress = el("p", "\u0421\u043F\u0438\u0441\u043E\u043A \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D.");
-    progress.style.whiteSpace = "pre-line";
+    progress.className = "vlo-last-message";
     root.append(progress);
     pauseBtn.disabled = stopBtn.disabled = saveBtn.disabled = true;
     let state = null, queue = null, pending = [], batch = new ApprovalBatchSession();
@@ -5237,7 +5307,23 @@
     const currentMode = () => stopped ? "stopped" : paused ? "paused" : running ? "running" : "paused";
     function show(message = "") {
       const next = state && state.index < state.total ? String(queue[state.index]) : "\u2014";
-      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438: " + activeRows().length + "/" + APPROVED_ORDERS_PER_ZIP + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (state?.download ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + " \xB7 \u0441\u0435\u0442\u044C: " + networkHealth.state + " \xB7 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432 GET: " + networkHealth.retries + " \xB7 \u0441\u0435\u0442\u0435\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A: " + networkHealth.transient_errors + " \xB7 \u0444\u0430\u0437\u0430: " + stage + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      const pct = state?.total ? Math.floor(100 * state.index / state.total) : 0;
+      const phaseNames = {
+        idle: "\u041E\u0436\u0438\u0434\u0430\u0435\u0442 \u0437\u0430\u043F\u0443\u0441\u043A\u0430",
+        checking_order: "\u041F\u0440\u043E\u0432\u0435\u0440\u044F\u0435\u0442\u0441\u044F \u0437\u0430\u043A\u0430\u0437",
+        collecting_approvals: "\u0421\u0447\u0438\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u0438\u044F"
+      };
+      stateText.textContent = lastError ? "\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435" : running && !paused && !stopped ? "\u0412 \u0440\u0430\u0431\u043E\u0442\u0435 \u2014 " + (phaseNames[stage] || "\u0441\u0431\u043E\u0440 \u0434\u0430\u043D\u043D\u044B\u0445") : paused ? "\u041F\u0430\u0443\u0437\u0430" : stopped ? "\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E" : state?.index === state?.total && state?.total ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430" : "\u041E\u0436\u0438\u0434\u0430\u0435\u0442 \u0437\u0430\u043F\u0443\u0441\u043A\u0430";
+      progressBar.style.width = pct + "%";
+      progressTrack.setAttribute("aria-valuenow", String(pct));
+      metricValues.checked.textContent = (state?.index || 0) + " / " + (state?.total || 0);
+      metricValues.approved.textContent = String(state?.found_committed || 0);
+      metricValues.pending.textContent = activeRows().length + "/" + APPROVED_ORDERS_PER_ZIP;
+      metricValues.zips.textContent = String(state?.archive_count || 0);
+      metricValues.files.textContent = String(state?.files_committed || 0);
+      metricValues.errors.textContent = String(state?.failed_count || 0);
+      progress.dataset.error = String(Boolean(lastError));
+      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 \u0441\u0435\u0442\u044C: " + networkHealth.state + " \xB7 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432 \u0437\u0430\u043F\u0440\u043E\u0441\u043E\u0432: " + networkHealth.retries + (state?.download ? " \xB7 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 ZIP \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u0435\u0442\u0441\u044F" : "") + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     const activeRows = () => pending.filter((row) => !state?.download?.order_ids?.includes(row.id));
     const activeBytes = () => archivePayloadBytes(activeRows());
