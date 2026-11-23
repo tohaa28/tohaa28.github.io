@@ -40,3 +40,32 @@ CI link и итоговый коммит зафиксировать после �
 `https://github.com/tohaa28/tohaa28.github.io/actions`.
 Сборка: `https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip`.
 Все тесты синтетические; тестовой LAN в GitHub Actions нет.
+
+## Финальная публикация и тестирование — подтверждено
+- Ревизия UI и тестов: `fa936a9c1dc4f2d827d5f7f4b534518e0762a1e7`.
+- Сборка GitHub Actions:
+  https://github.com/tohaa28/tohaa28.github.io/actions/runs/45140706676
+  **COMPLETED SUCCESS**.
+- Публичный архив расширения:
+  https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+- Опубликованный git blob SHA `8cda8ef75e06abde8a2cf0a086e6c7fc8c1e9ba4`,
+  архив 98 011 байт.
+- Статические проверки, скомпонованный MV3 host и Playwright smoke:
+  шесть показателей, отдельные области управления и архивов,
+  responsive viewport 390 px — пройдены.
+- Сохранена полная цепочка из 13 сообщений / 7 вложений:
+  `Vision 13-message 7-link native approvals: 1 PSD + 6 PDF, bytes and comment mapping PASS`.
+- Модуль 100 заказов не изменён: тест
+  `Vision v0.2.3 TWO approved -> ONE complete final ZIP, reload PASS`.
+- Контроллер сохраняет `.vlo-file-list p:last-child` как статусное
+  сообщение для обратной совместимости. Архивированные заказы тестируются
+  по отдельному индикатору, а не старой текстовой строке.
+- PR #4 остаётся **OPEN DRAFT**, merged=false. Производственная Макетная
+  и источники приватных заказов не затронуты.
+- Реальный LAN и Chrome DirectoryPicker требуют проверки на стороне
+  авторизованного браузера пользователя; CI только синтетический.
+
+## Установка поверх действующей версии
+Распаковать ZIP в тот же каталог, не удаляя его, перезагрузить
+расширение в `chrome://extensions` и страницу `testgifts.local`.
+Не очищать IndexedDB: в ней может находиться неполная партия из 100.
