@@ -458,5 +458,44 @@ class PDFAuditTests(unittest.TestCase):
         self.assertNotIn("Private path", str(result))
 
 
+    def test_verified_pdf_snapshot_survives_source_replacement_three_passes(self):
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        original = source.read_bytes()
+        for cycle in range(3):
+            with self.subTest(cycle=cycle):
+                source.write_bytes(original)
+                seen = []
+                class SwapEngine:
+                    def open(self, path):
+                        snapshot = Path(path)
+                        seen.append((snapshot, snapshot.read_bytes()))
+                        source.write_bytes(b"%PDF-CHANGED PRIVATE SOURCE")
+                        return Document()
+                result = pdf.audit_sample(self.root, self.sample_id, engine=SwapEngine())
+                self.assertEqual(result["status"], "RESEARCH_ONLY")
+                self.assertEqual(len(seen), 1)
+                self.assertNotEqual(seen[0][0], source)
+                self.assertEqual(seen[0][1], original)
+                self.assertFalse(seen[0][0].exists())
+                self.assertFalse(result["training_ready"])
+                self.assertFalse(result["production_approved"])
+                self.assertNotIn("CHANGED PRIVATE SOURCE", json.dumps(result))
+                self.assertFalse(list(self.root.glob("vision-pdf-*")))
+        source.write_bytes(original)
+
+    def test_verified_pdf_snapshot_cleanup_after_backend_failure(self):
+        class FailingEngine:
+            def open(self, path):
+                self.path = Path(path)
+                raise RuntimeError("SECRET PRIVATE BACKEND")
+        engine = FailingEngine()
+        result = pdf.audit_sample(self.root, self.sample_id, engine=engine)
+        self.assertEqual(result["status"], "MANUAL")
+        self.assertEqual(result["reason"], "PDF_PARSE_OR_BACKEND_FAILURE")
+        self.assertFalse(engine.path.exists())
+        self.assertFalse(list(self.root.glob("vision-pdf-*")))
+        self.assertNotIn("SECRET PRIVATE BACKEND", json.dumps(result))
+
+
 if __name__ == "__main__":
     unittest.main()
