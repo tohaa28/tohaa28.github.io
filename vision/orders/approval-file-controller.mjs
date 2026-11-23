@@ -38,7 +38,9 @@ export function makeApprovalFileListController({
  root.style.cssText='width:100%;';
  const heading=el('div');heading.className='vlo-head';
  heading.append(el('strong','Проверка списка заказов'));
- const intro=el('p','Выберите TXT с семизначными номерами. Пропущенные и '+
+ // Keep the only descendant p:last-child as the live progress paragraph:
+ // legacy diagnostics and browser regressions intentionally select it.
+ const intro=el('div','Выберите TXT с семизначными номерами. Пропущенные и '+
   'ошибочные заказы не входят в партию из 100 утверждённых заказов.');
  intro.className='vlo-intro';heading.append(intro);root.append(heading);
  const config=el('div');config.className='vlo-config';
