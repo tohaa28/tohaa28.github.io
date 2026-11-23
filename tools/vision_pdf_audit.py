@@ -228,7 +228,20 @@ def audit_sample(root: Path, sample_id: str, *, engine=None,
         return manual("SAMPLE_PATH_UNSAFE")
     if target.stat().st_size > MAX_FILE:
         return manual("PDF_SIZE_OR_SOURCE_INVALID")
-    if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+    # Stream the private original: avoid allocating a second full PDF buffer.
+    # Recheck the byte count during reading in case the file grows after stat().
+    checksum = hashlib.sha256()
+    total = 0
+    try:
+        with target.open("rb") as source:
+            while chunk := source.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_FILE:
+                    return manual("PDF_SIZE_OR_SOURCE_INVALID")
+                checksum.update(chunk)
+    except OSError:
+        return manual("SAMPLE_PATH_UNSAFE")
+    if checksum.hexdigest() != digest:
         return manual("SOURCE_SHA256_MISMATCH")
     out = audit_document(target, engine=engine,
                          exploratory_stroke_mm=exploratory_stroke_mm,
