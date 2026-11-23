@@ -71,6 +71,26 @@ try{
  assert.equal(browser.pages().some(p=>p.url().includes('/devorders')),false,
   'scanning must not open the test-order table');
  await host.locator('#vision-scanner-host .vlo-file-list').waitFor();
+ // UI v0.2.4: status indicators and controls are meaningfully separate.
+ const compact=page.locator('#vision-ai-scanner-remote');
+ assert.equal(await compact.locator('.vai-section').count(),5,
+  'compact panel must separate status, TXT, scan, ZIP and service');
+ assert.equal(await compact.locator('.vai-metric').count(),6,
+  'six independent readable status indicators');
+ assert.equal(await compact.locator('.vai-details').count(),1,
+  'advanced network details should be collapsible');
+ assert.equal(await compact.locator('.vai-section')
+  .filter({hasText:'Управление проверкой'}).getByRole('button',
+   {name:'Старт / продолжить'}).count(),1);
+ assert.equal(await compact.locator('.vai-section')
+  .filter({hasText:'Сохранение и архивы'}).getByRole('button',
+   {name:'Сохранить неполную партию ZIP'}).count(),1);
+ assert.equal(await compact.locator('.vai-section')
+  .filter({hasText:'Обслуживание'}).getByRole('button',
+   {name:'Сбросить прогресс'}).count(),1);
+ assert.equal(await host.locator('.vlo-group').count(),3,
+  'detailed scanner has separated scan/archive/reset button groups');
+ assert.equal(await host.locator('.vlo-metric').count(),6);
  const modeOptions=await page.locator('#vision-ai-scanner-remote select').allTextContents();
  assert.equal(modeOptions.some(x=>x.includes('Диапазон номеров')),false);
  const files=page.locator('#vision-ai-scanner-remote input[type=file]');
@@ -98,6 +118,24 @@ try{
   document.querySelector('#vision-ai-scanner-remote-status')?.textContent.includes('Проверено: 1 / 1'),
   null,{timeout:20000});
  assert.equal(page.url(),'http://testgifts.local/catalog');
+ assert.match(await compact.locator('.vai-metric').first().innerText(),/1\s*\/\s*1/,
+  'checked count must update in independent metric');
+ const meter=await compact.locator('[role=progressbar]').getAttribute('aria-valuenow');
+ assert.equal(meter,'100','visible progress bar reflects completed TXT queue');
+ await page.setViewportSize({width:390,height:760});
+ const bounds=await compact.evaluate(e=>{
+  const r=e.getBoundingClientRect();
+  return {width:r.width,left:r.left,right:r.right,viewport:window.innerWidth,
+   sections:[...e.querySelectorAll('.vai-section')].map(x=>{
+    const box=x.getBoundingClientRect();
+    return {left:box.left,right:box.right};
+   })};
+ });
+ assert.ok(bounds.left>=0&&bounds.right<=bounds.viewport,
+  'compact panel stays inside the narrow viewport');
+ assert.ok(bounds.sections.every(x=>x.left>=0&&x.right<=bounds.viewport),
+  'all grouped controls remain inside narrow viewport');
+
  const settings=await page.locator('#vision-ai-scanner-remote select').last();
  await settings.selectOption('downloads');
  await page.locator('#vision-ai-scanner-remote input[placeholder="Имя подпапки"]')

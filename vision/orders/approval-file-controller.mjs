@@ -35,42 +35,80 @@ export function makeApprovalFileListController({
  isClosed=()=>false,refreshControls=()=>{}
 }={}){
  const root=el('div');root.className='vlo-file-list';
- root.style.cssText='width:100%;border:1px solid #69898b;border-radius:8px;'+
-  'padding:10px;margin:10px 0;';
- root.append(el('strong','Список заказов из файла TXT'));
- root.append(el('p','Загрузите файл с семизначными номерами: один номер в строке. '+
-  'Повторы удаляются. Проверяются только номера из файла, независимо от '+
-  'границ режима диапазона. ZIP по 100 утверждённых заказов; '+
-  'при завершении списка или остановке — ZIP неполной партии. '+
-  'При превышении безопасного размера ZIP партия сохраняется раньше.'));
- const fileLabel=el('label','Выбрать TXT со списком ');
+ root.style.cssText='width:100%;';
+ const heading=el('div');heading.className='vlo-head';
+ heading.append(el('strong','Проверка списка заказов'));
+ const intro=el('p','Выберите TXT с семизначными номерами. Пропущенные и '+
+  'ошибочные заказы не входят в партию из 100 утверждённых заказов.');
+ intro.className='vlo-intro';heading.append(intro);root.append(heading);
+ const config=el('div');config.className='vlo-config';
+ const fileLabel=el('label','Файл с номерами заказов (TXT)');
  const fileInput=el('input');fileInput.type='file';
  fileInput.accept='.txt,text/plain';
- fileInput.title='Один семизначный номер заказа в каждой строке, до 20 МБ';
- fileInput.style.cssText='max-width:100%;margin:4px 0;';
- fileLabel.append(fileInput);root.append(fileLabel);
- const rateLabel=el('label','Задержка между номерами, мс ');
+ fileInput.title='Один семизначный номер в строке, файл до 20 МБ';
+ fileLabel.append(fileInput);config.append(fileLabel);
+ const rateLabel=el('label','Задержка между заказами, мс');
+ rateLabel.className='vlo-delay-label';
  const rateInput=el('input');rateInput.type='number';
  rateInput.value='1200';rateInput.min='100';rateInput.max='60000';
  rateInput.step='100';rateInput.title='100–60000 мс, применяется сразу';
- rateInput.style.cssText='max-width:110px;color:#203436;background:#f2f8f3;'+
-  'padding:5px;border-radius:4px;';
- rateLabel.append(rateInput);root.append(rateLabel);
- const controls=el('div');controls.className='vlo-actions';
+ rateLabel.append(rateInput);config.append(rateLabel);root.append(config);
+
+ const groups=el('div');groups.className='vlo-groups';root.append(groups);
+ const group=(title,description,className='')=>{
+  const block=el('section');block.className='vlo-group '+className;
+  block.append(el('h3',title),el('p',description));
+  const actions=el('div');actions.className='vlo-actions';block.append(actions);
+  groups.append(block);return actions;
+ };
+ const scanActions=group('Управление проверкой',
+  'Пауза сохраняет партию. Стоп выгружает остаток ZIP после текущего заказа.');
  const startBtn=button('Старт / продолжить по списку',()=>start());
- const pauseBtn=button('Пауза списка',()=>{paused=true;void setMode('paused');show('Пауза после текущего заказа')});
+ startBtn.className='vlo-primary';
+ const pauseBtn=button('Пауза списка',()=>{
+  paused=true;void setMode('paused');show('Пауза после текущего заказа')
+ });
  const stopBtn=button('Стоп и архив списка',()=>{
   stopped=true;stopWithoutZip=false;
   void setMode('stopped');
   show('Сохраню неполную ZIP-партию после текущего заказа');
   if(!running)void manualSave();
  });
+ scanActions.append(startBtn,pauseBtn,stopBtn);
+ const archiveActions=group('Архивы и отчёты',
+  'Один ZIP — до 100 утверждённых заказов. Можно выгрузить неполную партию.');
  const saveBtn=button('Сохранить неполную ZIP списка',()=>manualSave());
  const exportBtn=button('Реестр списка JSON',()=>exportRegistry());
+ archiveActions.append(saveBtn,exportBtn);
+ const serviceActions=group('Очистка данных',
+  'Сброс удаляет незавершённую очередь и локальный прогресс.','vlo-service');
  const resetBtn=button('Очистить список и прогресс',()=>reset());
- controls.append(startBtn,pauseBtn,stopBtn,saveBtn,exportBtn,resetBtn);
- root.append(controls);
- const progress=el('p','Список заказов не загружен.');progress.style.whiteSpace='pre-line';
+ resetBtn.className='vlo-danger';serviceActions.append(resetBtn);
+
+ const readout=el('section');readout.className='vlo-readout';
+ readout.append(el('h3','Показатели сканирования'));
+ const stateText=el('p','Ожидает запуска');stateText.className='vlo-state';
+ readout.append(stateText);
+ const progressTrack=el('div');progressTrack.className='vlo-progress-track';
+ progressTrack.setAttribute('role','progressbar');
+ progressTrack.setAttribute('aria-label','Прогресс проверки списка');
+ progressTrack.setAttribute('aria-valuemin','0');
+ progressTrack.setAttribute('aria-valuemax','100');
+ const progressBar=el('div');progressBar.className='vlo-progress-bar';
+ progressTrack.append(progressBar);readout.append(progressTrack);
+ const metricValues={};
+ const metricGrid=el('div');metricGrid.className='vlo-metrics';
+ for(const [key,caption] of [
+  ['checked','Проверено номеров'],['approved','Заказов в ZIP'],
+  ['pending','В текущей партии'],['zips','ZIP сохранено'],
+  ['files','Вложений в ZIP'],['errors','Ошибок']]){
+  const box=el('div');box.className='vlo-metric';
+  const label=el('span',caption),value=el('strong','0');
+  box.append(label,value);metricGrid.append(box);metricValues[key]=value;
+ }
+ readout.append(metricGrid);root.append(readout);
+ const progress=el('p','Список заказов не загружен.');
+ progress.className='vlo-last-message';
  root.append(progress);
  pauseBtn.disabled=stopBtn.disabled=saveBtn.disabled=true;
 
@@ -89,6 +127,26 @@ export function makeApprovalFileListController({
  function show(message=''){
   const next=state&&state.index<state.total?
    String(queue[state.index]):'—';
+  const pct=state?.total?Math.floor(100*state.index/state.total):0;
+  const phaseNames={
+   idle:'Ожидает запуска',checking_order:'Проверяется заказ',
+   collecting_approvals:'Считываются согласования'
+  };
+  stateText.textContent=lastError?'Требуется внимание':
+   running&&!paused&&!stopped?'В работе — '+
+    (phaseNames[stage]||'сбор данных'):
+   paused?'Пауза':stopped?'Остановлено':
+   state?.index===state?.total&&state?.total?'Проверка завершена':
+   'Ожидает запуска';
+  progressBar.style.width=pct+'%';
+  progressTrack.setAttribute('aria-valuenow',String(pct));
+  metricValues.checked.textContent=(state?.index||0)+' / '+(state?.total||0);
+  metricValues.approved.textContent=String(state?.found_committed||0);
+  metricValues.pending.textContent=activeRows().length+'/'+APPROVED_ORDERS_PER_ZIP;
+  metricValues.zips.textContent=String(state?.archive_count||0);
+  metricValues.files.textContent=String(state?.files_committed||0);
+  metricValues.errors.textContent=String(state?.failed_count||0);
+  progress.dataset.error=String(Boolean(lastError));
   progress.textContent=(state?
    'Файл: '+state.filename+' · всего: '+state.total+
    ' · обработано: '+state.index+
@@ -96,16 +154,9 @@ export function makeApprovalFileListController({
    'Файл не загружен')+
    '\nСледующий заказ: '+next+
    ' · проверено после открытия: '+checkedSession+
-   ' · ZIP: '+(state?.archive_count||0)+
-   ' · найдено и архивировано: '+(state?.found_committed||0)+
-   ' · в текущей партии: '+activeRows().length+
-   '/'+APPROVED_ORDERS_PER_ZIP+
-   ' · ZIP загружается: '+(state?.download?1:0)+
-   ' · ошибок открытия: '+(state?.failed_count||0)+
    ' · сеть: '+networkHealth.state+
-   ' · повторов GET: '+networkHealth.retries+
-   ' · сетевых ошибок: '+networkHealth.transient_errors+
-   ' · фаза: '+stage+
+   ' · повторов запросов: '+networkHealth.retries+
+   (state?.download?' · сохранение ZIP выполняется':'')+
    (lastError?'\nОшибка: '+lastError:'')+
    (message?'\n'+message:'');
  }
