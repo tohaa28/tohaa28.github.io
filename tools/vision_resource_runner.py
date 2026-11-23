@@ -20,7 +20,7 @@ def peak_rss_from_status(status: str) -> int:
         if fields and fields[0] in ("VmRSS:", "VmHWM:"):
             if len(fields) != 3 or fields[2] != "kB" or not fields[1].isdigit():
                 raise RuntimeError("RSS_UNAVAILABLE")
-            values[fields[0]] = int(fields[1]) * 1024
+            if fields[0] in values:\n                raise RuntimeError("RSS_UNAVAILABLE")\n            values[fields[0]] = int(fields[1]) * 1024
     if "VmRSS:" not in values or "VmHWM:" not in values:
         raise RuntimeError("RSS_UNAVAILABLE")
     return max(values.values())
