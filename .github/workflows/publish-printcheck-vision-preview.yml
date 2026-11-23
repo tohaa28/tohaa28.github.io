@@ -49,6 +49,7 @@ on:
       - vision/orders/extension/**
       - tests/printcheck-vision-scanner-host.browser.mjs
       - tests/printcheck-vision-one-order-per-zip.browser.mjs
+      - tests/printcheck-vision-approval-seven-files.browser.mjs
       - tests/printcheck-vision-lan-failure-stages.test.mjs
       - tests/printcheck-vision-extension-worker.test.mjs
       - tests/printcheck-vision-lan-extension.browser.mjs
@@ -277,6 +278,7 @@ jobs:
           node tests/printcheck-vision-scanner-host.browser.mjs
           node tests/printcheck-vision-host-approvals.browser.mjs
           node tests/printcheck-vision-one-order-per-zip.browser.mjs
+          node tests/printcheck-vision-approval-seven-files.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher

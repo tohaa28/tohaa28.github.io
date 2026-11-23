@@ -39,7 +39,7 @@ export function initApprovalPageEntry(){
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
  const header=make('strong','Vision AI · Согласование макета · v0.1.8');
- const note=make('p','Пакетный сбор: переписки, имена, проблемы и вложения передаются на страницу списка заказов. По завершении сохраняется ОДИН ZIP с папками заказов, обсуждений и файлов. Не закрывайте страницу до скачивания.');
+ const note=make('p','Ручная проверка работает прямо в открытом заказе и не зависит от очереди TXT. По кнопке «Автообход согласований >1» собираются обсуждения и скачиваются вложения. В очереди TXT архив создаётся отдельно на каждый заказ со статусом «ТЗ утверждено». Данные остаются на компьютере.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
  const exportButton=make('button','Скачать анонимный JSON');
@@ -239,8 +239,18 @@ export function initApprovalPageEntry(){
    const attachmentReport=stopRequested?
     {status:'STOPPED',files:0,parts:0,failures:0}:
     await savePrivateAttachmentParts({queueMode});
+   const discoveredFiles=collection.articles.filter(a=>
+    a.status==='PRIVATE_REVIEW_ONLY').reduce((total,a)=>total+
+     (a.history||[]).reduce((n,m)=>n+(m.attachments||[]).length,0),0);
+   const excludedFiles=collection.articles.filter(a=>
+    a.status!=='PRIVATE_REVIEW_ONLY').reduce((total,a)=>total+
+     (a.history||[]).reduce((n,m)=>n+(m.attachments||[]).length,0),0);
+   const notVerifiedFiles=Math.max(0,discoveredFiles-attachmentReport.files);
    collection.attachment_download_summary={
-    status:attachmentReport.status,verified_files:attachmentReport.files,
+    status:attachmentReport.status,
+    discovered_files:discoveredFiles,verified_files:attachmentReport.files,
+    not_verified_files:notVerifiedFiles,
+    excluded_unverified_discussion_files:excludedFiles,
     local_zip_parts:attachmentReport.parts,
     read_failures:attachmentReport.failures,
     source_pdf_revision_confirmed:false,training_ready:false};
@@ -248,12 +258,18 @@ export function initApprovalPageEntry(){
    stats.textContent='Обход: '+collection.status+
      '\nАртикулов: '+collection.articles.length+
      ' · история проверена: '+done+' · пропущено: '+skipped+
-     '\nФайлы: '+attachmentReport.files+
+     '\nВложения: найдено '+discoveredFiles+
+     ' · получено '+attachmentReport.files+
+     ' · НЕ подтверждено '+notVerifiedFiles+
+     (excludedFiles?' · вне проверенного обсуждения '+excludedFiles:'')+
      ' · ZIP-частей: '+attachmentReport.parts+
      ' · ошибок чтения: '+attachmentReport.failures+
      ' · статус: '+attachmentReport.status+
      '\nПриватный JSON содержит текст замечаний. Сохраните его отдельно.'+
      ' Chrome может запросить разрешение на несколько скачиваний.';
+   if(notVerifiedFiles||excludedFiles)
+    stats.textContent+='\nВНИМАНИЕ: есть вложения без подтверждённых исходных байтов. '+
+     'Проверьте отчёт и повторите скачивание.';
    privateSave.disabled=anonymousSave.disabled=attachmentRetry.disabled=false;
    const finalEvidence=queueMode?await persistOrderEvidence('final',{batchMode:true}):
     {status:'MANUAL_SAVE_ON_DEMAND'};
