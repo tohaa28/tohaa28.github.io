@@ -2189,3 +2189,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification:** GitHub connector confirmed PR state before each write. The tests were committed, but independent integrated execution and post-change GitHub Actions/CircleCI were NOT verified when writing this entry. No full 512 MB run or OS-enforced peak memory guarantee claimed. The child-exit /proc VmHWM race remains an open problem; cgroup v2 is a candidate, not implemented.
 
 **Outstanding:** exact-new-HEAD four-contour CI (especially preview publish), optional 512 MB x3 nine-case run, dual independently reviewed real ROI/adjudication, proven constructor/print method/physical scale, ICC/spot, verified family holdout, private PDF --all, anonymous authenticated 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. PR not merged; no private files, hashes, names, keys or expert votes uploaded.
+
+
+## 2026-11-23 — M3.29 / reject nonnumeric synthetic time budgets before spawn
+
+**Pre-change HEAD:** cd230f7e0cc7a7b0f1802c0822cd4d3f21409608. PR #4 OPEN/draft=true/merged=false, correct experimental head confirmed before writes. Exact-head GitHub Actions: UI smoke 45214971282 SUCCESS; raster safety 45214970970 SUCCESS; rules/dataset safety 45214971325 SUCCESS. CircleCI vision-contract and vision-raster SUCCESS. Preview publish exact-head NOT VERIFIED.
+
+**Changes:** 38ca3ee1fd8d143eda64af3a755accca519e8f30 updates only tools/vision_resource_runner.py: reject nonnumeric timeout_s/poll_s (including strings, None, bool, collections) with INVALID_RESOURCE_BUDGET before subprocess spawn. b2cc2f90f77a97f13bde15b21ab9d932a8f5888b updates only tests/test_vision_resource_runner.py: three synthetic repetitions of eight invalid time-budget combinations, requiring INVALID_RESOURCE_BUDGET and zero child spawns. No 512 MB allocations, production code or customer data.
+
+**Verification:** source/test changes committed via GitHub connector. Independent integrated execution and exact-post-change CI not verified at log-writing time; do not claim PASS. The child-exit /proc VmHWM race and lack of OS-enforced peak RSS guarantee remain unresolved (cgroup v2 research required). No full 512 MB test was run.
+
+**Outstanding:** four-contour CI especially preview publish; optional nine-case 512 MB test; independent real dual-voice ROI/adjudication; proven constructor, physical mm scale and print process; ICC/spot; verified family holdout; private PDF --all; authenticated anonymous 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No private data, filenames, hashes, keys, expert votes or customer PDFs uploaded; PR not merged.
