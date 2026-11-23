@@ -2132,3 +2132,12 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification:** Connector read and PR metadata confirmed. Local git checkout and independent Python test execution unavailable because github.com DNS resolution failed in isolated test container. Post-change CI and CircleCI not yet verified at log-writing time. This tests the kernel high-water reading contract, NOT a measured 512 MB boundary run or a guaranteed OS-enforced memory limit. The child can exceed the budget before the watchdog polls; fail closed upon observed VmHWM.
 
 **Outstanding:** exact-new-HEAD CI and preview publish; optional 512MB x3 nine-case test with independent peak RSS/time; real two independent expert ROI votes/adjudication; verified constructor, physical mm scale and print method; ICC/spot; verified family holdout; private PDF --all; anonymous authenticated 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No customer data, SHA, original filenames, keys or private PDFs uploaded; PR not merged.
+
+
+## 2026-11-23 — M3.20 / synthetic CLI opt-in safety regression
+
+**Pre-change HEAD:** b337cb8f75604507cd7d15dd32f42538296edbc6; PR #4 found by GitHub is:open is:draft search; branch identical before write. Exact-head GitHub Actions: UI smoke 45130602714 SUCCESS, raster safety 45130602628 SUCCESS, rules/dataset safety 45130602562 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish exact SHA NOT VERIFIED.
+
+**Change:** a9c42fcbaa3205430952edf705efb45c426be6aa adds only tests/test_vision_resource_optin_guard.py. Three synthetic subprocess repetitions assert that CLI without VISION_RUN_512MB_BOUNDARY=1 fails with OPT_IN_REQUIRED and never reports RESOURCE_REGRESSION_PASS. Does not execute any 512 MB test or use customer files.
+
+**Verification:** Python syntax and one unittest with three subprocess repetitions passed in isolated Linux using a stand-in guard script, NOT the repository's actual runner; actual integrated test and post-change CI remain UNVERIFIED at log-writing time. Full 512 MB nine-case opt-in run not performed. Other unresolved: preview publish, real dual independent ROI/adjudication, proven constructor/physical mm/print method, ICC/spot, verified family holdout, private PDF --all, anonymous authenticated 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No production changes, private uploads or PR merge.
