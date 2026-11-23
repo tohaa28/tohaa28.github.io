@@ -4,6 +4,14 @@
 Изолированное сравнение: draft PR https://github.com/tohaa28/tohaa28.github.io/pull/4
 Правило: любой цикл должен заканчиваться проверяемым результатом (commit + тесты + статус + ограничения), а не обещанием. Не редактировать действующую Макетную и не сливать черновой PR без независимой приёмки.
 
+## M3.24 — fail-closed duplicate Linux RSS fields (2026-11-23)
+
+- Pre-change HEAD `86ec8f6999fc2ed743d8df73a4310c5f15383ffa`; PR #4 returned by GitHub draft/open search, but connector does not expose explicit draft/merged booleans. Pre-change exact-HEAD GitHub UI smoke 45141102135, raster safety 45141102419, rules/dataset safety 45141102270 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish not confirmed.
+- `e33c780f91db64a3b33c322d0e2f3c11dd0c3b44`: Linux procfs watchdog now rejects duplicate VmRSS/VmHWM fields as RSS_UNAVAILABLE instead of accepting the last potentially lower value.
+- `a22244fa867c66eed6a3a90ed19bf566b615d27f`: added three-pass synthetic duplicate-field regression, for both metrics. New-head CI and independent execution were NOT yet confirmed when recording this entry; no PASS claimed for the new tests.
+- This is only an ambiguity hardening step. The short-lived child exit race and lack of kernel-enforced memory cap remain unresolved; /proc cannot recover peak after process exit. Next: verify exact-head CI and design a cgroup v2 or cooperative child completion protocol with deterministic synthetic regression before 512 MB boundary test.
+- Outstanding: preview publish, private 512 MB triple boundary, independent expert ROI votes/adjudication, verified constructor/physical scale/print method, ICC/spot, verified family holdout, private PDF --all, anonymized 404/MV3 reference_state. No client data or keys uploaded; production untouched; PR not merged; training_ready=false, production_approved=false, unknown => MANUAL.
+
 ## M3.10 — synthetic streaming boundary and same-length SHA regression (2026-11-22)
 
 - Before change PR #4 OPEN, draft=true, merged=false, source HEAD `df7d983689512c87ef231c2da683c14d41756857`. GitHub Actions exact-head UI smoke [44734919976](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44734919976), raster safety [44734920042](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44734920042), rules/dataset safety [44734919821](https://github.com/tohaa28/tohaa28.github.io/actions/runs/44734919821) all SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on that SHA unconfirmed.
