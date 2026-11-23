@@ -2178,3 +2178,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Change:** c38bf1bcc5bde4a6466f7264632a1d2fc69f6fc0 fixes literal escaped \\n sequences in tools/vision_resource_runner.py duplicate VmRSS/VmHWM guard which made the Python module syntactically invalid. bb4a690cc72b5d5a2b55e8b891dfa376e0b024c4 adds three compile(source, path, 'exec') regression repetitions in tests/test_vision_resource_runner.py. Changes restricted to experimental tools/tests; no customer data.
 
 **Verification:** connector source inspection confirmed escaped characters before fix; independent integrated test execution and post-change CI pending, not asserted PASS. The new syntax test is synthetic only. Kernel-enforced RSS ceiling/cgroup v2, 512 MB nine-case opt-in, verified dual ROI/adjudication, constructor/physical mm/process, ICC/spot, family holdout, real private PDF --all, authenticated anonymous 404/MV3 reference_state and preview publish remain UNVERIFIED. training_ready=false; production_approved=false; unknown => MANUAL. No production modifications, private uploads or PR merge.
+
+
+## 2026-11-23 — M3.28 / reject noninteger synthetic RSS limits before child spawn
+
+**Pre-change HEAD:** 7242fdb676475c220f1883d03859ba4737498427; PR #4 OPEN/draft=true/merged=false, correct experimental head verified by GitHub connector. Exact pre-change Actions UI smoke 45205112976 SUCCESS, raster safety 45205113133 SUCCESS, rules/dataset safety 45205113245 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact SHA NOT VERIFIED.
+
+**Changes:** 9b2eb074cdd41c26ea73a42bb77c8a3d21465d84 updates only tools/vision_resource_runner.py to reject noninteger RSS budgets (including NaN/infinity/boolean) before subprocess spawn. 2d1d830e1f281ae083e300f4c44ecd29df3def89 updates only tests/test_vision_resource_runner.py with three synthetic repetitions for seven invalid RSS budget types; each requires INVALID_RESOURCE_BUDGET and no child spawn. No production code or customer data touched.
+
+**Verification:** GitHub connector confirmed PR state before each write. The tests were committed, but independent integrated execution and post-change GitHub Actions/CircleCI were NOT verified when writing this entry. No full 512 MB run or OS-enforced peak memory guarantee claimed. The child-exit /proc VmHWM race remains an open problem; cgroup v2 is a candidate, not implemented.
+
+**Outstanding:** exact-new-HEAD four-contour CI (especially preview publish), optional 512 MB x3 nine-case run, dual independently reviewed real ROI/adjudication, proven constructor/print method/physical scale, ICC/spot, verified family holdout, private PDF --all, anonymous authenticated 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. PR not merged; no private files, hashes, names, keys or expert votes uploaded.
