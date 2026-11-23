@@ -40,7 +40,8 @@ def supervise(command: list[str], *, timeout_s: float, rss_limit_bytes: int,
     if sys.platform != "linux" or not Path("/proc/self/status").exists():
         raise RuntimeError("LINUX_PROCFS_REQUIRED")
     if (not math.isfinite(timeout_s) or not math.isfinite(poll_s)
-            or timeout_s <= 0 or rss_limit_bytes <= 0 or poll_s <= 0):
+            or timeout_s <= 0 or type(rss_limit_bytes) is not int
+            or rss_limit_bytes <= 0 or poll_s <= 0):
         raise ValueError("INVALID_RESOURCE_BUDGET")
     proc = subprocess.Popen(command, stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
