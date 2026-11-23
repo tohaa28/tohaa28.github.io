@@ -98,7 +98,8 @@ const proxy=createServer((req,res)=>{
   body=originalBytes.get(key);status=200;type='application/octet-stream';kind='attachment';
  }
  requests.push({kind,method:req.method,id:key});
- res.writeHead(status,{'Content-Type':type,'Content-Length':body.length,
+ res.writeHead(status,{'Content-Type':type==='text/html'?
+  'text/html; charset=utf-8':type,'Content-Length':body.length,
   'Cache-Control':'no-store'});
  res.end(body);
 });
@@ -145,6 +146,8 @@ try{
   };
  });
  console.log('SEVEN_FIXTURE_NATIVE_PREVIEW',JSON.stringify(native));
+ assert.deepEqual(native.labelTexts,['ТЗ утверждено','ТЗ утверждено'],
+  'the native browser must decode the Russian TZ status as UTF-8');
  await rawPage.close();
  const portal=await browser.newPage();
  await portal.goto('http://psk.testgifts.local/catalog');
