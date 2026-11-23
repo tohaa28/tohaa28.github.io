@@ -1,7 +1,7 @@
 /**
  * Vision AI: scan only IDs explicitly imported from a local TXT file.
  * Independent of numeric range mode. Durable state and unarchived bytes are
- * maintained on the devorders origin in IndexedDB across automatic reloads.
+ * maintained in the extension origin in IndexedDB across page reloads.
  */
 import {parseOrderListText,explicitListOrderUrl,ORDER_LIST_MAX_BYTES}
  from './approval-file-list.mjs';
@@ -37,7 +37,7 @@ export function makeApprovalFileListController({
  root.append(el('strong','Список заказов из файла TXT'));
  root.append(el('p','Загрузите файл с семизначными номерами: один номер в строке. '+
   'Повторы удаляются. Проверяются только номера из файла, независимо от '+
-  'границ режима диапазона. До 100 утверждённых заказов в ZIP.'));
+  'границ режима диапазона. Каждый утверждённый заказ — отдельный ZIP.'));
  const fileLabel=el('label','Выбрать TXT со списком ');
  const fileInput=el('input');fileInput.type='file';
  fileInput.accept='.txt,text/plain';

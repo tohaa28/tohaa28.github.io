@@ -71,3 +71,18 @@ CI должен пройти тест `printcheck-vision-approval-seven-files.br
 проверка последовательности GET, оригинальных байтов и `files-index.json`.
 Сохранённый HTML оригиналов не содержит; реальную загрузку нужно проверить
 в Chrome пользователя. Никаких приватных HTML/файлов в GitHub.
+
+## Проверенная публикация v0.2.2
+- Коммит исходника: `006ad4b8146b7844653b7719adb80b31396988e5`.
+- GitHub Actions: https://github.com/tohaa28/tohaa28.github.io/actions/runs/45130174772
+  **COMPLETED SUCCESS**.
+- Лог нового браузерного теста:
+  `Vision 13-message 7-link native approvals: 1 PSD + 6 PDF, bytes and comment mapping PASS`.
+- Дополнительный результат:
+  `Vision unchecked TZ gate: skipped before native file download PASS`.
+- SHA опубликованного ZIP до финальной корректировки текста:
+  `119e10dc1c28b911fb52bf01fe2cfed1649f7a7e` (91 995 байт).
+- Публикация https://tohaa28.github.io/gifts-layout-workbench-vision/vision-local-lan-extension.zip
+- Проверено только на синтетическом HTTP-прокси; байты оригиналов реального
+  заказа отсутствуют в HTML-копии, прямой доступ к LAN невозможен.
+- Исходники и тесты изолированы в feature-ветке, PR #4 остаётся DRAFT.
