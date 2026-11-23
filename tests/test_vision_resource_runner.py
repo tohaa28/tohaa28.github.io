@@ -33,6 +33,13 @@ class ResourceRunnerTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "RSS_UNAVAILABLE"):
                     peak_rss_from_status(status)
 
+    def test_resource_runner_source_compiles_three_passes(self):
+        source_path = Path(__file__).resolve().parents[1] / "tools" / "vision_resource_runner.py"
+        source = source_path.read_text(encoding="utf-8")
+        for attempt in range(3):
+            with self.subTest(attempt=attempt):
+                compile(source, str(source_path), "exec")
+
     def test_duplicate_kernel_metrics_fail_closed_three_passes(self):
         for attempt in range(3):
             for duplicate in ("VmRSS: 2 kB", "VmHWM: 2 kB"):
