@@ -12,15 +12,24 @@ import sys
 import time
 
 
-def rss_bytes(pid: int) -> int:
-    """Read resident memory from Linux procfs; fail closed if unavailable."""
-    status = Path(f"/proc/{pid}/status").read_text(encoding="ascii")
+def peak_rss_from_status(status: str) -> int:
+    """Use kernel high-water RSS even when polling misses a transient spike."""
+    values = {}
     for line in status.splitlines():
-        if line.startswith("VmRSS:"):
-            fields = line.split()
-            if len(fields) == 3 and fields[2] == "kB":
-                return int(fields[1]) * 1024
-    raise RuntimeError("RSS_UNAVAILABLE")
+        fields = line.split()
+        if fields and fields[0] in ("VmRSS:", "VmHWM:"):
+            if len(fields) != 3 or fields[2] != "kB" or not fields[1].isdigit():
+                raise RuntimeError("RSS_UNAVAILABLE")
+            values[fields[0]] = int(fields[1]) * 1024
+    if "VmRSS:" not in values or "VmHWM:" not in values:
+        raise RuntimeError("RSS_UNAVAILABLE")
+    return max(values.values())
+
+
+def rss_bytes(pid: int) -> int:
+    """Read sampled RSS and kernel VmHWM from Linux procfs; fail closed."""
+    status = Path(f"/proc/{pid}/status").read_text(encoding="ascii")
+    return peak_rss_from_status(status)
 
 
 def supervise(command: list[str], *, timeout_s: float, rss_limit_bytes: int,
