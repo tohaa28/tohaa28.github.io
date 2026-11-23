@@ -4970,6 +4970,28 @@
     };
   }
 
+  // vision/orders/approval-file-batch-policy.mjs
+  var APPROVED_ORDERS_PER_ZIP = 100;
+  var SOFT_BATCH_PAYLOAD_LIMIT = 12e7;
+  function archivePayloadBytes(rows) {
+    if (!Array.isArray(rows)) throw Error("VISION_BATCH_ROWS_INVALID");
+    let total = 0;
+    for (const row of rows) {
+      if (!Array.isArray(row?.transfers))
+        throw Error("VISION_BATCH_ROW_TRANSFERS_INVALID");
+      for (const transfer of row.transfers)
+        total += transfer?.data?.byteLength || 0;
+    }
+    return total;
+  }
+  function selectArchiveRows(rows) {
+    if (!Array.isArray(rows)) throw Error("VISION_BATCH_ROWS_INVALID");
+    return rows.slice(0, APPROVED_ORDERS_PER_ZIP);
+  }
+  function archiveBatchDue(rows) {
+    return rows.length >= APPROVED_ORDERS_PER_ZIP || rows.length > 0 && archivePayloadBytes(rows) >= SOFT_BATCH_PAYLOAD_LIMIT;
+  }
+
   // vision/orders/approval-file-persistence.mjs
   var LIST_DB_NAME = "vision-ai-approved-file-list-v1";
   var LIST_STATUS_SCHEMA = "printcheck.vision.order-file-list.v1";
@@ -5156,7 +5178,7 @@
     root.className = "vlo-file-list";
     root.style.cssText = "width:100%;border:1px solid #69898b;border-radius:8px;padding:10px;margin:10px 0;";
     root.append(el("strong", "\u0421\u043F\u0438\u0441\u043E\u043A \u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430 TXT"));
-    root.append(el("p", "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0441 \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u043C\u0438 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438: \u043E\u0434\u0438\u043D \u043D\u043E\u043C\u0435\u0440 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435. \u041F\u043E\u0432\u0442\u043E\u0440\u044B \u0443\u0434\u0430\u043B\u044F\u044E\u0442\u0441\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u044F\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u043E\u043C\u0435\u0440\u0430 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430, \u043D\u0435\u0437\u0430\u0432\u0438\u0441\u0438\u043C\u043E \u043E\u0442 \u0433\u0440\u0430\u043D\u0438\u0446 \u0440\u0435\u0436\u0438\u043C\u0430 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430. \u041A\u0430\u0436\u0434\u044B\u0439 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0439 \u0437\u0430\u043A\u0430\u0437 \u2014 \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u044B\u0439 ZIP."));
+    root.append(el("p", "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0441 \u0441\u0435\u043C\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u043C\u0438 \u043D\u043E\u043C\u0435\u0440\u0430\u043C\u0438: \u043E\u0434\u0438\u043D \u043D\u043E\u043C\u0435\u0440 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435. \u041F\u043E\u0432\u0442\u043E\u0440\u044B \u0443\u0434\u0430\u043B\u044F\u044E\u0442\u0441\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u044F\u044E\u0442\u0441\u044F \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u043E\u043C\u0435\u0440\u0430 \u0438\u0437 \u0444\u0430\u0439\u043B\u0430, \u043D\u0435\u0437\u0430\u0432\u0438\u0441\u0438\u043C\u043E \u043E\u0442 \u0433\u0440\u0430\u043D\u0438\u0446 \u0440\u0435\u0436\u0438\u043C\u0430 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430. ZIP \u043F\u043E 100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432; \u043F\u0440\u0438 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0438 \u0441\u043F\u0438\u0441\u043A\u0430 \u0438\u043B\u0438 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0435 \u2014 ZIP \u043D\u0435\u043F\u043E\u043B\u043D\u043E\u0439 \u043F\u0430\u0440\u0442\u0438\u0438. \u041F\u0440\u0438 \u043F\u0440\u0435\u0432\u044B\u0448\u0435\u043D\u0438\u0438 \u0431\u0435\u0437\u043E\u043F\u0430\u0441\u043D\u043E\u0433\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0430 ZIP \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0440\u0430\u043D\u044C\u0448\u0435."));
     const fileLabel = el("label", "\u0412\u044B\u0431\u0440\u0430\u0442\u044C TXT \u0441\u043E \u0441\u043F\u0438\u0441\u043A\u043E\u043C ");
     const fileInput = el("input");
     fileInput.type = "file";
@@ -5186,8 +5208,10 @@
     });
     const stopBtn = button2("\u0421\u0442\u043E\u043F \u0438 \u0430\u0440\u0445\u0438\u0432 \u0441\u043F\u0438\u0441\u043A\u0430", () => {
       stopped = true;
+      stopWithoutZip = false;
       void setMode("stopped");
       show("\u0421\u043E\u0445\u0440\u0430\u043D\u044E \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E ZIP-\u043F\u0430\u0440\u0442\u0438\u044E \u043F\u043E\u0441\u043B\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E \u0437\u0430\u043A\u0430\u0437\u0430");
+      if (!running) void manualSave();
     });
     const saveBtn = button2("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043D\u0435\u043F\u043E\u043B\u043D\u0443\u044E ZIP \u0441\u043F\u0438\u0441\u043A\u0430", () => manualSave());
     const exportBtn = button2("\u0420\u0435\u0435\u0441\u0442\u0440 \u0441\u043F\u0438\u0441\u043A\u0430 JSON", () => exportRegistry());
@@ -5213,10 +5237,10 @@
     const currentMode = () => stopped ? "stopped" : paused ? "paused" : running ? "running" : "paused";
     function show(message = "") {
       const next = state && state.index < state.total ? String(queue[state.index]) : "\u2014";
-      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438: " + activeRows().length + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (state?.download ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + " \xB7 \u0441\u0435\u0442\u044C: " + networkHealth.state + " \xB7 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432 GET: " + networkHealth.retries + " \xB7 \u0441\u0435\u0442\u0435\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A: " + networkHealth.transient_errors + " \xB7 \u0444\u0430\u0437\u0430: " + stage + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
+      progress.textContent = (state ? "\u0424\u0430\u0439\u043B: " + state.filename + " \xB7 \u0432\u0441\u0435\u0433\u043E: " + state.total + " \xB7 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E: " + state.index + " \xB7 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u0430: " + currentDelay + " \u043C\u0441" : "\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D") + "\n\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0437\u0430\u043A\u0430\u0437: " + next + " \xB7 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043E \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + checkedSession + " \xB7 ZIP: " + (state?.archive_count || 0) + " \xB7 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0438 \u0430\u0440\u0445\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u043E: " + (state?.found_committed || 0) + " \xB7 \u0432 \u0442\u0435\u043A\u0443\u0449\u0435\u0439 \u043F\u0430\u0440\u0442\u0438\u0438: " + activeRows().length + "/" + APPROVED_ORDERS_PER_ZIP + " \xB7 ZIP \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u0442\u0441\u044F: " + (state?.download ? 1 : 0) + " \xB7 \u043E\u0448\u0438\u0431\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442\u0438\u044F: " + (state?.failed_count || 0) + " \xB7 \u0441\u0435\u0442\u044C: " + networkHealth.state + " \xB7 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432 GET: " + networkHealth.retries + " \xB7 \u0441\u0435\u0442\u0435\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A: " + networkHealth.transient_errors + " \xB7 \u0444\u0430\u0437\u0430: " + stage + (lastError ? "\n\u041E\u0448\u0438\u0431\u043A\u0430: " + lastError : "") + (message ? "\n" + message : "");
     }
     const activeRows = () => pending.filter((row) => !state?.download?.order_ids?.includes(row.id));
-    const activeBytes = () => activeRows().reduce((sum, row) => sum + row.transfers.reduce((n, t) => n + (t.data?.byteLength || 0), 0), 0);
+    const activeBytes = () => archivePayloadBytes(activeRows());
     const captureMode = (mode) => {
       if (!state) return null;
       state = { ...state, mode, delay_ms: currentDelay };
@@ -5335,7 +5359,9 @@
         for (const row of rows2) temp2.restoreOrder(row.id, row.transfers);
         const blob2 = temp2.finalize(rows2).blob;
         if (blob2.size !== info.bytes) throw Error("VISION_DIRECTORY_ZIP_SIZE_CHANGED");
-        await globalThis.__visionArchiveSave(blob2, info.filename);
+        const saved = await globalThis.__visionArchiveSave(blob2, info.filename);
+        if (saved?.status !== "VISION_LOCAL_ARCHIVE_VERIFIED")
+          throw Error("VISION_DIRECTORY_FILE_UNCONFIRMED");
         await commitDownloaded();
         return true;
       }
@@ -5407,11 +5433,11 @@
       }
     }
     async function saveBatch(reason) {
-      let rows = activeRows().slice(0, 1);
+      let rows = selectArchiveRows(activeRows());
       if (!rows.length) return true;
       if (state.download) {
         if (!await recoverDownload(true)) return false;
-        rows = activeRows().slice(0, 1);
+        rows = selectArchiveRows(activeRows());
         if (!rows.length) return true;
       }
       let result;
@@ -5482,7 +5508,9 @@
     async function manualSave() {
       if (running || !pending.length) return;
       if (state.download && !await recoverDownload(true)) return;
-      await saveBatch("\u0432\u0440\u0443\u0447\u043D\u0443\u044E");
+      while (activeRows().length) {
+        if (!await saveBatch("\u0432\u0440\u0443\u0447\u043D\u0443\u044E")) return;
+      }
       if (state.download) await recoverDownload(true);
     }
     async function importFile(file, remote = false, overwrite = false) {
@@ -5637,7 +5665,7 @@
         return;
       }
       currentDelay = rate;
-      if (state.index >= state.total && !pending.length) {
+      if (state.index >= state.total && !pending.length && !state.download) {
         show("\u0412\u0441\u0435 \u043D\u043E\u043C\u0435\u0440\u0430 \u0438\u0437 \u0441\u043F\u0438\u0441\u043A\u0430 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u044B.");
         return;
       }
@@ -5651,8 +5679,8 @@
         if (state.download && !await recoverDownload())
           throw Error("MANUAL_ORDER_LIST_ZIP_UNCONFIRMED");
         await setMode("running");
-        while (activeRows().length) {
-          if (!await saveBatch("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u044B\u0439 \u0437\u0430\u043A\u0430\u0437"))
+        while (archiveBatchDue(activeRows())) {
+          if (!await saveBatch("\u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u0430\u044F \u043F\u0430\u0440\u0442\u0438\u044F"))
             throw Error("MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW");
         }
         while (state.index < state.total && !paused && !stopped && !isClosed()) {
@@ -5745,8 +5773,9 @@
           else batch.discardOrder(order_number);
           checkedSession++;
           if (state.download && !await recoverDownload(false)) break;
-          if (record || activeRows().length) {
-            if (!await saveBatch("\u043E\u0434\u0438\u043D \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0439 \u0437\u0430\u043A\u0430\u0437")) break;
+          if (archiveBatchDue(activeRows())) {
+            const bySize = activeBytes() >= SOFT_BATCH_PAYLOAD_LIMIT;
+            if (!await saveBatch(bySize ? "\u043F\u0440\u0435\u0434\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u0438\u0435 \u0440\u0430\u0437\u043C\u0435\u0440\u0430" : "100 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043D\u043D\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432")) break;
           }
           show("\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440: " + order_number + " \u2014 " + (failure2 ? failure2.reason : inspected.status));
           if (!paused && !stopped) await dynamicDelay();
@@ -5908,8 +5937,9 @@
         }
         if (action === "stop") {
           stopped = true;
-          stopWithoutZip = true;
+          stopWithoutZip = false;
           await setMode("stopped");
+          if (!running) await manualSave();
           return { status: "VISION_SCAN_STOP_REQUESTED" };
         }
         if (action === "save") {
@@ -5932,7 +5962,9 @@
       },
       requestStop: () => {
         stopped = true;
+        stopWithoutZip = false;
         void setMode("stopped");
+        if (!running) void manualSave();
       }
     };
   }
