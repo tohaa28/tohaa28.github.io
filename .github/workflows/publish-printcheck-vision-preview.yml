@@ -258,6 +258,7 @@ jobs:
           # GitHub Ubuntu runner already has the headless dependencies.
           # Avoid apt mirror sync failures on ubuntu-26.04 (resolute-security).
           npx playwright install chromium
+          node tests/printcheck-vision-approval-seven-files.browser.mjs
           node tests/printcheck-vision-ui.browser.mjs
           node tests/printcheck-vision-studio.browser.mjs
           node tests/test_vision_roi_annotator.browser.mjs
@@ -278,7 +279,6 @@ jobs:
           node tests/printcheck-vision-scanner-host.browser.mjs
           node tests/printcheck-vision-host-approvals.browser.mjs
           node tests/printcheck-vision-one-order-per-zip.browser.mjs
-          node tests/printcheck-vision-approval-seven-files.browser.mjs
           node tests/printcheck-vision-61-order-browser.mjs
 
       - name: Build isolated bookmarklet launcher

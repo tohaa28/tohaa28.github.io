@@ -171,8 +171,21 @@ try{
    await chrome.downloads.search({})
   ).map(x=>({id:x.id,state:x.state,mime:x.mime,
    danger:x.danger,totalBytes:x.totalBytes})));
+  const journal=await engine.evaluate(()=>new Promise((resolve,reject)=>{
+   const req=indexedDB.open('vision-ai-approved-file-list-v1');
+   req.onerror=()=>reject(Error('DEBUG_IDB_OPEN_FAILED'));
+   req.onsuccess=()=>{
+    const db=req.result,tx=db.transaction(['failures','state'],'readonly');
+    const failures=tx.objectStore('failures').getAll();
+    const state=tx.objectStore('state').get('active');
+    tx.oncomplete=()=>{resolve({failures:failures.result,
+     state:{index:state.result?.index,archive_count:state.result?.archive_count,
+      failed_count:state.result?.failed_count}});db.close()};
+    tx.onerror=()=>reject(Error('DEBUG_IDB_READ_FAILED'));
+   };
+  }));
   console.log('SEVEN_FIXTURE_DIAGNOSTIC',JSON.stringify({
-   panel,requests,allDownloads,errors
+   panel,requests,allDownloads,errors,journal
   }));
  }
  assert.equal(completed.length,1,'only one TZ-approved order must yield ZIP');
