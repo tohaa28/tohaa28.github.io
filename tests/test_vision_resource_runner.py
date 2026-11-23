@@ -41,6 +41,26 @@ class ResourceRunnerTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "RSS_UNAVAILABLE"):
                         peak_rss_from_status(status)
 
+    def test_nonfinite_time_budgets_fail_before_child_spawn_three_passes(self):
+        from unittest.mock import patch
+        for attempt in range(3):
+            for timeout_s, poll_s in (
+                (float("nan"), .02),
+                (float("inf"), .02),
+                (float("-inf"), .02),
+                (3, float("nan")),
+                (3, float("inf")),
+                (3, float("-inf")),
+            ):
+                with self.subTest(attempt=attempt, timeout_s=timeout_s, poll_s=poll_s):
+                    with patch("vision_resource_runner.subprocess.Popen") as spawn:
+                        with self.assertRaisesRegex(ValueError, "INVALID_RESOURCE_BUDGET"):
+                            supervise([sys.executable, "-c", "pass"],
+                                      timeout_s=timeout_s,
+                                      rss_limit_bytes=128 * 1024 * 1024,
+                                      poll_s=poll_s)
+                        spawn.assert_not_called()
+
     def test_timeout_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "CHILD_TIMEOUT"):
             supervise([sys.executable, "-c", "import time; time.sleep(5)"],
