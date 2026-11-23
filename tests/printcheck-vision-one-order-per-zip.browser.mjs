@@ -20,6 +20,7 @@ const third='http://testgifts.local/private/order/3200001';
 const fourth='http://testgifts.local/private/order/3200002';
 const fifth='http://testgifts.local/private/order/3200003';
 const image='http://files.testgifts.local/maketadjusting/11313/2999999/77/capture.png';
+const imageSecond=image.replace('2999999','3200000');
 const listing='<html><body><table><tbody><tr><td>'+
  '<a href="'+first+'">2999999</a></td></tr></tbody></table></body></html>';
 const png=Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0,0,0,0,0]);
@@ -57,7 +58,7 @@ const html=(num,approved)=>'<html><body>'+
  "document.body.append(modal);"+
  "const gallery=modal.querySelector('g-gallery');"+
  "gallery.attachShadow({mode:'open'}).innerHTML='<section><picture>"+
- "<img src=\""+image+"\"></picture></section>';"+
+ "<img src=\""+image.replace('2999999',num)+"\"></picture></section>';"+
  "modal.setAttribute('visible','');});"+
  '</script></body></html>';
 const requests=[];
@@ -78,7 +79,7 @@ const proxy=createServer((req,res)=>{
  else if(url===fourth){type='server-failed';status=502}
  else if(url===fifth){type='unreadable';status=200;
   body=Buffer.from('<html><body>Missing cart</body></html>')}
- else if(url===image){
+ else if(url===image||url===imageSecond){
   type='image';status=200;body=png;mime='image/png'
  }
  requests.push({type,method:req.method,url,at:Date.now()});
