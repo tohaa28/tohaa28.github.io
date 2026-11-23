@@ -129,6 +129,23 @@ try{
  });
  const errors=[];
  browser.on('page',page=>page.on('pageerror',err=>errors.push(err.message)));
+ const rawPage=await browser.newPage();
+ await rawPage.goto(BASE+'/private/order/'+APPROVED);
+ const native=await rawPage.evaluate(()=>{
+  const root=document.querySelector('#j_cart_host[data-orderid]');
+  const fields=root?[...root.querySelectorAll(
+   '.cart-log label input.j_toggle_status[data-id="59"][type="checkbox"]')]:[];
+  const input=fields[0],label=input?.closest('label');
+  return {root:!!root,fields:fields.length,checked:input?.checked,
+   displayed:root?.querySelector('.cart-header-number [data-clipboard-text]')?.
+    getAttribute('data-clipboard-text'),
+   labelTexts:[...(label?.querySelectorAll('.btn--toggle .on,.btn--toggle .off')||[])]
+    .map(x=>x.textContent),
+   triggers:document.querySelectorAll('li[data-itemid] a.j_maketadjusting').length
+  };
+ });
+ console.log('SEVEN_FIXTURE_NATIVE_PREVIEW',JSON.stringify(native));
+ await rawPage.close();
  const portal=await browser.newPage();
  await portal.goto('http://psk.testgifts.local/catalog');
  await portal.locator('#vision-ai-scan-launcher').waitFor({timeout:15000});
