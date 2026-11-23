@@ -421,6 +421,22 @@ class PDFAuditTests(unittest.TestCase):
         report = next((self.root / "reports" / "pdf-audits").glob("*.json"))
         self.assertEqual(json.loads(report.read_text(encoding="utf8"))["status"], "MANUAL")
 
+    def test_pdf_source_hash_streams_without_read_bytes_three_passes(self):
+        from unittest.mock import patch
+        source = self.root / lab.list_samples(self.root)[0]["path"]
+        for cycle in range(3):
+            with self.subTest(cycle=cycle):
+                with patch.object(Path, "read_bytes", side_effect=AssertionError("unbounded read")):
+                    result = pdf.audit_sample(self.root, self.sample_id, engine=Engine())
+                self.assertEqual(result["status"], "RESEARCH_ONLY")
+                self.assertFalse(result["training_ready"])
+                self.assertFalse(result["production_approved"])
+        source.write_bytes(self.pdf + b"synthetic tampering")
+        with patch.object(Path, "read_bytes", side_effect=AssertionError("unbounded read")):
+            result = pdf.audit_sample(self.root, self.sample_id, engine=Engine())
+        self.assertEqual(result["reason"], "SOURCE_SHA256_MISMATCH")
+        self.assertFalse(result["production_approved"])
+
     def test_missing_and_tampered_source_fail_closed(self):
         self.assertEqual(pdf.audit_sample(self.root, "invalid", engine=Engine())["reason"],
                          "SAMPLE_ID_INVALID")
