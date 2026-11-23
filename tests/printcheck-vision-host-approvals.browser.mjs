@@ -169,10 +169,10 @@ try{
   [2999999,3200000,3200001,3200002,3200003]);
  assert.equal(stateBefore.state.index,3);
  assert.equal(stateBefore.state.mode,'running');
- assert.equal(stateBefore.state.archive_count,1,
-  'v0.2.1 must save one approved order immediately, not wait for 100');
- assert.deepEqual(stateBefore.pending.map(x=>x.id),[],
-  'once Chrome confirms a ZIP its payload leaves pending IDB');
+ assert.equal(stateBefore.state.archive_count,0,
+  'an approved order must stay in the pending 100-order batch until finish');
+ assert.deepEqual(stateBefore.pending.map(x=>x.id),['2999999'],
+  'native discussion and original attachment are durable across reload');
  await page.reload();
  await page.locator('.vlo-file-list').waitFor({timeout:15000});
  await page.waitForFunction(()=>(
@@ -215,7 +215,7 @@ try{
  assert.equal(thread.current_problems.length,1);
  assert.ok(entries.has('orders/2999999/source/evidence.json'),
   'Original private order conversation must be inside the archive');
- console.log('Vision v0.2.1 host approved conversation, attachment, resume, ZIP PASS');
+ console.log('Vision v0.2.3 host approved conversation, attachment, pending resume, final ZIP PASS');
 }finally{
  if(browser)await browser.close();
  await new Promise(resolve=>proxy.close(resolve));
