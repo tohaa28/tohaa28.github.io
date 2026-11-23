@@ -39,7 +39,8 @@ def supervise(command: list[str], *, timeout_s: float, rss_limit_bytes: int,
               poll_s: float = .02) -> tuple[int, int]:
     if sys.platform != "linux" or not Path("/proc/self/status").exists():
         raise RuntimeError("LINUX_PROCFS_REQUIRED")
-    if (not math.isfinite(timeout_s) or not math.isfinite(poll_s)
+    if (type(timeout_s) not in (int, float) or type(poll_s) not in (int, float)
+            or not math.isfinite(timeout_s) or not math.isfinite(poll_s)
             or timeout_s <= 0 or type(rss_limit_bytes) is not int
             or rss_limit_bytes <= 0 or poll_s <= 0):
         raise ValueError("INVALID_RESOURCE_BUDGET")
