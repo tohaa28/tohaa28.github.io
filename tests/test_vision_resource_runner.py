@@ -33,6 +33,14 @@ class ResourceRunnerTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "RSS_UNAVAILABLE"):
                     peak_rss_from_status(status)
 
+    def test_duplicate_kernel_metrics_fail_closed_three_passes(self):
+        for attempt in range(3):
+            for duplicate in ("VmRSS: 2 kB", "VmHWM: 2 kB"):
+                with self.subTest(attempt=attempt, duplicate=duplicate):
+                    status = "VmRSS: 1024 kB\nVmHWM: 8192 kB\n" + duplicate + "\n"
+                    with self.assertRaisesRegex(RuntimeError, "RSS_UNAVAILABLE"):
+                        peak_rss_from_status(status)
+
     def test_timeout_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "CHILD_TIMEOUT"):
             supervise([sys.executable, "-c", "import time; time.sleep(5)"],
