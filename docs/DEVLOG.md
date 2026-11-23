@@ -2200,3 +2200,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification:** source/test changes committed via GitHub connector. Independent integrated execution and exact-post-change CI not verified at log-writing time; do not claim PASS. The child-exit /proc VmHWM race and lack of OS-enforced peak RSS guarantee remain unresolved (cgroup v2 research required). No full 512 MB test was run.
 
 **Outstanding:** four-contour CI especially preview publish; optional nine-case 512 MB test; independent real dual-voice ROI/adjudication; proven constructor, physical mm scale and print process; ICC/spot; verified family holdout; private PDF --all; authenticated anonymous 404/MV3 reference_state. training_ready=false; production_approved=false; unknown => MANUAL. No private data, filenames, hashes, keys, expert votes or customer PDFs uploaded; PR not merged.
+
+
+## 2026-11-23 — M3.30 / bounded streaming SHA verification for private PDF audit
+
+**Pre-change HEAD:** ed43e786d9542f97191e5a704b3019bf0bc5bed1; PR #4 OPEN, draft=true, merged=false, correct experimental head verified before each write. Exact pre-change GitHub Actions: UI smoke 45227827446 SUCCESS, raster safety 45227827487 SUCCESS, rules/dataset safety 45227827609 SUCCESS. CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact SHA NOT VERIFIED.
+
+**Changes:** 0d759e0500b5ed72d7d324cb72f34f81cf68d0d4 modifies only tools/vision_pdf_audit.py: local audit_sample SHA validation now streams in 1 MiB chunks, checks MAX_FILE while reading, and returns MANUAL on oversize or I/O failure instead of allocating an entire original with read_bytes(). 4d8965533e888ab824ea528d195d8cca652f5d0f modifies only tests/test_vision_pdf_audit.py: three synthetic repetitions assert no Path.read_bytes() is used, verify RESEARCH_ONLY with no training/production approval, and reject a tampered synthetic source. No client documents or identifying metadata committed.
+
+**Verification:** Source and regression test committed via GitHub connector. Independent integrated test execution and exact post-change CI NOT VERIFIED when written; test PASS not claimed. No 512 MB opt-in run. This change does not prove PDF colors, actual ink width, physical scale or print acceptance. All unknowns => MANUAL.
+
+**Outstanding:** four exact-head CI contours (especially preview publish), CircleCI, independent ROI two voices/adjudication, proven constructor/print method/physical mm, ICC/spot, verified family holdout, private PDF --all, anonymous authenticated 404/MV3 reference_state, 512 MB nine-case opt-in, kernel-enforced RSS/cgroup v2. training_ready=false; production_approved=false. No production changes, private uploads, automatic training or PR merge.
