@@ -324,7 +324,7 @@ jobs:
               'http://files.testgifts.local/*']
           assert manifest['permissions']==['tabs','downloads','storage','offscreen']
           assert manifest['background']['service_worker']=='service-worker.js'
-          assert manifest['version']=='0.2.1'
+          assert manifest['version']=='0.2.2'
           assert len(manifest['content_scripts'])==2
           assert manifest['content_scripts'][0]['matches']==[
               'http://testgifts.local/private/order/*']

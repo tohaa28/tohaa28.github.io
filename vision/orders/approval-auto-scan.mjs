@@ -42,8 +42,11 @@ function isCurrentOrderApprovalLink(raw,doc){
   const target=new URL(raw,page.href);
   return page.protocol==='http:'&&page.hostname==='testgifts.local'&&
     target.origin===page.origin&&target.pathname===page.pathname&&
-    target.hash==='#'&&!target.search&&
-    !target.username&&!target.password;
+    // For a bare trailing '#', URL.hash is the empty string in Chrome.
+    // Match the entire canonical URL so #other / query / offsite links
+    // are still rejected while real Gifts approval buttons are accepted.
+    target.href===page.origin+page.pathname+'#'&&
+    !target.search&&!target.username&&!target.password;
  }catch{return false}
 }
 const humanOrSystem=(body,wrapper)=>{

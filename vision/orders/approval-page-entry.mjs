@@ -38,7 +38,7 @@ export function initApprovalPageEntry(){
  document.head.append(style);
  const panel=make('section');panel.id=BOX_ID;
  panel.setAttribute('aria-label','Vision AI — исследование открытого согласования');
- const header=make('strong','Vision AI · Согласование макета · v0.1.8');
+ const header=make('strong','Vision AI · Согласование макета · v0.2.2');
  const note=make('p','Ручная проверка работает прямо в открытом заказе и не зависит от очереди TXT. По кнопке «Автообход согласований >1» собираются обсуждения и скачиваются вложения. В очереди TXT архив создаётся отдельно на каждый заказ со статусом «ТЗ утверждено». Данные остаются на компьютере.');
  const stats=make('p','Ожидается открытое окно.');stats.setAttribute('role','status');
  const scan=make('button','Прочитать открытое согласование');
