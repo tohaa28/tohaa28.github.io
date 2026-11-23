@@ -169,10 +169,11 @@ try{
   [2999999,3200000,3200001,3200002,3200003]);
  assert.equal(stateBefore.state.index,3);
  assert.equal(stateBefore.state.mode,'running');
- assert.equal(stateBefore.state.archive_count,2,
-  'two approved orders must each be archived immediately');
- assert.deepEqual(stateBefore.pending.map(x=>x.id),[],
-  'once Chrome confirms a ZIP its payload leaves pending IDB');
+ assert.equal(stateBefore.state.archive_count,0,
+  'two approved orders must remain in one durable incomplete 100-order batch');
+ assert.deepEqual(stateBefore.pending.map(x=>x.id).sort(),
+  ['2999999','3200000'],
+  'both conversations survive as complete pending records before ZIP');
  await page.reload();
  await page.locator('.vlo-file-list').waitFor({timeout:15000});
  await page.waitForFunction(()=>(
@@ -205,25 +206,24 @@ try{
    x.url.startsWith('blob:chrome-extension://')).map(x=>({
     filename:x.filename,id:x.id,url:x.url
    })));
- assert.equal(completed.length,2,'each approved order must produce its own ZIP');
- const archives=await Promise.all(completed.map(async row=>
-  readZip(new Uint8Array(await readFile(row.filename)))));
- const orders=new Set();
- for(const entries of archives){
-  const manifest=JSON.parse(Buffer.from(entries.get('manifest.json')).toString());
-  assert.equal(manifest.counts.orders,1,'one order per ZIP');
-  for(const order of ['2999999','3200000']){
-   if(!entries.has('orders/'+order+'/source/evidence.json'))continue;
-   const thread=JSON.parse(Buffer.from(
-    entries.get('orders/'+order+'/threads/77.json')).toString());
-   assert.equal(thread.history[0].author_name,'Дизайнер Тестовый');
-   assert.equal(thread.current_problems.length,1);
-   orders.add(order);
-  }
+ assert.equal(completed.length,1,
+  'incomplete final batch must be ONE ZIP containing both approved orders');
+ const entries=readZip(new Uint8Array(await readFile(completed[0].filename)));
+ const manifest=JSON.parse(Buffer.from(entries.get('manifest.json')).toString());
+ assert.equal(manifest.counts.orders,2,'both approved orders must share ZIP');
+ assert.equal(manifest.counts.verified_files,2);
+ const orders=[];
+ for(const order of ['2999999','3200000']){
+  assert.ok(entries.has('orders/'+order+'/source/evidence.json'));
+  const thread=JSON.parse(Buffer.from(
+   entries.get('orders/'+order+'/threads/77.json')).toString());
+  assert.equal(thread.history[0].author_name,'Дизайнер Тестовый');
+  assert.equal(thread.current_problems.length,1);
+  assert.ok(entries.has('orders/'+order+'/files-index.json'));
+  orders.push(order);
  }
- assert.deepEqual([...orders].sort(),['2999999','3200000'],
-  'both original conversations must exist in separate ZIPs');
- console.log('Vision v0.2.1 TWO approved orders -> TWO complete conversation ZIPs PASS');
+ assert.deepEqual(orders,['2999999','3200000']);
+ console.log('Vision v0.2.3 TWO approved -> ONE complete final ZIP, reload PASS');
 }finally{
  if(browser)await browser.close();
  await new Promise(resolve=>proxy.close(resolve));

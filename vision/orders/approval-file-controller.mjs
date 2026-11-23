@@ -7,6 +7,9 @@ import {parseOrderListText,explicitListOrderUrl,ORDER_LIST_MAX_BYTES}
  from './approval-file-list.mjs';
 import {probeTzForOrder,isRecoverableRangeFailure} from './approval-range-scanner.mjs';
 import {ApprovalBatchSession} from './approval-batch-archive.mjs';
+import {APPROVED_ORDERS_PER_ZIP,SOFT_BATCH_PAYLOAD_LIMIT,
+ archivePayloadBytes,selectArchiveRows,archiveBatchDue}
+ from './approval-file-batch-policy.mjs';
 import {startExtensionZipDownload} from './extension-zip-transfer.mjs';
 import {controlledOrderProbe,normalizeNetworkHealth,freshNetworkHealth} from './approval-network-control.mjs';
 import {loadOrderFileState,importOrderFileQueue,saveOrderFileProgress,
@@ -37,7 +40,9 @@ export function makeApprovalFileListController({
  root.append(el('strong','Список заказов из файла TXT'));
  root.append(el('p','Загрузите файл с семизначными номерами: один номер в строке. '+
   'Повторы удаляются. Проверяются только номера из файла, независимо от '+
-  'границ режима диапазона. Каждый утверждённый заказ — отдельный ZIP.'));
+  'границ режима диапазона. ZIP по 100 утверждённых заказов; '+
+  'при завершении списка или остановке — ZIP неполной партии. '+
+  'При превышении безопасного размера ZIP партия сохраняется раньше.'));
  const fileLabel=el('label','Выбрать TXT со списком ');
  const fileInput=el('input');fileInput.type='file';
  fileInput.accept='.txt,text/plain';
@@ -54,7 +59,12 @@ export function makeApprovalFileListController({
  const controls=el('div');controls.className='vlo-actions';
  const startBtn=button('Старт / продолжить по списку',()=>start());
  const pauseBtn=button('Пауза списка',()=>{paused=true;void setMode('paused');show('Пауза после текущего заказа')});
- const stopBtn=button('Стоп и архив списка',()=>{stopped=true;void setMode('stopped');show('Сохраню неполную ZIP-партию после текущего заказа')});
+ const stopBtn=button('Стоп и архив списка',()=>{
+  stopped=true;stopWithoutZip=false;
+  void setMode('stopped');
+  show('Сохраню неполную ZIP-партию после текущего заказа');
+  if(!running)void manualSave();
+ });
  const saveBtn=button('Сохранить неполную ZIP списка',()=>manualSave());
  const exportBtn=button('Реестр списка JSON',()=>exportRegistry());
  const resetBtn=button('Очистить список и прогресс',()=>reset());
@@ -89,6 +99,7 @@ export function makeApprovalFileListController({
    ' · ZIP: '+(state?.archive_count||0)+
    ' · найдено и архивировано: '+(state?.found_committed||0)+
    ' · в текущей партии: '+activeRows().length+
+   '/'+APPROVED_ORDERS_PER_ZIP+
    ' · ZIP загружается: '+(state?.download?1:0)+
    ' · ошибок открытия: '+(state?.failed_count||0)+
    ' · сеть: '+networkHealth.state+
@@ -99,8 +110,7 @@ export function makeApprovalFileListController({
    (message?'\n'+message:'');
  }
  const activeRows=()=>pending.filter(row=>!state?.download?.order_ids?.includes(row.id));
- const activeBytes=()=>activeRows().reduce((sum,row)=>sum+
-  row.transfers.reduce((n,t)=>n+(t.data?.byteLength||0),0),0);
+ const activeBytes=()=>archivePayloadBytes(activeRows());
  const captureMode=mode=>{
   if(!state)return null;
   state={...state,mode,delay_ms:currentDelay};
@@ -202,7 +212,9 @@ export function makeApprovalFileListController({
    for(const row of rows)temp.restoreOrder(row.id,row.transfers);
    const blob=temp.finalize(rows).blob;
    if(blob.size!==info.bytes)throw Error('VISION_DIRECTORY_ZIP_SIZE_CHANGED');
-   await globalThis.__visionArchiveSave(blob,info.filename);
+   const saved=await globalThis.__visionArchiveSave(blob,info.filename);
+   if(saved?.status!=='VISION_LOCAL_ARCHIVE_VERIFIED')
+    throw Error('VISION_DIRECTORY_FILE_UNCONFIRMED');
    await commitDownloaded();
    return true;
   }
@@ -262,12 +274,12 @@ export function makeApprovalFileListController({
   }
  }
  async function saveBatch(reason){
-  // v0.2.1: a separate ZIP for EVERY approved order, never 100 in one.
-  let rows=activeRows().slice(0,1);
+  // v0.2.3: up to 100 approved orders, with a bounded size safety flush.
+  let rows=selectArchiveRows(activeRows());
   if(!rows.length)return true;
   if(state.download){
    if(!await recoverDownload(true))return false;
-   rows=activeRows().slice(0,1);
+   rows=selectArchiveRows(activeRows());
    if(!rows.length)return true;
   }
   let result;
@@ -323,7 +335,9 @@ export function makeApprovalFileListController({
  async function manualSave(){
   if(running||!pending.length)return;
   if(state.download&&!await recoverDownload(true))return;
-  await saveBatch('вручную');
+  while(activeRows().length){
+   if(!await saveBatch('вручную'))return;
+  }
   if(state.download)await recoverDownload(true);
  }
  async function importFile(file,remote=false,overwrite=false){
@@ -428,7 +442,7 @@ export function makeApprovalFileListController({
   const rate=validateDelay();
   if(rate===null){lastError='MANUAL_ORDER_LIST_DELAY_INVALID';show();return}
   currentDelay=rate;
-  if(state.index>=state.total&&!pending.length){
+  if(state.index>=state.total&&!pending.length&&!state.download){
    show('Все номера из списка проверены.');return;
   }
   running=true;paused=stopped=false;setBusy(true);
@@ -439,8 +453,10 @@ export function makeApprovalFileListController({
    if(state.download&&!await recoverDownload())
     throw Error('MANUAL_ORDER_LIST_ZIP_UNCONFIRMED');
    await setMode('running');
-   while(activeRows().length){
-    if(!await saveBatch('восстановленный заказ'))
+   // A legacy checkpoint may contain an incomplete, single-order batch.
+   // Keep it on resume and fill to 100 instead of draining it.
+   while(archiveBatchDue(activeRows())){
+    if(!await saveBatch('восстановленная партия'))
      throw Error('MANUAL_ORDER_LIST_ZIP_REQUIRES_REVIEW');
    }
    while(state.index<state.total&&!paused&&!stopped&&!isClosed()){
@@ -509,8 +525,10 @@ export function makeApprovalFileListController({
     else batch.discardOrder(order_number);
     checkedSession++;
     if(state.download&&!await recoverDownload(false))break;
-    if(record||activeRows().length){
-     if(!await saveBatch('один утверждённый заказ'))break;
+    if(archiveBatchDue(activeRows())){
+     const bySize=activeBytes()>=SOFT_BATCH_PAYLOAD_LIMIT;
+     if(!await saveBatch(bySize?
+      'предохранительное ограничение размера':'100 утверждённых заказов'))break;
     }
     show('Последний проверенный номер: '+order_number+
      ' — '+(failure?failure.reason:inspected.status));
@@ -635,7 +653,8 @@ export function makeApprovalFileListController({
    }
    if(action==='pause'){pauseBtn.click();return {status:'VISION_SCAN_PAUSE_REQUESTED'}}
    if(action==='stop'){
-    stopped=true;stopWithoutZip=true;await setMode('stopped');
+    stopped=true;stopWithoutZip=false;await setMode('stopped');
+    if(!running)await manualSave();
     return {status:'VISION_SCAN_STOP_REQUESTED'};
    }
    if(action==='save'){saveBtn.click();return {status:'VISION_SCAN_ZIP_SAVE_REQUESTED'}}
@@ -647,6 +666,9 @@ export function makeApprovalFileListController({
    return {status:'VISION_REMOTE_ACTION_DENIED'};
   },
   requestPause:()=>{paused=true;void setMode('paused')},
-  requestStop:()=>{stopped=true;void setMode('stopped')}
+  requestStop:()=>{
+   stopped=true;stopWithoutZip=false;void setMode('stopped');
+   if(!running)void manualSave();
+  }
  };
 }

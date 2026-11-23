@@ -25,6 +25,8 @@ on:
       - vision/orders/approval-file-list.mjs
       - vision/orders/approval-file-persistence.mjs
       - vision/orders/approval-file-controller.mjs
+      - vision/orders/approval-file-batch-policy.mjs
+      - tests/printcheck-vision-100-order-batches.test.mjs
       - vision/orders/approval-network-control.mjs
       - tests/printcheck-vision-network-control.test.mjs
       - vision/orders/extension-zip-transfer.mjs
@@ -148,6 +150,8 @@ jobs:
           node --check vision/orders/approval-file-list.mjs
           node --check vision/orders/approval-file-persistence.mjs
           node --check vision/orders/approval-file-controller.mjs
+          node --check vision/orders/approval-file-batch-policy.mjs
+          node --test tests/printcheck-vision-100-order-batches.test.mjs
           node --test tests/printcheck-vision-approval-file-list.test.mjs
           node --test tests/printcheck-vision-approval-range.test.mjs
           node --check vision/orders/approval-batch-archive.mjs
@@ -324,7 +328,7 @@ jobs:
               'http://files.testgifts.local/*']
           assert manifest['permissions']==['tabs','downloads','storage','offscreen']
           assert manifest['background']['service_worker']=='service-worker.js'
-          assert manifest['version']=='0.2.2'
+          assert manifest['version']=='0.2.3'
           assert len(manifest['content_scripts'])==2
           assert manifest['content_scripts'][0]['matches']==[
               'http://testgifts.local/private/order/*']

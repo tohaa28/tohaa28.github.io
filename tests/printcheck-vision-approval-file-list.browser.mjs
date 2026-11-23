@@ -165,10 +165,10 @@ try{
   [2999999,3200000,3200001,3200002,3200003]);
  assert.equal(stateBefore.state.index,3);
  assert.equal(stateBefore.state.mode,'running');
- assert.equal(stateBefore.state.archive_count,1,
-  'v0.2.1 must save one approved order immediately, not wait for 100');
- assert.deepEqual(stateBefore.pending.map(x=>x.id),[],
-  'once Chrome confirms a ZIP its payload leaves pending IDB');
+ assert.equal(stateBefore.state.archive_count,0,
+  'fewer than 100 approved orders stay staged until end/stop/manual save');
+ assert.deepEqual(stateBefore.pending.map(x=>x.id),['2999999'],
+  'reloading must not lose an incomplete 100-order batch');
  await page.reload();
  await page.locator('.vlo-file-list').waitFor({timeout:15000});
  await page.waitForFunction(()=>(
