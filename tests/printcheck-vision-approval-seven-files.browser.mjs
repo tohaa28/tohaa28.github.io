@@ -165,6 +165,16 @@ try{
    x.url.startsWith('blob:chrome-extension://'))
    .map(x=>({file:x.filename,id:x.id}));
  });
+ if(completed.length!==1){
+  const panel=await engine.locator('.vlo-file-list').innerText();
+  const allDownloads=await worker.evaluate(async()=>(
+   await chrome.downloads.search({})
+  ).map(x=>({id:x.id,state:x.state,mime:x.mime,
+   danger:x.danger,totalBytes:x.totalBytes})));
+  console.log('SEVEN_FIXTURE_DIAGNOSTIC',JSON.stringify({
+   panel,requests,allDownloads,errors
+  }));
+ }
  assert.equal(completed.length,1,'only one TZ-approved order must yield ZIP');
  const entries=readZip(await readFile(completed[0].file));
  const manifest=JSON.parse(entries.get('manifest.json').toString('utf8'));
