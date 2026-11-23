@@ -2211,3 +2211,14 @@ HTTP-статусом при наличии. Отдельные неудачны
 **Verification:** Source and regression test committed via GitHub connector. Independent integrated test execution and exact post-change CI NOT VERIFIED when written; test PASS not claimed. No 512 MB opt-in run. This change does not prove PDF colors, actual ink width, physical scale or print acceptance. All unknowns => MANUAL.
 
 **Outstanding:** four exact-head CI contours (especially preview publish), CircleCI, independent ROI two voices/adjudication, proven constructor/print method/physical mm, ICC/spot, verified family holdout, private PDF --all, anonymous authenticated 404/MV3 reference_state, 512 MB nine-case opt-in, kernel-enforced RSS/cgroup v2. training_ready=false; production_approved=false. No production changes, private uploads, automatic training or PR merge.
+
+
+## 2026-11-24 — M3.35 / bounded verified PDF snapshot, source-swap regression
+
+**Pre-change HEAD:** 379a9203dfdea16b19e468322d53799ec45b9834. GitHub PR #4 confirmed OPEN, draft=true, merged=false, correct experimental head. Exact pre-change GitHub Actions: UI smoke 45238021672 SUCCESS, raster safety 45238021635 SUCCESS, rules/dataset safety 45238021588 SUCCESS; CircleCI vision-contract and vision-raster SUCCESS. Preview publish on exact SHA NOT VERIFIED.
+
+**Changes:** 86f11b412fc68611697aebe6e95f0bd77f3aacee modifies only tools/vision_pdf_audit.py: audit_sample streams source into a local owner-only temporary snapshot (16 MB ceiling), validates SHA-256 of the copied bytes, and gives the PDF engine the verified snapshot rather than the mutable original path. TemporaryDirectory cleanup runs on success, checksum failure and backend failure. 3f9b5a010367d56664a1de5795b2be1df257f0de adds three synthetic source-replacement cycles and a backend-failure cleanup/privacy test in tests/test_vision_pdf_audit.py. Only synthetic test bytes; no client data committed.
+
+**Verification:** connector confirmed branch/PR state before each write. The new Python regressions have NOT been independently executed in this cycle, and post-change GitHub Actions/CircleCI have NOT yet been verified; do not claim PASS. Snapshot isolation addresses source replacement after verification, but cannot certify an adversarial local filesystem, PDF engine internals, ICC/spot, physical scale, or actual printed geometry. Local temporary copy is intentionally bounded, not an external upload.
+
+**Outstanding:** exact-head four CI contours including preview publish; independent three-pass Python execution; two independent real ROI reviews/adjudication, verified constructor and print process/physical mm, ICC/spot, verified family holdout, private PDF --all, anonymous authenticated 404/MV3 reference_state, optional nine-case 512 MB test and cgroup v2. training_ready=false; production_approved=false; unknown => MANUAL. No production modification, private uploads, training or PR merge.
