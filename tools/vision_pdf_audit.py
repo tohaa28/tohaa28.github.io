@@ -228,24 +228,33 @@ def audit_sample(root: Path, sample_id: str, *, engine=None,
         return manual("SAMPLE_PATH_UNSAFE")
     if target.stat().st_size > MAX_FILE:
         return manual("PDF_SIZE_OR_SOURCE_INVALID")
-    # Stream the private original: avoid allocating a second full PDF buffer.
-    # Recheck the byte count during reading in case the file grows after stat().
+    # Analyze exactly the bytes verified against the private manifest.
+    # A source replacement after hashing must not change the engine input.
+    # Keep the bounded snapshot private and delete it even on backend failure.
     checksum = hashlib.sha256()
     total = 0
+    snapshot_path = None
     try:
-        with target.open("rb") as source:
-            while chunk := source.read(1024 * 1024):
-                total += len(chunk)
-                if total > MAX_FILE:
-                    return manual("PDF_SIZE_OR_SOURCE_INVALID")
-                checksum.update(chunk)
+        with tempfile.TemporaryDirectory(prefix="vision-pdf-", dir=root) as private_dir:
+            if os.name == "posix":
+                os.chmod(private_dir, 0o700)
+            snapshot_path = Path(private_dir) / "verified.pdf"
+            with target.open("rb") as source, snapshot_path.open("xb") as snapshot:
+                if os.name == "posix":
+                    os.chmod(snapshot_path, 0o600)
+                while chunk := source.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > MAX_FILE:
+                        return manual("PDF_SIZE_OR_SOURCE_INVALID")
+                    checksum.update(chunk)
+                    snapshot.write(chunk)
+            if checksum.hexdigest() != digest:
+                return manual("SOURCE_SHA256_MISMATCH")
+            out = audit_document(snapshot_path, engine=engine,
+                                 exploratory_stroke_mm=exploratory_stroke_mm,
+                                 exploratory_fill_bbox_mm=exploratory_fill_bbox_mm)
     except OSError:
         return manual("SAMPLE_PATH_UNSAFE")
-    if checksum.hexdigest() != digest:
-        return manual("SOURCE_SHA256_MISMATCH")
-    out = audit_document(target, engine=engine,
-                         exploratory_stroke_mm=exploratory_stroke_mm,
-                         exploratory_fill_bbox_mm=exploratory_fill_bbox_mm)
     out["sample_id"] = sample_id
     return out
 
