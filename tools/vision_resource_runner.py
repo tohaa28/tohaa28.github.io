@@ -5,6 +5,7 @@ synthetic unittest. This is NOT a production memory certification.
 """
 from __future__ import annotations
 import argparse
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -36,7 +37,8 @@ def supervise(command: list[str], *, timeout_s: float, rss_limit_bytes: int,
               poll_s: float = .02) -> tuple[int, int]:
     if sys.platform != "linux" or not Path("/proc/self/status").exists():
         raise RuntimeError("LINUX_PROCFS_REQUIRED")
-    if timeout_s <= 0 or rss_limit_bytes <= 0 or poll_s <= 0:
+    if (not math.isfinite(timeout_s) or not math.isfinite(poll_s)
+            or timeout_s <= 0 or rss_limit_bytes <= 0 or poll_s <= 0):
         raise ValueError("INVALID_RESOURCE_BUDGET")
     proc = subprocess.Popen(command, stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
