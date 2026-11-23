@@ -80,6 +80,22 @@ class ResourceRunnerTests(unittest.TestCase):
                                       timeout_s=3, rss_limit_bytes=budget)
                         spawn.assert_not_called()
 
+    def test_nonnumeric_time_budgets_fail_before_spawn_three_passes(self):
+        from unittest.mock import patch
+        for attempt in range(3):
+            for timeout_s, poll_s in (
+                ("3", .02), (None, .02), (True, .02), ([], .02),
+                (3, "0.02"), (3, None), (3, False), (3, {}),
+            ):
+                with self.subTest(attempt=attempt, timeout_s=timeout_s, poll_s=poll_s):
+                    with patch("vision_resource_runner.subprocess.Popen") as spawn:
+                        with self.assertRaisesRegex(ValueError, "INVALID_RESOURCE_BUDGET"):
+                            supervise([sys.executable, "-c", "pass"],
+                                      timeout_s=timeout_s,
+                                      rss_limit_bytes=128 * 1024 * 1024,
+                                      poll_s=poll_s)
+                        spawn.assert_not_called()
+
     def test_timeout_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "CHILD_TIMEOUT"):
             supervise([sys.executable, "-c", "import time; time.sleep(5)"],
