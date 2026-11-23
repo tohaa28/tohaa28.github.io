@@ -20,14 +20,14 @@ class ResourceRunnerTests(unittest.TestCase):
     def test_kernel_high_water_survives_transient_rss_drop(self):
         for attempt in range(3):
             with self.subTest(attempt=attempt):
-                status = "Name:\\tpython\\nVmHWM:\\t8192 kB\\nVmRSS:\\t1024 kB\\n"
+                status = "Name:\tpython\nVmHWM:\t8192 kB\nVmRSS:\t1024 kB\n"
                 self.assertEqual(peak_rss_from_status(status), 8192 * 1024)
 
     def test_missing_or_invalid_high_water_fails_closed(self):
         for status in (
-            "VmRSS: 1024 kB\\n",
-            "VmRSS: 1024 kB\\nVmHWM: invalid kB\\n",
-            "VmRSS: 1024 kB\\nVmHWM: 8192 MB\\n",
+            "VmRSS: 1024 kB\n",
+            "VmRSS: 1024 kB\nVmHWM: invalid kB\n",
+            "VmRSS: 1024 kB\nVmHWM: 8192 MB\n",
         ):
             with self.subTest(status=status):
                 with self.assertRaisesRegex(RuntimeError, "RSS_UNAVAILABLE"):
