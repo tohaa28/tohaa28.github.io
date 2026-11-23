@@ -68,6 +68,18 @@ class ResourceRunnerTests(unittest.TestCase):
                                       poll_s=poll_s)
                         spawn.assert_not_called()
 
+    def test_invalid_rss_budget_types_fail_before_spawn_three_passes(self):
+        from unittest.mock import patch
+        for attempt in range(3):
+            for budget in (float("nan"), float("inf"), float("-inf"),
+                           128.0, "134217728", True, None):
+                with self.subTest(attempt=attempt, budget=budget):
+                    with patch("vision_resource_runner.subprocess.Popen") as spawn:
+                        with self.assertRaisesRegex(ValueError, "INVALID_RESOURCE_BUDGET"):
+                            supervise([sys.executable, "-c", "pass"],
+                                      timeout_s=3, rss_limit_bytes=budget)
+                        spawn.assert_not_called()
+
     def test_timeout_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "CHILD_TIMEOUT"):
             supervise([sys.executable, "-c", "import time; time.sleep(5)"],
