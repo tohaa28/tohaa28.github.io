@@ -1,0 +1,23 @@
+name: PrintCheck Vision independent raster safety
+on:
+  pull_request:
+    branches:
+      - gifts-layout-workbench-mockups-source
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent-pixel-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned research-only SVG and PDF raster engines
+        run: npm ci --prefix vision/raster --no-audit --no-fund
+      - name: Run actual Rust resvg and PDF.js Skia pixel replay
+        run: |
+          node tests/printcheck-vision-independent-raster.integration.mjs
+          node tests/printcheck-vision-raster-locked-pilot.integration.mjs

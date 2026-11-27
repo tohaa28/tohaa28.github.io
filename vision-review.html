@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PrintCheck Vision — независимая слепая проверка областей</title>
+<style>
+:root{font:14px/1.45 system-ui,"Segoe UI",sans-serif;background:#0d191f;color:#e1eeed;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}header{padding:18px 24px;background:#13262b;border-bottom:1px solid #375256;display:flex;align-items:center;justify-content:space-between;gap:16px}
+header h1{font-size:22px;margin:0}header a{color:#badf92;text-decoration:none}
+.wrap{display:grid;grid-template-columns:minmax(350px,1fr) 340px;min-height:calc(100vh - 90px)}
+main{padding:19px;min-width:0}.panel{border-left:1px solid #34494d;background:#15272e;padding:19px;display:flex;flex-direction:column;gap:12px}
+.alert{background:#312c22;border:1px solid #675b37;border-radius:8px;padding:12px;font-size:12px;color:#efd9ac}
+label{display:block;font-weight:650;font-size:12px;color:#c2d5d5;margin:10px 0 4px}
+input[type=file],input[type=text]{width:100%;color:#dce9e9;max-width:100%}
+input[type=text]{border:1px solid #4b696c;background:#102026;border-radius:6px;padding:9px;font-family:ui-monospace,monospace;font-size:12px}
+button,select{border:1px solid #536e75;background:#29434b;border-radius:7px;padding:9px 13px;color:#e5eeec;font-weight:650;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}.primary{background:#c6e69a;color:#22352a;border-color:#d9f1b5}
+.buttons{display:flex;gap:8px;flex-wrap:wrap}
+.canvasWrap{background:#101b21;border:1px solid #3b5459;min-height:320px;display:grid;place-items:center;margin-top:14px;border-radius:10px;padding:10px}
+canvas{max-width:100%;height:auto;background:repeating-conic-gradient(#e8eeea 0 25%,#c6d0cb 0 50%) 0 0/16px 16px}
+#preview{width:100%;max-width:1200px}
+#detail{width:100%;max-width:700px}
+#regions{display:grid;gap:6px;max-height:220px;overflow:auto}
+#regions button{text-align:left;font:12px system-ui;padding:9px 12px}
+#regions button[aria-current=true]{border-color:#d4e69c;background:#3e584c}
+#reviewState{min-height:23px;color:#b8dd8b;font-size:12px;overflow-wrap:anywhere}
+#regionStatus{font-size:12px;color:#aecbcb}
+.choice{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:1px solid #3f5f62;cursor:pointer}
+.choice input{accent-color:#b5df84}.choice:has(input:checked){background:#304c42;border-color:#abc983}
+small,.muted{color:#9fb9bd;font-size:12px}
+@media(max-width:850px){.wrap{grid-template-columns:1fr}.panel{border-left:0;border-top:1px solid #3f5f62}header{padding:12px 15px;flex-direction:column;align-items:start}}
+</style>
+</head>
+<body>
+<header><h1>PrintCheck Vision · независимая проверка</h1><a href="./vision-studio.html">Вернуться к подготовке областей</a></header>
+<div class="wrap">
+<main>
+ <div class="alert">Два специалиста должны проверить одни и те же выделенные области независимо, без подсказок алгоритма и без просмотра ответов друг друга. Работа полностью локальная: изображение и ответы не передаются на сервер. Проверка личности специалиста здесь не реализована.</div>
+ <label for="taskFile">1. Загрузить одинаковое для обоих экспертов задание JSON</label>
+ <input type="file" id="taskFile" accept=".json,application/json">
+ <label for="imageFile">2. Загрузить разрешённое изображение (сверяется SHA-256)</label>
+ <input type="file" id="imageFile" accept="image/png,image/jpeg,image/webp">
+ <p id="reviewState" role="status" aria-live="polite">Загрузите задание и исходное изображение.</p>
+ <div class="canvasWrap"><canvas id="preview" width="1000" height="620" aria-label="Разметка: выбранная область на исходном изображении"></canvas></div>
+ <h2>Увеличенный фрагмент</h2><small>Область отображается в реальных пикселях изображения, увеличенных без сглаживания. Это не измерение физической толщины в мм.</small>
+ <div class="canvasWrap"><canvas id="detail" width="700" height="340" aria-label="Увеличение выделенного региона"></canvas></div>
+</main>
+<aside class="panel">
+ <div><strong>Слепые экспертные метки</strong><p class="muted">Нет доступа к результатам PrintCheck, прошлым ответам и нормативному заключению.</p></div>
+ <p id="regionStatus" role="status">Области пока не загружены.</p>
+ <div class="buttons"><button id="prevRegion" type="button" disabled>Предыдущая</button><button id="nextRegion" type="button" disabled>Следующая</button></div>
+ <div id="regions" aria-label="Список областей"></div>
+ <fieldset id="labelSet" disabled style="border:0;padding:0;display:grid;gap:7px">
+  <legend style="font-size:12px;font-weight:700;margin-bottom:9px">Состояние именно этой области</legend>
+  <label class="choice"><input type="radio" name="verdict" value="defect"> Технологический дефект (клавиша 1)</label>
+  <label class="choice"><input type="radio" name="verdict" value="acceptable"> Допустимый элемент (клавиша 2)</label>
+  <label class="choice"><input type="radio" name="verdict" value="uncertain"> Недостаточно данных (клавиша 3)</label>
+ </fieldset>
+ <hr style="border:0;border-top:1px solid #385257;width:100%">
+ <label for="reviewerRef">3. Отпечаток эксперта — 64 символа SHA-256, выданные координатором</label>
+ <input id="reviewerRef" type="text" autocomplete="off" spellcheck="false" maxlength="64" placeholder="Не вводите ФИО, адрес или номер заказа">
+ <p class="muted">Разные отпечатки не доказывают разных людей: независимость и полномочия проверяются отдельно.</p>
+ <button id="exportReview" class="primary" type="button" disabled>Скачать локальный ответ эксперта</button>
+ <p class="muted">Скачанный JSON содержит только хеш задания, отпечаток рецензента и метки областей. Ни исходное изображение, ни имя файла, ни личные данные не экспортируются.</p>
+</aside></div>
+<script type="module">
+import {
+  hashBinary,validateReviewTask,createReviewSubmission
+} from './vision/dataset/review-task.mjs';
+const $=id=>document.getElementById(id);
+let task=null,taskHash='',image=null,imageHash='',active=0,labels={};
+const hex=/^[0-9a-f]{64}$/i;
+function status(message){$('reviewState').textContent=message;}
+const selected=()=>task?.regions?.[active]??null;
+const ready=()=>Boolean(task&&image&&imageHash===task.source.image_sha256);
+function imageRect(canvas){
+ if(!image)return null;
+ const s=Math.min(canvas.width/image.width,canvas.height/image.height);
+ return {x:(canvas.width-image.width*s)/2,y:(canvas.height-image.height*s)/2,
+         w:image.width*s,h:image.height*s};
+}
+function paint(){
+ const big=$('preview'),ctx=big.getContext('2d');
+ ctx.clearRect(0,0,big.width,big.height);
+ if(!ready())return;
+ const g=imageRect(big),r=selected();
+ ctx.drawImage(image,g.x,g.y,g.w,g.h);
+ if(r){
+  const q=r.rect;
+  ctx.lineWidth=3;
+  ctx.strokeStyle='#b7dc58';
+  ctx.strokeRect(g.x+q.x*g.w,g.y+q.y*g.h,q.w*g.w,q.h*g.h);
+ }
+ const crop=$('detail'),cx=crop.getContext('2d');
+ cx.clearRect(0,0,crop.width,crop.height);
+ if(!r)return;
+ const q=r.rect;
+ const margin=0.45;
+ const x0=Math.max(0,(q.x-q.w*margin)*image.width);
+ const y0=Math.max(0,(q.y-q.h*margin)*image.height);
+ const x1=Math.min(image.width,(q.x+q.w*(1+margin))*image.width);
+ const y1=Math.min(image.height,(q.y+q.h*(1+margin))*image.height);
+ const w=x1-x0,h=y1-y0;
+ if(w<=0||h<=0)return;
+ cx.imageSmoothingEnabled=false;
+ const scale=Math.min(crop.width/w,crop.height/h);
+ const dw=w*scale,dh=h*scale;
+ cx.drawImage(image,x0,y0,w,h,(crop.width-dw)/2,(crop.height-dh)/2,dw,dh);
+ cx.imageSmoothingEnabled=true;
+}
+function update(){
+ const good=ready(),r=selected();
+ const items=$('regions');
+ items.replaceChildren();
+ if(good){
+  for(let i=0;i<task.regions.length;i++){
+   const item=task.regions[i],button=document.createElement('button');
+   button.type='button';
+   button.textContent='Область '+(i+1)+' — '+(labels[item.region_sha256]??'не проверено');
+   button.setAttribute('aria-current',String(i===active));
+   button.addEventListener('click',()=>{active=i;update()});
+   items.append(button);
+  }
+ }
+ $('labelSet').disabled=!good;
+ for(const radio of document.querySelectorAll('input[name="verdict"]'))
+  radio.checked=Boolean(good&&r&&labels[r.region_sha256]===radio.value);
+ $('prevRegion').disabled=!good||active===0;
+ $('nextRegion').disabled=!good||active===task.regions.length-1;
+ const count=good?task.regions.filter(item=>Boolean(labels[item.region_sha256])).length:0;
+ $('regionStatus').textContent=good?
+  'Область '+(active+1)+' / '+task.regions.length+
+  ' · заполнено '+count+'/'+task.regions.length:'Недостаточно подтверждённых данных.';
+ $('exportReview').disabled=!(good&&count===task.regions.length&&
+   hex.test($('reviewerRef').value.trim()));
+ paint();
+}
+async function readTask(file){
+ if(!file||file.size>1_000_000)throw new Error('Размер задания превышает 1 МБ');
+ const bytes=await file.arrayBuffer();
+ const value=JSON.parse(new TextDecoder().decode(bytes));
+ const validation=validateReviewTask(value);
+ if(validation.status!=='TASK_VALID')throw new Error(validation.reason);
+ task=value;taskHash=await hashBinary(bytes);
+ labels={};active=0;
+ status('Задание проверено. Совпадение изображения ещё нужно подтвердить.');
+}
+async function readImage(file){
+ if(!file||file.size>25_000_000||
+    !['image/png','image/jpeg','image/webp'].includes(file.type))
+  throw new Error('Неверный формат или размер изображения (максимум 25 МБ)');
+ const bytes=await file.arrayBuffer();
+ const digest=await hashBinary(bytes);
+ const url=URL.createObjectURL(new Blob([bytes],{type:file.type}));
+ try{
+  const im=new Image();im.src=url;await im.decode();
+  if(im.width>20000||im.height>20000||im.width*im.height>30_000_000)
+   throw new Error('Слишком большое изображение');
+  image=im;imageHash=digest;
+ }finally{URL.revokeObjectURL(url)}
+}
+function checkPair(){
+ if(!task||!image)return;
+ if(imageHash!==task.source.image_sha256||
+    image.width!==task.source.width_px||
+    image.height!==task.source.height_px){
+   image=null;imageHash='';
+   throw new Error('Изображение не совпадает с SHA-256/размерами задания');
+ }
+ status('Исходное изображение совпадает с заданием. Можно проводить независимую оценку.');
+}
+$('taskFile').addEventListener('change',async e=>{
+ try{task=null;taskHash='';labels={};await readTask(e.target.files?.[0]);checkPair();}
+ catch(error){task=null;taskHash='';status('Задание отклонено: '+error.message);}
+ update();
+});
+$('imageFile').addEventListener('change',async e=>{
+ try{image=null;imageHash='';await readImage(e.target.files?.[0]);checkPair();}
+ catch(error){image=null;imageHash='';status('Изображение отклонено: '+error.message);}
+ update();
+});
+for(const input of document.querySelectorAll('input[name="verdict"]')){
+ input.addEventListener('change',()=>{
+  const r=selected();if(!ready()||!r)return;
+  labels[r.region_sha256]=input.value;
+  update();
+ });
+}
+$('reviewerRef').addEventListener('input',update);
+$('prevRegion').addEventListener('click',()=>{if(active>0){active--;update()}});
+$('nextRegion').addEventListener('click',()=>{if(task&&active<task.regions.length-1){active++;update()}});
+document.addEventListener('keydown',event=>{
+ if(!ready()||event.ctrlKey||event.altKey||event.metaKey||
+    ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))
+  return;
+ const choice={'1':'defect','2':'acceptable','3':'uncertain'}[event.key];
+ if(choice){labels[selected().region_sha256]=choice;update();}
+ if(event.key==='ArrowRight'&&active<task.regions.length-1){active++;update()}
+ if(event.key==='ArrowLeft'&&active>0){active--;update()}
+});
+$('exportReview').addEventListener('click',()=>{
+ try{
+  if(!ready())return;
+  const submission=createReviewSubmission({
+   task,task_sha256:taskHash,
+   reviewer_ref_sha256:$('reviewerRef').value.trim(),
+   labels
+  });
+  const blob=new Blob([JSON.stringify(submission,null,2)+'\n'],{
+   type:'application/json;charset=utf-8'
+  });
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='vision-review-'+taskHash.slice(0,12)+'.json';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  status('Локальная оценка сохранена. Это самоутверждение, не аттестованный ground truth.');
+ }catch(error){status('Экспорт отклонён: '+error.message)}
+});
+update();
+</script>
+</body></html>

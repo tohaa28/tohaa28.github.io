@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Vision AI — сканер заказов по TXT",
+  "version": "0.2.4",
+  "description": "Vision AI: понятные группы управления, отдельные индикаторы состояния, ZIP по 100 заказов, согласования и вложения. Только тестовая сеть.",
+  "host_permissions": [
+    "http://psk.testgifts.local/*",
+    "http://testgifts.local/*",
+    "http://files.testgifts.local/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://testgifts.local/private/order/*"
+      ],
+      "js": [
+        "content-transport.js",
+        "vision-order-approval.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "http://psk.testgifts.local/*",
+        "http://testgifts.local/*"
+      ],
+      "js": [
+        "vision-order-launcher.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": [
+    "tabs",
+    "downloads",
+    "storage",
+    "offscreen"
+  ]
+}

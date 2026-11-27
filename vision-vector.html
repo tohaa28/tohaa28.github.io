@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';script-src 'self' 'unsafe-inline';style-src 'unsafe-inline';img-src 'none';connect-src 'none';object-src 'none';form-action 'none';base-uri 'none'">
+<title>PrintCheck Vision — векторная геометрия SVG</title>
+<style>
+:root{font:15px/1.45 system-ui,sans-serif;color:#314247;background:#edf1f0}*{box-sizing:border-box}
+body{margin:0}header{background:#24383c;color:#fff;padding:22px max(18px,calc((100% - 1150px)/2))}
+h1{margin:4px 0;font-size:27px}header p{color:#c5d5d2;max-width:810px}
+main{max-width:1150px;margin:auto;padding:18px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px}
+section{background:#fff;border:1px solid #d4dfdc;border-radius:8px;padding:16px}
+h2{margin:2px 0 14px;font-size:18px}label{display:block;font-weight:600;margin:13px 0 5px}
+input[type=file],input[type=number]{width:100%}input[type=number]{padding:8px;border:1px solid #b5c7c4;border-radius:6px}
+button,a.action{font:600 14px system-ui;cursor:pointer;border:1px solid #819392;border-radius:6px;background:#fff;padding:10px 12px;color:#345257;text-decoration:none}
+button.primary{color:#fff;background:#83b029;border-color:#83b029}
+button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.small{font-size:13px;color:#677b7a}.warning{background:#fff6e8;border-left:3px solid #ae762b;padding:12px;margin:15px 0;font-size:13px}
+canvas{display:block;width:100%;height:auto;border:1px solid #d6e0dd;border-radius:6px;background:white}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.metric{background:#f5f8f7;border:1px solid #e0e8e6;padding:9px;border-radius:6px}
+.metric b{display:block;font-size:21px}.metric span{font-size:12px;color:#667c79}
+#status{white-space:pre-line;min-height:38px}#candidates{max-height:290px;overflow:auto;padding-left:22px;font-size:13px}
+#candidates li{margin:6px 0}@media(max-width:850px){main{grid-template-columns:1fr}header{padding:16px 20px}}
+</style></head>
+<body><header><small>Vision AI / Vector-first · research only</small>
+<h1>Анализ исходных SVG-контуров</h1>
+<p>Точные локальные измерения печатных линий и пустот по исходным кривым и векторным объектам без преобразования в пиксели. Растровый нейросетевой анализ остаётся отдельным инструментом.</p></header>
+<main><section>
+<h2>Векторный макет</h2>
+<label for="vectorFile">Исходный SVG (до 256 КБ)</label>
+<input id="vectorFile" type="file" accept=".svg,image/svg+xml">
+<div class="actions"><button id="demo">Синтетический пример</button></div>
+<p class="small">Поддерживаются замкнутые заполненные path, физический размер документа, viewBox, единая краска, простые групповые transforms и кривые Безье. Сложные PDF, обводки, текст, clipping, маски, RGB/spot-смеси → ручная проверка.</p>
+<label for="maxWidth">Локальная ширина поиска, мм</label>
+<input id="maxWidth" type="number" min=".05" max="20" step=".05" value="1">
+<label><input id="curved" type="checkbox"> Дополнительные пробы вдоль гладких кривых</label>
+<div class="actions"><button id="run" class="primary" disabled>Проверить вектор</button></div>
+<div class="actions"><button id="json" disabled>Отчёт JSON</button><button id="annotated" disabled>Вектор с отметками SVG</button></div>
+<p class="small">SVG обрабатывается только локально. JSON содержит координаты измерений, без исходных путей. Размеченный SVG содержит исходную геометрию для передачи технологу.</p>
+<div class="warning"><b>Не допуск к печати.</b> Миллиметры SVG-документа не подтверждают фактический размер размещения в заказе. Нельзя считать отсутствие кандидатов доказательством годности.</div>
+<div class="actions"><a class="action" href="./vision-ai.html">Растровый AI</a><a class="action" href="./index.html">Главная Vision</a></div>
+</section>
+<section><h2>Контуры и измеренные области</h2>
+<canvas id="drawing" width="900" height="600" aria-label="Векторный предпросмотр исходных контуров с отметками"></canvas>
+<p class="small">Красные окружности — узкая печатная линия, оранжевые — отрицательный пробел. Изображение служит только для просмотра: вычисления выполняются по SVG-координатам в миллиметрах.</p>
+<p id="status" role="status" aria-live="polite">Выберите SVG или синтетический пример.</p>
+<div class="metrics"><div class="metric"><b id="paths">—</b><span>Пути</span></div>
+<div class="metric"><b id="points">—</b><span>Вершины</span></div>
+<div class="metric"><b id="count">—</b><span>Кандидаты</span></div></div>
+<p id="dimensions" class="small">Масштаб заказа не подтверждён.</p>
+<h2>Кандидаты для технолога</h2><ol id="candidates"><li>Нет результата.</li></ol>
+<p class="small">Это детерминированная векторная геометрия, а не обученный классификатор реальных макетов. Нормативные пороги нанесения и реальное размещение проверяются отдельно.</p>
+</section></main>
+<script type="module">
+import {inspectLocalSvgVector} from './vision/geometry/svg-local-vector.mjs';
+const $=id=>document.getElementById(id),canvas=$('drawing'),ctx=canvas.getContext('2d');
+let svgText=null,result=null,loadId=0;
+const demoSvg=[
+'<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="80mm" viewBox="0 0 100 80">',
+'<g fill="#184a79"><path d="M10 20 H13 V65 H10 Z"/>',
+'<path d="M13.12 20 H16.12 V65 H13.12 Z"/>',
+'<path d="M26 25 H45 V25.18 H26 Z"/></g></svg>'
+].join('');
+function blank(){
+ ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+function reset(){
+ result=null;$('json').disabled=$('annotated').disabled=true;
+ for(const id of ['paths','points','count'])$(id).textContent='—';
+ $('candidates').replaceChildren();
+ $('dimensions').textContent='Размер размещения не подтверждён.';blank();
+}
+function fail(reason){
+ reset();$('status').textContent='MANUAL: '+reason+'. Автоматического заключения нет.';
+}
+function save(name,data,type){
+ const u=URL.createObjectURL(new Blob([data],{type})),a=document.createElement('a');
+ a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+const xml=s=>String(s).replaceAll('&','&amp;').replaceAll('"','&quot;')
+ .replaceAll('<','&lt;').replaceAll('>','&gt;');
+function paint(){
+ blank();if(!result)return;
+ const {report:r,localPreviewPaths:paths}=result;
+ const scale=Math.min((canvas.width-40)/r.width_document_mm,(canvas.height-40)/r.height_document_mm);
+ const ox=(canvas.width-r.width_document_mm*scale)/2,oy=(canvas.height-r.height_document_mm*scale)/2;
+ for(const p of paths){
+   const m=p.matrixDocumentMm;
+   ctx.setTransform(scale*m[0],scale*m[1],scale*m[2],scale*m[3],
+     ox+scale*m[4],oy+scale*m[5]);
+   ctx.fillStyle=p.fill;ctx.fill(new Path2D(p.d),p.fillRule);
+ }
+ ctx.setTransform(1,0,0,1,0,0);
+ for(const c of [...r.candidates,...r.curved_candidates].slice(0,150)){
+   if(!c.at_mm)continue;
+   const x=ox+c.at_mm.x*scale,y=oy+c.at_mm.y*scale;
+   if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+   ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);
+   ctx.strokeStyle=c.kind==='positive_width_mm'?'#e83f54':'#e49a26';
+   ctx.lineWidth=2;ctx.stroke();
+ }
+}
+function show(answer){
+ reset();
+ if(answer.status!=='RESEARCH_VECTOR_CANDIDATES_ONLY'){
+   fail(answer.reason+(answer.detail?' / '+answer.detail:''));return;
+ }
+ result=answer;paint();
+ const r=answer.report,all=[...r.candidates,...r.curved_candidates];
+ $('paths').textContent=r.paths_count;$('points').textContent=r.vertex_count;
+ $('count').textContent=all.length;
+ $('dimensions').textContent='Документ: '+r.width_document_mm.toFixed(2)+' × '+
+   r.height_document_mm.toFixed(2)+' мм. Цветов RGB: '+
+   r.source_colors_rgb.length+
+   ' (НЕ подтверждённые spot/Pantone). Размещение в заказе не подтверждено.';
+ for(const c of all.slice(0,50)){
+   const li=document.createElement('li');
+   li.textContent=(c.kind==='positive_width_mm'?'Линия':'Пробел')+': '+
+     c.measured_mm.toFixed(3)+' ± '+(c.uncertainty_mm??0).toFixed(3)+
+     ' мм'+(c.source_rgb_ink?' · RGB '+c.source_rgb_ink:'')+
+     ' · x='+c.at_mm?.x?.toFixed(2)+', y='+c.at_mm?.y?.toFixed(2);
+   $('candidates').append(li);
+ }
+ if(!all.length){const li=document.createElement('li');li.textContent=
+   'Кандидатов нет: это не означает пригодность.';$('candidates').append(li)}
+ $('status').textContent='Вектор обработан без растрирования. '+
+   all.length+' локальных кандидатов. Статус: RESEARCH ONLY.';
+ $('json').disabled=$('annotated').disabled=false;
+}
+$('demo').addEventListener('click',()=>{
+ loadId++;svgText=demoSvg;$('run').disabled=false;reset();
+ $('status').textContent='Синтетический вектор готов к анализу.';
+});
+$('vectorFile').addEventListener('change',async e=>{
+ const id=++loadId,file=e.target.files?.[0];
+ svgText=null;$('run').disabled=true;reset();
+ if(!file)return;
+ if(!/\.svg$/i.test(file.name)||file.size>256000||file.size<40){
+   fail('SVG_FILE_UNSUPPORTED');return;
+ }
+ try{
+   const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+   if(id!==loadId)return;
+   svgText=text;$('run').disabled=false;
+   $('status').textContent='SVG прочитан локально. Начните проверку.';
+ }catch{fail('SVG_UTF8_INVALID')}
+});
+$('run').addEventListener('click',()=>{
+ if(svgText===null)return;
+ try{show(inspectLocalSvgVector(svgText,{maxCandidateMm:Number($('maxWidth').value),
+   includeCurvedProbes:$('curved').checked}));}
+ catch{fail('SVG_ANALYSIS_FAILED')}
+});
+$('json').addEventListener('click',()=>{
+ if(result)save('printcheck-vision-vector-research.json',
+   JSON.stringify(result.report,null,2)+'\n','application/json');
+});
+$('annotated').addEventListener('click',()=>{
+ if(!result)return;
+ const r=result.report,lines=[
+   '<svg xmlns="http://www.w3.org/2000/svg" width="'+r.width_document_mm+
+   'mm" height="'+r.height_document_mm+'mm" viewBox="0 0 '+
+   r.width_document_mm+' '+r.height_document_mm+'">',
+   '<rect width="100%" height="100%" fill="#ffffff"/>'
+ ];
+ for(const p of result.localPreviewPaths){
+   lines.push('<path d="'+xml(p.d)+'" fill="'+xml(p.fill)+
+     '" fill-rule="'+xml(p.fillRule)+'" transform="matrix('+
+     p.matrixDocumentMm.join(' ')+')"/>');
+ }
+ for(const c of [...r.candidates,...r.curved_candidates].slice(0,150)){
+   if(!c.at_mm)continue;
+   lines.push('<circle cx="'+c.at_mm.x+'" cy="'+c.at_mm.y+
+     '" r="0.8" fill="none" stroke="'+
+     (c.kind==='positive_width_mm'?'#e83f54':'#e49a26')+
+     '" stroke-width="0.18"/>');
+ }
+ lines.push('</svg>');
+ save('printcheck-vision-vector-annotated.svg',lines.join('\n'),'image/svg+xml');
+});
+blank();
+</script></body></html>

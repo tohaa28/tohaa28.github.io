@@ -1,0 +1,429 @@
+name: Publish isolated PrintCheck Vision preview
+
+on:
+  push:
+    branches:
+      - feature/printcheck-vision-copy-v01
+    paths:
+      - editor.html
+      - index.html
+      - vision-studio.html
+      - vision-review.html
+      - vision-ai.html
+      - vision-vector.html
+      - vision-local-orders.html
+      - vision/orders/row-scanner.mjs
+      - vision/orders/discussion-probe.mjs
+      - vision/orders/maket-approval-probe.mjs
+      - vision/orders/approval-page-entry.mjs
+      - vision/orders/approval-auto-scan.mjs
+      - vision/orders/approval-order-facts.mjs
+      - vision/orders/approval-batch-archive.mjs
+      - vision/orders/approval-range-scanner.mjs
+      - vision/orders/approval-range-controller.mjs
+      - vision/orders/approval-range-persistence.mjs
+      - vision/orders/approval-file-list.mjs
+      - vision/orders/approval-file-persistence.mjs
+      - vision/orders/approval-file-controller.mjs
+      - vision/orders/approval-file-batch-policy.mjs
+      - tests/printcheck-vision-100-order-batches.test.mjs
+      - vision/orders/approval-network-control.mjs
+      - tests/printcheck-vision-network-control.test.mjs
+      - vision/orders/extension-zip-transfer.mjs
+      - tests/printcheck-vision-approval-file-list.test.mjs
+      - tests/printcheck-vision-approval-file-list.browser.mjs
+      - tests/printcheck-vision-approval-range.test.mjs
+      - tests/printcheck-vision-approval-range.browser.mjs
+      - tests/printcheck-vision-approval-batch-archive.test.mjs
+      - tools/vision_approval_batch_import.py
+      - tests/test_vision_approval_batch_import.py
+      - tests/printcheck-vision-approval-order-facts.test.mjs
+      - vision/orders/approval-attachments.mjs
+      - vision/orders/approval-inline-images.mjs
+      - tests/printcheck-vision-approval-attachments.test.mjs
+      - tests/printcheck-vision-approval-inline-images.test.mjs
+      - tests/printcheck-vision-approval-auto.browser.mjs
+      - tests/printcheck-vision-approval-queue.browser.mjs
+      - tests/printcheck-vision-maket-approval.browser.mjs
+      - tests/printcheck-vision-discussions.test.mjs
+      - tests/printcheck-vision-discussions.browser.mjs
+      - vision/orders/order-page-discovery.mjs
+      - vision/orders/extension/**
+      - tests/printcheck-vision-scanner-host.browser.mjs
+      - tests/printcheck-vision-host-approvals.browser.mjs
+      - tests/printcheck-vision-one-order-per-zip.browser.mjs
+      - tests/printcheck-vision-approval-seven-files.browser.mjs
+      - tests/printcheck-vision-lan-failure-stages.test.mjs
+      - tests/printcheck-vision-extension-worker.test.mjs
+      - tests/printcheck-vision-lan-extension.browser.mjs
+      - tests/printcheck-vision-launcher.browser.mjs
+      - tests/printcheck-vision-zip-overlap.browser.mjs
+      - tools/vision_local_lab.py
+      - tools/vision_roi_review.py
+      - tools/vision_pdf_audit.py
+      - tools/vision_private_corpus_stage.py
+      - tests/test_vision_private_corpus_stage.py
+      - tools/vision-roi-annotator.html
+      - tests/test_vision_roi_annotator.browser.mjs
+      - tests/test_vision_roi_review.py
+      - tests/test_vision_pdf_audit.py
+      - tools/install-vision-local-lab.ps1
+      - tests/test_vision_local_lab.py
+      - docs/VISION_LOCAL_LAB_SETUP_RU.md
+      - tests/printcheck-vision-order-detail.test.mjs
+      - tests/printcheck-vision-order-detail.browser.mjs
+      - tests/printcheck-vision-order-404.browser.mjs
+      - tests/printcheck-vision-61-order-browser.mjs
+      - vision/orders/local-training-zip.mjs
+      - tests/printcheck-vision-training-zip.test.mjs
+      - vision/orders/overlay-entry.mjs
+      - tests/printcheck-vision-local-orders.test.mjs
+      - tests/printcheck-vision-local-orders.browser.mjs
+      - vision/geometry/svg-local-vector.mjs
+      - vision/geometry/svg-ink-forms.mjs
+      - vision/geometry/svg-dom-vector-bridge.mjs
+      - vision/geometry/svg-viewport.mjs
+      - vision/geometry/svg-path-subset.mjs
+      - vision/geometry/vector-corridors.mjs
+      - vision/geometry/curved-normal-probes.mjs
+      - tests/printcheck-vision-vector.browser.mjs
+      - vision/ai/synthetic-feature-model.mjs
+      - vision/ai/scan-worker.mjs
+      - tests/printcheck-vision-worker.test.mjs
+      - tests/printcheck-vision-ai.browser.mjs
+      - vision/dataset/review-task.mjs
+      - tests/printcheck-vision-review.browser.mjs
+      - tests/printcheck-vision-studio.browser.mjs
+      - assets/printcheck-vision-ui.*
+      - tools/build-launcher.mjs
+      - tests/printcheck-vision-ui.browser.mjs
+      - tests/printcheck-vision-session-launch.browser.mjs
+      - .github/workflows/publish-printcheck-vision-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: isolated-printcheck-vision-preview
+  cancel-in-progress: true
+
+jobs:
+  validate-and-publish:
+    if: github.ref == 'refs/heads/feature/printcheck-vision-copy-v01'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout experimental source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Static validation
+        run: |
+          set -euo pipefail
+          node --check assets/printcheck-vision-ui.js
+          node --check tests/printcheck-vision-ui.browser.mjs
+          node --check tests/printcheck-vision-session-launch.browser.mjs
+          node --check vision/dataset/review-task.mjs
+          node --check tests/printcheck-vision-studio.browser.mjs
+          node --check tests/printcheck-vision-review.browser.mjs
+          node --check vision/ai/synthetic-feature-model.mjs
+          node --check vision/ai/scan-worker.mjs
+          node --test tests/printcheck-vision-worker.test.mjs
+          node --check tests/printcheck-vision-ai.browser.mjs
+          node --check vision/geometry/svg-local-vector.mjs
+          node --check vision/geometry/svg-ink-forms.mjs
+          node --check vision/geometry/svg-dom-vector-bridge.mjs
+          node --check tests/printcheck-vision-vector.browser.mjs
+          node --check vision/orders/row-scanner.mjs
+          node --check vision/orders/discussion-probe.mjs
+          node --check vision/orders/maket-approval-probe.mjs
+          node --check vision/orders/approval-page-entry.mjs
+          node --check vision/orders/approval-range-scanner.mjs
+          node --check vision/orders/approval-range-controller.mjs
+          node --check vision/orders/approval-range-persistence.mjs
+          node --check vision/orders/approval-file-list.mjs
+          node --check vision/orders/approval-file-persistence.mjs
+          node --check vision/orders/approval-file-controller.mjs
+          node --check vision/orders/approval-file-batch-policy.mjs
+          node --test tests/printcheck-vision-100-order-batches.test.mjs
+          node --test tests/printcheck-vision-approval-file-list.test.mjs
+          node --test tests/printcheck-vision-approval-range.test.mjs
+          node --check vision/orders/approval-batch-archive.mjs
+          node --test tests/printcheck-vision-approval-batch-archive.test.mjs
+          node --check vision/orders/approval-order-facts.mjs
+          node --test tests/printcheck-vision-approval-order-facts.test.mjs
+          node --check vision/orders/approval-auto-scan.mjs
+          node --check vision/orders/approval-attachments.mjs
+          node --check tests/printcheck-vision-approval-attachments.test.mjs
+          node --test tests/printcheck-vision-approval-attachments.test.mjs
+          node --test tests/printcheck-vision-approval-inline-images.test.mjs
+          python3 - <<'PY'
+          import json,zipfile
+          path='/tmp/vision-synthetic-approval-attachment.zip'
+          with zipfile.ZipFile(path) as archive:
+              assert archive.testzip() is None
+              names=archive.namelist()
+              assert names==[
+                  'manifest.json',
+                  'attachments/0001/0001.pdf',
+                  'attachments/0001/0002.psd']
+              manifest=json.loads(archive.read('manifest.json'))
+              assert manifest['training_ready'] is False
+              assert len(manifest['items'])==2
+              assert manifest['items'][0]['original_filename']=='original.pdf'
+              assert manifest['items'][1]['original_filename']=='original.psd'
+              assert archive.read(names[1]).startswith(b'%PDF-')
+              assert archive.read(names[2]).startswith(b'8BPS')
+          print('Independent synthetic approval ZIP decode PASS')
+          PY
+          node --check tests/printcheck-vision-approval-auto.browser.mjs
+          node --check tests/printcheck-vision-maket-approval.browser.mjs
+          node --check tests/printcheck-vision-discussions.test.mjs
+          node --test tests/printcheck-vision-discussions.test.mjs
+          node --check tests/printcheck-vision-discussions.browser.mjs
+          node --check vision/orders/order-page-discovery.mjs
+          node --check tests/printcheck-vision-order-detail.browser.mjs
+          node --check tests/printcheck-vision-order-404.browser.mjs
+          node --check tests/printcheck-vision-61-order-browser.mjs
+          node --test tests/printcheck-vision-order-detail.test.mjs
+          node --test tests/printcheck-vision-lan-failure-stages.test.mjs
+          node --check vision/orders/extension/content-transport.js
+          node --check vision/orders/extension/vision-order-launcher.js
+          node --check vision/orders/extension/scanner-transport.js
+          node --check vision/orders/extension/scanner-host-entry.mjs
+          node --check vision/orders/extension/archive-registry.js
+          node --check vision/orders/extension/archive-local-files.mjs
+          node --check vision/orders/extension/zip-offscreen.js
+          node --check vision/orders/extension-zip-transfer.mjs
+          node --check vision/orders/extension/service-worker.js
+          node --test tests/printcheck-vision-extension-worker.test.mjs
+          node --check tests/printcheck-vision-lan-extension.browser.mjs
+          python3 -m py_compile tools/vision_local_lab.py tools/vision_roi_review.py tools/vision_pdf_audit.py tools/vision_private_corpus_stage.py
+          python3 tests/test_vision_private_corpus_stage.py
+          python3 tests/test_vision_approval_batch_import.py
+          python3 tests/test_vision_local_lab.py
+          # Three consecutive independent ROI/PDF regression cycles.
+          for cycle in 1 2 3; do
+            echo "Vision ROI/PDF safety cycle $cycle/3"
+            python3 tests/test_vision_roi_review.py
+            python3 tests/test_vision_pdf_audit.py
+          done
+          node --check vision/orders/local-training-zip.mjs
+          node --check tests/printcheck-vision-training-zip.test.mjs
+          node --test tests/printcheck-vision-training-zip.test.mjs
+          # Verify ZIP with an independent Python stdlib decoder, not only
+          # the JavaScript ZIP writer. All bytes are synthetic and ephemeral.
+          node --input-type=module - <<'NODE'
+          import {makeLocalStoredZip} from './vision/orders/local-training-zip.mjs';
+          import {writeFileSync} from 'node:fs';
+          const blob=makeLocalStoredZip([
+            {name:'manifest.json',bytes:new TextEncoder().encode('{"training_ready":false}\n')},
+            {name:'samples/0001.svg',bytes:new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>')}
+          ]);
+          writeFileSync('/tmp/vision-synthetic-training.zip',
+            Buffer.from(await blob.arrayBuffer()));
+          NODE
+          python3 - <<'PY'
+          import json,zipfile
+          with zipfile.ZipFile('/tmp/vision-synthetic-training.zip') as archive:
+              assert archive.testzip() is None
+              assert archive.namelist()==['manifest.json','samples/0001.svg']
+              assert json.loads(archive.read('manifest.json'))['training_ready'] is False
+              assert archive.read('samples/0001.svg').startswith(b'<svg')
+          print('Independent synthetic local-training ZIP decode PASS')
+          PY
+          node --check vision/orders/approval-network-control.mjs
+          node --test tests/printcheck-vision-network-control.test.mjs
+          node --check vision/orders/overlay-entry.mjs
+          node --check tests/printcheck-vision-local-orders.browser.mjs
+          node --test tests/printcheck-vision-local-orders.test.mjs
+          node --test tests/printcheck-vision-synthetic-ai.test.mjs
+          node --check direct-mode.js
+          node --check assets/index-BpU9kvz8.js
+
+      - name: Browser smoke test (no customer data)
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright esbuild@0.25.12
+          npx esbuild vision/orders/overlay-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=vision-order-overlay.js
+          npx esbuild vision/orders/approval-page-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=vision-order-approval.js
+          npx esbuild vision/orders/extension/scanner-host-entry.mjs --bundle --platform=browser --format=iife --target=es2022 --outfile=scanner-host.js
+          node --check scanner-host.js
+          test -s vision-order-approval.js
+          node --check vision-order-approval.js
+          test -s vision-order-overlay.js
+          node --check vision-order-overlay.js
+          # GitHub Ubuntu runner already has the headless dependencies.
+          # Avoid apt mirror sync failures on ubuntu-26.04 (resolute-security).
+          npx playwright install chromium
+          node tests/printcheck-vision-approval-seven-files.browser.mjs
+          node tests/printcheck-vision-ui.browser.mjs
+          node tests/printcheck-vision-studio.browser.mjs
+          node tests/test_vision_roi_annotator.browser.mjs
+          node tests/printcheck-vision-review.browser.mjs
+          node tests/printcheck-vision-ai.browser.mjs
+          node tests/printcheck-vision-vector.browser.mjs
+          node tests/printcheck-vision-local-orders.browser.mjs
+          node tests/printcheck-vision-order-detail.browser.mjs
+          node tests/printcheck-vision-order-404.browser.mjs
+          node tests/printcheck-vision-discussions.browser.mjs
+          node tests/printcheck-vision-maket-approval.browser.mjs
+          node tests/printcheck-vision-approval-auto.browser.mjs
+          node tests/printcheck-vision-approval-queue.browser.mjs
+          node tests/printcheck-vision-approval-range.browser.mjs
+          node tests/printcheck-vision-approval-file-list.browser.mjs
+          # v0.2.0 replaces the old /devorders extension integration.
+          # Historical v0.1.x browser fixtures remain in the repository.
+          node tests/printcheck-vision-scanner-host.browser.mjs
+          node tests/printcheck-vision-host-approvals.browser.mjs
+          node tests/printcheck-vision-one-order-per-zip.browser.mjs
+          node tests/printcheck-vision-61-order-browser.mjs
+
+      - name: Build isolated bookmarklet launcher
+        env:
+          WORKBENCH_BASE: https://tohaa28.github.io/gifts-layout-workbench-vision/
+        run: |
+          set -euo pipefail
+          node tools/build-launcher.mjs
+          test -s launcher.js
+          node --check launcher.js
+
+      - name: Verify Vision bookmarklet on a synthetic authorized Gifts session
+        run: |
+          set -euo pipefail
+          node tests/printcheck-vision-session-launch.browser.mjs
+
+      - name: Checkout GitHub Pages site (production files preserved)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+
+      - name: Assemble preview under isolated URL
+        run: |
+          set -euo pipefail
+          PREVIEW="site/gifts-layout-workbench-vision"
+          mkdir -p "$PREVIEW"
+          cp index.html editor.html direct-mode.js launcher.js "$PREVIEW/"
+          cp vision-studio.html "$PREVIEW/"
+          cp vision-review.html "$PREVIEW/"
+          cp vision-ai.html "$PREVIEW/"
+          cp vision-vector.html "$PREVIEW/"
+          cp vision-local-orders.html vision-order-overlay.js vision-order-approval.js "$PREVIEW/"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,zipfile
+          package=Path('vision/orders/extension')
+          manifest=json.loads((package/'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['manifest_version']==3
+          assert manifest['host_permissions']==[
+              'http://psk.testgifts.local/*','http://testgifts.local/*',
+              'http://files.testgifts.local/*']
+          assert manifest['permissions']==['tabs','downloads','storage','offscreen']
+          assert manifest['background']['service_worker']=='service-worker.js'
+          assert manifest['version']=='0.2.4'
+          assert len(manifest['content_scripts'])==2
+          assert manifest['content_scripts'][0]['matches']==[
+              'http://testgifts.local/private/order/*']
+          assert manifest['content_scripts'][0]['js']==[
+              'content-transport.js','vision-order-approval.js']
+          assert manifest['content_scripts'][1]['matches']==[
+              'http://psk.testgifts.local/*','http://testgifts.local/*']
+          assert manifest['content_scripts'][1]['js']==['vision-order-launcher.js']
+          with zipfile.ZipFile('vision-local-lan-extension.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
+              for file in ['manifest.json','service-worker.js','content-transport.js',
+                  'vision-order-launcher.js','scanner-host.html',
+                  'scanner-transport.js','archive-registry.js',
+                  'zip-offscreen.html','zip-offscreen.js','README_RU.md']:
+                  z.write(package/file,file)
+              z.write('scanner-host.js','scanner-host.js')
+              z.write('vision-order-approval.js','vision-order-approval.js')
+          with zipfile.ZipFile('vision-local-lan-extension.zip') as z:
+              assert z.testzip() is None
+              assert set(z.namelist())=={
+                  'manifest.json','service-worker.js','content-transport.js',
+                  'vision-order-launcher.js','scanner-host.html',
+                  'scanner-transport.js','scanner-host.js','archive-registry.js',
+                  'zip-offscreen.html','zip-offscreen.js',
+                  'README_RU.md','vision-order-approval.js'}
+          print('Local-only Chrome MV3 extension verified: exact LAN hosts, zero remote code')
+          PY
+          cp vision-local-lan-extension.zip "$PREVIEW/"
+          python3 - <<'PY'
+          import zipfile
+          paths=['tools/vision_local_lab.py','tools/vision_roi_review.py',
+                 'tools/vision_pdf_audit.py','tools/vision_private_corpus_stage.py',
+                 'tools/vision-roi-annotator.html',
+                 'tools/install-vision-local-lab.ps1',
+                 'docs/VISION_LOCAL_LAB_SETUP_RU.md']
+          with zipfile.ZipFile('vision-local-lab.zip','w',
+               compression=zipfile.ZIP_DEFLATED) as z:
+              for path in paths:z.write(path)
+          with zipfile.ZipFile('vision-local-lab.zip') as z:
+              assert z.testzip() is None
+              assert len(z.namelist())==7
+          print('Offline Windows D: lab package verified')
+          PY
+          cp vision-local-lab.zip "$PREVIEW/"
+          mkdir -p "$PREVIEW/vision/geometry"
+          for module in svg-local-vector svg-ink-forms svg-dom-vector-bridge svg-viewport svg-path-subset vector-corridors curved-normal-probes; do
+            cp "vision/geometry/$module.mjs" "$PREVIEW/vision/geometry/"
+          done
+          mkdir -p "$PREVIEW/vision/ai"
+          cp vision/ai/synthetic-feature-model.mjs "$PREVIEW/vision/ai/"
+          cp vision/ai/scan-worker.mjs "$PREVIEW/vision/ai/"
+          mkdir -p "$PREVIEW/vision/dataset"
+          cp vision/dataset/review-task.mjs "$PREVIEW/vision/dataset/"
+          cp -R assets vendor "$PREVIEW/"
+          if test -f mockup.html; then cp mockup.html "$PREVIEW/"; fi
+          for json in *.json; do
+            if test -f "$json"; then cp "$json" "$PREVIEW/"; fi
+          done
+          test -f "$PREVIEW/assets/printcheck-vision-ui.js"
+          test -f "$PREVIEW/assets/printcheck-vision-ui.css"
+          test -f "$PREVIEW/launcher.js"
+          test -f "$PREVIEW/vision/ai/synthetic-feature-model.mjs"
+          test -f "$PREVIEW/vision/ai/scan-worker.mjs"
+          test -f "$PREVIEW/vision-ai.html"
+          test -f "$PREVIEW/vision-vector.html"
+          test -f "$PREVIEW/vision-local-orders.html"
+          test -s "$PREVIEW/vision-order-overlay.js"
+          test -s "$PREVIEW/vision-order-approval.js"
+          test -s "$PREVIEW/vision-local-lan-extension.zip"
+          test -s "$PREVIEW/vision-local-lab.zip"
+          test -f "$PREVIEW/vision/geometry/svg-local-vector.mjs"
+          test -f "$PREVIEW/vision/geometry/svg-ink-forms.mjs"
+          test -f "$PREVIEW/vision/geometry/vector-corridors.mjs"
+          grep -q 'gifts-layout-workbench-vision' "$PREVIEW/launcher.js"
+          echo "Preview isolated at /gifts-layout-workbench-vision/"
+
+      - name: Commit only the new preview folder
+        run: |
+          set -euo pipefail
+          cd site
+          git config user.name "printcheck-vision-preview"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A gifts-layout-workbench-vision
+          if git diff --cached --quiet; then
+            echo "Preview already current"
+            exit 0
+          fi
+          git commit -m "Publish isolated PrintCheck Vision preview"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Failed to publish preview after retries" >&2
+          exit 1

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PrintCheck Vision Studio — исследовательская экспертная разметка</title>
+<style>
+:root{color-scheme:dark;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:#0d191f;color:#e5eeee}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}
+header{padding:18px 25px;border-bottom:1px solid #32474a;background:linear-gradient(115deg,#1a3437,#101d24);display:flex;align-items:center;justify-content:space-between;gap:12px}
+header h1{margin:0;font-size:23px;letter-spacing:-.04em}header small{display:block;color:#afc7c8;letter-spacing:.11em;font-size:10px;font-weight:800}
+header a{color:#bfe899;text-decoration:none}
+.shell{display:grid;grid-template-columns:minmax(360px,1fr) 320px;min-height:calc(100vh - 84px)}
+main{min-width:0;padding:20px;display:flex;flex-direction:column;gap:14px}
+aside{border-left:1px solid #324a4d;background:#13232a;padding:20px;display:flex;flex-direction:column;gap:15px}
+.notice{background:#302c22;color:#e6d8ad;border:1px solid #635839;border-radius:10px;padding:11px 13px;font-size:12px}
+.upload{border:1px solid #45615d;background:#1b3035;border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+input[type=file]{max-width:100%;color:#b5caca;font-size:12px}
+.stage{flex:1;min-height:350px;display:grid;place-items:center;border-radius:14px;border:1px solid #385159;background:#101c22;padding:12px;overflow:hidden}
+#stage{display:block;width:100%;max-width:1100px;aspect-ratio:3/2;object-fit:contain;cursor:crosshair;background:repeating-conic-gradient(#e7ebed 0 25%,#d0dadd 0 50%) 50%/18px 18px;border:1px solid #62767c}
+h2{font-size:14px;letter-spacing:.015em;margin:0}p{margin:5px 0;color:#aac0c4;font-size:12px}
+label{font-size:12px;color:#c0d3d5;font-weight:600;display:block}
+select,input[type=text],textarea{display:block;width:100%;margin-top:6px;padding:10px;background:#0e1c22;border:1px solid #49636a;border-radius:8px;color:#edf5f3}
+textarea{min-height:70px;resize:vertical}
+button{background:#253e45;color:#e6f3ef;border:1px solid #577278;border-radius:8px;padding:9px 12px;cursor:pointer;font:650 12px system-ui}
+button:hover{background:#34545b}button:disabled{opacity:.4;cursor:default}
+button.primary{background:#c7e798;color:#213723;border-color:#e0f3be}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+#annotations{margin:0;padding:0;list-style:none;max-height:260px;overflow:auto;display:grid;gap:6px}
+#annotations li{border:1px solid #3b585c;border-radius:8px;padding:9px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+#annotations li strong{display:block;font-size:12px}#annotations li small{color:#91afb1;font-size:11px;overflow-wrap:anywhere}
+.count{font-weight:800;color:#c7e798}
+footer{padding:12px 22px;font-size:11px;color:#93adb2;border-top:1px solid #29444a}
+@media(max-width:800px){.shell{grid-template-columns:1fr}.stage{min-height:280px}aside{border-left:0;border-top:1px solid #324a4d}header{padding:14px 16px;align-items:start;flex-direction:column}main{padding:13px}}
+</style>
+</head>
+<body>
+<header><div><small>PRINTCHECK VISION / SPECIALIST WORKSPACE / LOCAL DRAFT</small><h1>Vision Studio <span style="color:#b5df89">α</span></h1></div><a href="./editor.html">Вернуться в экспериментальную Макетную</a></header>
+<div class="shell">
+<main>
+ <div class="notice">Исследовательский редактор разметки. Здесь нет авторизации, обучения нейросети и отправки результатов на сервер. Не использовать для клиентских макетов без разрешения на экспертную обработку. Сохранение — только в локальный JSON-файл.</div>
+ <div class="upload"><label for="image">Загрузить изображение для разметки (PNG, JPG, WEBP)</label><input type="file" id="image" accept="image/png,image/jpeg,image/webp"></div>
+ <div class="stage"><canvas id="stage" width="960" height="640" aria-label="Экспертная разметка прямоугольниками: нажмите и выделите участок"></canvas></div>
+ <p id="info" role="status">Выберите изображение. Выделение мышью создаёт область выбранного типа.</p>
+</main>
+<aside>
+ <div><h2>Разметка технологических ситуаций</h2><p>Выберите тип, обведите область. Сохраните итог как отдельный файл для проверки специалистом.</p></div>
+ <div><label for="kind">Тип</label><select id="kind">
+   <option value="positive_thin">Тонкий позитивный элемент</option>
+   <option value="negative_gap">Узкий негативный пробел</option>
+   <option value="island">Отдельный мелкий объект</option>
+   <option value="corner_safe">Нормальный острый угол</option>
+   <option value="other">Требует уточнения</option>
+ </select></div>
+ <div><label for="note">Комментарий эксперта</label><textarea id="note" placeholder="Что именно здесь важно?"></textarea></div>
+ <div><h2>Области · <span class="count" id="count">0</span></h2><p>Координаты сохраняются относительно изображения (0…1).</p><ol id="annotations"></ol></div>
+ <div class="actions"><button id="undo" type="button">Отменить последнюю</button><button id="clear" type="button">Очистить</button><button class="primary" id="export" type="button">Скачать JSON</button></div>
+ <div style="padding-top:15px;border-top:1px solid #40595e">
+  <h2>Подготовить слепое задание для экспертов</h2>
+  <p>Задание фиксирует одинаковые области для двух независимых проверок. Результаты алгоритма и ваши комментарии не включаются. Ниже — необязательные технические метки для будущего контроля выборки.</p>
+  <label for="familyHash">SHA-256 группы исходного заказа (64 символа)</label>
+  <input type="text" id="familyHash" placeholder="Вводить только заранее созданный идентификатор" autocomplete="off" spellcheck="false" maxlength="64">
+  <label for="artworkHash">SHA-256 оригинального макета, если подтверждён</label>
+  <input type="text" id="artworkHash" placeholder="Не путать с хешем PNG предпросмотра" autocomplete="off" spellcheck="false" maxlength="64">
+  <label for="technologyCode">Код технологии (например, UV1)</label>
+  <input type="text" id="technologyCode" placeholder="Неизвестен — оставить пустым" autocomplete="off" maxlength="30">
+  <div class="actions" style="margin-top:12px">
+    <button id="exportTask" type="button">Скачать задание для двух экспертов</button>
+    <a href="./vision-review.html" style="font-size:12px;color:#c7e798;padding:9px 0">Открыть слепую проверку</a>
+  </div>
+  <p>Пустые идентификаторы сохраняются как неподтверждённые. Такая разметка пригодна для исследования, но не для окончательной оценки по заказу.</p>
+ </div>
+ <p>Сведения о физических размерах здесь не вычисляются. Для реального заключения потребуется проверенная калибровка PDF/SVG и версия технологических требований.</p>
+</aside>
+</div>
+<footer>PrintCheck Vision Studio · локальная разметка · исходное изображение не выгружается · модель и рабочие правила не изменяются</footer>
+<script type="module">
+import {createReviewTask} from './vision/dataset/review-task.mjs';
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas=$('stage'),ctx=canvas.getContext('2d'),file=$('image');
+let image=null,imgName='',imgHash='',annotations=[],draft=null,seq=0;
+const geometry=()=>{
+ if(!image)return null;
+ const s=Math.min(canvas.width/image.width,canvas.height/image.height);
+ const w=image.width*s,h=image.height*s;
+ return {x:(canvas.width-w)/2,y:(canvas.height-h)/2,w,h};
+};
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ const r=geometry();
+ if(!r){ctx.font='24px system-ui';ctx.fillStyle='#32434c';ctx.textAlign='center';ctx.fillText('Загрузите изображение',canvas.width/2,canvas.height/2);return}
+ ctx.drawImage(image,r.x,r.y,r.w,r.h);
+ for(const a of annotations){
+  ctx.lineWidth=3;ctx.strokeStyle=a.type==='corner_safe'?'#23a96e':'#dd5148';
+  ctx.strokeRect(r.x+a.x*r.w,r.y+a.y*r.h,a.w*r.w,a.h*r.h);
+ }
+ if(draft){
+  ctx.strokeStyle='#d4e86d';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.strokeRect(draft.x,draft.y,draft.w,draft.h);ctx.setLineDash([]);
+ }
+}
+function coords(event){
+ const rect=canvas.getBoundingClientRect();
+ return {x:(event.clientX-rect.left)/rect.width*canvas.width,
+         y:(event.clientY-rect.top)/rect.height*canvas.height};
+}
+function confined(p){
+ const r=geometry();if(!r)return null;
+ return {x:Math.max(r.x,Math.min(r.x+r.w,p.x)),y:Math.max(r.y,Math.min(r.y+r.h,p.y))};
+}
+function update(){
+ $('count').textContent=String(annotations.length);
+ $('annotations').replaceChildren();
+ for(const a of annotations){
+  const li=document.createElement('li');
+  const left=document.createElement('div');
+  const b=document.createElement('strong');b.textContent=a.type;
+  const small=document.createElement('small');small.textContent='x='+a.x.toFixed(3)+' y='+a.y.toFixed(3)+' · '+a.w.toFixed(3)+'×'+a.h.toFixed(3)+(a.note?' · '+a.note:'');
+  left.append(b,small);
+  const rm=document.createElement('button');rm.type='button';rm.textContent='×';rm.title='Удалить область';
+  rm.addEventListener('click',()=>{annotations=annotations.filter(p=>p.id!==a.id);update();draw()});
+  li.append(left,rm);$('annotations').append(li);
+ }
+ $('undo').disabled=annotations.length===0;$('clear').disabled=annotations.length===0;
+ $('export').disabled=!image;
+ $('exportTask').disabled=!image||annotations.length===0;
+ draw();
+}
+canvas.addEventListener('pointerdown',event=>{
+ if(!image)return;
+ const p=confined(coords(event));if(!p)return;
+ draft={x:p.x,y:p.y,w:0,h:0,origin:p};
+ canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener('pointermove',event=>{
+ if(!draft)return;const p=confined(coords(event));
+ if(!p)return;draft.x=Math.min(draft.origin.x,p.x);draft.y=Math.min(draft.origin.y,p.y);
+ draft.w=Math.abs(p.x-draft.origin.x);draft.h=Math.abs(p.y-draft.origin.y);draw();
+});
+canvas.addEventListener('pointerup',event=>{
+ if(!draft)return;const r=geometry();
+ if(r&&draft.w>=4&&draft.h>=4){
+  annotations.push({id:++seq,type:$('kind').value,note:$('note').value.trim(),
+   x:(draft.x-r.x)/r.w,y:(draft.y-r.y)/r.h,w:draft.w/r.w,h:draft.h/r.h});
+  $('info').textContent='Область записана локально; экспортируйте JSON для экспертной выборки.';
+ }
+ draft=null;update();
+});
+canvas.addEventListener('pointercancel',()=>{draft=null;draw()});
+file.addEventListener('change',async()=>{
+ const f=file.files?.[0];
+ if(!f)return;
+ if(!['image/png','image/jpeg','image/webp'].includes(f.type)){ $('info').textContent='Поддерживаются только PNG, JPG и WEBP.';return; }
+ const bytes=await f.arrayBuffer();
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ imgHash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+ const blob=new Blob([bytes],{type:f.type}),url=URL.createObjectURL(blob);
+ try{
+  const next=new Image();next.src=url;await next.decode();
+  image=next;imgName=f.name;annotations=[];seq=0;
+  $('info').textContent='Изображение: '+imgName+' · '+next.width+'×'+next.height+' px. Выделяйте области.';
+  update();
+ }catch(error){$('info').textContent='Не удалось открыть изображение: '+error.message}
+ finally{URL.revokeObjectURL(url)}
+});
+$('undo').addEventListener('click',()=>{annotations.pop();update()});
+$('clear').addEventListener('click',()=>{annotations=[];update()});
+$('exportTask').addEventListener('click',async()=>{
+ if(!image||annotations.length===0)return;
+ const hex=/^[0-9a-f]{64}$/i;
+ const optional=id=>{
+  const value=$(id).value.trim();
+  if(!value)return null;
+  if(!hex.test(value))throw new Error('Неверный SHA-256 в поле '+id);
+  return value.toLowerCase();
+ };
+ try{
+  const technology=$('technologyCode').value.trim().toUpperCase()||null;
+  const task=await createReviewTask({
+   image_sha256:imgHash,
+   width_px:image.width,height_px:image.height,
+   annotations,
+   family_sha256:optional('familyHash'),
+   artwork_sha256:optional('artworkHash'),
+   technology_code:technology
+  });
+  const blob=new Blob([JSON.stringify(task,null,2)+'\n'],{
+   type:'application/json;charset=utf-8'
+  });
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='vision-review-task-'+imgHash.slice(0,12)+'.json';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  $('info').textContent='Слепое задание создано локально для '+task.regions.length+' областей. Передайте один и тот же JSON обоим экспертам; изображение передаётся только разрешённым внутренним способом.';
+ }catch(err){
+  $('info').textContent='Задание не создано: '+(err?.message||'Некорректные данные');
+ }
+});
+$('export').addEventListener('click',()=>{
+ if(!image)return;
+ const data={schema:'printcheck.vision.annotation.v1',source:{name:imgName,sha256:imgHash,width_px:image.width,height_px:image.height},
+  coordinate_space:'normalized_image',verified_by_expert:false,annotations:annotations.map(({id,...rest})=>rest)};
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download='vision-annotations-'+imgHash.slice(0,12)+'.json';
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+update();
+})();
+</script>
+</body></html>

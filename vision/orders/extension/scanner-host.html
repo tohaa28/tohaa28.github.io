@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vision AI — проверка заказов</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#eef2f2;color:#24393f;font-size:14px;line-height:1.55}
+.page{max-width:1010px;margin:0 auto;padding:24px 20px 48px}
+header.page-head{margin:0 0 18px;padding:0 0 12px;border-bottom:1px solid #d5dfde}
+h1{font-size:23px;font-weight:720;letter-spacing:-.35px;line-height:1.3;margin:0}
+.page-lead{max-width:760px;margin:7px 0 0;color:#62747a}
+.surface{margin-bottom:16px;padding:20px;background:#fff;border:1px solid #d8e2df;border-radius:12px;box-shadow:0 2px 12px #203f3b08}
+.section-label{font-size:16px;line-height:1.35;font-weight:720;color:#213e42;margin:0}
+.section-hint{margin:5px 0 12px;font-size:12px;color:#687a7d}
+#vision-scanner-host{margin-top:16px}
+button{cursor:pointer;appearance:none;border:1px solid #bfd0ca;border-radius:7px;background:#eff5f2;color:#264348;font:600 13px/1.35 system-ui,sans-serif;min-height:36px;padding:8px 13px}
+button:hover{background:#e0ede8;border-color:#8daea4}
+button:focus-visible,input:focus-visible{outline:2px solid #4e8ab2;outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+#vision-choose-archive-folder{background:#294d50;color:white;border-color:#294d50}
+#vision-choose-archive-folder:hover{background:#39656a}
+#vision-archive-folder-status{margin:12px 0 0;padding:9px 12px;background:#f4f8f6;border-left:3px solid #92a9a5;border-radius:5px;font-size:12px;overflow-wrap:anywhere}
+.vlo-file-list{padding:0!important;border:0!important;color:#24393f!important;width:100%!important}
+.vlo-head{margin-bottom:16px}
+.vlo-head strong{font-size:17px!important}
+.vlo-intro{margin:6px 0 0;font-size:12px;color:#68797b}
+.vlo-config{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:15px;border:1px solid #dde6e3;border-radius:9px;background:#f8faf9}
+.vlo-config label{font-size:12px;font-weight:650;color:#344d52;display:flex;flex-direction:column;gap:6px;min-width:190px;flex:1 1 300px}
+.vlo-config label.vlo-delay-label{flex:0 1 180px;min-width:150px}
+.vlo-config input{border:1px solid #b9cbc5;border-radius:7px;padding:9px;background:#fff;color:#26434a;font:13px system-ui,sans-serif;min-height:38px;max-width:100%!important;margin:0!important}
+.vlo-config input[type=number]{width:100%!important}
+.vlo-groups{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;margin:12px 0}
+.vlo-group{border:1px solid #dce5e2;border-radius:9px;padding:12px;background:#fff}
+.vlo-group h3{margin:0 0 5px;font-size:13px;font-weight:730;color:#294449}
+.vlo-group p{margin:0 0 9px;font-size:11px;color:#65777a}
+.vlo-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0!important}
+.vlo-actions button{font-size:12px}
+.vlo-primary{background:#294d50;color:#fff;border-color:#294d50}
+.vlo-primary:hover{background:#39636a}
+.vlo-danger{background:#fff6f5;color:#873c3c;border-color:#e4c6c3}
+.vlo-service{grid-column:1/-1}
+.vlo-readout{padding:14px;border:1px solid #d7e3df;border-radius:9px;background:#fbfdfb;margin:10px 0}
+.vlo-readout h3{margin:0 0 8px;font-size:14px}
+.vlo-readout .vlo-state{font-weight:700;font-size:13px;color:#24555b;margin:0 0 7px}
+.vlo-progress-track{height:8px;background:#e1ece8;border-radius:8px;overflow:hidden}
+.vlo-progress-bar{height:100%;width:0;background:#498d7b;border-radius:8px;transition:width .15s}
+.vlo-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 0}
+.vlo-metric{background:#f0f6f3;border-radius:7px;border:1px solid #e0eae5;min-width:0;padding:8px 10px}
+.vlo-metric span{font-size:11px;line-height:1.3;color:#61787a;display:block}
+.vlo-metric strong{font-size:18px;color:#264249;display:block;line-height:1.3}
+.vlo-last-message{margin:0!important;border:1px solid #dce5e1;border-radius:8px;background:#fff;color:#566b6b;padding:11px 13px;white-space:pre-line!important;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.vlo-last-message[data-error=true]{border-color:#e4c5c0;background:#fff8f7;color:#7b4440}
+.helper-note{color:#647477;font-size:12px;margin:0}
+@media(max-width:710px){
+ .page{padding:14px 12px 28px}
+ h1{font-size:20px}
+ .surface{padding:14px}
+ .vlo-groups{grid-template-columns:1fr}
+ .vlo-service{grid-column:auto}
+ .vlo-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){.vlo-progress-bar{transition:none}}
+</style>
+</head>
+<body>
+<main class="page">
+ <header class="page-head">
+  <h1>Vision AI — проверка заказов</h1>
+  <p class="page-lead">Сканирование локального списка TXT. Один архив ZIP — до 100 заказов с утверждённым ТЗ, их переписками и вложениями.</p>
+ </header>
+ <section class="surface" aria-labelledby="folder-heading">
+  <h2 class="section-label" id="folder-heading">1. Куда сохранять архивы</h2>
+  <p class="section-hint">Выберите папку до начала проверки. Для автоматического сохранения в подпапку «Загрузки» настройте её в панели Vision AI на странице заказа.</p>
+  <button id="vision-choose-archive-folder" type="button">Выбрать папку на диске…</button>
+  <p id="vision-archive-folder-status" role="status">Папка ещё не выбрана.</p>
+ </section>
+ <section class="surface" aria-labelledby="queue-heading">
+  <h2 class="section-label" id="queue-heading">2. Очередь заказов</h2>
+  <p class="section-hint">Неутверждённые заказы не включаются в ZIP. Пауза сохраняет неполную партию; «Стоп и архив» выгружает её. Данные хранятся только локально.</p>
+  <div id="vision-scanner-host"></div>
+ </section>
+ <p class="helper-note">Для загрузки согласований временно открывается карточка проверяемого заказа. Если вкладка закрыта, очередная проверка прерывается, а уже сохранённый прогресс доступен при следующем запуске. Не очищайте данные расширения до выгрузки ZIP.</p>
+</main>
+<script src="archive-registry.js"></script>
+<script src="scanner-transport.js"></script>
+<script src="scanner-host.js"></script>
+</body>
+</html>
